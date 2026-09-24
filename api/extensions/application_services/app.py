@@ -20,6 +20,7 @@ from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.oauth_server_service import OAuthServerService
+from services.recommended_app_package_service import RecommendedAppPackageService
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,7 @@ def build_app_services(
     *,
     database_client: sessionmaker[Session],
     oauth: OAuthServerService,
+    recommended_packages: RecommendedAppPackageService,
 ) -> AppServices:
     repository = ConsoleAppRepository(session_factory=database_client)
     transfers = AppTransferGateway(
@@ -41,6 +43,7 @@ def build_app_services(
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=recommended_packages,
     )
     return AppServices(
         imports=AppImportService(accounts=SQLAlchemyAccountRepository(database_client), definitions=transfers),

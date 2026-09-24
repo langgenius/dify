@@ -1,22 +1,28 @@
 'use client'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
-import type { TryAppInfo } from '@/service/try-app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import useGetRequirements from './use-get-requirements'
 
 type Props = Readonly<{
   appId: string
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   canCreate?: boolean
   categories?: string[]
   className?: string
   createButtonStepByStepTourTarget?: string
   onCreate: () => void
+  agentComposer?: AgentAppComposerResponse
 }>
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
@@ -59,13 +65,18 @@ const AppInfo: FC<Props> = ({
   createButtonStepByStepTourTarget,
   appDetail,
   onCreate,
+  agentComposer,
 }) => {
   const { t } = useTranslation(['app', 'explore'])
+  const requirementsHeadingId = React.useId()
+  const includedHeadingId = React.useId()
   const mode = appDetail?.mode
   const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
-  const { requirements } = useGetRequirements({ appDetail, appId })
+  const { requirements } = useGetRequirements({ appDetail, appId, agentComposer })
+  const skills = agentComposer?.agent_soul.config_skills ?? []
+  const files = agentComposer?.agent_soul.config_files ?? []
   return (
-    <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
+    <div className={cn('flex h-full flex-col px-4 pt-2', mode === 'agent' && 'pb-4', className)}>
       {/* name and icon */}
       <div className="flex shrink-0 grow-0 items-center gap-3">
         <div className="relative shrink-0">
@@ -99,7 +110,7 @@ const AppInfo: FC<Props> = ({
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {mode === 'agent-chat' && (
+            {(mode === 'agent-chat' || mode === 'agent') && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
@@ -122,51 +133,98 @@ const AppInfo: FC<Props> = ({
           {appDetail.description}
         </div>
       )}
+      {!!appDetail.tags?.length && (
+        <ul className="mt-3 flex flex-wrap gap-1">
+          {appDetail.tags.map((tag) => (
+            <li
+              key={tag.id}
+              className="flex items-center gap-0.5 rounded border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary"
+            >
+              <span aria-hidden className="i-ri-price-tag-3-line size-3" />
+              {tag.name}
+            </li>
+          ))}
+        </ul>
+      )}
       {canCreate && (
-        <Button
-          variant="primary"
-          className="mt-3 flex w-full max-w-full"
-          data-step-by-step-tour-target={createButtonStepByStepTourTarget}
-          onClick={onCreate}
-        >
-          <span className="i-ri-add-line size-4 shrink-0" />
-          <span className="truncate">
-            {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
-          </span>
-        </Button>
+        <div className="shrink-0 py-3">
+          <Button
+            variant="primary"
+            className="w-full"
+            data-step-by-step-tour-target={createButtonStepByStepTourTarget}
+            onClick={onCreate}
+          >
+            <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+            <span className="min-w-0 truncate">
+              {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+            </span>
+          </Button>
+        </div>
       )}
 
       {visibleCategories.length > 0 && (
-        <div className="mt-6 shrink-0">
-          <div className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</div>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="mt-3 shrink-0">
+          <h2 className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</h2>
+          <ul className="flex flex-wrap gap-1.5">
             {visibleCategories.map((category) => (
-              <span
+              <li
                 key={category}
                 className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
               >
                 {category}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
       {requirements.length > 0 && (
-        <div className="mt-5 grow overflow-y-auto">
-          <div className={headerClassName}>
+        <section
+          aria-labelledby={requirementsHeadingId}
+          className={cn('mt-4 min-h-0 overflow-y-auto', mode !== 'agent' && 'grow')}
+        >
+          <h2 id={requirementsHeadingId} className={headerClassName}>
             {t(($) => $['tryApp.requirements'], { ns: 'explore' })}
-          </div>
-          <div className="space-y-0.5">
+          </h2>
+          <ul className="space-y-0.5">
             {requirements.map((item) => (
-              <div className="flex items-center space-x-2 py-1" key={item.name}>
+              <li className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
                 <div className="w-0 grow truncate system-md-regular text-text-secondary">
                   {item.name}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
+      )}
+      {mode === 'agent' && (skills.length > 0 || files.length > 0) && (
+        <section aria-labelledby={includedHeadingId} className="mt-4 min-h-0 overflow-y-auto">
+          <h2 id={includedHeadingId} className={headerClassName}>
+            {t(($) => $['tryApp.included'], { ns: 'explore' })}
+          </h2>
+          <ul className="space-y-0.5 system-md-regular text-text-secondary">
+            {skills.map((skill) => (
+              <li key={`skill-${skill.name}`} className="flex min-h-7 items-center gap-2 py-1">
+                <span
+                  aria-hidden="true"
+                  className="i-custom-vender-agent-v2-building-blocks size-5 shrink-0"
+                />
+                <span className="min-w-0 truncate">{skill.name}</span>
+              </li>
+            ))}
+            {files.map((file) => (
+              <li key={`file-${file.name}`} className="flex min-h-7 items-center gap-2 py-1">
+                <FileTreeIcon type={getFileIconType(file.name, file.mime_type)} />
+                <span className="min-w-0 truncate">{file.name}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {mode === 'agent' && (
+        <p className="mt-auto shrink-0 pt-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['tryApp.agentSetupHint'], { ns: 'explore' })}
+        </p>
       )}
     </div>
   )

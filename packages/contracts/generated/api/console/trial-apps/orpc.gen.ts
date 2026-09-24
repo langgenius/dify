@@ -3,9 +3,41 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetTrialAppsByAppIdAgentComposerPath,
+  zGetTrialAppsByAppIdAgentComposerResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewPath,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesPath,
+  zGetTrialAppsByAppIdAgentConfigFilesQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsResponse,
   zGetTrialAppsByAppIdDatasetsPath,
   zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
+  zGetTrialAppsByAppIdExportPath,
+  zGetTrialAppsByAppIdExportQuery,
+  zGetTrialAppsByAppIdExportResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
   zGetTrialAppsByAppIdParametersPath,
@@ -19,6 +51,8 @@ import {
   zPostTrialAppsByAppIdAudioToTextPath,
   zPostTrialAppsByAppIdAudioToTextResponse,
   zPostTrialAppsByAppIdChatMessagesBody,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse,
   zPostTrialAppsByAppIdChatMessagesPath,
   zPostTrialAppsByAppIdChatMessagesResponse,
   zPostTrialAppsByAppIdCompletionMessagesBody,
@@ -40,6 +74,229 @@ import {
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
 } from './zod.gen.ts'
 
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentComposer',
+    path: '/trial-apps/{app_id}/agent-composer',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdAgentComposerPath }))
+  .output(zGetTrialAppsByAppIdAgentComposerResponse)
+
+export const agentComposer = {
+  get,
+}
+
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFilesByNameDownload',
+    path: '/trial-apps/{app_id}/agent/config/files/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse)
+
+export const download = {
+  get: get2,
+}
+
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFilesByNamePreview',
+    path: '/trial-apps/{app_id}/agent/config/files/{name}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse)
+
+export const preview = {
+  get: get3,
+}
+
+export const byName = {
+  download,
+  preview,
+}
+
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFiles',
+    path: '/trial-apps/{app_id}/agent/config/files',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesResponse)
+
+export const files = {
+  get: get4,
+  byName,
+}
+
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameDownload',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
+
+export const download2 = {
+  get: get5,
+}
+
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesContent',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
+
+export const content = {
+  get: get6,
+}
+
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesDownload',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
+
+export const download3 = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesPreview',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
+
+export const preview2 = {
+  get: get8,
+}
+
+export const files2 = {
+  content,
+  download: download3,
+  preview: preview2,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameInspect',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse)
+
+export const inspect = {
+  get: get9,
+}
+
+export const byName2 = {
+  download: download2,
+  files: files2,
+  inspect,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkills',
+    path: '/trial-apps/{app_id}/agent/config/skills',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsResponse)
+
+export const skills = {
+  get: get10,
+  byName: byName2,
+}
+
+export const config = {
+  files,
+  skills,
+}
+
+export const agent = {
+  config,
+}
+
 export const post = oc
   .route({
     inputStructure: 'detailed',
@@ -59,6 +316,25 @@ export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postTrialAppsByAppIdChatMessagesByTaskIdStop',
+    path: '/trial-apps/{app_id}/chat-messages/{task_id}/stop',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
+  .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
+
+export const stop = {
+  post: post2,
+}
+
+export const byTaskId = {
+  stop,
+}
+
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postTrialAppsByAppIdChatMessages',
     path: '/trial-apps/{app_id}/chat-messages',
     tags: ['console'],
@@ -72,10 +348,11 @@ export const post2 = oc
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
 
 export const chatMessages = {
-  post: post2,
+  post: post3,
+  byTaskId,
 }
 
-export const post3 = oc
+export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -92,10 +369,10 @@ export const post3 = oc
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
 
 export const completionMessages = {
-  post: post3,
+  post: post4,
 }
 
-export const get = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -112,13 +389,30 @@ export const get = oc
   .output(zGetTrialAppsByAppIdDatasetsResponse)
 
 export const datasets = {
-  get,
+  get: get11,
+}
+
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdExport',
+    path: '/trial-apps/{app_id}/export',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
+  )
+  .output(zGetTrialAppsByAppIdExportResponse)
+
+export const export_ = {
+  get: get12,
 }
 
 /**
  * Upload a file into the tenant that owns the trial app
  */
-export const post4 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -137,14 +431,14 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdFilesUploadResponse)
 
 export const upload = {
-  post: post4,
+  post: post5,
 }
 
-export const files = {
+export const files3 = {
   upload,
 }
 
-export const get2 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -156,7 +450,7 @@ export const get2 = oc
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
-  get: get2,
+  get: get13,
 }
 
 export const byMessageId = {
@@ -170,7 +464,7 @@ export const messages = {
 /**
  * Retrieve app parameters
  */
-export const get3 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -183,13 +477,13 @@ export const get3 = oc
   .output(zGetTrialAppsByAppIdParametersResponse)
 
 export const parameters = {
-  get: get3,
+  get: get14,
 }
 
 /**
  * Upload a remote file into the tenant that owns the trial app
  */
-export const post5 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -208,7 +502,7 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
 
 export const upload2 = {
-  post: post5,
+  post: post6,
 }
 
 export const remoteFiles = {
@@ -220,7 +514,7 @@ export const remoteFiles = {
  *
  * Returns the site configuration for the application including theme, icons, and text.
  */
-export const get4 = oc
+export const get15 = oc
   .route({
     description:
       'Returns the site configuration for the application including theme, icons, and text.',
@@ -235,10 +529,10 @@ export const get4 = oc
   .output(zGetTrialAppsByAppIdSiteResponse)
 
 export const site = {
-  get: get4,
+  get: get15,
 }
 
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -255,13 +549,13 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post6,
+  post: post7,
 }
 
 /**
  * Run workflow
  */
-export const post7 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -279,13 +573,13 @@ export const post7 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post7,
+  post: post8,
 }
 
 /**
  * Stop workflow task
  */
-export const post8 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -297,22 +591,22 @@ export const post8 = oc
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
-export const stop = {
-  post: post8,
+export const stop2 = {
+  post: post9,
 }
 
-export const byTaskId = {
-  stop,
+export const byTaskId2 = {
+  stop: stop2,
 }
 
 export const tasks = {
-  byTaskId,
+  byTaskId: byTaskId2,
 }
 
 /**
  * Get a detached workflow definition after catalog preview admission
  */
-export const get5 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -325,7 +619,7 @@ export const get5 = oc
   .output(zGetTrialAppsByAppIdWorkflowsResponse)
 
 export const workflows = {
-  get: get5,
+  get: get16,
   run,
   tasks,
 }
@@ -333,7 +627,7 @@ export const workflows = {
 /**
  * Get app detail using the viewer's workspace for tool configuration
  */
-export const get6 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -346,12 +640,15 @@ export const get6 = oc
   .output(zGetTrialAppsByAppIdResponse)
 
 export const byAppId = {
-  get: get6,
+  get: get17,
+  agentComposer,
+  agent,
   audioToText,
   chatMessages,
   completionMessages,
   datasets,
-  files,
+  export: export_,
+  files: files3,
   messages,
   parameters,
   remoteFiles,

@@ -1,4 +1,7 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { AgentTool } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
@@ -7,8 +10,9 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import { consoleQuery } from '@/service/console'
 
 type Params = {
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   appId: string
+  agentComposer?: AgentAppComposerResponse
 }
 
 type RequirementItem = {
@@ -101,18 +105,30 @@ const hasToolRequirementData = (
   return typeof value.provider_id === 'string' && typeof value.tool_label === 'string'
 }
 
-const useGetRequirements = ({ appDetail, appId }: Params) => {
+const useGetRequirements = ({ appDetail, appId, agentComposer }: Params) => {
   const isBasic = ['chat', 'completion', 'agent-chat'].includes(appDetail.mode)
   const isAgent = appDetail.mode === 'agent-chat'
-  const isAdvanced = !isBasic
+  const isAdvanced = !isBasic && appDetail.mode !== 'agent'
   const { data: flowData } = useQuery(
     consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
       input: { params: { app_id: appId } },
-      enabled: !isBasic,
+      enabled: isAdvanced,
     }),
   )
 
   const requirements: RequirementItem[] = []
+  if (appDetail.mode === 'agent' && agentComposer) {
+    const agentModel = agentComposer.agent_soul.model
+    if (agentModel)
+      requirements.push({
+        name: agentModel.model,
+        iconUrl: getIconUrl(agentModel.plugin_id, 'model'),
+      })
+    for (const tool of agentComposer.agent_soul.tools?.dify_tools ?? []) {
+      if (tool.enabled === false || !tool.name || !tool.plugin_id) continue
+      requirements.push({ name: tool.name, iconUrl: getIconUrl(tool.plugin_id, 'tool') })
+    }
+  }
   const modelConfig = appDetail.model_config
   const model = modelConfig?.model
   if (isBasic && model) {

@@ -63,6 +63,7 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -207,12 +208,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         packages: AppPackageService,
         agent_packages: RosterAgentPackageExporter,
         agent_importer: RosterAgentPackageImporter,
+        recommended_packages: RecommendedAppPackageService,
     ) -> None:
         self._session_factory = session_factory
         self._dsl_factory = dsl_factory
         self._packages = packages
         self._agent_packages = agent_packages
         self._agent_importer = agent_importer
+        self._recommended_packages = recommended_packages
 
     @override
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]:
@@ -287,6 +290,38 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
             source=source,
             tenant_id=context.active_workspace_id,
             account=account,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.template_id is not None
+        assert params.version_id is not None
+        source = self._recommended_packages.get_source(app_id=str(params.template_id), version_id=params.version_id)
+        result = self._agent_importer.import_template(
+            source=source,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.package_url is not None
+        result = self._agent_importer.import_package_url(
+            url=params.package_url,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
         )
         return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
 

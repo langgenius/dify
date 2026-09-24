@@ -44,6 +44,20 @@ export function AgentSkillItem({
   const downloadSkill = useCallback(async () => {
     if (skill.isMissing) return
 
+    if (apiContext.trialAppId) {
+      const result = await queryClient.query({
+        ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          input: {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { version_id: apiContext.versionId },
+          },
+        }),
+        staleTime: 0,
+      })
+      downloadUrl({ url: result.url, fileName: skill.name })
+      return
+    }
+
     if (apiContext.workflow) {
       const result = await queryClient.query({
         ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
@@ -140,7 +154,7 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {(!skill.isMissing || canRemove) && (
+        {!apiContext.trialAppId && (!skill.isMissing || canRemove) && (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {

@@ -271,13 +271,13 @@ def _assert_error(response: TestResponse, status: int, code: str, message: str |
     assert response.headers["Content-Type"] == "application/json"
 
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
 @pytest.mark.parametrize("questions", [["Next question?", "Another question?"], []])
 def test_questions_keep_response_history_owner_and_usage(
     harness: _Harness, questions: list[str], mode: AppMode
 ) -> None:
     harness.provider.questions = questions
-    harness.provider.app_type = "chatbot" if mode == AppMode.CHAT else "agent"
+    harness.provider.app_type = {AppMode.CHAT: "chatbot", AppMode.AGENT_CHAT: "agent", AppMode.AGENT: "agent_v2"}[mode]
     with harness.factory.begin() as session:
         session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))
         session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values(mode=mode))
@@ -370,7 +370,7 @@ def test_absent_default_model_keeps_empty_success(harness: _Harness) -> None:
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("mode", [AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.AGENT])
+@pytest.mark.parametrize("mode", [AppMode.COMPLETION, AppMode.WORKFLOW])
 def test_unsupported_app_modes_fail_before_runtime(harness: _Harness, mode: AppMode) -> None:
     with harness.factory.begin() as session:
         session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))

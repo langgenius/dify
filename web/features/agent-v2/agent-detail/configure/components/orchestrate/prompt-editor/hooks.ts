@@ -4,6 +4,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
+import { CollectionType } from '@/app/components/tools/types'
 import { API_PREFIX } from '@/config'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
@@ -14,8 +15,11 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { Theme } from '@/types/app'
-import { getProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
+import {
+  createAgentToolProviderCatalog,
+  getAgentProviderToolIcon,
+} from '../../../tool-provider-catalog'
 
 type ProviderTool = Extract<AgentTool, { kind: 'provider' }>
 
@@ -41,42 +45,32 @@ function getProviderByTool(providerById: Map<string, ToolWithProvider>, tool: Pr
   return providerById.get(tool.id) ?? providerById.get(tool.name)
 }
 
-function createProviderMap(providers: ToolWithProvider[]) {
-  const providerById = new Map<string, ToolWithProvider>()
-
-  providers.forEach((provider) => {
-    providerById.set(provider.id, provider)
-    // Configured tools persist the provider reference, which is the server identifier
-    // for MCP providers. Keep the primary key too so older configs still resolve.
-    providerById.set(getProviderReference(provider), provider)
-    providerById.set(provider.name, provider)
-    if (provider.plugin_id) {
-      providerById.set(provider.plugin_id, provider)
-      providerById.set(`${provider.plugin_id}/${provider.name}`, provider)
-    }
-  })
-
-  return providerById
-}
-
-export function useAgentPromptToolIconResolver() {
+export function useAgentPromptToolIconResolver(
+  providerTypes?: ReadonlySet<ProviderTool['providerType']>,
+) {
   const { theme } = useTheme()
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const { data: builtInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: builtInTools } = useAllBuiltInTools(
+    !providerTypes || providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+  )
+  const { data: customTools } = useAllCustomTools(
+    !providerTypes || providerTypes.has(CollectionType.custom),
+  )
+  const { data: workflowTools } = useAllWorkflowTools(
+    !providerTypes || providerTypes.has(CollectionType.workflow),
+  )
+  const { data: mcpTools } = useAllMCPTools(!providerTypes || providerTypes.has(CollectionType.mcp))
 
-  const providerById = useMemo(() => {
-    const allProviders = [
-      ...(Array.isArray(builtInTools) ? builtInTools : []),
-      ...(Array.isArray(customTools) ? customTools : []),
-      ...(Array.isArray(workflowTools) ? workflowTools : []),
-      ...(Array.isArray(mcpTools) ? mcpTools : []),
-    ]
-
-    return createProviderMap(allProviders)
-  }, [builtInTools, customTools, mcpTools, workflowTools])
+  const providerById = useMemo(
+    () =>
+      createAgentToolProviderCatalog({
+        buildInTools: builtInTools,
+        customTools,
+        mcpTools,
+        workflowTools,
+      }).providerById,
+    [builtInTools, customTools, mcpTools, workflowTools],
+  )
 
   return useMemo(
     () => ({
@@ -94,7 +88,7 @@ export function useAgentPromptToolIconResolver() {
         const rawIcon =
           theme === Theme.dark && (tool.iconDark ?? provider?.icon_dark)
             ? (tool.iconDark ?? provider?.icon_dark)
-            : (tool.icon ?? provider?.icon)
+            : getAgentProviderToolIcon(tool, provider)
 
         return normalizeProviderIcon(rawIcon, currentWorkspaceId)
       },

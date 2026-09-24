@@ -4,7 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from inspect import unwrap
 from typing import BinaryIO, cast
-from uuid import uuid4
+from unittest.mock import Mock
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -25,6 +26,7 @@ from services.app.console_gateway import AppTransferGateway
 from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.entities.dsl_entities import AppImportPackage, AppImportParams, DslImportWarning, Import, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
+from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 
@@ -329,6 +331,157 @@ def test_export_query_rejects_conflicting_version_selectors() -> None:
         app_module.AppExportQuery.model_validate(
             {"version_id": "11111111-1111-4111-8111-111111111111", "workflow_id": "workflow-1"}
         )
+
+
+def test_template_import_resolves_catalog_source_and_preserves_overrides(
+    app: Flask, imports: Imports, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    template_id = UUID("11111111-1111-4111-8111-111111111111")
+    version_id = UUID("22222222-2222-4222-8222-222222222222")
+    source = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
+    catalog = Mock()
+    catalog.get_package_source.return_value = source
+    transfers._recommended_packages = RecommendedAppPackageService(sources=catalog, exporter=Mock())
+    import_template = Mock(return_value=RosterAgentPackageImportResult("new-app", "new-agent", []))
+    monkeypatch.setattr(transfers._agent_importer, "import_template", import_template)
+
+    data, status = _post(
+        app,
+        imports,
+        json={
+            "mode": "template",
+            "template_id": str(template_id),
+            "version_id": str(version_id),
+            "name": "My Agent",
+            "app_id": "",
+        },
+    )
+
+    assert status == 200
+    assert data["app_id"] == "new-app"
+    assert data["app_mode"] == "agent"
+    catalog.get_package_source.assert_called_once_with(str(template_id), version_id)
+    import_template.assert_called_once()
+    assert import_template.call_args.kwargs["source"] == source
+    assert import_template.call_args.kwargs["tenant_id"] == imports.context.active_workspace_id
+    assert import_template.call_args.kwargs["account"].id == imports.context.account_id
+    assert import_template.call_args.kwargs["name"] == "My Agent"
+
+
+def test_template_import_rejects_unlisted_source(
+    app: Flask, imports: Imports, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    catalog = Mock()
+    catalog.get_package_source.return_value = None
+    transfers._recommended_packages = RecommendedAppPackageService(sources=catalog, exporter=Mock())
+    import_template = Mock()
+    monkeypatch.setattr(transfers._agent_importer, "import_template", import_template)
+
+    with pytest.raises(import_module.RecommendedAppNotFoundHttpError):
+        _post(
+            app,
+            imports,
+            json={
+                "mode": "template",
+                "template_id": "11111111-1111-4111-8111-111111111111",
+                "version_id": "22222222-2222-4222-8222-222222222222",
+            },
+        )
+    import_template.assert_not_called()
+
+
+def test_package_url_import_preserves_overrides(
+    app: Flask, imports: Imports, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    import_url = Mock(return_value=RosterAgentPackageImportResult("new-app", "new-agent", []))
+    monkeypatch.setattr(transfers._agent_importer, "import_package_url", import_url)
+
+    data, status = _post(
+        app,
+        imports,
+        json={"mode": "ifpkg-url", "package_url": "https://example.com/agent.ifpkg", "name": "My Agent"},
+    )
+
+    assert status == 200
+    assert data["app_id"] == "new-app"
+    import_url.assert_called_once()
+    assert import_url.call_args.kwargs["url"] == "https://example.com/agent.ifpkg"
+    assert import_url.call_args.kwargs["name"] == "My Agent"
+
+
+def test_package_url_retains_legacy_optional_selectors(
+    app: Flask, imports: Imports, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    import_url = Mock(return_value=RosterAgentPackageImportResult("new-app", "new-agent", []))
+    monkeypatch.setattr(transfers._agent_importer, "import_package_url", import_url)
+
+    data, status = _post(
+        app,
+        imports,
+        json={
+            "mode": "ifpkg-url",
+            "package_url": "https://example.com/agent.ifpkg",
+            "app_id": "",
+            "template_id": "11111111-1111-4111-8111-111111111111",
+            "version_id": "22222222-2222-4222-8222-222222222222",
+        },
+    )
+
+    assert status == 200
+    assert data["app_id"] == "new-app"
+    import_url.assert_called_once()
+    assert import_url.call_args.kwargs["url"] == "https://example.com/agent.ifpkg"
+
+
+@pytest.mark.parametrize("mode", ["template", "ifpkg-url"])
+def test_template_import_checks_permissions_before_accessing_source(
+    app: Flask,
+    imports: Imports,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    mode: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr(
+        "services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *_a, **_k: False
+    )
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    importer = Mock()
+    monkeypatch.setattr(transfers, "_agent_importer", importer)
+    payload: dict[str, object] = (
+        {
+            "mode": "template",
+            "template_id": "11111111-1111-4111-8111-111111111111",
+            "version_id": "22222222-2222-4222-8222-222222222222",
+        }
+        if mode == "template"
+        else {"mode": "ifpkg-url", "package_url": "https://example.com/agent.ifpkg"}
+    )
+    with pytest.raises(Forbidden):
+        _post(app, imports, json=payload)
+    importer.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"app_id": "existing"},
+        {"yaml_content": "app: {}"},
+    ],
+)
+def test_package_url_rejects_ambiguous_sources(app: Flask, imports: Imports, extra: dict[str, str]) -> None:
+    with pytest.raises(InvalidRosterAgentPackageError):
+        _post(app, imports, json={"mode": "ifpkg-url", "package_url": "https://example.com/agent.ifpkg", **extra})
 
 
 @pytest.mark.parametrize("quota", [False, True])

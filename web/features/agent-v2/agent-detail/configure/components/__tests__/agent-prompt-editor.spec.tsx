@@ -3,7 +3,7 @@ import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
@@ -12,7 +12,7 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { AgentPromptEditor } from '../orchestrate/prompt-editor'
+import { AgentPromptEditor, AgentTemplatePromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
 const render = (ui: React.ReactElement) => {
@@ -1244,5 +1244,61 @@ describe('AgentPromptEditor', () => {
         ).toBeInTheDocument()
       })
     })
+  })
+})
+
+describe('AgentTemplatePromptEditor', () => {
+  it('shows provider and marketplace icons for configured tool references', () => {
+    const store = createStore()
+    seedRegisteredConsoleStateFixture(store)
+    store.set(agentComposerDraftAtom, {
+      ...defaultAgentSoulConfigFormState,
+      prompt:
+        'Use [§tool:duckduckgo/ddg_search:DuckDuckGo Search§] and [§tool:langgenius/google/google/google_search:Google Search§]',
+      tools: [
+        duckDuckGoProviderTool,
+        {
+          ...duckDuckGoProviderTool,
+          id: 'langgenius/google/google',
+          name: 'google',
+          iconClassName: 'i-custom-public-other-default-tool-icon',
+          providerType: 'builtin',
+          actions: [{ ...duckDuckGoSearchAction, toolName: 'google_search' }],
+        },
+      ],
+    })
+
+    render(
+      <JotaiProvider store={store}>
+        <AgentTemplatePromptEditor />
+      </JotaiProvider>,
+    )
+
+    const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
+    const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
+    expect(promptEditorProps.editable).toBe(false)
+
+    const { container } = render(
+      <>
+        {renderIcon?.({ kind: 'tool', id: 'duckduckgo/ddg_search', label: 'DuckDuckGo Search' })}
+        {renderIcon?.({
+          kind: 'tool',
+          id: 'langgenius/google/google/google_search',
+          label: 'Google Search',
+        })}
+      </>,
+    )
+
+    const iconBackgrounds = Array.from(container.querySelectorAll<HTMLElement>('[style]')).map(
+      (element) => element.style.backgroundImage,
+    )
+    expect(iconBackgrounds).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`,
+        ),
+        expect.stringContaining(`${MARKETPLACE_API_PREFIX}/plugins/langgenius/google/icon`),
+      ]),
+    )
   })
 })

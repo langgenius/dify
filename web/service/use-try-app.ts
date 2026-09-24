@@ -1,16 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
-import { fetchTryAppDatasets, fetchTryAppInfo, fetchTryAppParams } from './try-app'
-
-export const useGetTryAppInfo = (appId: string) => {
-  return useQuery({
-    queryKey: consoleQuery.trialApps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
-    queryFn: () => {
-      return fetchTryAppInfo(appId)
-    },
-    enabled: !!appId,
-  })
-}
+import { fetchTryAppDatasets, fetchTryAppParams } from './try-app'
 
 export const useGetTryAppParams = (appId: string) => {
   return useQuery({

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Generator, Iterator
 from typing import cast
+from unittest.mock import Mock
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -34,6 +35,7 @@ from services.entities.app_entities import (
 )
 from services.entities.dsl_entities import AppDslExportData, AppImportPackage, AppImportParams, Import, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
@@ -289,6 +291,7 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
     context = RequestContext("request", None, "actor", workspace)
     options = AppExportOptions(include_secret=True, workflow_id="workflow")
@@ -367,6 +370,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)

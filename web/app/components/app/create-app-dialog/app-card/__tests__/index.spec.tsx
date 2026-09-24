@@ -3,7 +3,6 @@ import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
-import AppListContext from '@/context/app-list-context'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
@@ -40,18 +39,24 @@ describe('AppCard', () => {
   })
 
   it('exposes template creation only when creation is allowed', () => {
-    const { rerender } = render(<AppCard app={app} canCreate onCreate={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'app.newApp.useTemplate' })).toBeInTheDocument()
+    const { rerender } = render(
+      <AppCard app={app} canCreate onCreate={vi.fn()} onPreview={vi.fn()} />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'app.newApp.useTemplate Chat template' }),
+    ).toBeInTheDocument()
 
-    rerender(<AppCard app={app} canCreate={false} onCreate={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
+    rerender(<AppCard app={app} canCreate={false} onCreate={vi.fn()} onPreview={vi.fn()} />)
+    expect(
+      screen.queryByRole('button', { name: /^app\.newApp\.useTemplate/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('creates the template from the primary action', async () => {
     const onCreate = vi.fn()
     const user = userEvent.setup()
-    render(<AppCard app={app} canCreate onCreate={onCreate} />)
-    await user.click(screen.getByRole('button', { name: 'app.newApp.useTemplate' }))
+    render(<AppCard app={app} canCreate onCreate={onCreate} onPreview={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'app.newApp.useTemplate Chat template' }))
     expect(onCreate).toHaveBeenCalledOnce()
   })
 
@@ -69,6 +74,7 @@ describe('AppCard', () => {
         }}
         canCreate
         onCreate={vi.fn()}
+        onPreview={vi.fn()}
       />,
     )
     expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
@@ -80,24 +86,15 @@ describe('AppCard', () => {
   it('tracks and opens template preview in Cloud edition', async () => {
     const openPreview = vi.fn()
     const user = userEvent.setup()
-    render(
-      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API.
-      <AppListContext.Provider
-        value={{
-          openTryAppPanel: openPreview,
-        }}
-      >
-        <AppCard app={app} canCreate onCreate={vi.fn()} />
-      </AppListContext.Provider>,
-    )
+    render(<AppCard app={app} canCreate onCreate={vi.fn()} onPreview={openPreview} />)
 
-    await user.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
+    await user.click(screen.getByRole('button', { name: 'explore.appCard.try Chat template' }))
 
     expect(trackEvent).toHaveBeenCalledWith(
       'preview_template',
       expect.objectContaining({ template_id: 'app-1', page: 'studio' }),
     )
-    expect(openPreview).toHaveBeenCalledWith(app)
+    expect(openPreview).toHaveBeenCalledOnce()
   })
 
   it('allows creation and preview with nullable metadata without normalizing the selection', async () => {
@@ -110,18 +107,13 @@ describe('AppCard', () => {
     const onCreate = vi.fn()
     const openPreview = vi.fn()
     const user = userEvent.setup()
-    render(
-      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API.
-      <AppListContext.Provider value={{ openTryAppPanel: openPreview }}>
-        <AppCard app={nullableApp} canCreate onCreate={onCreate} />
-      </AppListContext.Provider>,
-    )
+    render(<AppCard app={nullableApp} canCreate onCreate={onCreate} onPreview={openPreview} />)
 
     await user.click(screen.getByRole('button', { name: 'app.newApp.useTemplate' }))
     expect(onCreate).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
 
-    expect(openPreview).toHaveBeenCalledWith(nullableApp)
+    expect(openPreview).toHaveBeenCalledOnce()
     expect(trackEvent).toHaveBeenCalledWith('preview_template', {
       template_id: 'nullable-app',
       template_name: '',

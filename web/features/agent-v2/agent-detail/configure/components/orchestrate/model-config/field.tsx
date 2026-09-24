@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { consoleQuery } from '@/service/console'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { isAgentCompatibleModel, isAgentSuggestedModel } from '../../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -45,7 +46,17 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
         {t(($) => $['agentDetail.configure.model.label'])}
       </FieldsetLegend>
       {readOnly ? (
-        <div className="flex h-8 w-full min-w-0 items-center rounded-lg bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
+        <div className="flex h-8 w-full min-w-0 items-center gap-1 rounded-lg bg-components-input-bg-disabled px-1 system-sm-regular text-components-input-text-filled">
+          {currentModel?.plugin_id && (
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-5 shrink-0 rounded-md"
+              height={20}
+              src={getIconFromMarketPlace(currentModel.plugin_id)}
+              width={20}
+            />
+          )}
           <span className="truncate">{currentModel?.model}</span>
         </div>
       ) : (

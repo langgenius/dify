@@ -4,6 +4,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from functools import partial
 from uuid import UUID
 
 import pytest
@@ -713,15 +714,18 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight(rewrite_manife
     ("case", "error_type", "message"),
     [
         ("missing_manifest", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("name_mismatch", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("size_limit", RosterAgentPackageTooLargeError, "exceeds the size limit"),
+        ("name_mismatch", RosterAgentPackageExportFailedError, "Skill"),
+        ("size_limit", RosterAgentPackageTooLargeError, "size limit"),
+        ("missing_payload", RosterAgentPackageExportFailedError, "Unable to read"),
     ],
 )
+@pytest.mark.parametrize("local", [False, True])
 def test_export_rejects_unusable_or_oversized_skill_payload(
     case: str,
     error_type: type[RosterAgentPackageExportFailedError | RosterAgentPackageTooLargeError],
     message: str,
     monkeypatch: pytest.MonkeyPatch,
+    local: bool,
 ) -> None:
     payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
     if case == "size_limit":
@@ -737,10 +741,18 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     app = _package_app()
     app.package.soul.config_files = []
     exporter = RosterAgentPackageExporter()
-    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    resources = AgentPackageResourceExporter(
+        storage_backend=_MemoryStorage({} if case == "missing_payload" else {"skill": payload})
+    )
     resources.sources["agent_1"] = ([source], list[_FileSource]())
+    resources.packages["agent_1"] = app.package
+    export = (
+        partial(resources.read_local_resources, "agent_1")
+        if local
+        else partial(exporter._build_archive, app=app, resources=resources)
+    )
     with pytest.raises(error_type, match=message):
-        exporter._build_archive(app=app, resources=resources)
+        export()
 
 
 @pytest.mark.parametrize("max_bytes", [0, 8])
@@ -1201,6 +1213,12 @@ def test_export_uses_current_workspace_skill_bindings(
     assert dsl.package.soul.prompt.system_prompt == ""
     assert len(dsl.package.workspace_skills) == 1
     assert dsl.package.workspace_skills[0].priority == 0
+    exported_yaml = exporter.export_yaml(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version_id=historical_version_id,
+    )
+    assert AgentAppDsl.model_validate(yaml.safe_load(exported_yaml)) == dsl
 
 
 @pytest.mark.parametrize("source", ["missing", "other_tenant", "other_agent", "internal_snapshot"])

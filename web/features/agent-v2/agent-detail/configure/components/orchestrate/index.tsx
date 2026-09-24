@@ -24,18 +24,18 @@ import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
 import { AgentBuildDraftChangedKeysProvider } from './build-draft-changes-context'
 import { AgentConfigApiContextProvider } from './config-context'
-import { AgentFiles } from './files'
+import { AgentFiles, AgentTemplateFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
 import { AgentKnowledgeRetrieval } from './knowledge'
 import { AgentModelField } from './model-config/field'
-import { AgentPromptEditor } from './prompt-editor'
+import { AgentPromptEditor, AgentTemplatePromptEditor } from './prompt-editor'
 import { AgentConfigurePublishBar } from './publish-bar'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from './read-only-context'
-import { AgentSkills } from './skills'
-import { AgentTools } from './tools'
+import { AgentSkills, AgentTemplateSkills } from './skills'
+import { AgentTemplateTools, AgentTools } from './tools'
 
 const EMPTY_BUILD_DRAFT_CHANGED_KEYS: readonly AgentBuildDraftChangedKey[] = []
 
@@ -49,6 +49,8 @@ type AgentOrchestratePanelProps = {
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
+  trialAppId?: string
+  trialVersionId?: string
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isBuildDraftActive?: boolean
   buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
@@ -73,6 +75,8 @@ export function AgentOrchestratePanel({
   isPublishing,
   className,
   readOnly = false,
+  trialAppId,
+  trialVersionId,
   selectedVersionSnapshot,
   isBuildDraftActive = false,
   buildDraftChangedKeys = [],
@@ -87,6 +91,7 @@ export function AgentOrchestratePanel({
   onVersionRestored,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation(['agentV2'])
+  const isTemplatePreview = !!trialAppId
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
   const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
   const orchestrateBottomAction =
@@ -118,10 +123,11 @@ export function AgentOrchestratePanel({
           }
         : {
             agentId,
+            trialAppId,
             draftType,
-            versionId: selectedVersionSnapshot?.id ?? undefined,
+            versionId: selectedVersionSnapshot?.id ?? trialVersionId,
           },
-    [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id],
+    [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id, trialAppId, trialVersionId],
   )
 
   return (
@@ -146,7 +152,7 @@ export function AgentOrchestratePanel({
         )}
       >
         <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
-          <AgentOrchestrateReadOnlyContext value={readOnly}>
+          <AgentOrchestrateReadOnlyContext value={readOnly || isTemplatePreview}>
             <ScrollAreaViewport
               aria-label={showHeader ? undefined : orchestrateLabel}
               aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
@@ -165,12 +171,23 @@ export function AgentOrchestratePanel({
                         }
                       >
                         <AgentModelField currentModel={currentModel} onSelect={onSelectModel} />
-                        <AgentPromptEditor />
-                        <AgentSkills />
-                        <AgentFiles />
-                        <AgentTools />
+                        {isTemplatePreview ? (
+                          <>
+                            <AgentTemplatePromptEditor />
+                            <AgentTemplateSkills />
+                            <AgentTemplateFiles />
+                            <AgentTemplateTools />
+                          </>
+                        ) : (
+                          <>
+                            <AgentPromptEditor />
+                            <AgentSkills />
+                            <AgentFiles />
+                            <AgentTools />
+                          </>
+                        )}
                         {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
-                        <AgentAdvancedSettings />
+                        {!isTemplatePreview && <AgentAdvancedSettings />}
                       </AgentBuildDraftChangedKeysProvider>
                     </AgentOrchestrateAddActionsProvider>
                   </AgentConfigApiContextProvider>

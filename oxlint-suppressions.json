@@ -4642,7 +4642,7 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 3
+      "count": 2
     }
   },
   "web/service/use-workflow.ts": {

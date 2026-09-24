@@ -9319,6 +9319,155 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
+### [GET] /trial-apps/{app_id}/agent-composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/octet-stream**: binary<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/inspect
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
 
@@ -9350,6 +9499,20 @@ Remove one or more tag bindings from a target.
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9385,6 +9548,22 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| format | query | Export format; defaults to ifpkg | No | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg |
+| version_id | query | Current published template snapshot ID | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
+| 404 | Published template unavailable |  |
 
 ### [POST] /trial-apps/{app_id}/files/upload
 **Upload a file into the tenant that owns the trial app**
@@ -16060,6 +16239,9 @@ This class is used to store the schema information of an api based tool.
 | icon_type | string |  | No |
 | mode | string | Import mode | Yes |
 | name | string |  | No |
+| package_url | string |  | No |
+| template_id | string |  | No |
+| version_id | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
 
@@ -22034,6 +22216,13 @@ Resource types understood by access policies.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAgentExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| format | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg | Export format; defaults to ifpkg<br>*Enum:* `"ifpkg"`, `"yaml"` | No |
+| version_id | string (uuid) | Current published template snapshot ID | Yes |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -22045,6 +22234,8 @@ Resource types understood by access policies.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+| package_url | string | Download URL for a New Agent .ifpkg template | No |
+| version_id | string | Published version for direct local template creation | No |
 
 #### RecommendedAppInfoResponse
 
@@ -23927,6 +24118,19 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
+
+#### TrialAgentConfigQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Must match the current published template snapshot | No |
+
+#### TrialAgentSkillFileQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| path | string | Normalized member path inside the published Skill package | Yes |
+| version_id | string | Must match the current published template snapshot | No |
 
 #### TrialAppAgentMode
 

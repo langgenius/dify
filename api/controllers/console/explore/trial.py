@@ -56,12 +56,14 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.trial_app_admission import get_trial_app
+from controllers.console.explore.trial_app_admission import get_trial_app, get_trial_app_for_stop
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -71,6 +73,7 @@ from core.errors.error import (
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
+from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
@@ -83,6 +86,7 @@ from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models.enums import CreatorUserRole
+from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
@@ -152,7 +156,7 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
-type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialAppMode = Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 type TrialIconType = Literal["emoji", "image", "link"]
 type JsonObject = dict[str, Any]
 
@@ -447,6 +451,7 @@ register_response_schema_models(
     SiteResponse,
     SuggestedQuestionsResponse,
     TrialAppDetailResponse,
+    AgentAppComposerResponse,
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
@@ -600,6 +605,8 @@ class TrialChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except (AgentAppGeneratorError, AgentAppNotPublishedError):
+            raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -618,6 +625,27 @@ class TrialChatApi(Resource):
 
 
 @console_ns.route(
+    "/trial-apps/<uuid:app_id>/chat-messages/<string:task_id>/stop",
+    endpoint="trial_app_stop_chat_completion",
+)
+class TrialChatTaskStopApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_trial_app_for_stop
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str):
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
+            raise NotChatAppError()
+
+        application_services().app_tasks.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=request_context.account_id,
+            app_mode=AppMode.value_of(trial_app.app_mode),
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+@console_ns.route(
     "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
     endpoint="trial_app_suggested_question",
 )
@@ -626,7 +654,7 @@ class TrialMessageSuggestedQuestionApi(Resource):
     @console_account_admission()
     @get_trial_app
     def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
-        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
         try:
@@ -834,7 +862,7 @@ class TrialAppParameterApi(Resource):
         """Retrieve app parameters."""
 
         try:
-            parameters = application_services().app_definitions.get_parameters(app.app_id)
+            parameters = application_services().app_definitions.get_public_parameters(app.app_id)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
@@ -870,6 +898,18 @@ class AppApi(Resource):
             "app_base_url": dify_config.APP_WEB_URL or request.url_root.rstrip("/"),
         }
         return dump_response(TrialAppDetailResponse, source)
+
+
+@console_ns.route("/trial-apps/<uuid:app_id>/agent-composer")
+class TrialAgentComposerApi(Resource):
+    @console_ns.response(200, "Published Agent configuration", console_ns.models[AgentAppComposerResponse.__name__])
+    @get_preview_app
+    def get(self, app: AppPreviewRef):
+        try:
+            preview = application_services().app_previews.get_agent_composer(app=app)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(AgentAppComposerResponse, preview)
 
 
 @console_ns.route(

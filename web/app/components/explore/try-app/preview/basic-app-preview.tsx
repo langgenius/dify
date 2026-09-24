@@ -1,9 +1,9 @@
 'use client'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/models/debug'
-import type { TryAppInfo } from '@/service/try-app'
 import type { PromptVariable } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
@@ -27,7 +27,7 @@ import ConfigContext from '@/context/debug-configuration'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { useAllToolProviders } from '@/service/use-tools'
-import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
+import { useGetTryAppDataSets } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -37,6 +37,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../h
 
 type Props = {
   readonly appId: string
+  readonly appDetail: TrialAppDetailResponse
 }
 
 type AgentToolItem = Extract<ModelConfig['agentConfig']['tools'][number], { tool_name: string }>
@@ -293,7 +294,7 @@ const normalizeExternalDataToolFormItem = (item: Record<string, unknown>) => {
 
 const normalizeAgentTool = (
   tool: Record<string, unknown>,
-  deletedTools: TryAppInfo['deleted_tools'] | undefined,
+  deletedTools: TrialAppDetailResponse['deleted_tools'] | undefined,
   collectionList: ReturnType<typeof useAllToolProviders>['data'] | undefined,
 ): AgentToolItem => {
   const providerId = getString(tool.provider_id)
@@ -325,11 +326,10 @@ const normalizeAgentTool = (
   } as AgentToolItem
 }
 
-const BasicAppPreview: FC<Props> = ({ appId }) => {
+const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
   const { data: collectionListFromServer, isLoading: isLoadingToolProviders } =
     useAllToolProviders()
   const collectionList = collectionListFromServer?.map((item) => {
@@ -342,8 +342,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
     }
   })
   const datasetIds = (() => {
-    if (isLoadingAppDetail) return []
-    const modelConfig = appDetail?.model_config
+    const modelConfig = appDetail.model_config
     if (!modelConfig) return []
 
     const agentDatasetTools = getAgentTools(modelConfig.agent_mode).filter(isEnabledDatasetTool)
@@ -360,9 +359,9 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
     datasetIds,
   )
   const dataSets = dataSetData?.data || []
-  const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
+  const isLoading = isLoadingDatasets || isLoadingToolProviders
 
-  const modelConfig: ModelConfig = ((modelConfig?: TryAppInfo['model_config']) => {
+  const modelConfig: ModelConfig = ((modelConfig?: TrialAppDetailResponse['model_config']) => {
     if (isLoading || !modelConfig?.model) return defaultModelConfig
 
     const model = modelConfig.model
