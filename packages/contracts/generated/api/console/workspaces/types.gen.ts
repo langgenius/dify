@@ -3563,7 +3563,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse =
   GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses[keyof GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
-  body?: never
+  body: ParserCredentialDelete
   path: {
     provider: string
   }

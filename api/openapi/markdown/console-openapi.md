@@ -10337,7 +10337,7 @@ Update a plugin endpoint
 
 | Required | Schema |
 | -------- | ------ |
-|  No | **application/json**: [ParserCredentialDelete](#parsercredentialdelete)<br> |
+|  Yes | **application/json**: [ParserCredentialDelete](#parsercredentialdelete)<br> |
 
 #### Responses
 
