@@ -617,6 +617,35 @@ describe('Agent access surface cards', () => {
       expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
 
+    it('should replace the Web App URL token without discarding the cached site settings', async () => {
+      const user = userEvent.setup()
+      const agent = createAgent()
+      const queryClient = renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
+      )
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
+      mocks.siteAccessTokenResetMutation.mockResolvedValueOnce(
+        createAppSiteFixture({ code: 'new-site-token' }),
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
+      )
+
+      expect(mocks.siteAccessTokenResetMutation.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-1' },
+      })
+      await waitFor(() => {
+        expect(
+          queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1'])?.site,
+        ).toMatchObject({
+          code: 'new-site-token',
+          access_token: 'new-site-token',
+          title: 'Support Agent',
+        })
+      })
+    })
+
     it('should open the customize dialog with the backing app id and API base URL', async () => {
       const user = userEvent.setup()
 
