@@ -114,7 +114,9 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
           />
         </div>
         <div className="flex min-w-0 grow items-center gap-2">
-          <div className="truncate system-md-medium text-text-primary">{providerLabel}</div>
+          <h2 className="min-w-0 system-md-medium break-words text-text-primary">
+            {providerLabel}
+          </h2>
           <div className="flex shrink-0 items-center gap-1">
             {pluginDetail ? (
               <DataSourcePluginActions detail={pluginDetail} onUpdate={onPluginUpdate} />
