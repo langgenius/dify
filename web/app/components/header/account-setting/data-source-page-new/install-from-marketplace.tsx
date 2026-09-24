@@ -24,7 +24,7 @@ const InstallFromMarketplace = ({
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['plugin', 'modelProvider'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
@@ -53,11 +53,11 @@ const InstallFromMarketplace = ({
             className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')}
             aria-hidden="true"
           />
-          {t(($) => $['modelProvider.installDataSource'], { ns: 'common' })}
+          {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
         </button>
         <div className="mb-2 flex items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">
-            {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
+            {t(($) => $['modelProvider.discoverMore'], { ns: 'modelProvider' })}
           </span>
           {onOpenMarketplace ? (
             <button

@@ -97,7 +97,7 @@ from services.knowledge.segments.application import (
     validate_segment_values,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.tag_service import TagService
+from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
@@ -145,6 +145,8 @@ class DatasetService:
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
+        *,
+        tags: TagTargetQuery,
     ):
         """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
@@ -225,11 +227,10 @@ class DatasetService:
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
             if tenant_id is not None:
-                target_ids = TagService.get_target_ids_by_tag_ids(
-                    "knowledge",
-                    tenant_id,
-                    tag_ids,
-                    session,
+                target_ids = tags.find_target_ids(
+                    tag_type="knowledge",
+                    tenant_id=tenant_id,
+                    tag_ids=tag_ids,
                     match_all=True,
                 )
             else:

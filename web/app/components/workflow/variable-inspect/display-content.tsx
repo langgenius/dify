@@ -38,7 +38,7 @@ export function DisplayContent(props: DisplayContentProps) {
   } = props
   const [selectedViewMode, setSelectedViewMode] = useState<ViewMode>(ViewMode.Code)
   const [isFocused, setIsFocused] = useState(false)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const viewOptions = [
     {
       value: ViewMode.Code,
@@ -108,7 +108,9 @@ export function DisplayContent(props: DisplayContentProps) {
         {selectedViewMode === ViewMode.Code &&
           (previewType === PreviewType.Markdown ? (
             <Textarea
-              aria-label={t(($) => $['debug.variableInspect.markdownContent'], { ns: 'workflow' })}
+              aria-label={t(($) => $['debug.variableInspect.markdownContent'], {
+                ns: 'workflowDebug',
+              })}
               readOnly={readonly}
               disabled={readonly}
               className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"

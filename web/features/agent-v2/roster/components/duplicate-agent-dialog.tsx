@@ -47,7 +47,7 @@ function DuplicateAgentFormSession({
   onCancel,
   onSubmit,
 }: DuplicateAgentFormSessionProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
@@ -65,10 +65,11 @@ function DuplicateAgentFormSession({
     <>
       <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.duplicateDialog.title'])}
+          {t(($) => $['roster.duplicateDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $['roster.duplicateDialog.description'], {
+            ns: 'agentRoster',
             name: initialValues.sourceName,
           })}
         </DialogDescription>
@@ -82,6 +83,7 @@ function DuplicateAgentFormSession({
           defaultValues={initialValues.fields}
           icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.duplicateForm.changeIcon'], {
+            ns: 'agentRoster',
             name: initialValues.sourceName,
           })}
           onIconClick={() => setIconPickerOpen(true)}
@@ -110,7 +112,7 @@ function DuplicateAgentFormSession({
 }
 
 export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
-  const { t } = useTranslation(['agentV2', 'common'])
+  const { t } = useTranslation(['common', 'agentRoster'])
   const queryClient = useQueryClient()
   const latestAgent =
     queryClient.getQueryData<AgentFormSource>(
@@ -152,7 +154,7 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.duplicateSuccess']))
+          toast.success(t(($) => $['roster.duplicateSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
         },
       },

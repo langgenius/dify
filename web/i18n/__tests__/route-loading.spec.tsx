@@ -9,6 +9,7 @@ import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
 import { AppToastHost } from '@/app/notifications/host'
 import { changeLanguage } from '../client'
+import { useLocale } from '../lib.client'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
@@ -50,6 +51,21 @@ describe('on-demand translation loading', () => {
         default: resources[locale]?.[namespace as 'common'] ?? {},
       }),
     )
+  })
+
+  it('reads and updates the locale without loading any translation namespace', async () => {
+    function LocaleLabel() {
+      return <span>{useLocale()}</span>
+    }
+    render(
+      <I18nClientProvider locale="en-US" resource={{}}>
+        <LocaleLabel />
+      </I18nClientProvider>,
+    )
+    expect(await screen.findByText('en-US')).toBeVisible()
+    await act(() => changeLanguage('zh-Hans'))
+    expect(await screen.findByText('zh-Hans')).toBeVisible()
+    expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
   it('renders localized text and fallback without requesting missing unrelated namespaces', async () => {

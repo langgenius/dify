@@ -1,1 +1,1 @@
-"""Application services owned by the App domain."""
+"""Application services and adapters owned by the App domain."""

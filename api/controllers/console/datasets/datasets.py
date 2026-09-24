@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import HTTPStatus
 from typing import Any, Never
 from uuid import UUID
 
@@ -377,7 +378,9 @@ class DatasetListApi(Resource):
     @console_ns.doc("get_datasets")
     @console_ns.doc(description="Get list of datasets")
     @console_ns.doc(params=query_params_from_model(ConsoleDatasetListQuery))
-    @console_ns.response(200, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__]
+    )
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, request_context: RequestContext):
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
@@ -388,7 +391,7 @@ class DatasetListApi(Resource):
         result = application_services().knowledge.datasets.list_datasets(
             request_context, DatasetListFilter(**query.model_dump())
         )
-        return dump_response(DatasetListResponse, result), 200
+        return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
@@ -585,7 +588,7 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Related apps retrieved successfully",
         console_ns.models[RelatedAppListResponse.__name__],
     )
@@ -595,7 +598,7 @@ class DatasetRelatedAppListApi(Resource):
             result = application_services().knowledge.datasets.related_apps(request_context, dataset_id=str(dataset_id))
         except Exception as error:
             _raise_dataset_error(error)
-        return dump_response(RelatedAppListResponse, result), 200
+        return dump_response(RelatedAppListResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")

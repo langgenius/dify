@@ -16,6 +16,7 @@ from repositories.knowledge.metadata_repository import SQLAlchemyMetadataReposit
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.api_token_service import ApiTokenCache
+from services.app.query_service import AppQueryService
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -49,6 +50,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.tag_application_service import TagTargetQuery
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
@@ -89,6 +91,8 @@ def build_knowledge_services(
     stored_credentials: TrustedStoredDatasourceCredentialGateway,
     providers: DatasourceProviderService,
     redis: RedisSegmentClient,
+    tags: TagTargetQuery,
+    app_queries: AppQueryService,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -122,7 +126,7 @@ def build_knowledge_services(
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(session_factory=database_client),
+            operations=SQLAlchemyDatasetOperations(session_factory=database_client, tags=tags, app_queries=app_queries),
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,

@@ -228,7 +228,7 @@ export function WorkflowToolDrawer({
   onSave,
   onCreate,
 }: WorkflowToolDrawerProps) {
-  const { t } = useTranslation(['workflow', 'common', 'tools'])
+  const { t } = useTranslation(['workflow', 'common', 'tools', 'navigation'])
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 
@@ -319,7 +319,7 @@ export function WorkflowToolDrawer({
     <>
       <WorkflowToolDrawerFrame
         onHide={onHide}
-        title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' })!}
+        title={t(($) => $['common.workflowAsTool'], { ns: 'navigation' })!}
         closeLabel={t(($) => $['operation.close'], { ns: 'common' })!}
       >
         <form

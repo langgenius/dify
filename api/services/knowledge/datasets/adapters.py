@@ -12,10 +12,11 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
-from models import Account, App, Dataset, Document
+from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
+from services.app.query_service import AppQueryService
 from services.enterprise import rbac_service
 from services.errors.account import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -26,6 +27,7 @@ from services.knowledge.datasets.application import (
     DatasetVisibility,
 )
 from services.knowledge.resource_scope import DatasetRef
+from services.tag_application_service import TagTargetQuery
 
 
 @contextmanager
@@ -76,8 +78,12 @@ def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[s
 
 
 class SQLAlchemyDatasetOperations:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], tags: TagTargetQuery, app_queries: AppQueryService
+    ) -> None:
         self._sessions = session_factory
+        self._tags = tags
+        self._app_queries = app_queries
 
     def visibility(self, context: RequestContext) -> DatasetVisibility:
         with self._sessions() as session:
@@ -129,6 +135,7 @@ class SQLAlchemyDatasetOperations:
                     query.keyword,
                     list(query.tag_ids),
                     query.include_all,
+                    tags=self._tags,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
                 )
@@ -272,22 +279,9 @@ class SQLAlchemyDatasetOperations:
         with self._sessions() as session:
             require_dataset(session, ref)
             joins = DatasetService.get_related_apps(ref.dataset_id, session)
-            apps = session.scalars(
-                select(App).where(App.id.in_([join.app_id for join in joins]), App.tenant_id == ref.tenant_id)
-            ).all()
-            values = [
-                {
-                    "id": app.id,
-                    "name": app.name,
-                    "description": app.description,
-                    "icon_type": app.icon_type,
-                    "icon": app.icon,
-                    "icon_background": app.icon_background,
-                    "mode_compatible_with_agent": app.mode_compatible_with_agent_with_session(session=session),
-                }
-                for app in apps
-            ]
-            return {"data": values, "total": len(values)}
+            app_ids = [join.app_id for join in joins]
+        apps = self._app_queries.related_apps(ref.tenant_id, app_ids)
+        return {"data": apps, "total": len(apps)}
 
     def indexing_status(self, ref: DatasetRef) -> dict[str, Any]:
         with self._sessions() as session:

@@ -23,13 +23,13 @@ import {
 import { useNodeActionsMenuModel } from './use-node-actions-menu-model'
 
 export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const model = useNodeActionsMenuModel(props)
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton
   const hasDeleteGroup = !model.nodesReadOnly && !model.isUndeletable
   const singleRunActionLabel = model.isSingleRunning
-    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
     : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
   return (

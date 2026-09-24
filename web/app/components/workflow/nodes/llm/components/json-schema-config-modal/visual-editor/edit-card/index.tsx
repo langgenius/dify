@@ -58,7 +58,7 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
 ]
 
 const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
@@ -233,7 +233,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
           <AutoWidthInput
             value={currentFields.name}
             placeholder={t(($) => $['nodes.llm.jsonSchema.fieldNamePlaceholder'], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
             minWidth={80}
             maxWidth={300}
@@ -247,7 +247,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
           />
           {currentFields.required && (
             <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-              {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflowModels' })}
             </div>
           )}
         </div>
@@ -275,7 +275,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
             value={currentFields.description}
             className="h-4 w-full p-0 system-xs-regular text-text-tertiary caret-[#295EFF] outline-hidden placeholder:system-xs-regular placeholder:text-text-placeholder"
             placeholder={t(($) => $['nodes.llm.jsonSchema.descriptionPlaceholder'], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}

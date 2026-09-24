@@ -11,7 +11,7 @@ import { useWorkspacePermissions } from '@/service/use-workspace'
 type InviteButtonProps = Omit<ButtonProps, 'children' | 'variant'>
 
 const InviteButton = (props: InviteButtonProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['workspaceMembers'])
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
@@ -27,7 +27,7 @@ const InviteButton = (props: InviteButtonProps) => {
   return (
     <Button {...props} variant="primary">
       <span aria-hidden="true" className="i-ri-user-add-line size-4" />
-      {t(($) => $['members.invite'], { ns: 'common' })}
+      {t(($) => $['members.invite'], { ns: 'workspaceMembers' })}
     </Button>
   )
 }

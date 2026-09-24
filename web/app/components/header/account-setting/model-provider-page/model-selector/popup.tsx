@@ -82,7 +82,7 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(
@@ -251,7 +251,7 @@ function Popup({
   const searchStatus =
     !filteredModelList.length && installedModelList.length > 0
       ? t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
-          ns: 'common',
+          ns: 'modelProvider',
           query: inputValue,
         })
       : null
@@ -263,7 +263,9 @@ function Popup({
     <>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+        <ModelSelectorScrollBody
+          label={t(($) => $['modelProvider.models'], { ns: 'modelProvider' })}
+        >
           {showCreditsExhaustedAlert && (
             <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
           )}

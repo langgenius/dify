@@ -5,7 +5,13 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.datasets.datasets import DatasetDetailResponse, DatasetListResponse, DatasetQueryListResponse
+from controllers.console.datasets.datasets import (
+    DatasetDetailResponse,
+    DatasetListResponse,
+    DatasetQueryListResponse,
+    RelatedAppListResponse,
+)
+from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -24,6 +30,7 @@ from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
+from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
 from tests.unit_tests.config_override import apply_config_overrides
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
@@ -65,7 +72,10 @@ def document(**values: object) -> Document:
 
 @pytest.fixture
 def operations(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_tags: TagApplicationService,
+    app_services: AppServices,
 ) -> Iterator[SQLAlchemyDatasetOperations]:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     with sqlite_session_factory.begin() as session:
@@ -89,7 +99,9 @@ def operations(
         ),
         patch.object(rbac_service, "try_sync_creator_access_policy_member_bindings"),
     ):
-        yield SQLAlchemyDatasetOperations(session_factory=sqlite_session_factory)
+        yield SQLAlchemyDatasetOperations(
+            session_factory=sqlite_session_factory, tags=application_tags, app_queries=app_services.queries
+        )
 
 
 def test_listing_materializes_page_and_owner_scoped_partial_members(
@@ -115,6 +127,29 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
     assert response["has_more"] is False
     assert response["data"][0]["partial_member_list"] == ["member"]
     assert response["data"][0]["retrieval_model_dict"]["top_k"] == 2
+
+
+@pytest.mark.parametrize("foreign_tag", [False, True])
+def test_listing_filters_tags_within_workspace(
+    operations: SQLAlchemyDatasetOperations,
+    application_tags: TagApplicationService,
+    sqlite_session_factory: sessionmaker[Session],
+    foreign_tag: bool,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(dataset(id="untagged", name="Untagged"))
+    context = RequestContext("request", None, "actor", "other") if foreign_tag else CONTEXT
+    tag = application_tags.create_tag(context, CreateTagInput(name="Selected", type="knowledge"))
+    application_tags.create_bindings(
+        context,
+        TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type="knowledge"),
+    )
+
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None, False)
+    response = DatasetListResponse.model_validate(result)
+
+    assert [row.id for row in response.data] == ([] if foreign_tag else ["dataset"])
+    assert response.total == (0 if foreign_tag else 1)
 
 
 @pytest.mark.parametrize(("ids", "own"), [([], False), (["dataset"], False)])
@@ -337,4 +372,7 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert response["limit"] == 1
     assert response["has_more"] is False
     assert response["data"][0]["queries"][0]["content"] == "query"
-    assert [app["id"] for app in operations.related_apps(REF)["data"]] == ["app"]
+    related = RelatedAppListResponse.model_validate(operations.related_apps(REF)).model_dump(mode="json")
+    assert related["total"] == 1
+    assert related["data"][0]["id"] == "app"
+    assert related["data"][0]["mode"] == "chat"

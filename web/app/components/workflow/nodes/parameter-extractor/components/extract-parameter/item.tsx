@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <div className="group relative rounded-lg bg-components-input-bg-normal px-2.5 py-2 hover:shadow-xs">
@@ -31,7 +31,9 @@ const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
         </div>
         {payload.required && (
           <div className="text-xs/4 font-normal text-text-tertiary uppercase">
-            {t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], {
+              ns: 'workflowModels',
+            })}
           </div>
         )}
       </div>

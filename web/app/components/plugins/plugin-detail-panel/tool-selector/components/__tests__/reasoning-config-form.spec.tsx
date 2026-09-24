@@ -259,7 +259,7 @@ describe('ReasoningConfigForm', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }),
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.clickToViewParameterSchema' }),
     )
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))

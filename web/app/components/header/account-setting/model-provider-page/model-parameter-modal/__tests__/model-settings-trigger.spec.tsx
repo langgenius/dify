@@ -11,7 +11,7 @@ describe('ModelSettingsTrigger', () => {
     )
 
     const trigger = screen.getByRole('button', {
-      name: 'common.modelProvider.modelSettings',
+      name: 'modelProvider.modelProvider.modelSettings',
     })
 
     expect(trigger.querySelector('button')).not.toBeInTheDocument()
@@ -25,7 +25,7 @@ describe('ModelSettingsTrigger', () => {
     )
 
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
     ).toBeDisabled()
   })
 })

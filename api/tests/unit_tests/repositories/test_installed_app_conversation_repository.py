@@ -36,7 +36,11 @@ def installation(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppR
         session.add(installed_app)
         session.flush()
         return InstalledAppRef(
-            id=installed_app.id, tenant_id=installed_app.tenant_id, app_id=app.id, app_mode=app.mode.value
+            id=installed_app.id,
+            tenant_id=installed_app.tenant_id,
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            app_mode=app.mode.value,
         )
 
 

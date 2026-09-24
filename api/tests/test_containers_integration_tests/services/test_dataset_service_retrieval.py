@@ -16,6 +16,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from models import AccountStatus, CreatorUserRole, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
@@ -228,7 +229,9 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tags=application_services().tags
+        )
 
         # Assert
         assert len(datasets) == 5
@@ -259,7 +262,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page, per_page, db_session_with_containers, tenant_id=tenant.id, search=search
+            page,
+            per_page,
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            search=search,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -305,7 +313,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+            page,
+            per_page,
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            tag_ids=tag_ids,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -332,7 +345,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+            page,
+            per_page,
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            tag_ids=tag_ids,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -364,7 +382,7 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None, tags=application_services().tags
         )
 
         # Assert
@@ -397,6 +415,7 @@ class TestDatasetServiceGetDatasets:
             tenant_id=tenant.id,
             user=owner,
             include_all=True,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -419,7 +438,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            user=user,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -445,7 +469,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            user=user,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -474,7 +503,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            user=user,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -503,7 +537,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            user=operator,
+            tags=application_services().tags,
         )
 
         # Assert
@@ -528,7 +567,12 @@ class TestDatasetServiceGetDatasets:
 
         # Act
         datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            user=operator,
+            tags=application_services().tags,
         )
 
         # Assert
