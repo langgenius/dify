@@ -3,7 +3,7 @@ import type {
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
@@ -78,7 +78,7 @@ function createQueryClient() {
 describe('AgentAppPreview', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('shows published Agent configuration and chat introduction without editing actions', async () => {
+  it('shows a read-only Agent configuration alongside the template introduction', async () => {
     const client = createQueryClient()
     vi.stubGlobal(
       'fetch',
@@ -94,14 +94,28 @@ describe('AgentAppPreview', () => {
       </QueryClientProvider>,
     )
 
-    expect(screen.getByText('agentV2.agentDetail.configure.model.label')).toBeInTheDocument()
-    expect(screen.getByText('GPT-4o')).toBeInTheDocument()
-    expect(screen.getByText('Tender Analyzer')).toBeInTheDocument()
-    expect(screen.getByText('README.md')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tender Analyst' })).toBeInTheDocument()
+    const model = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+    expect(within(model).getByText('GPT-4o')).toBeInTheDocument()
+    expect(within(model).queryByRole('button')).not.toBeInTheDocument()
+    const prompt = screen.getByRole('textbox', {
+      name: 'agentV2.agentDetail.configure.prompt.label',
+    })
+    expect(prompt).toHaveAttribute('contenteditable', 'false')
+    expect(prompt).toHaveTextContent('Review the tender files.')
+    expect(screen.getByRole('button', { name: 'Tender Analyzer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'README.md' })).toBeInTheDocument()
     expect(screen.getByText('Web Search')).toBeInTheDocument()
     expect(screen.getByText('How can I help?')).toBeInTheDocument()
     expect(screen.getByText('Summarize the requirements')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /copy|edit|auth/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
