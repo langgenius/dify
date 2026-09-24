@@ -8,7 +8,7 @@ import InputVarTypeIcon from '../_base/components/input-var-type-icon'
 const i18nPrefix = 'nodes.start'
 
 const Node: FC<NodeProps<StartNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { variables } = data
 
   if (!variables.length) return null

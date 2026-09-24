@@ -27,7 +27,7 @@ const CrawledResult: FC<Props> = ({
   onPreview,
   usedTime,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const isCheckAll = checkedList.length === list.length
 

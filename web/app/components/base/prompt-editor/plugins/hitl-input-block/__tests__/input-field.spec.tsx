@@ -122,9 +122,9 @@ describe('InputField', () => {
       />,
     )
 
-    const label = screen.getByText('workflow.nodes.humanInput.insertInputField.fieldType')
+    const label = screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.fieldType')
     const typeSelector = screen.getByRole('combobox', {
-      name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+      name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
     })
     await user.click(label)
     expect(typeSelector).toHaveFocus()
@@ -158,7 +158,7 @@ describe('InputField', () => {
     await user.type(inputs[0]!, 'invalid name')
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameInvalid'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid'),
     )!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -186,11 +186,13 @@ describe('InputField', () => {
     await user.type(inputs[0]!, 'existing_name')
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.insertInputField.variableNameDuplicated',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     ).toBeDisabled()
     await user.keyboard('{Control>}{Enter}{/Control}')
@@ -253,7 +255,7 @@ describe('InputField', () => {
     await user.type(nameInput!, 'generated_name')
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -323,11 +325,11 @@ describe('InputField', () => {
     )
 
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -356,11 +358,13 @@ describe('InputField', () => {
     )
 
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -391,7 +395,7 @@ describe('InputField', () => {
     await user.click(screen.getByText('pick-variable'))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -423,11 +427,11 @@ describe('InputField', () => {
 
     await user.keyboard('{Tab}')
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -455,7 +459,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -463,7 +467,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -478,7 +482,9 @@ describe('InputField', () => {
       },
     })
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
   })
 
@@ -496,31 +502,33 @@ describe('InputField', () => {
     )
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.prePopulateField'),
     ).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.single-file\b/ }),
     )
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.paragraph\b/ }),
     )
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.prePopulateField'),
     ).toBeInTheDocument()
   })
 
@@ -540,7 +548,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -549,7 +557,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'config-select' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -581,7 +589,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -589,15 +597,17 @@ describe('InputField', () => {
     )
     await user.click(screen.getByRole('button', { name: 'config-select' }))
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(screen.getByText('pick-variable'))
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -628,14 +638,14 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
 
     expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayString })).toBe(true)
@@ -665,7 +675,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -673,7 +683,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -697,7 +707,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -706,7 +716,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -742,7 +752,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -750,7 +760,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -774,7 +784,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -783,7 +793,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -815,7 +825,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -824,7 +834,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -859,7 +869,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -867,7 +877,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 

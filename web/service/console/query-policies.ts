@@ -24,6 +24,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          plugin: {
+            readme: {
+              get: {
+                queryOptions: {
+                  context: { silent: true },
+                  retry: false,
+                },
+              },
+            },
+            asset: {
+              get: {
+                queryOptions: { context: { silent: true } },
+              },
+            },
+          },
           endpoints: {
             post: {
               mutationOptions: {
@@ -699,22 +714,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 if (error instanceof Response && error.status === 404) return false
 
                 return failureCount < 3
-              },
-            },
-          },
-          delete: {
-            mutationOptions: {
-              onSuccess: (_response, variables, _onMutateResult, context) => {
-                context.client.removeQueries({
-                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
-                    input: {
-                      params: variables.params,
-                    },
-                  }),
-                })
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.installedApps.get.key(),
-                })
               },
             },
           },

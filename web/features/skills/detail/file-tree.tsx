@@ -177,9 +177,9 @@ export function FileTree({
   selectedPath: string | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill', 'common'])
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()
@@ -222,13 +222,9 @@ export function FileTree({
     refetchOnMount: 'always',
   })
   const referenceCount = referencesQuery.data?.data?.length ?? detail?.reference_count ?? 0
-  const referenceCountLabel = t(
-    ($) =>
-      referenceCount === 1
-        ? $['skillManagement.detail.referencedBy_one']
-        : $['skillManagement.detail.referencedBy_other'],
-    { count: referenceCount },
-  )
+  const referenceCountLabel = t(($) => $['skillManagement.detail.referencedBy'], {
+    count: referenceCount,
+  })
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
@@ -1218,7 +1214,10 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+            <Breadcrumb
+              aria-label={tCommon(($) => $['mainNav.skills'], { ns: 'navigation' })}
+              className="flex-1"
+            >
               <BreadcrumbList className="gap-px">
                 <BreadcrumbItem className="shrink-0">
                   <BreadcrumbLink
@@ -1351,13 +1350,7 @@ export function FileTree({
               id={filesTitleId}
               className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary"
             >
-              {t(
-                ($) =>
-                  fileCount === 1
-                    ? $['skillManagement.detail.fileCount_one']
-                    : $['skillManagement.detail.fileCount_other'],
-                { count: fileCount },
-              )}
+              {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
             </h2>
             {!readonly && (
               <DropdownMenu modal={false}>

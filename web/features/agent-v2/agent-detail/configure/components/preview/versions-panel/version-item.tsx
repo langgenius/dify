@@ -13,7 +13,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { VersionTimelineDot } from './version-timeline-dot'
 
 function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const { formatTime } = useTimestamp()
 
   if (version.created_at == null && !version.created_by) return null
@@ -56,8 +56,8 @@ export function VersionItem({
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['agentV2', 'app', 'billing'])
+  const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const isActive = version.id === activeVersionId
   const label =
     version.version_note ||
@@ -88,7 +88,7 @@ export function VersionItem({
             </p>
             {isLatest && (
               <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
-                {tWorkflow(($) => $['versionHistory.latest'])}
+                {tWorkflow(($) => $['versionHistory.latest'], { ns: 'workflowHistory' })}
               </span>
             )}
           </div>

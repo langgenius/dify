@@ -40,26 +40,22 @@ const AdvancedSetting: FC<Props> = ({
   nodesOutputVars,
   availableNodes,
 }) => {
-  const { t } = useTranslation()
+  const instructionLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <>
       <Editor
         title={
           <div className="flex items-center space-x-1">
-            <span className="uppercase">
-              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflow' })}
+            <span id={instructionLabelId} className="uppercase">
+              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
             </span>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
-                className="ml-0.5 size-3.5"
-              />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
-                className="w-30"
-              >
-                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+              <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+              <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
+                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
               </InfotipContent>
             </Infotip>
           </div>

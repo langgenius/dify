@@ -572,12 +572,12 @@ class AppService:
                 tenant_id, ModelType.LLM, session=session
             )
             if default_model is not None:
-                provider, model = default_model
+                agent_provider, agent_model = default_model
                 try:
-                    provider_id = ModelProviderID(provider)
+                    provider_id = ModelProviderID(agent_provider)
                     initial_agent_soul = AgentSoulConfig(
                         model=AgentSoulModelConfig(
-                            plugin_id=provider_id.plugin_id, model_provider=str(provider_id), model=model
+                            plugin_id=provider_id.plugin_id, model_provider=str(provider_id), model=agent_model
                         )
                     )
                 except ValueError:

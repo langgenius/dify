@@ -38,7 +38,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   useSearchParams: () => search.params,
 }))
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComponent = React.lazy(loader)
     return function Dynamic(props: Record<string, unknown>) {

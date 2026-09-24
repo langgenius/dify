@@ -22,7 +22,7 @@ const MetaData: FC<Props> = ({
   steps = 1,
   showSteps = true,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'runLog', 'workflow'])
   const { formatTime } = useTimestamp()
 
   return (
@@ -39,12 +39,21 @@ const MetaData: FC<Props> = ({
             {status === 'running' && (
               <div className="my-1 h-2 w-16 rounded-xs bg-text-quaternary" />
             )}
-            {status === 'succeeded' && <span>SUCCESS</span>}
-            {status === 'partial-succeeded' && <span>PARTIAL SUCCESS</span>}
-            {status === 'exception' && <span>EXCEPTION</span>}
-            {status === 'failed' && <span>FAIL</span>}
-            {status === 'stopped' && <span>STOP</span>}
-            {status === 'paused' && <span>PENDING</span>}
+            {status === 'scheduled' && (
+              <span>{t(($) => $['status.scheduled'], { ns: 'appLog' })}</span>
+            )}
+            {status === 'succeeded' && (
+              <span>{t(($) => $['status.succeeded'], { ns: 'appLog' })}</span>
+            )}
+            {status === 'partial-succeeded' && (
+              <span>{t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}</span>
+            )}
+            {status === 'exception' && (
+              <span>{t(($) => $['tracing.status.exception'], { ns: 'workflow' })}</span>
+            )}
+            {status === 'failed' && <span>{t(($) => $['status.failed'], { ns: 'appLog' })}</span>}
+            {status === 'stopped' && <span>{t(($) => $['status.stopped'], { ns: 'appLog' })}</span>}
+            {status === 'paused' && <span>{t(($) => $['status.paused'], { ns: 'appLog' })}</span>}
           </div>
         </div>
         <div className="flex">

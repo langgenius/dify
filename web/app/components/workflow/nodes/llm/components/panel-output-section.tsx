@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,9 +29,9 @@ const PanelOutputSection: FC<Props> = ({
   handleStructureOutputEnableChange,
   handleStructureOutputChange,
 }) => {
-  const { t } = useTranslation()
-  const warningTitleId = React.useId()
+  const structuredLabelId = React.useId()
 
+  const { t } = useTranslation(['app', 'workflowModels'])
   return (
     <>
       <Split />
@@ -48,27 +48,25 @@ const PanelOutputSection: FC<Props> = ({
                   iconSize="large"
                   className="mr-1 text-text-warning-secondary"
                 />
-                <InfotipContent aria-labelledby={warningTitleId} className="w-58">
-                  <div id={warningTitleId} className="title-xs-semi-bold text-text-primary">
+                <InfotipContent className="w-58">
+                  <InfotipTitle className="title-xs-semi-bold text-text-primary">
                     {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
-                  </div>
+                  </InfotipTitle>
                   <div className="mt-1">
                     {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
                   </div>
                 </InfotipContent>
               </Infotip>
             )}
-            <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">
+            <div
+              id={structuredLabelId}
+              className="mr-0.5 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(($) => $['structOutput.structured'], { ns: 'app' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-                className="w-37.5"
-              >
+              <InfotipTrigger aria-labelledby={structuredLabelId} />
+              <InfotipContent aria-labelledby={structuredLabelId} className="w-37.5">
                 {t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
               </InfotipContent>
             </Infotip>
@@ -86,19 +84,19 @@ const PanelOutputSection: FC<Props> = ({
           <VarItem
             name="text"
             type="string"
-            description={t(($) => $[`${i18nPrefix}.outputVars.output`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.output`], { ns: 'workflowModels' })}
           />
           <VarItem
             name="reasoning_content"
             type="string"
             description={t(($) => $[`${i18nPrefix}.outputVars.reasoning_content`], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
           />
           <VarItem
             name="usage"
             type="object"
-            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflowModels' })}
           />
           {inputs.structured_output_enabled && (
             <>

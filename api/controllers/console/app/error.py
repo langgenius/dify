@@ -89,6 +89,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider does not support text to speech."
+    code = 400
+
+
 class SpeechToTextDisabledError(BaseHTTPException):
     error_code = "speech_to_text_disabled"
     description = "Speech to text is disabled."
@@ -122,6 +128,12 @@ class TracingConfigAlreadyExistsError(BaseHTTPException):
 class UnsupportedTracingProviderError(BaseHTTPException):
     error_code = "unsupported_tracing_provider"
     description = "The tracing provider is not supported."
+    code = 400
+
+
+class TracingProviderUnavailableError(BaseHTTPException):
+    error_code = "tracing_provider_unavailable"
+    description = "The tracing provider is not available in this deployment."
     code = 400
 
 

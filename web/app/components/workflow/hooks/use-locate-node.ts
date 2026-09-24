@@ -20,7 +20,7 @@ import { useNodesInteractions } from './use-nodes-interactions'
  * A toast message is shown to indicate success or failure.
  */
 export const useLocateNode = (nodes: Node[]) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const searchParams = useSearchParams()
   const nodeIdFromUrl = searchParams.get('node_id')
   const { handleNodeSelect } = useNodesInteractions()

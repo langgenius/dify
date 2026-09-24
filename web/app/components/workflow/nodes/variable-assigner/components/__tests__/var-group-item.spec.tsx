@@ -67,7 +67,7 @@ describe('variable-assigner/var-group-item', () => {
       onGroupNameChange: handleGroupNameChange,
     })
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Group_A'))
     fireEvent.change(screen.getByDisplayValue('Group_A'), {

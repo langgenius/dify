@@ -177,7 +177,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-panel', () => ({
   default: () => <div data-testid="workflow-panel">workflow-panel</div>,
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {

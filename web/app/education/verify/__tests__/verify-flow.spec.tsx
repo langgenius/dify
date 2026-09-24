@@ -52,7 +52,7 @@ describe('EducationVerifyFlow', () => {
     expect(
       screen.getByRole('heading', { name: 'education.applied.step1.description' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.billing' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'navigation.settings.billing' })).toHaveAttribute(
       'href',
       '/?settings=billing',
     )

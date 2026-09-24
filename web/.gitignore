@@ -58,3 +58,4 @@ mise.toml
 
 .vscode/settings.json
 .vscode/mcp.json
+.vitest/

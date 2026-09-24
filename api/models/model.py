@@ -1402,7 +1402,7 @@ class Conversation(Base):
     def in_debug_mode(self) -> bool:
         return self.override_model_configs is not None
 
-    def to_dict(self) -> ConversationDict:
+    def to_dict(self, *, session: Session) -> ConversationDict:
         return {
             "id": self.id,
             "app_id": self.app_id,
@@ -1413,7 +1413,7 @@ class Conversation(Base):
             "mode": self.mode,
             "name": self.name,
             "summary": self.summary,
-            "inputs": self.inputs_with_session(session=db.session()),
+            "inputs": self.inputs_with_session(session=session),
             "introduction": self.introduction,
             "system_instruction": self.system_instruction,
             "system_instruction_tokens": self.system_instruction_tokens,
@@ -1775,13 +1775,13 @@ class Message(Base):
 
         return None
 
-    def to_dict(self) -> MessageDict:
+    def to_dict(self, *, session: Session) -> MessageDict:
         return {
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
             "model_id": self.model_id,
-            "inputs": self.inputs_with_session(session=db.session()),
+            "inputs": self.inputs_with_session(session=session),
             "query": self.query,
             "total_price": self.total_price,
             "message": self.message,
@@ -2068,14 +2068,6 @@ class OperationLog(TypeBase):
     )
 
 
-class DefaultEndUserSessionID(StrEnum):
-    """
-    End User Session ID enum.
-    """
-
-    DEFAULT_SESSION_ID = "DEFAULT-USER"
-
-
 class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
@@ -2244,9 +2236,6 @@ class ApiToken(Base):
       key with binding rows is limited to exactly those datasets). Enforcement lives in
       ``validate_dataset_token`` (controllers/service_api/wraps.py).
 
-    Note: controllers/console/apikey.py assigns the ``*_id`` columns via ``setattr``
-    keyed on ``resource_id_field``, so renaming ``app_id`` requires updating those
-    controllers too.
     """
 
     __tablename__ = "api_tokens"

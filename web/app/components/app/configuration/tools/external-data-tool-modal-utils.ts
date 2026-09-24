@@ -1,6 +1,5 @@
-import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
+import type { TFunction } from 'i18next'
 import type { CodeBasedExtensionItem, ExternalDataTool } from '@/models/common'
-import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { LanguagesSupported } from '@/i18n/language'
 
 const systemTypes = ['api'] as const
@@ -16,22 +15,21 @@ type BuildProvidersParams = {
     data: CodeBasedExtensionItem[]
   }
   locale: string
-  t: SelectorTranslate<'appDebug' | 'common'>
+  t: TFunction<['appDebug', 'common']>
 }
 
 type ValidationParams = {
   currentProvider?: Provider
   locale: string
   localeData: ExternalDataTool
-  t: SelectorTranslate<'appDebug' | 'common'>
+  t: TFunction<['appDebug', 'common']>
 }
 
 export const buildProviders = ({
   codeBasedExtensionList,
   locale,
-  t: rawTranslate,
+  t,
 }: BuildProvidersParams): Provider[] => {
-  const t = getStringSelectorTranslate(rawTranslate)
   return [
     {
       key: 'api',
@@ -86,9 +84,8 @@ export const getValidationError = ({
   currentProvider,
   locale,
   localeData,
-  t: rawTranslate,
+  t,
 }: ValidationParams) => {
-  const t = getStringSelectorTranslate(rawTranslate)
   if (!localeData.type) {
     return t(($) => $['errorMessage.valueOfVarRequired'], {
       ns: 'appDebug',

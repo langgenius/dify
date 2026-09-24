@@ -51,7 +51,7 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const { useState } = await import('react')
 
   return {

@@ -33,7 +33,7 @@ export const usePromptOptions = (
   historyBlock?: HistoryBlockType,
   requestURLBlock?: RequestURLBlockType,
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [editor] = useLexicalComposerContext()
 
   const promptOptions: PickerBlockMenuOption[] = []
@@ -158,7 +158,7 @@ export const useVariableOptions = (
   variableBlock?: VariableBlockType,
   queryString?: string,
 ): PickerBlockMenuOption[] => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [editor] = useLexicalComposerContext()
 
   const options = useMemo(() => {
@@ -238,7 +238,7 @@ export const useExternalToolOptions = (
   externalToolBlockType?: ExternalToolBlockType,
   queryString?: string,
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [editor] = useLexicalComposerContext()
 
   const options = useMemo(() => {

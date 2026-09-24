@@ -33,7 +33,7 @@ export function PublisherPanel({
   showBuiltInPublisher,
   workflowLaunch,
 }: PublisherPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [deploymentConfigurationOpen, setDeploymentConfigurationOpen] = useState(false)
   const handleOpenChange: NonNullable<PopoverProps['onOpenChange']> = (nextOpen, eventDetails) => {
     const isOutsideDismiss =

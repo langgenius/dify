@@ -8,7 +8,7 @@ import { useCheckPipelineDependencies } from '@/service/use-pipeline'
 import { useStore as usePluginDependenciesStore } from './store'
 
 export const usePluginDependencies = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { mutateAsync: checkWorkflowDependencies } = useMutation(
     consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
       context: { silent: true },

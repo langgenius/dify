@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const HitHistoryNoData: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   return (
     <div className="mx-auto mt-20 w-120 space-y-2 rounded-2xl bg-background-section-burn p-5">
       <div className="inline-block rounded-lg border border-divider-subtle p-3">

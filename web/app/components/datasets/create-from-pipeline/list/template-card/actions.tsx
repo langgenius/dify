@@ -27,7 +27,7 @@ const Actions = ({
   handleExportDSL,
   handleDelete,
 }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const [isMoreOperationsOpen, setIsMoreOperationsOpen] = React.useState(false)
 
   return (

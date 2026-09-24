@@ -11,7 +11,7 @@ type Props = Readonly<{
   className?: string
 }>
 const PromptToast = ({ message, className }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [isFold, { toggle: toggleFold }] = useBoolean(false)
   // const message = `
   // list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1

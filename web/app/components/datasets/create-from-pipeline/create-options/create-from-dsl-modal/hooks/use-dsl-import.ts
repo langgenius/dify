@@ -54,7 +54,7 @@ export const useDSLImport = ({
   onClose,
 }: UseDSLImportOptions) => {
   const { push } = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'datasetPipeline'])
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)

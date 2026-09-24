@@ -26,6 +26,12 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParams),
 }))
 
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (value: { dataset: { permission_keys: string[] } }) => unknown,
+  ) => selector({ dataset: { permission_keys: ['dataset.acl.edit'] } }),
+}))
+
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
   const { wrapper: QueryClientWrapper } = createConsoleQueryWrapper()
   return ({ children }: { children: ReactNode }) => (
@@ -305,20 +311,22 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Rename Action', () => {
-    it('should call onShowRenameModal when rename button is clicked', () => {
+    it('exposes a named rename action that can be activated with the keyboard', async () => {
+      const user = userEvent.setup()
       const onShowRenameModal = vi.fn()
-      const { container } = render(
-        <DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />,
-        { wrapper: createWrapper() },
-      )
+      render(<DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />, {
+        wrapper: createWrapper(),
+      })
 
-      // Find the rename button by finding the RiEditLine icon's parent
-      const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
-      if (renameButtons.length > 0) {
-        fireEvent.click(renameButtons[0]!)
-        expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
-        expect(mockPush).not.toHaveBeenCalled()
-      }
+      await user.tab()
+      await user.tab()
+      await user.tab()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
+      ).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 

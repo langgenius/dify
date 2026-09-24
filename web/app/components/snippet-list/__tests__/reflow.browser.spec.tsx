@@ -103,8 +103,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
-  default: () => () => null,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: () => null,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({

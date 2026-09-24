@@ -40,7 +40,7 @@ const STYLE_MAP = {
 }
 
 export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { theme } = useTheme()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'community'

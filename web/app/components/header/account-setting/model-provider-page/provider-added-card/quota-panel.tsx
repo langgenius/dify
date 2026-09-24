@@ -259,7 +259,7 @@ type MarketplacePluginToInstall = {
 }
 
 const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -350,7 +350,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
 
   const tipText = t(($) => $['modelProvider.card.tip'], {
-    ns: 'common',
+    ns: 'modelProvider',
     modelNames: trialModels
       .map((key) => modelNameMap[key as keyof typeof modelNameMap])
       .filter(Boolean)
@@ -383,7 +383,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.quotaLabel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
           <QuotaInfotip tipText={tipText} />
         </div>
         <div className="flex h-6 items-center justify-between gap-3">
@@ -403,7 +403,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                     {formatNumber(totalCredits)}
                   </span>
                   <span className={cn('system-md-medium', creditUsageTextClassName)}>
-                    {t(($) => $['modelProvider.used'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.used'], { ns: 'modelProvider' })}
                   </span>
                 </>
               )}
@@ -415,7 +415,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.ranOutDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(exhaustedAt),
                     interpolation: { escapeValue: false },
                   })}
@@ -429,7 +429,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.resetDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(nextCreditResetDate),
                     interpolation: { escapeValue: false },
                   })}
@@ -447,16 +447,16 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 const tooltipText = !providerType
                   ? t(($) => $['modelProvider.card.modelNotSupported'], {
                       modelName: modelNameMap[key],
-                      ns: 'common',
+                      ns: 'modelProvider',
                     })
                   : isConfigured && providerType === PreferredProviderTypeEnum.custom
                     ? t(($) => $['modelProvider.card.modelAPI'], {
                         modelName: modelNameMap[key],
-                        ns: 'common',
+                        ns: 'modelProvider',
                       })
                     : t(($) => $['modelProvider.card.modelSupported'], {
                         modelName: modelNameMap[key],
-                        ns: 'common',
+                        ns: 'modelProvider',
                       })
                 return (
                   <Tooltip key={key}>

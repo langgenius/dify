@@ -26,7 +26,7 @@ const CodeGenerateBtn: FC<Props> = ({
   codeLanguages,
   onGenerated,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
     (res: GenRes) => {

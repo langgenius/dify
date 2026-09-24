@@ -8,7 +8,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -63,7 +63,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   hideProviderSettingsFooter,
   onOpenMarketplace,
 }) => {
-  const { t } = useTranslation()
+  const modelLabelId = useId()
+
+  const { t } = useTranslation(['common', 'modelProvider'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
@@ -205,18 +207,23 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     onClear: canManageSystemDefaultModel
       ? () => handleChangeDefaultModel(modelType, undefined)
       : undefined,
-    clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'common' })}`,
+    clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'modelProvider' })}`,
   })
 
   const renderModelLabel = (labelKey: SystemModelLabelKey, tipKey: SystemModelTipKey) => {
-    const tipText = t(($) => $[tipKey], { ns: 'common' })
+    const tipText = t(($) => $[tipKey], { ns: 'modelProvider' })
 
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
-        {t(($) => $[labelKey], { ns: 'common' })}
+        <span id={`${modelLabelId}-${labelKey}`}>
+          {t(($) => $[labelKey], { ns: 'modelProvider' })}
+        </span>
         <Infotip>
-          <InfotipTrigger aria-label={tipText} className="ml-0.5 text-text-tertiary" />
-          <InfotipContent aria-label={tipText} className="w-65.25">
+          <InfotipTrigger
+            aria-labelledby={`${modelLabelId}-${labelKey}`}
+            className="ml-0.5 text-text-tertiary"
+          />
+          <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
             {tipText}
           </InfotipContent>
         </Infotip>
@@ -238,7 +245,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         ) : (
           <span className="i-ri-brain-2-line size-3.5" />
         )}
-        {t(($) => $['modelProvider.systemModelSettings'], { ns: 'common' })}
+        {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
       </Button>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
@@ -266,10 +273,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'common' })}
+              {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
             </DialogTitle>
             <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })}
+              {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">

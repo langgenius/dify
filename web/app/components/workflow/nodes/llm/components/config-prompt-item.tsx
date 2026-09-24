@@ -12,7 +12,7 @@ import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
-const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflow'>> = {
+const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflowModels'>> = {
   [PromptRole.system]: ($) => $['nodes.llm.roleDescription.system'],
   [PromptRole.user]: ($) => $['nodes.llm.roleDescription.user'],
   [PromptRole.assistant]: ($) => $['nodes.llm.roleDescription.assistant'],
@@ -88,9 +88,9 @@ const ConfigPromptItem: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const roleDescription = payload.role
-    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
+    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflowModels' })
     : undefined
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
@@ -126,10 +126,10 @@ const ConfigPromptItem: FC<Props> = ({
             />
           )}
 
-          {roleDescription && (
+          {roleDescription && payload.role && (
             <Infotip>
-              <InfotipTrigger aria-label={roleDescription} />
-              <InfotipContent aria-label={roleDescription} className="w-45">
+              <InfotipTrigger aria-label={payload.role} />
+              <InfotipContent aria-label={payload.role} className="w-45">
                 {roleDescription}
               </InfotipContent>
             </Infotip>

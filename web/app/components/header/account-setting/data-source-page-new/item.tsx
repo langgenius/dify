@@ -22,7 +22,7 @@ const Item = ({
   canUseCredential = false,
   canManageCredential = false,
 }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credentialItem.name)
 

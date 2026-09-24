@@ -35,7 +35,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'app', 'common'])
   const appDetail = useAppStore((s) => s.appDetail)
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -47,11 +47,19 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
       const { nodes, edges, viewport } = graph
+      const importedNodes = initialNodes(nodes, edges)
+      const importedEdges = initialEdges(edges, nodes)
+      if (
+        collaborationManager.isConnected() &&
+        !collaborationManager.replaceGraphFromCommittedDraft(app_id, importedNodes, importedEdges)
+      )
+        throw new Error('Collaborative graph is not ready to apply the imported draft.')
+
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
-          nodes: initialNodes(nodes, edges),
-          edges: initialEdges(edges, nodes),
+          nodes: importedNodes,
+          edges: importedEdges,
           viewport,
           features: normalizeWorkflowFeatures(features),
           hash,
@@ -81,10 +89,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
             }
           : undefined,
       )
-      collaborationManager.emitWorkflowUpdate(appId)
       try {
         await handleWorkflowUpdate(appId)
       } catch (error) {
+        collaborationManager.emitWorkflowUpdate(appId)
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
@@ -95,6 +103,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         window.location.reload()
         return
       }
+      collaborationManager.emitWorkflowUpdate(appId)
       onImport?.()
       // Dependency checks own their feedback after the import has already succeeded.
       await handleCheckPluginDependencies(appId)

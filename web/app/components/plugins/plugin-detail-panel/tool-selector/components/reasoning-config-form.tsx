@@ -18,7 +18,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -66,7 +66,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
   availableNodes,
   nodeId,
 }) => {
-  const { t } = useTranslation()
+  const fieldLabelId = useId()
+
+  const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
   const language = useLanguage()
   const { data: timezone } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -149,8 +151,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
       <Infotip>
-        <InfotipTrigger aria-label={tooltipText} className="ml-0.5" />
-        <InfotipContent aria-label={tooltipText} className="w-50">
+        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ml-0.5" />
+        <InfotipContent aria-labelledby={`${fieldLabelId}-${variable}`} className="w-50">
           {tooltipText}
         </InfotipContent>
       </Infotip>
@@ -186,7 +188,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}>
+            <span
+              id={`${fieldLabelId}-${variable}`}
+              className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}
+            >
               {fieldTitle}
             </span>
             {required && <span className="ml-1 text-red-500">*</span>}
@@ -202,7 +207,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                     <button
                       type="button"
                       aria-label={t(($) => $['nodes.agent.clickToViewParameterSchema'], {
-                        ns: 'workflow',
+                        ns: 'workflowAgent',
                       })}
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
@@ -212,7 +217,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   }
                 />
                 <TooltipContent>
-                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflowAgent' })}
                 </TooltipContent>
               </Tooltip>
             )}

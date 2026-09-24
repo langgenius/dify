@@ -42,7 +42,10 @@ const getOutputVarType = (input: FormInputItem): VarType => {
 }
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const actionsLabelId = React.useId()
+  const formContentLabelId = React.useId()
+
+  const { t } = useTranslation(['workflow', 'common', 'share', 'workflowHumanInput'])
   const {
     readOnly,
     inputs,
@@ -117,17 +120,16 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}
+            <div
+              id={formContentLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
+            >
+              {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflowHumanInput' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
-              >
-                {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+              <InfotipTrigger aria-labelledby={formContentLabelId} />
+              <InfotipContent aria-labelledby={formContentLabelId}>
+                {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflowHumanInput' })}
               </InfotipContent>
             </Infotip>
           </div>
@@ -144,7 +146,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
               >
                 <RiEyeLine className="size-3.5" />
                 <div className="system-xs-medium">
-                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflowHumanInput' })}
                 </div>
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
@@ -200,17 +202,13 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}
+            <div id={actionsLabelId} className="system-sm-semibold-uppercase text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflowHumanInput' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-              >
-                {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
+              <InfotipTrigger aria-labelledby={actionsLabelId} />
+              <InfotipContent aria-labelledby={actionsLabelId}>
+                {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflowHumanInput' })}
               </InfotipContent>
             </Infotip>
           </div>
@@ -227,7 +225,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         </div>
         {!inputs.user_actions.length && (
           <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-            {t(($) => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflowHumanInput' })}
           </div>
         )}
         {inputs.user_actions.length > 0 && (

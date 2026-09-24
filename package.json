@@ -37,7 +37,6 @@
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
-    "eslint-plugin-erasable-syntax-only": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -65,5 +64,5 @@
   "engines": {
     "node": "^24.20.0"
   },
-  "packageManager": "pnpm@12.4.2"
+  "packageManager": "pnpm@12.6.0"
 }

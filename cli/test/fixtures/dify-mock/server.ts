@@ -223,15 +223,25 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   })
 
   app.get('/openapi/v1/workspaces', (c) => {
-    if (getScenario() === 'sso') return c.json({ workspaces: [] })
+    const page = Number(c.req.query('page') ?? '1')
+    const limit = Number(c.req.query('limit') ?? '20')
+    const rows =
+      getScenario() === 'sso'
+        ? []
+        : WORKSPACES.map((w) => ({
+            id: w.id,
+            name: w.name,
+            role: w.role,
+            status: w.status,
+            current: w.is_current,
+          }))
+    const total = rows.length
     return c.json({
-      workspaces: WORKSPACES.map((w) => ({
-        id: w.id,
-        name: w.name,
-        role: w.role,
-        status: w.status,
-        current: w.is_current,
-      })),
+      page,
+      limit,
+      total,
+      has_more: page * limit < total,
+      data: rows.slice((page - 1) * limit, page * limit),
     })
   })
 

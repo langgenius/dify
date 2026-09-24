@@ -54,8 +54,8 @@ export function RestoreVersionDialog({
   open: boolean
   versionTitle: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -114,7 +114,7 @@ function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <button
@@ -146,8 +146,8 @@ function VersionFilter({
   value: VersionFilterValue
   onChange: (value: VersionFilterValue) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
   const isFiltering = value !== 'all'
 
@@ -160,8 +160,10 @@ function VersionFilter({
             type="button"
             aria-label={`${t(($) => $['skillManagement.detail.versions'])}: ${
               value === 'all'
-                ? tWorkflow(($) => $['versionHistory.filter.all'])
-                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])
+                ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                    ns: 'workflowHistory',
+                  })
             }`}
             className={cn(
               'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
@@ -193,8 +195,10 @@ function VersionFilter({
             >
               <span className="min-w-0 flex-1 truncate system-md-regular text-text-primary">
                 {filterValue === 'all'
-                  ? tWorkflow(($) => $['versionHistory.filter.all'])
-                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])}
+                  ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                      ns: 'workflowHistory',
+                    })}
               </span>
               {value === filterValue && (
                 <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-text-accent" />
@@ -222,8 +226,8 @@ function VersionRow({
   skillId: string
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
@@ -503,8 +507,8 @@ export function VersionPanel({
   skillId: string
   versions: SkillVersionResponse[]
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
   const titleId = useId()
   const filteredVersions = versions.filter((version) => {
@@ -546,14 +550,14 @@ export function VersionPanel({
             {versions.length > 0 && filteredVersions.length === 0 && (
               <div className="rounded-lg px-3 py-6 text-center">
                 <p className="system-sm-regular text-text-tertiary">
-                  {tWorkflow(($) => $['versionHistory.filter.empty'])}
+                  {tWorkflow(($) => $['versionHistory.filter.empty'], { ns: 'workflowHistory' })}
                 </p>
                 <button
                   type="button"
                   className="mt-2 rounded-md px-2 py-1 system-xs-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => setFilterValue('all')}
                 >
-                  {tWorkflow(($) => $['versionHistory.filter.reset'])}
+                  {tWorkflow(($) => $['versionHistory.filter.reset'], { ns: 'workflowHistory' })}
                 </button>
               </div>
             )}
