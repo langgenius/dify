@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from core.dify_builder.contract import RecoveryClass
+from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import (
     Action,
@@ -246,11 +247,14 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
         next_seq=1,
     )
     s = _seed(repo, EntryMode.BUILD, PcState.BUILD_REVIEW, fc)
-    runner = Runner(Env(dify=dify, agent=StubAgent(), repo=repo, now=lambda: datetime.min), {})
+    runner = Runner(
+        Env(dify=dify, agent=StubAgent(), repo=repo, now=lambda: datetime.min),
+        build_registry(),
+    )
 
     out = runner.advance(s.id, Turn(action=Action(kind="recovery_restart", base_version=1), actor=_actor()))
 
-    assert out.current_state == PcState.BUILD_CAPABILITY_CHECK  # entry state for BUILD
+    assert out.current_state == PcState.BUILD_GOAL_ANALYSIS  # automatic entry step completed
     _s, fc2 = repo.get_session(s.id)
     assert fc2.recovery_class == ""
     assert fc2.built_node_ids == []
@@ -265,10 +269,8 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
 
 def _engine_env() -> tuple[Env, InMemoryRepository, FakeDifyPort]:
     """A real engine env (PlaceholderAgent + FakeDifyPort + InMemoryRepository),
-    mirroring test_fix_flow.py's _new_env -- needed here because, unlike the
-    BUILD/EDIT recovery_restart tests above (registry={}), a FIX/FIX_CHECKLIST
-    restart lands on a WORKING state (fix.diagnose / checklist.diagnose) that
-    the runner must actually drive through real handlers."""
+    mirroring test_fix_flow.py's _new_env. FIX/FIX_CHECKLIST recovery restarts
+    land on working states that the runner must drive through real handlers."""
     repo = InMemoryRepository()
     dify = FakeDifyPort()
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min)

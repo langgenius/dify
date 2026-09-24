@@ -7,10 +7,8 @@ export const workflowEvent = (
   payload: WorkflowPayload,
   overrides: Partial<DifyBuilderWorkflowEventData> = {},
 ): DifyBuilderWorkflowEventData => ({
-  kind: 'workflow',
   session_id: 'session-1',
   operation_id: 'op',
-  stage_id: 'build.test_and_repair',
   at_version: 2,
   revision: 1,
   payload,

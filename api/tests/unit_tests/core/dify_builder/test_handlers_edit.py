@@ -83,10 +83,8 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis():
     assert fc.last_snapshot_hash
     assert fc.last_structure_fingerprint
     kinds = [i.kind for i in repo.list_conversation(s.id)]
-    assert "summary" in kinds  # context summary
     assert "form" in kinds
-    assert "challenge" in kinds
-    assert "change_set" in kinds
+    assert not ({"summary", "challenge", "change_set"} & set(kinds))
     assert any(e["event"] == "highlight_edit_target" for e in events)
 
 
@@ -110,10 +108,9 @@ def test_edit_capability_check_renders_agent_fields():
     assert result.context.form_fields[0]["key"] == "tone"
     assert result.context.edit_rules == {"tone": "formal"}
     assert result.context.edit_target_node_ids == ["llm"]
-    change_set = next(item for item in result.items if item.kind == "change_set")
-    assert change_set.payload["changes"] == []
-    assert change_set.payload["nodes"][0]["node_id"] == "llm"
-    assert change_set.payload["nodes"][0]["title"]
+    assert not any(item.kind == "change_set" for item in result.items)
+    assistant = next(item for item in result.items if item.kind == "assistant_turn")
+    assert "Affected nodes: llm" in assistant.payload["reply_text"]
 
 
 def test_capability_check_ignores_non_goal_action():
@@ -160,9 +157,10 @@ def test_impact_analysis_submit_rules_advances_to_plan_approval_with_checkpoint(
     assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
     assert cp.session_id == s.id
-    checkpoint_card = next(i for i in res.items if i.kind == "checkpoint")
-    assert checkpoint_card.payload["checkpoint_id"] == res.context.checkpoint_id
-    assert {i.kind for i in res.items} >= {"decision", "plan", "checkpoint", "assistant_turn"}
+    assert not any(i.kind == "checkpoint" for i in res.items)
+    plan = next(i for i in res.items if i.kind == "plan")
+    assert "version_tag" not in plan.payload
+    assert {i.kind for i in res.items} == {"decision", "plan", "assistant_turn"}
 
 
 def test_edit_registry_maps_capability_check_and_impact_analysis():
@@ -204,10 +202,10 @@ def test_plan_approval_approve_edits_graph_and_emits_canvas():
     assert "highlight_edit_target" in names
     assert "apply_edit_plan" in names
     assert "apply_error_fix" not in names
-    change_set = next(i for i in res.items if i.kind == "change_set")
-    assert change_set.payload["scope"] == "configuration"
-    assert change_set.payload["count"] >= 1
-    assert {i.kind for i in res.items} >= {"change_set", "checkpoint", "decision", "assistant_turn"}
+    assert not any(i.kind in {"change_set", "checkpoint", "plan"} for i in res.items)
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert "Applied" in assistant.payload["reply_text"]
+    assert {i.kind for i in res.items} == {"decision", "assistant_turn"}
 
 
 def test_plan_approval_ignores_non_approve_action():
@@ -261,11 +259,11 @@ def test_edit_test_pass_goes_to_review_with_real_run():
     assert result.run.status == "succeeded"
     assert result.context.test_input_ref  # inputs generated + persisted
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "success"
-    summary = next(i for i in result.items if i.kind == "summary")
-    assert summary.payload["variant"] == "review"
+    assert test_result.payload["status"] == "succeeded"
+    assert test_result.payload["failure_reason"] is None
+    assert not any(i.kind == "summary" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "summary"]
+    assert assistant.payload["cards"] == ["test_result"]
     names = [e["event"] for e in events]
     assert "mark_test_success" in names
     assert "mark_review_ready" in names
@@ -286,17 +284,15 @@ def test_edit_test_fail_routes_to_await_repair():
     assert result.run.status == "failed"
     # StubAgent.propose_repair returns a repair -> staged
     assert result.context.staged_repair
-    # card content: a red test_result, an error card carrying the real
-    # diagnosis (StubAgent.diagnose's culprit/root_cause), and a change_set
-    # since a repair was proposed -- the assistant_turn's cards list reflects
-    # exactly that trio.
+    # Card content stays minimal; diagnosis and proposed changes are text.
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "error"
-    error_card = next(i for i in result.items if i.kind == "error")
-    assert error_card.payload["body"] == "Output node requires 'metrics'"
-    assert error_card.payload["node_id"] == "output"
+    assert test_result.payload["status"] == "failed"
+    assert test_result.payload["failure_reason"] == "boom"
+    assert not any(i.kind in {"error", "change_set"} for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "error", "change_set"]
+    assert assistant.payload["cards"] == ["test_result"]
+    assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
+    assert "Proposed fix" in assistant.payload["reply_text"]
     # The canvas event carries the Dify run id so a client can open the
     # failed run on the graph, not just colour the node red.
     assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
@@ -324,9 +320,10 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate():
     assert result.context.staged_repair == []
     kinds = [i.kind for i in result.items]
     assert "change_set" not in kinds
+    assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "error"]
-    assert assistant.payload["reply_text"] == "Test failed — no safe automatic fix; edit or keep draft."
+    assert assistant.payload["cards"] == ["test_result"]
+    assert "No safe automatic fix was found" in assistant.payload["reply_text"]
 
 
 def test_edit_test_reuses_persisted_inputs_on_retest():
@@ -420,7 +417,8 @@ def test_edit_test_input_failure_routes_to_testdata_gate():
     assert "form" in kinds
     assert "change_set" not in kinds  # gate, not repair
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "error"
+    assert test_result.payload["status"] == "failed"
+    assert "File variable not found" in test_result.payload["failure_reason"]
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["stage_id"] == "edit.test_affected_paths"
 
@@ -464,8 +462,9 @@ def test_edit_test_model_config_failure_surfaces_without_repair():
     assert result.context.staged_repair == []  # no node-mutation repair proposed
     kinds = [i.kind for i in result.items]
     assert "change_set" not in kinds
-    error = next(i for i in result.items if i.kind == "error")
-    assert "model" in error.payload["body"].lower()
+    assert "error" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "model" in assistant.payload["reply_text"].lower()
 
 
 def test_review_publish_enters_working_publish_before_side_effect():
@@ -486,8 +485,9 @@ def test_review_publish_enters_working_publish_before_side_effect():
     publish = handle_publish(env, Turn(actor=_actor()), s, res.context)
     assert publish.next == PcState.EDIT_COMPLETE
     assert dify.published is True
-    assert any(item.kind == "publish" for item in publish.items)
-    assert any(item.kind == "summary" and item.payload["variant"] == "completion" for item in publish.items)
+    assert not any(item.kind in {"publish", "summary"} for item in publish.items)
+    assistant = next(item for item in publish.items if item.kind == "assistant_turn")
+    assert assistant.payload["reply_text"] == "Published workflow version # 1 (live). Edit complete."
     assert {"event": "publish_workflow"} in events
 
 
@@ -504,7 +504,8 @@ def test_review_keep_draft_reaches_terminal_without_publish_card():
     assert res.next == PcState.EDIT_COMPLETE
     assert dify.published is False  # but no real publish
     assert not any(i.kind == "publish" for i in res.items)  # and no publish card
-    assert any(i.kind == "summary" and i.payload["variant"] == "completion" for i in res.items)
+    assert not any(i.kind == "summary" for i in res.items)
+    assert any(i.kind == "assistant_turn" and "kept as a draft" in i.payload["reply_text"] for i in res.items)
     assert {"event": "cancel_publish"} in events
 
 
@@ -520,11 +521,8 @@ def test_review_continue_adjusting_returns_to_impact_analysis():
     )
     assert res.next == PcState.EDIT_IMPACT_ANALYSIS
     kinds = {i.kind for i in res.items}
-    assert {"form", "challenge", "change_set"} <= kinds
-    change_set = next(item for item in res.items if item.kind == "change_set")
-    assert change_set.payload["changes"] == []
-    assert change_set.payload["nodes"][0]["node_id"] == "llm"
-    assert change_set.payload["nodes"][0]["title"]
+    assert {"form", "decision", "assistant_turn"} <= kinds
+    assert not ({"challenge", "change_set"} & kinds)
 
 
 def test_review_revert_records_intent_only():
@@ -547,9 +545,9 @@ def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint():
         env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )
     assert res.next == PcState.EDIT_PLAN_APPROVAL
-    assert res.context.plan_version_tag == "v1"
     assert res.context.checkpoint_id
-    assert {i.kind for i in res.items} >= {"plan", "checkpoint", "assistant_turn"}
+    assert {i.kind for i in res.items} == {"plan", "assistant_turn"}
+    assert not any(i.kind == "checkpoint" for i in res.items)
 
 
 def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
@@ -642,8 +640,7 @@ def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair():
 
 
 def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
-    """ESQ1-271: a staged intent that went stale between propose and approve
-    must degrade to an error card, not an uncaught ValueError."""
+    """A stale staged intent degrades to assistant text, not an exception."""
     from core.dify_builder.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
@@ -661,8 +658,9 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
 
     assert result.next == PcState.EDIT_AWAIT_REPAIR
-    error = next(i for i in result.items if i.kind == "error")
-    assert error.payload["title"] == "Couldn't apply the fix"
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
     assert result.context.staged_repair == []
 
 
@@ -687,12 +685,10 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
 
     assert result.next == PcState.EDIT_AWAIT_REPAIR
-    error = next(i for i in result.items if i.kind == "error")
-    assert error.payload["title"] == "The workflow can't start"
-    assert error.payload["body"] == (
-        "The proposed fix would leave a workflow that fails before its first node: "
-        "the draft would not start: node 'llm' (llm): 1 validation error"
-    )
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "The workflow can't start" in assistant.payload["reply_text"]
+    assert "the draft would not start: node 'llm' (llm): 1 validation error" in assistant.payload["reply_text"]
+    assert assistant.payload["execution"]["status"] == "error"
     assert result.context.staged_repair == []
 
 
@@ -805,22 +801,13 @@ def test_full_edit_flow_goal_to_publish():
 
     items = repo.list_conversation(s.id)
     kinds = [i.kind for i in items]
-    expected_kinds = [
-        "user",
-        "summary",
-        "form",
-        "challenge",
-        "change_set",
-        "plan",
-        "checkpoint",
-        "test_result",
-        "publish",
-    ]
+    expected_kinds = ["user", "form", "plan", "test_result"]
     for expected in expected_kinds:
         assert expected in kinds, f"missing card kind {expected}"
+    assert not ({"summary", "challenge", "change_set", "checkpoint", "publish"} & set(kinds))
     seqs = [i.seq for i in items]
     assert seqs == sorted(seqs)
-    assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
+    assert any(i.kind == "assistant_turn" and "Published workflow version" in i.payload["reply_text"] for i in items)
 
 
 def test_full_edit_flow_keep_draft_completes_without_publish():
@@ -1047,7 +1034,7 @@ def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
 def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing():
     """Same preflight rejection as Build's: ``apply_repair`` raises a
     ``DraftWouldNotStartError`` for an edit whose result would fail at
-    Graph.init. The edit session must survive it as a card and stay at the
+    Graph.init. The edit session must survive it with a reply and stay at the
     plan gate."""
     from core.dify_builder.errors import DraftWouldNotStartError
     from core.dify_builder.handlers_edit import handle_plan_approval
@@ -1071,20 +1058,16 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     res = handle_plan_approval(env, turn, *repo.get_session(s.id))
 
     assert res.next == PcState.EDIT_PLAN_APPROVAL
-    error = next(i for i in res.items if i.kind == "error")
-    assert error.payload["title"] == "The workflow can't start"
-    assert "node 'llm' (llm)" in error.payload["body"]
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert assistant.payload["reply_text"] == (
-        "I didn't apply the change: the workflow would fail before its first node. "
-        "Continue adjusting to change the rules, approve again, or discard the plan."
-    )
+    assert "The workflow can't start" in assistant.payload["reply_text"]
+    assert "node 'llm' (llm)" in assistant.payload["reply_text"]
+    assert "Continue adjusting" in assistant.payload["reply_text"]
 
 
 def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start():
     """A graph_ops rejection ("node not found") never reached the startability
     check -- the edit intents just did not apply. Same recovery as the
-    preflight card (nothing written, plan still approvable), honest reason."""
+    preflight reply (nothing written, plan still approvable), honest reason."""
     from core.dify_builder.handlers_edit import handle_plan_approval
 
     dify = FakeEditDifyPort()
@@ -1107,15 +1090,11 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
 
     assert res.next == PcState.EDIT_PLAN_APPROVAL
     assert res.context.staged_repair == []
-    error = next(i for i in res.items if i.kind == "error")
-    assert error.payload["title"] == "Couldn't apply the workflow"
-    assert error.payload["body"] == "The generated workflow couldn't be applied to the draft: node not found: x"
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
-    assert assistant.payload["reply_text"] == (
-        "I couldn't apply the change -- see the error above. "
-        "Continue adjusting to change the rules, approve again, or discard the plan."
-    )
+    assert "Couldn't apply the workflow" in assistant.payload["reply_text"]
+    assert "node not found: x" in assistant.payload["reply_text"]
+    assert "Continue adjusting" in assistant.payload["reply_text"]
 
 
 def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
@@ -1152,8 +1131,10 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
 
     assert res.next == PcState.EDIT_AWAIT_REPAIR
     assert res.context.staged_repair == []
-    assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "Finished without output"
-    assert next(i for i in res.items if i.kind == "error").payload["node_id"] == "node2"
+    test_result = next(i for i in res.items if i.kind == "test_result")
+    assert test_result.payload["status"] == "failed"
+    assert "reached no End node" in test_result.payload["failure_reason"]
+    assert res.run.culprit_node_id == "node2"
 
 
 def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
@@ -1183,7 +1164,7 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
     assert second.context.unknown_outcome_count == 2
     assert second.context.staged_repair == []
     assert second.context.diagnosis is None
-    assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"
+    assert "twice in a row" in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
 
 
 def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repeat():
@@ -1209,7 +1190,7 @@ def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repe
 
     assert snapshots == [(0, 1), (1, 1), (2, 0)]
     assert result.next == PcState.EDIT_AWAIT_REPAIR
-    assert next(i for i in result.items if i.kind == "error").payload["title"] == "Repeated failure"
+    assert "stopped retrying" in next(i for i in result.items if i.kind == "assistant_turn").payload["reply_text"]
 
 
 def test_sending_a_new_edit_goal_resets_the_breaker():
@@ -1512,8 +1493,9 @@ def test_routing_back_to_the_form_does_not_forget_the_refusal():
         edit_target_node_ids=["llm"],
         last_edit_rejection=_KLINGON,
     )
+    review_env, review_repo = _new_env()
     at_review = _seed_edit_session(
-        repo,
+        review_repo,
         PcState.EDIT_REVIEW,
         edit_rules={"risk_threshold": "high"},
         edit_target_node_ids=["llm"],
@@ -1521,7 +1503,7 @@ def test_routing_back_to_the_form_does_not_forget_the_refusal():
     )
 
     from_gate = handle_plan_approval(env, _gate_turn("re_fix"), *repo.get_session(at_gate.id))
-    from_review = handle_review(env, _gate_turn("re_fix"), *repo.get_session(at_review.id))
+    from_review = handle_review(review_env, _gate_turn("re_fix"), *review_repo.get_session(at_review.id))
 
     assert from_gate.next == PcState.EDIT_IMPACT_ANALYSIS
     assert from_gate.context.last_edit_rejection == _KLINGON
@@ -1691,7 +1673,7 @@ def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing()
     ENGINE ACCEPTS, so ``apply_repair`` has nothing to veto: if the agent
     handed the condemned batch over anyway it would simply be written. The
     agent refuses instead, and this is the receiving end -- the plan stays at
-    its gate with the reason on a card, and nothing reached the port."""
+    its gate with the reason in the reply, and nothing reached the port."""
     agent = _JudgesItsOwnProposalWrongAgent(_WOULD_RUN_EMPTY)
     dify = FakeEditDifyPort()
     written: list = []
@@ -1707,9 +1689,9 @@ def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing()
     assert res.next == PcState.EDIT_PLAN_APPROVAL  # ...and the plan is still at its gate
     assert res.context.staged_repair == []
     assert res.context.last_edit_rejection == _WOULD_RUN_EMPTY  # carried into the next attempt
-    error = next(i for i in res.items if i.kind == "error")
-    assert _WOULD_RUN_EMPTY in error.payload["body"]
-    assert error.payload["title"] == "The change wouldn't do what you asked"
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert _WOULD_RUN_EMPTY in assistant.payload["reply_text"]
+    assert "The change wouldn't do what you asked" in assistant.payload["reply_text"]
 
     # The failure is marked on the step that was actually running. Marked on the
     # write instead, the timeline showed a LATER step failed while an earlier one

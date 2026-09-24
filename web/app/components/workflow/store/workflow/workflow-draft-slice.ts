@@ -28,6 +28,10 @@ export type WorkflowDraftSliceShape = {
   syncWorkflowDraftIsEmpty: boolean | undefined
   setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
   workflowDraftGeneration: number
+  workflowDraftLocalRevision: number
+  workflowDraftSavedRevision: number
+  markWorkflowDraftDirty: () => number
+  markWorkflowDraftSaved: (revision: number) => void
   invalidateWorkflowDraftSync: () => number
   hasWorkflowDraftConflict: boolean
   setWorkflowDraftConflict: (conflicted: boolean) => void
@@ -71,6 +75,17 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
           : undefined,
       })),
     workflowDraftGeneration: 0,
+    workflowDraftLocalRevision: 0,
+    workflowDraftSavedRevision: 0,
+    markWorkflowDraftDirty: () => {
+      const workflowDraftLocalRevision = get().workflowDraftLocalRevision + 1
+      set({ workflowDraftLocalRevision })
+      return workflowDraftLocalRevision
+    },
+    markWorkflowDraftSaved: (revision) =>
+      set((state) => ({
+        workflowDraftSavedRevision: Math.max(state.workflowDraftSavedRevision, revision),
+      })),
     hasWorkflowDraftConflict: false,
     setWorkflowDraftConflict: (hasWorkflowDraftConflict) => {
       if (hasWorkflowDraftConflict) get().invalidateWorkflowDraftSync()
@@ -79,7 +94,11 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     invalidateWorkflowDraftSync: () => {
       debouncedFn.cancel()
       const workflowDraftGeneration = get().workflowDraftGeneration + 1
-      set({ workflowDraftGeneration, isSyncingWorkflowDraft: false })
+      set({
+        workflowDraftGeneration,
+        workflowDraftSavedRevision: get().workflowDraftLocalRevision,
+        isSyncingWorkflowDraft: false,
+      })
       return workflowDraftGeneration
     },
     isSyncingWorkflowDraft: false,

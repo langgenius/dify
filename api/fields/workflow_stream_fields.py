@@ -1,8 +1,10 @@
-"""Full debugger workflow stream payloads, using the runtime's data schemas.
+"""Browser-consumed debugger workflow stream payloads.
 
 Workflow adds workflow_run_id to every payload; Chatflow leaves it out of
 message, text, reasoning, agent-log, audio, and error events. Errors are flat
-and omit task_id. Preserve both native wire shapes inside Builder's envelope.
+and omit task_id. Unknown runtime fields are intentionally dropped at the
+Builder HTTP boundary, and event families without a Builder UI consumer are
+not part of this contract.
 """
 
 from typing import Annotated, Literal
@@ -14,7 +16,7 @@ from fields.base import ResponseModel
 
 
 class WorkflowStreamEvent[Event: str, Data](ResponseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     event: Event
     task_id: str
@@ -23,7 +25,7 @@ class WorkflowStreamEvent[Event: str, Data](ResponseModel):
 
 
 class WorkflowStreamDataEvent[Event: str, Data](ResponseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     event: Event
     task_id: str
@@ -32,7 +34,7 @@ class WorkflowStreamDataEvent[Event: str, Data](ResponseModel):
 
 
 class WorkflowStreamError(ResponseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     event: Literal["error"]
     workflow_run_id: str | None = None
@@ -42,7 +44,7 @@ class WorkflowStreamError(ResponseModel):
 
 
 class WorkflowStreamMessageEvent[Event: str](ResponseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     event: Event
     task_id: str
@@ -98,10 +100,7 @@ WorkflowStreamPayload = Annotated[
     | WorkflowStreamEvent[Literal["human_input_required"], events.HumanInputRequiredResponse.Data]
     | WorkflowStreamEvent[Literal["human_input_form_filled"], events.HumanInputFormFilledResponse.Data]
     | WorkflowStreamEvent[Literal["human_input_form_timeout"], events.HumanInputFormTimeoutResponse.Data]
-    | WorkflowStreamAudio
     | WorkflowStreamMessage
-    | WorkflowStreamMessageEnd
-    | WorkflowStreamMessageFile
     | WorkflowStreamMessageReplace
     | WorkflowStreamError,
     Field(discriminator="event"),

@@ -77,7 +77,7 @@ class _LazySubscriber:
 
 class _TerminalSubscription(_Subscription):
     def receive(self, timeout: float | None = 0.1) -> bytes | None:  # noqa: ARG002
-        return b'{"kind":"state","state":"success"}'
+        return b'{"kind":"command_finished","state":"success","command_id":""}'
 
 
 class _AckControlledSubscription(_Subscription):
@@ -140,7 +140,7 @@ def test_publish_after_subscribe_cannot_overtake_pubsub_activation_barrier() -> 
         try:
             progress_bus.subscribe(SESSION_ID)
             order.append("publish")
-            progress_bus.publish(SESSION_ID, {"kind": "state", "state": "success"})
+            progress_bus.publish(SESSION_ID, {"kind": "command_finished", "state": "success"})
             finished.set()
         except BaseException as error:
             errors.append(error)
@@ -197,5 +197,5 @@ def test_stream_generator_does_not_reenter_and_closes_prepared_subscription() ->
 
     assert order == ["construct", "activate"]
     assert frames[-1].startswith("event: message\n")
-    assert json.loads(frames[-1].split("data: ", 1)[1])["event"] == "state"
+    assert json.loads(frames[-1].split("data: ", 1)[1])["event"] == "command_finished"
     assert subscription.close_count == 1

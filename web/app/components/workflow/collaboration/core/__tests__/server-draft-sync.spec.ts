@@ -6,7 +6,6 @@ import { BlockEnum } from '../../../types'
 import { CollaborationManager } from '../collaboration-manager'
 import { ServerDraftSync } from '../server-draft-sync'
 import { webSocketClient } from '../websocket-manager'
-import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const createSocket = () => {
   const handlers = new Map<string, (...args: unknown[]) => void>()
@@ -63,7 +62,6 @@ describe('server draft synchronization', () => {
     let nodes: Node[] = [node('llm')]
     let edges: Edge[] = []
     const manager = new CollaborationManager()
-    attachCrdtRuntime(manager)
     const connection = await manager.connect('app-1', {
       getState: () => ({
         getNodes: () => nodes,
@@ -139,6 +137,25 @@ describe('server draft synchronization', () => {
     expect(await result).toEqual(latest)
     expect(apply).toHaveBeenCalledExactlyOnceWith(latest)
     expect(pending).toHaveBeenLastCalledWith(false)
+    sync.destroy()
+  })
+
+  it('settles a busy sync when the accepted draft is broadcast before its acknowledgement', async () => {
+    vi.useFakeTimers()
+    const { socket, handlers, typedSocket } = createSocket()
+    const apply = vi.fn()
+    const sync = new ServerDraftSync(typedSocket, () => null, apply, vi.fn(), vi.fn())
+    handlers.get('server_draft_changed')?.({ revision: 'revision-2' })
+    const result = sync.request()
+    socket.emit.mock.calls[0]![2]({ msg: 'draft_sync_pending' }, 202)
+
+    const accepted = { ...change([]), update: new Uint8Array([2]) }
+    handlers.get('server_draft_update')?.(accepted)
+
+    await expect(result).resolves.toEqual(accepted)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(socket.emit).toHaveBeenCalledOnce()
+    expect(apply).toHaveBeenCalledExactlyOnceWith(accepted)
     sync.destroy()
   })
 

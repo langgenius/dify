@@ -23,6 +23,7 @@ export class ServerDraftSync {
   private disposed = false
   private inFlight: Promise<ServerDraftUpdate> | null = null
   private cancelRequest?: () => void
+  private acceptRequestUpdate?: (update: ServerDraftUpdate) => void
   private retryTimer?: ReturnType<typeof setTimeout>
   private retryAttempt = 0
   private socket: Socket
@@ -77,6 +78,7 @@ export class ServerDraftSync {
     clearTimeout(this.retryTimer)
     this.retryTimer = undefined
     this.setPending(false)
+    this.acceptRequestUpdate?.(update)
   }
 
   private synchronize = () => {
@@ -101,17 +103,28 @@ export class ServerDraftSync {
     const request = new Promise<ServerDraftUpdate>((resolve, reject) => {
       let settled = false
       let retry: ReturnType<typeof setTimeout> | undefined
-      const timeout = setTimeout(() => {
-        settled = true
-        clearTimeout(retry)
-        reject(new Error('Server draft sync timed out.'))
-      }, 20_000)
-      this.cancelRequest = () => {
+      let timeout: ReturnType<typeof setTimeout>
+      const settle = (update: ServerDraftUpdate) => {
+        if (settled) return
         settled = true
         clearTimeout(timeout)
         clearTimeout(retry)
-        reject(new Error('Collaboration connection closed.'))
+        resolve(update)
       }
+      const fail = (error: Error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        clearTimeout(retry)
+        reject(error)
+      }
+      timeout = setTimeout(() => {
+        fail(new Error('Server draft sync timed out.'))
+      }, 20_000)
+      this.cancelRequest = () => {
+        fail(new Error('Collaboration connection closed.'))
+      }
+      this.acceptRequestUpdate = settle
       const send = () =>
         emitWithAuthGuard(
           this.socket,
@@ -125,18 +138,16 @@ export class ServerDraftSync {
                 retry = setTimeout(send, 1000)
                 return
               }
-              settled = true
-              clearTimeout(timeout)
               if (status !== 200) {
-                reject(new Error('Server draft sync is not ready.'))
+                fail(new Error('Server draft sync is not ready.'))
                 return
               }
               const update = body as ServerDraftUpdate
               try {
                 this.handleUpdate(update)
-                resolve(this.lastUpdate ?? update)
+                settle(this.lastUpdate ?? update)
               } catch (error) {
-                reject(error)
+                fail(error instanceof Error ? error : new Error('Server draft sync failed.'))
               }
             },
           },
@@ -145,6 +156,7 @@ export class ServerDraftSync {
     }).finally(() => {
       this.inFlight = null
       this.cancelRequest = undefined
+      this.acceptRequestUpdate = undefined
     })
     this.inFlight = request
     return request
