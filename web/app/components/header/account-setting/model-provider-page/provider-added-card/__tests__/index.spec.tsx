@@ -3,6 +3,7 @@ import type { ModelProvider } from '../../declarations'
 import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { commonQueryKeys } from '@/service/use-common'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -323,6 +324,25 @@ describe('ProviderAddedCard', () => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(3)
     })
   })
+
+  it.each(['list', 'grid'] as const)(
+    'restores focus to the model list button after collapsing in %s layout',
+    async (layout) => {
+      const user = userEvent.setup()
+      mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
+      renderWithQueryClient(<ProviderAddedCard provider={mockProvider} layout={layout} />)
+
+      await user.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
+      const collapseButton = await screen.findByRole('button', { name: 'collapse list' })
+      await user.tab()
+      expect(collapseButton).toHaveFocus()
+
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(collapseButton).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/i })).toHaveFocus()
+    },
+  )
 
   it('should handle concurrent getModelList calls (loading state coverage)', async () => {
     let resolveOuter: (value: unknown) => void = () => {}
