@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import {
@@ -146,7 +147,7 @@ describe('variable-modal helpers', () => {
 
   it('should validate variable names and notify when invalid', () => {
     const notify = vi.fn()
-    const t = withSelectorKey((key: string) => key)
+    const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
     expect(
       validateVariableName({

@@ -27,7 +27,7 @@ export type currentVarType = {
 }
 
 const Panel: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
@@ -179,7 +179,7 @@ const Panel: FC = () => {
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => setShowVariableInspectPanel(false)}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine aria-hidden className="size-4" />
           </IconButton>
         </div>
         <div className="grow p-2">
@@ -200,7 +200,7 @@ const Panel: FC = () => {
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => setShowVariableInspectPanel(false)}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine aria-hidden className="size-4" />
           </IconButton>
         </div>
         <div className="grow p-2">

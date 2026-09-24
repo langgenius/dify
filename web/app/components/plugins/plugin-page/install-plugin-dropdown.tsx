@@ -56,7 +56,7 @@ const InstallPluginDropdown = ({
   installContextCategory,
   showTriggerArrow = true,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
@@ -166,7 +166,6 @@ const InstallPluginDropdown = ({
               variant={triggerVariant}
               disabled={disabled}
               title={buttonLabel}
-              aria-label={buttonLabel}
               className={cn(
                 'size-full p-2',
                 triggerClassName,
@@ -185,7 +184,7 @@ const InstallPluginDropdown = ({
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName={cn('w-50 pb-2', popupClassName)}
+          className={cn('w-50 pb-2', popupClassName)}
         >
           <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
             {t(($) => $.installFrom, { ns: 'plugin' })}

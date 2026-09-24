@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -218,7 +218,7 @@ describe('dataset-config/card-item', () => {
     const iconElement = nameElement.parentElement?.firstElementChild as HTMLElement
 
     expect(iconElement)!.toHaveStyle({ background: '#FFF4ED' })
-    expect(iconElement.querySelector('em-emoji'))!.toHaveAttribute('id', '📙')
+    expect(iconElement).toHaveTextContent('📙')
   })
 
   it('should apply mask overlay on mobile when drawer is open', async () => {

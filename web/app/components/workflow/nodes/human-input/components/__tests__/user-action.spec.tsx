@@ -10,9 +10,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@langgenius/dify-ui/input', () => ({
+  Input: (props: {
     value: string
     placeholder?: string
     disabled?: boolean
@@ -27,7 +26,7 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),

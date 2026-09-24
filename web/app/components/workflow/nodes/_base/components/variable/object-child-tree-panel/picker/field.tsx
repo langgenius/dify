@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const Field: FC<Props> = ({ valueSelector, name, payload, depth = 1, readonly, onSelect }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const isLastFieldHighlight = readonly
   const hasChildren = payload.type === Type.object && payload.properties
   const isHighlight = isLastFieldHighlight && !hasChildren

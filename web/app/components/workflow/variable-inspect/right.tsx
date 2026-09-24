@@ -1,8 +1,7 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { IconButton, iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -10,8 +9,8 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import Badge from '@/app/components/base/badge'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Loading from '@/app/components/base/loading'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -39,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -233,12 +232,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                         href={fullContent?.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({
-                          variant: 'ghost',
-                          size: 'small',
-                          className:
-                            'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        })}
+                        className={iconButtonVariants({ size: 'md' })}
                       >
                         <span aria-hidden className="i-ri-file-download-fill size-4" />
                       </a>
@@ -252,9 +246,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">
-                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}
-                  </span>
+                  <span>{t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}</span>
                 </Badge>
               )}
               {!isTruncated &&
@@ -319,7 +311,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
         {!currentNodeVar?.var && <Empty />}
         {isValueFetching && (
           <div className="flex h-full items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {currentNodeVar?.var && !isValueFetching && (

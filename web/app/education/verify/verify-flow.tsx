@@ -7,19 +7,16 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { EDUCATION_APPLICATIONS_PAUSED } from '../constants'
-import { EducationPausedContent } from '../paused-content'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
 class EducationVerificationRejectedError extends Error {}
-class EducationVerificationPausedError extends Error {}
 
 type EducationVerificationRequest = () => Promise<{ token?: string | null }>
 
@@ -36,37 +33,22 @@ const requestEducationVerification: EducationVerificationRequest = () =>
 async function requestEducationVerificationToken(
   requestVerification: EducationVerificationRequest,
 ) {
-  try {
-    const response = await requestVerification()
-    if (!response.token) throw new EducationVerificationRejectedError()
+  const response = await requestVerification()
+  if (!response.token) throw new EducationVerificationRejectedError()
 
-    return response.token
-  } catch (error) {
-    if (error instanceof Response) {
-      const body = (await error
-        .clone()
-        .json()
-        .catch(() => null)) as { code?: unknown } | null
-      if (body?.code === 'education_discount_temporarily_paused')
-        throw new EducationVerificationPausedError()
-    }
-
-    throw error
-  }
+  return response.token
 }
 
 export default function EducationVerifyPage() {
-  return <EducationVerifyFlow applicationsPaused={EDUCATION_APPLICATIONS_PAUSED} />
+  return <EducationVerifyFlow />
 }
 
 export function EducationVerifyFlow({
-  applicationsPaused,
   requestVerification = requestEducationVerification,
 }: {
-  applicationsPaused: boolean
   requestVerification?: EducationVerificationRequest
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -114,8 +96,8 @@ export function EducationVerifyFlow({
     (!educationStatus.isEducationAccount || educationStatus.allowRefresh)
 
   useEffect(() => {
-    if (!applicationsPaused && canVerify) startVerification()
-  }, [applicationsPaused, canVerify, startVerification])
+    if (canVerify) startVerification()
+  }, [canVerify, startVerification])
 
   if (featuresQuery.isPending) return <EducationVerifyLoading />
 
@@ -133,9 +115,6 @@ export function EducationVerifyFlow({
     )
 
   if (isAlreadyVerified) return <EducationVerifiedContent />
-
-  if (applicationsPaused || verificationError instanceof EducationVerificationPausedError)
-    return <EducationPausedContent />
 
   if (verificationError instanceof EducationVerificationRejectedError) {
     return (
@@ -208,7 +187,7 @@ function EducationVerifyContent({ children }: { children: ReactNode }) {
 function EducationVerifyLoading() {
   return (
     <EducationStatusCard
-      icon={<Loading />}
+      icon={<LoadingPlaceholder />}
       title={<span className="block h-5 w-40 animate-pulse rounded bg-background-section-burn" />}
     >
       <span className="block h-4 w-full max-w-100 animate-pulse rounded bg-background-section-burn" />
@@ -217,7 +196,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>
@@ -243,7 +222,7 @@ function EducationVerifiedContent() {
 }
 
 function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>

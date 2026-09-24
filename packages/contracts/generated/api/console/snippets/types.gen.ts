@@ -97,8 +97,8 @@ export type SnippetDraftConfigResponse = {
   parallel_depth_limit: number
 }
 
-export type WorkflowDraftVariableList = {
-  items?: Array<WorkflowDraftVariable>
+export type WorkflowDraftVariableListResponse = {
+  items: Array<WorkflowDraftVariableResponse>
 }
 
 export type EnvironmentVariableListResponse = {
@@ -232,34 +232,23 @@ export type SnippetDraftRunPayload = {
   }
 }
 
-export type WorkflowDraftVariableListWithoutValue = {
-  items?: Array<WorkflowDraftVariableWithoutValue>
-  total?: number
+export type WorkflowDraftVariableListWithoutValueResponse = {
+  items: Array<WorkflowDraftVariableWithoutValueResponse>
+  total: number | null
 }
 
-export type WorkflowDraftVariable = {
-  description?: string
-  edited?: boolean
-  full_content?: {
-    [key: string]: unknown
-  }
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value?:
-    | string
-    | number
-    | number
-    | boolean
-    | {
-        [key: string]: unknown
-      }
-    | Array<unknown>
-    | null
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableResponse = {
+  description: string
+  edited: boolean
+  full_content: WorkflowDraftVariableFullContentResponse | null
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value: JsonValue
+  value_type: string
+  visible: boolean
 }
 
 export type WorkflowDraftVariableUpdatePayload = {
@@ -405,7 +394,6 @@ export type AgentSoulConfig = {
   config_note?: string
   config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
-  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -463,6 +451,7 @@ export type WorkflowNodeJobConfig = {
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
   mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
   workflow_prompt?: string
@@ -537,16 +526,23 @@ export type ComposerValidationWarningResponse = {
   surface?: string | null
 }
 
-export type WorkflowDraftVariableWithoutValue = {
-  description?: string
-  edited?: boolean
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableWithoutValueResponse = {
+  description: string
+  edited: boolean
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value_type: string
+  visible: boolean
+}
+
+export type WorkflowDraftVariableFullContentResponse = {
+  download_url: string
+  length: number | null
+  size_bytes: number | null
+  value_type: string
 }
 
 export type AgentScope = 'roster' | 'workflow_only'
@@ -598,11 +594,6 @@ export type AgentConfigSkillRefConfig = {
 export type AgentSoulEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
   variables?: Array<AgentEnvVariableConfig>
-}
-
-export type AgentSoulFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
 }
 
 export type AgentSoulHumanConfig = {
@@ -710,6 +701,11 @@ export type WorkflowNodeJobMetadata = {
 }
 
 export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
+
+export type WorkflowOutputRoutes = {
+  enabled?: boolean
+  routes?: Array<WorkflowOutputRoute>
+}
 
 export type WorkflowPreviousNodeOutputRef = {
   key?: string | null
@@ -857,35 +853,6 @@ export type AgentEnvVariableConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
@@ -961,12 +928,32 @@ export type AgentSoulDifyToolConfig = {
   tool_name?: string | null
 }
 
+export type AgentFileRefConfig = {
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 
 export type DeclaredOutputRetryConfig = {
   enabled?: boolean
   max_retries?: number
   retry_interval_ms?: number
+}
+
+export type WorkflowOutputRoute = {
+  id: string
+  label?: string | null
+  name?: string
 }
 
 export type AgentCliToolAuthorizationStatus =
@@ -1317,7 +1304,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse =
@@ -1577,7 +1564,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse =
@@ -1613,7 +1600,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse =
@@ -1648,7 +1635,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
-  200: WorkflowDraftVariableListWithoutValue
+  200: WorkflowDraftVariableListWithoutValueResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponse =
@@ -1690,7 +1677,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse =
@@ -1711,7 +1698,7 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = 
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse =
@@ -1732,7 +1719,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
   204: void
 }
 
@@ -1778,6 +1765,28 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
 
 export type PostSnippetsBySnippetIdWorkflowsPublishResponse =
   PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/{workflow_id}'
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
+  204: void
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse =
+  DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload

@@ -1,10 +1,7 @@
 'use client'
-
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import {
   AlertDialog,
@@ -16,16 +13,17 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import {
   MultimodalRetrievalGuidance,
   MultimodalRetrievalGuidanceLearnMore,
 } from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import Link from '@/next/link'
@@ -40,7 +38,7 @@ type IndexingModeSectionProps = {
   hasSetIndexType: boolean
   docForm: ChunkingMode
   embeddingModel: DefaultModel
-  embeddingModelList?: Model[]
+  embeddingModelList?: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   // Flags
@@ -73,7 +71,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   onQAConfirmDialogClose,
   onQAConfirmDialogConfirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const docLink = useDocLink()
 
   const getIndexingTechnique = () => indexType
@@ -88,9 +86,9 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   return (
     <>
       {/* Index Mode */}
-      <div className="mb-1 system-md-semibold text-text-secondary">
+      <h2 className="mb-1 system-md-semibold text-text-secondary">
         {t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
-      </div>
+      </h2>
       <AlertDialog
         open={isQAConfirmDialogOpen}
         onOpenChange={(open) => {
@@ -116,13 +114,18 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="flex items-stretch gap-2">
+      <RadioGroup<IndexingType>
+        aria-label={t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
+        value={indexType}
+        onValueChange={onIndexTypeChange}
+        className="flex flex-col items-stretch gap-2 @min-[552px]/chunkfields:flex-row"
+      >
         {/* Qualified option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.QUALIFIED)) && (
           <OptionCard
             className="flex-1 self-stretch"
             title={
-              <div className="flex items-center">
+              <div className="flex flex-wrap items-center gap-y-1">
                 {t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
                 <Badge
                   className={cn(
@@ -144,7 +147,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             icon={<img src={indexMethodIcon.high_quality} alt="" />}
             isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
             disabled={hasSetIndexType}
-            onSwitched={() => onIndexTypeChange(IndexingType.QUALIFIED)}
+            value={IndexingType.QUALIFIED}
           />
         )}
 
@@ -160,17 +163,17 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             icon={<img src={indexMethodIcon.economical} alt="" />}
             isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
             disabled={hasSetIndexType || !!economicalDisabledReason}
-            onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
+            value={IndexingType.ECONOMICAL}
           />
         )}
-      </div>
+      </RadioGroup>
 
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-        <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+        <div className="mt-2 flex min-h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
           <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
-            <span className="i-custom-vender-solid-alertsandfeedback-alert-triangle size-4 text-text-warning-secondary" />
+            <span className="size-4 text-text-warning-secondary" />
           </div>
           <span className="system-xs-medium text-text-primary">
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}
@@ -191,14 +194,14 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       {/* Embedding model */}
       {indexType === IndexingType.QUALIFIED && (
         <div className="mt-5">
-          <div
+          <h2
             className={cn(
               'mb-1 system-md-semibold text-text-secondary',
               datasetId && 'flex items-center justify-between',
             )}
           >
             {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
-          </div>
+          </h2>
           <MultimodalRetrievalGuidanceLearnMore className="mb-2" />
           <MultimodalRetrievalGuidance
             variant="create"
@@ -207,11 +210,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             className="mb-2"
           />
           <ModelSelector
-            readonly={isModelAndRetrievalConfigDisabled}
-            triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
-            defaultModel={embeddingModel}
-            modelList={embeddingModelList ?? []}
-            onSelect={onEmbeddingModelChange}
+            disabled={isModelAndRetrievalConfigDisabled}
+            value={embeddingModel}
+            models={embeddingModelList ?? []}
+            onValueChange={onEmbeddingModelChange}
           />
           {isModelAndRetrievalConfigDisabled && (
             <div className="mt-2 system-xs-medium text-text-tertiary">
@@ -224,15 +226,15 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         </div>
       )}
 
-      <Divider className="my-5" />
+      <Separator className="my-5 h-[0.5px]" />
 
       {/* Retrieval Method Config */}
       <div>
         {!isModelAndRetrievalConfigDisabled ? (
           <div className="mb-1">
-            <div className="mb-0.5 system-md-semibold text-text-secondary">
+            <h2 className="mb-0.5 system-md-semibold text-text-secondary">
               {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
-            </div>
+            </h2>
             <div className="body-xs-regular text-text-tertiary">
               <a
                 target="_blank"

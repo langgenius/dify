@@ -205,7 +205,13 @@ const FilterCondition: FC<Props> = ({
   readOnly,
   nodeId,
 }) => {
-  const { t } = useTranslation()
+  const arrayOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+    ComparisonOperator.allOf,
+  ]
+
+  const { t } = useTranslation(['workflow'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType
@@ -217,11 +223,7 @@ const FilterCondition: FC<Props> = ({
     },
   })
 
-  const isSelect = [
-    ComparisonOperator.in,
-    ComparisonOperator.notIn,
-    ComparisonOperator.allOf,
-  ].includes(condition.comparison_operator)
+  const isSelect = arrayOperators.includes(condition.comparison_operator)
   const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
   const isBoolean = varType === VarType.boolean
 

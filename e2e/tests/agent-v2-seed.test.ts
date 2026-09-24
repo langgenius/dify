@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed'
+import { describe, expect, it } from 'vite-plus/test'
+import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed.ts'
 
 const baseTaskIds = [
   'marketplace-plugins',

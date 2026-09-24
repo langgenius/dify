@@ -1,6 +1,6 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ExternalAPIPanel from '../index'
 
 vi.mock('@/context/i18n', () => ({
@@ -31,7 +31,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       externalKnowledgeApi: {

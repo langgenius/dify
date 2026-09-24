@@ -95,6 +95,7 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
     icon: 'icon.png',
     tags: [],
     datasource: {
+      provider_type: 'online_document',
       identity: {
         author: 'acme',
         name: 'datasource-provider',

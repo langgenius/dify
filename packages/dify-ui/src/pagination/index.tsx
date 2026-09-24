@@ -4,8 +4,10 @@ import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
+import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import { useIsoLayoutEffect } from '../internals/use-iso-layout-effect'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '../number-field'
 import { SegmentedControl, SegmentedControlItem } from '../segmented-control'
@@ -16,7 +18,6 @@ type PaginationContextValue = {
   page: number
   totalPages: number
   hasPages: boolean
-  disabled: boolean
   onPageChange: (page: number) => void
   items: PageItem[]
 }
@@ -37,6 +38,12 @@ function clampPage(page: number, totalPages: number) {
   return Math.min(Math.max(Math.trunc(page), 1), Math.max(totalPages, 1))
 }
 
+function normalizeTotalPages(totalPages: number) {
+  if (!Number.isFinite(totalPages)) return 0
+
+  return Math.max(Math.trunc(totalPages), 0)
+}
+
 function range(start: number, end: number) {
   if (end < start) return []
 
@@ -48,7 +55,6 @@ type GetPageItemsOptions = {
   totalPages: number
   siblingCount: number
   boundaryCount: number
-  visiblePageCount: number
 }
 
 function getPageItems({
@@ -56,70 +62,62 @@ function getPageItems({
   totalPages,
   siblingCount,
   boundaryCount,
-  visiblePageCount,
 }: GetPageItemsOptions): PageItem[] {
   if (totalPages <= 0) return []
 
   const normalizedPage = clampPage(page, totalPages)
-  const normalizedBoundaryCount = Math.max(Math.trunc(boundaryCount), 1)
-  const normalizedSiblingCount = Math.max(Math.trunc(siblingCount), 0)
-  const windowSize = Math.max(Math.trunc(visiblePageCount), normalizedSiblingCount * 2 + 1)
+  const normalizedBoundaryCount = Number.isFinite(boundaryCount)
+    ? Math.max(Math.trunc(boundaryCount), 0)
+    : 1
+  const normalizedSiblingCount = Number.isFinite(siblingCount)
+    ? Math.max(Math.trunc(siblingCount), 0)
+    : 1
+  const visibleItemCount = normalizedBoundaryCount * 2 + normalizedSiblingCount * 2 + 3
 
-  if (totalPages <= windowSize + normalizedBoundaryCount) return range(1, totalPages)
+  if (totalPages <= visibleItemCount) return range(1, totalPages)
 
-  const nearStartEnd = windowSize
-  const nearEndStart = totalPages - windowSize + 1
-  const middleStart = Math.max(normalizedBoundaryCount + 1, normalizedPage - normalizedSiblingCount)
-  const middleEnd = Math.min(
-    totalPages - normalizedBoundaryCount,
-    normalizedPage + normalizedSiblingCount,
+  const startPages = range(1, Math.min(normalizedBoundaryCount, totalPages))
+  const endPages = range(
+    Math.max(totalPages - normalizedBoundaryCount + 1, normalizedBoundaryCount + 1),
+    totalPages,
   )
+  const firstEndPage = endPages.at(0)
+  const siblingStart = Math.max(
+    Math.min(
+      normalizedPage - normalizedSiblingCount,
+      totalPages - normalizedBoundaryCount - normalizedSiblingCount * 2 - 1,
+    ),
+    normalizedBoundaryCount + 2,
+  )
+  const siblingEnd = Math.min(
+    Math.max(
+      normalizedPage + normalizedSiblingCount,
+      normalizedBoundaryCount + normalizedSiblingCount * 2 + 2,
+    ),
+    firstEndPage !== undefined ? firstEndPage - 2 : totalPages - 1,
+  )
+  const items: PageItem[] = [...startPages]
 
-  const windowPages =
-    normalizedPage <= nearStartEnd - normalizedSiblingCount
-      ? range(1, nearStartEnd)
-      : normalizedPage >= nearEndStart + normalizedSiblingCount
-        ? range(nearEndStart, totalPages)
-        : range(middleStart, middleEnd)
+  if (siblingStart > normalizedBoundaryCount + 2) items.push('ellipsis-start')
+  else if (normalizedBoundaryCount + 1 < totalPages - normalizedBoundaryCount)
+    items.push(normalizedBoundaryCount + 1)
 
-  const pageSet = new Set([
-    ...range(1, normalizedBoundaryCount),
-    ...windowPages,
-    ...range(totalPages - normalizedBoundaryCount + 1, totalPages),
-  ])
-  const pages = Array.from(pageSet)
-    .filter((item) => item >= 1 && item <= totalPages)
-    .sort((a, b) => a - b)
+  items.push(...range(siblingStart, siblingEnd))
 
-  return pages.reduce<PageItem[]>((items, item, index) => {
-    const previous = pages[index - 1]
+  if (siblingEnd < totalPages - normalizedBoundaryCount - 1) items.push('ellipsis-end')
+  else if (totalPages - normalizedBoundaryCount > normalizedBoundaryCount)
+    items.push(totalPages - normalizedBoundaryCount)
 
-    if (previous && item - previous === 2) items.push(previous + 1)
-    else if (previous && item - previous > 2)
-      items.push(item < normalizedPage ? 'ellipsis-start' : 'ellipsis-end')
-
-    items.push(item)
-    return items
-  }, [])
+  items.push(...endPages)
+  return items
 }
 
-type PaginationRootState = {
-  page: number
-  totalPages: number
-  hasPages: boolean
-  disabled: boolean
-}
-
-type PaginationRootProps = Omit<
-  useRender.ComponentProps<'nav', PaginationRootState>,
-  'onChange'
-> & {
+type PaginationRootProps = Omit<useRender.ComponentProps<'nav'>, 'onChange'> & {
   page: number
   totalPages: number
   onPageChange: (page: number) => void
   siblingCount?: number
   boundaryCount?: number
-  visiblePageCount?: number
 }
 
 function PaginationRoot({
@@ -128,16 +126,14 @@ function PaginationRoot({
   onPageChange,
   siblingCount = 1,
   boundaryCount = 1,
-  visiblePageCount = 8,
   render,
   children,
   className,
   ...props
 }: PaginationRootProps) {
-  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedTotalPages = normalizeTotalPages(totalPages)
   const normalizedPage = clampPage(page, normalizedTotalPages)
   const hasPages = normalizedTotalPages > 0
-  const disabled = normalizedTotalPages <= 1
   const items = React.useMemo(
     () =>
       getPageItems({
@@ -145,9 +141,8 @@ function PaginationRoot({
         totalPages: normalizedTotalPages,
         siblingCount,
         boundaryCount,
-        visiblePageCount,
       }),
-    [boundaryCount, normalizedPage, normalizedTotalPages, siblingCount, visiblePageCount],
+    [boundaryCount, normalizedPage, normalizedTotalPages, siblingCount],
   )
 
   const context = React.useMemo<PaginationContextValue>(
@@ -155,11 +150,14 @@ function PaginationRoot({
       page: normalizedPage,
       totalPages: normalizedTotalPages,
       hasPages,
-      disabled,
-      onPageChange: (nextPage) => onPageChange(clampPage(nextPage, normalizedTotalPages)),
+      onPageChange: (nextPage) => {
+        const normalizedNextPage = clampPage(nextPage, normalizedTotalPages)
+
+        if (normalizedNextPage !== normalizedPage) onPageChange(normalizedNextPage)
+      },
       items,
     }),
-    [disabled, hasPages, items, normalizedPage, normalizedTotalPages, onPageChange],
+    [hasPages, items, normalizedPage, normalizedTotalPages, onPageChange],
   )
 
   const defaultProps: useRender.ElementProps<'nav'> = {
@@ -174,12 +172,6 @@ function PaginationRoot({
   return useRender({
     defaultTagName: 'nav',
     render,
-    state: {
-      page: normalizedPage,
-      totalPages: normalizedTotalPages,
-      hasPages,
-      disabled,
-    },
     props: mergeProps<'nav'>(defaultProps, props),
   })
 }
@@ -218,14 +210,12 @@ function PaginationNavigation({ render, className, ...props }: PaginationNavigat
   })
 }
 
-type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
-type PaginationNextProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationNextProps = Omit<BaseButtonNS.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
 const paginationArrowButtonClassName = [
@@ -246,14 +236,14 @@ function PaginationPrevious({
 
   if (!pagination.hasPages) return null
 
-  const disabled = props.disabled || pagination.page <= 1 || pagination.disabled
+  const disabled = props.disabled || pagination.page <= 1
 
   return (
     <BaseButton
       {...props}
       type="button"
       aria-label={ariaLabel ?? 'Previous page'}
-      className={cn(paginationArrowButtonClassName, className)}
+      className={(state) => cn(paginationArrowButtonClassName, resolveClassName(className, state))}
       disabled={disabled}
       onClick={(event) => {
         props.onClick?.(event)
@@ -276,14 +266,14 @@ function PaginationNext({
 
   if (!pagination.hasPages) return null
 
-  const disabled = props.disabled || pagination.page >= pagination.totalPages || pagination.disabled
+  const disabled = props.disabled || pagination.page >= pagination.totalPages
 
   return (
     <BaseButton
       {...props}
       type="button"
       aria-label={ariaLabel ?? 'Next page'}
-      className={cn(paginationArrowButtonClassName, className)}
+      className={(state) => cn(paginationArrowButtonClassName, resolveClassName(className, state))}
       disabled={disabled}
       onClick={(event) => {
         props.onClick?.(event)
@@ -296,14 +286,14 @@ function PaginationNext({
   )
 }
 
-type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
   inputLabel?: string
   children?: React.ReactNode
-  className?: string
 }
 
 function PaginationPageJump({
   className,
+  ref,
   inputLabel = 'Page number',
   children,
   'aria-label': ariaLabel,
@@ -313,6 +303,7 @@ function PaginationPageJump({
   const [editing, setEditing] = React.useState(false)
   const summaryButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const restoreSummaryFocusRef = React.useRef(false)
+  const mergedSummaryRef = useMergedRefs(summaryButtonRef, ref)
 
   useIsoLayoutEffect(() => {
     if (editing || !restoreSummaryFocusRef.current) return
@@ -383,15 +374,17 @@ function PaginationPageJump({
   return (
     <BaseButton
       {...props}
-      ref={summaryButtonRef}
+      ref={mergedSummaryRef}
       type="button"
       aria-label={
         ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`
       }
-      className={cn(
-        'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
+          resolveClassName(className, state),
+        )
+      }
       onClick={(event) => {
         props.onClick?.(event)
 
@@ -434,10 +427,9 @@ function PaginationPageList({ render, className, ...props }: PaginationPageListP
   })
 }
 
-type PaginationPageProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
   page: number
   children?: React.ReactNode
-  className?: string
 }
 
 function PaginationPage({
@@ -456,12 +448,14 @@ function PaginationPage({
       type="button"
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
-      className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        current &&
-          'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          current &&
+            'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
+          resolveClassName(className, state),
+        )
+      }
       onClick={(event) => {
         props.onClick?.(event)
 
@@ -520,23 +514,15 @@ function PaginationPageSize<Value extends number = number>({
         {label}
       </div>
       <SegmentedControl
-        value={[String(value)]}
+        value={value}
         aria-label={ariaLabel}
-        onValueChange={(nextValue) => {
-          const [selectedValue] = nextValue
-
-          if (!selectedValue) return
-
-          const selectedOption = options.find((option) => String(option) === selectedValue)
-
-          if (selectedOption !== undefined) onValueChange(selectedOption)
-        }}
+        onValueChange={(value) => onValueChange(value)}
       >
         {options.map((option) => (
-          <SegmentedControlItem
+          <SegmentedControlItem<Value>
             key={option}
-            value={String(option)}
-            className="min-w-9 data-pressed:text-text-primary"
+            value={option}
+            className="min-w-9 data-checked:text-text-primary"
           >
             {option}
           </SegmentedControlItem>
@@ -574,7 +560,7 @@ function Pagination<Value extends number = number>({
   onPageChange,
   ...props
 }: PaginationProps<Value>) {
-  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedTotalPages = normalizeTotalPages(totalPages)
   const normalizedPage = clampPage(page, normalizedTotalPages)
   const editPageNumber = labels?.editPageNumber?.(normalizedPage, normalizedTotalPages)
 

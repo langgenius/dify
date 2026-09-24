@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredOutputConfig,
@@ -97,7 +98,7 @@ def previous_node_output_candidates(
             continue
 
         declared: list[DeclaredOutputConfig] | None = None
-        if kind == "agent" and str(data.get("version", "")) == "2":
+        if is_dify_agent_node_data(data):
             declared = declared_outputs_loader(nid)
         if declared is not None:
             for output in declared:

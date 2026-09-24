@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 

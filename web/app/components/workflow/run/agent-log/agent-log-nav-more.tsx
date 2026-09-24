@@ -1,13 +1,11 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiMoreLine } from '@remixicon/react'
-import { useState } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
 type AgentLogNavMoreProps = {
@@ -15,27 +13,27 @@ type AgentLogNavMoreProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common'])
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button
+          <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            className="size-6"
+            size="md"
             variant="ghost-accent"
-          />
+            className="rounded-lg"
+          >
+            <span aria-hidden className="i-ri-more-line size-4" />
+          </IconButton>
         }
-      >
-        <RiMoreLine className="size-4" />
-      </DropdownMenuTrigger>
+      />
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={2}
         alignOffset={-54}
-        popupClassName="w-[136px] p-1"
+        className="w-34 p-1"
       >
         {options.map((option) => (
           <DropdownMenuItem

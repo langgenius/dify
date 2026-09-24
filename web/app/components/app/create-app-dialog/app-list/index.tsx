@@ -1,28 +1,28 @@
 'use client'
 
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { fetchAppDetail } from '@/service/explore'
-import { useExploreAppList } from '@/service/use-explore'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -31,17 +31,13 @@ import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
 type AppsProps = {
-  onSuccess?: () => void
+  onClose: () => void
   onCreateFromBlank?: () => void
 }
 
-// export enum PageType {
-//   EXPLORE = 'explore',
-//   CREATE = 'create',
-// }
-
-const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
-  const { t } = useTranslation()
+const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
+  const { t } = useTranslation(['app', 'common'])
+  const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -58,31 +54,34 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
+  const handleClearSearch = () => {
+    setKeywords('')
+    searchInputRef.current?.focus()
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
-  const { data, isLoading } = useExploreAppList()
+  const { data, isLoading } = useQuery(
+    consoleQuery.explore.apps.get.queryOptions({
+      input: { query: { language: locale } },
+    }),
+  )
+  const allList = useMemo(
+    () => [...(data?.recommended_apps ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+    [data?.recommended_apps],
+  )
 
   const visibleCategories = useMemo(() => {
     if (!data) return []
 
     const categoriesWithApps = new Set<string>()
-    data.allList.forEach((app) => {
-      app.categories.forEach((category) => categoriesWithApps.add(category))
+    data.recommended_apps.forEach((app) => {
+      app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
     return data.categories.filter((category) => categoriesWithApps.has(category))
@@ -92,28 +91,27 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 
   const filteredList = useMemo(() => {
     if (!data) return []
-    const { allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (activeCategory === allCategoriesEn) return true
       return item.categories?.includes(activeCategory) ?? false
     })
     if (currentType.length === 0) return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT) return true
+      if (currentType.includes(AppModeEnum.CHAT) && item.app?.mode === AppModeEnum.CHAT) return true
       if (
         currentType.includes(AppModeEnum.ADVANCED_CHAT) &&
-        item.app.mode === AppModeEnum.ADVANCED_CHAT
+        item.app?.mode === AppModeEnum.ADVANCED_CHAT
       )
         return true
-      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app.mode === AppModeEnum.AGENT_CHAT)
+      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app?.mode === AppModeEnum.AGENT_CHAT)
         return true
-      if (currentType.includes(AppModeEnum.COMPLETION) && item.app.mode === AppModeEnum.COMPLETION)
+      if (currentType.includes(AppModeEnum.COMPLETION) && item.app?.mode === AppModeEnum.COMPLETION)
         return true
-      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app.mode === AppModeEnum.WORKFLOW)
+      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app?.mode === AppModeEnum.WORKFLOW)
         return true
       return false
     })
-  }, [currentType, activeCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data, allList])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
@@ -126,7 +124,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = React.useState<App | null>(null)
+  const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
@@ -136,8 +134,11 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
     icon_background,
     description,
   }) => {
-    const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
+    if (!currApp || !canCreateAppFromTemplate) return
     try {
+      const { export_data, mode } = await consoleClient.explore.apps.byAppId.get({
+        params: { app_id: currApp.app_id },
+      })
       const app = await importApp({
         body: {
           mode: 'yaml-content',
@@ -151,11 +152,11 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
       })
       if (!app.app_id || !app.app_mode) throw new Error('Completed import is missing app metadata')
 
-      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
+      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (onSuccess) onSuccess()
+      onClose()
       await handleCheckPluginDependencies(app.app_id)
       getRedirection(
         { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
@@ -175,7 +176,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -191,29 +192,34 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
         <div className="flex max-w-137 flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
           <div className="h-3.5">
-            <Divider type="vertical" />
+            <Separator decorative className="mx-2" orientation="vertical" />
           </div>
-          <div className="relative w-full flex-1">
-            <Input
-              className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
+          <InputGroup className="flex-1 bg-transparent hover:border-transparent hover:bg-transparent">
+            <InputGroupInput
+              ref={searchInputRef}
+              type="search"
+              name="query"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               value={keywords}
-              onChange={(e) => handleKeywordsChange(e.target.value)}
+              onValueChange={setKeywords}
             />
             {keywords && (
-              <button
-                type="button"
-                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="group absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
-                onClick={() => handleKeywordsChange('')}
-              >
-                <span
-                  aria-hidden
-                  className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover:text-text-tertiary"
-                />
-              </button>
+              <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+                <IconButton
+                  size="sm"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+                  onClick={handleClearSearch}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-3.5" />
+                </IconButton>
+              </InputGroupAddon>
             )}
-          </div>
+          </InputGroup>
         </div>
         <div className="h-8 w-45"></div>
       </div>
@@ -221,7 +227,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
         {!searchKeywords && (
           <div className="h-full w-50 p-4">
             <Sidebar
-              current={activeCategory as AppCategories}
+              current={activeCategory}
               categories={visibleCategories}
               onClick={(category) => {
                 setCurrCategory(category)
@@ -249,7 +255,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
                 ) : (
                   <div className="flex h-5.5 items-center">
                     <AppCategoryLabel
-                      category={activeCategory as AppCategories}
+                      category={activeCategory}
                       className="title-md-semi-bold text-text-primary"
                     />
                   </div>
@@ -279,12 +285,16 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
       </div>
       {isShowCreateModal && (
         <CreateAppModal
-          appIconType={currApp?.app.icon_type || 'emoji'}
-          appIcon={currApp?.app.icon || ''}
-          appIconBackground={currApp?.app.icon_background || ''}
-          appIconUrl={currApp?.app.icon_url}
-          appName={currApp?.app.name || ''}
-          appDescription={currApp?.app.description || ''}
+          appIconType={
+            currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
+              ? currApp.app.icon_type
+              : 'emoji'
+          }
+          appIcon={currApp?.app?.icon ?? ''}
+          appIconBackground={currApp?.app?.icon_background ?? ''}
+          appIconUrl={currApp?.app?.icon_url}
+          appName={currApp?.app?.name ?? ''}
+          appDescription=""
           show={isShowCreateModal}
           onConfirm={onCreate}
           onHide={() => setIsShowCreateModal(false)}
@@ -297,7 +307,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 export default React.memo(Apps)
 
 function NoTemplateFound() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">

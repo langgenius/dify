@@ -1,4 +1,8 @@
-import type { EnvironmentVariable, ModelConfig } from '@/app/components/workflow/types'
+import type {
+  EnvironmentVariable,
+  ModelConfig,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import {
   getLLMEnvironmentModel,
@@ -156,6 +160,15 @@ describe('llm utils', () => {
 
     it('keeps the static model for a legacy non-environment selector', () => {
       const selector = ['start', 'MODEL_NAME']
+
+      expect(isEnvironmentModelSource(selector)).toBe(false)
+      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toBe(model)
+    })
+
+    it('keeps the static model when the persisted selector is null', () => {
+      // A DSL exported from an older/AI-generated workflow can persist `model_selector: null`
+      // instead of omitting the key; this must not crash the same way `undefined` doesn't.
+      const selector = null as unknown as ValueSelector
 
       expect(isEnvironmentModelSource(selector)).toBe(false)
       expect(resolveLLMNodeModel(model, selector, environmentVariables)).toBe(model)

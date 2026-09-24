@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -10,7 +10,6 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from enums import DeploymentEdition
 from models.account import (
     Account,
@@ -21,16 +20,25 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from services.account_service import AccountService, RegisterService, TenantService
-from services.enterprise.rbac_service import MembersInRole, Paginated
+from services.account_email import normalize_email
+from services.account_service import (
+    AccountService,
+    EnterpriseWorkspaceMemberAccountNotFoundError,
+    EnterpriseWorkspaceMemberWorkspaceNotFoundError,
+    RegisterService,
+    TenantService,
+)
+from services.enterprise.rbac_service import MemberRolesResponse, MembersInRole, Paginated, RBACRole
 from services.errors.account import (
     AccountAlreadyInTenantError,
-    AccountLoginError,
-    AccountPasswordError,
+    AccountEmailAlreadyInUseError,
+    AccountNotFoundError,
     AccountRegisterError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
+from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_tenant
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -68,12 +76,22 @@ class TestAccountAssociatedDataFactory:
         return account
 
 
+def _tenant(session: Session | None = None) -> Tenant:
+    tenant = make_tenant(tenant_id=None, name="Test Workspace")
+    if session is not None:
+        session.add(tenant)
+    return tenant
+
+
 class TestAccountService:
+    @pytest.fixture(autouse=True)
+    def _account_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
     """
     Comprehensive unit tests for AccountService methods.
 
     This test suite covers all account-related operations including:
-    - Authentication and login
     - Account creation and registration
     - Password management
     - JWT token generation
@@ -85,12 +103,10 @@ class TestAccountService:
     def mock_password_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for password-related functions."""
         with (
-            patch("services.account_service.compare_password") as mock_compare_password,
             patch("services.account_service.hash_password") as mock_hash_password,
             patch("services.account_service.valid_password") as mock_valid_password,
         ):
             yield {
-                "compare_password": mock_compare_password,
                 "hash_password": mock_hash_password,
                 "valid_password": mock_valid_password,
             }
@@ -99,7 +115,7 @@ class TestAccountService:
     def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
             patch("services.account_service.PassportService") as mock_passport_service,
         ):
@@ -108,92 +124,6 @@ class TestAccountService:
                 "billing_service": mock_billing_service,
                 "passport_service": mock_passport_service,
             }
-
-    # ==================== Authentication Tests ====================
-
-    def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies: _MockDependencies) -> None:
-        """Test successful authentication with correct email and password."""
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        sqlite_session.add(account)
-        sqlite_session.commit()
-
-        mock_password_dependencies["compare_password"].return_value = True
-
-        result = AccountService.authenticate("test@example.com", "password", session=sqlite_session)
-
-        assert result is account
-
-    def test_authenticate_account_not_found(self, sqlite_session: Session) -> None:
-        """Test authentication when account does not exist."""
-        with pytest.raises(AccountPasswordError):
-            AccountService.authenticate("notfound@example.com", "password", session=sqlite_session)
-
-    def test_authenticate_account_banned(self, sqlite_session: Session) -> None:
-        """Test authentication when account is banned."""
-        account = Account(
-            name="Banned User",
-            email="banned@example.com",
-            password="hashed_password",
-            password_salt="salt",
-            status=AccountStatus.BANNED,
-        )
-        sqlite_session.add(account)
-        sqlite_session.commit()
-
-        with pytest.raises(AccountLoginError):
-            AccountService.authenticate("banned@example.com", "password", session=sqlite_session)
-
-    def test_authenticate_password_error(
-        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test authentication with wrong password."""
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        sqlite_session.add(account)
-        sqlite_session.commit()
-
-        mock_password_dependencies["compare_password"].return_value = False
-
-        with pytest.raises(AccountPasswordError):
-            AccountService.authenticate("test@example.com", "wrongpassword", session=sqlite_session)
-
-    def test_authenticate_pending_account_activates(
-        self,
-        sqlite_session_factory: sessionmaker[Session],
-        mock_password_dependencies: _MockDependencies,
-    ) -> None:
-        """Test authentication for a pending account, which should activate on login."""
-        with sqlite_session_factory() as service_session:
-            account = Account(
-                name="Pending User",
-                email="pending@example.com",
-                password="hashed_password",
-                password_salt="salt",
-                status=AccountStatus.PENDING,
-            )
-            service_session.add(account)
-            service_session.commit()
-            account_id = account.id
-
-            mock_password_dependencies["compare_password"].return_value = True
-
-            result = AccountService.authenticate("pending@example.com", "password", session=service_session)
-            assert result.id == account_id
-
-        with sqlite_session_factory() as assertion_session:
-            persisted_account = assertion_session.get(Account, account_id)
-            assert persisted_account is not None
-            assert persisted_account.status == AccountStatus.ACTIVE
-            assert persisted_account.initialized_at is not None
 
     # ==================== Account Creation Tests ====================
 
@@ -205,7 +135,7 @@ class TestAccountService:
     ) -> None:
         """Test successful account creation with all required parameters."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_password_dependencies["hash_password"].return_value = b"hashed_password"
 
@@ -217,28 +147,79 @@ class TestAccountService:
                 interface_language="en-US",
                 password="password123",
                 interface_theme="light",
+                ip_address="203.0.113.10",
                 session=service_session,
             )
             account_id = result.id
 
             assert result.email == "test@example.com"
+            assert result.normalized_email == "test@example.com"
             assert result.name == "Test User"
             assert result.interface_language == "en-US"
             assert result.interface_theme == "light"
             assert result.password is not None
             assert result.password_salt is not None
             assert result.timezone == "America/New_York"
+            assert result.last_login_ip == "203.0.113.10"
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
             assert persisted_account.email == "test@example.com"
+            assert persisted_account.normalized_email == "test@example.com"
             assert persisted_account.name == "Test User"
             assert persisted_account.interface_language == "en-US"
             assert persisted_account.interface_theme == "light"
             assert persisted_account.password is not None
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
+            assert persisted_account.last_login_ip == "203.0.113.10"
+
+    @pytest.mark.parametrize(
+        ("existing_email", "new_email", "normalized_email"),
+        [
+            ("u.ser+existing@gmail.com", "user@googlemail.com", "user@gmail.com"),
+            ("u.ser+existing@outlook.com", "u.ser+new@outlook.com", "u.ser@outlook.com"),
+            ("u.ser+existing@me.com", "u.ser+new@icloud.com", "u.ser@icloud.com"),
+            ("u.ser_name-existing@proton.me", "usernameexisting+new@proton.me", "usernameexisting@proton.me"),
+        ],
+    )
+    def test_create_account_rejects_normalized_email_only_when_requested(
+        self,
+        existing_email: str,
+        new_email: str,
+        normalized_email: str,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email=existing_email,
+                normalized_email=normalized_email,
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            AccountService.create_account(
+                email=new_email,
+                name="New User",
+                interface_language="en-US",
+                check_normalized_email=True,
+                session=sqlite_session,
+            )
+
+        duplicate = AccountService.create_account(
+            email=new_email,
+            name="New User",
+            interface_language="en-US",
+            session=sqlite_session,
+        )
+        assert duplicate.normalized_email == normalized_email
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -247,7 +228,7 @@ class TestAccountService:
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test account creation prefers explicit browser timezone."""
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_password_dependencies["hash_password"].return_value = b"hashed_password"
 
@@ -272,13 +253,11 @@ class TestAccountService:
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         """Test account creation when registration is disabled."""
-        from controllers.console.error import AccountNotFound
-
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = False
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = False
 
         # Execute test and verify exception
-        with pytest.raises(AccountNotFound):
+        with pytest.raises(AccountNotFoundError, match="Account registration is disabled"):
             AccountService.create_account(
                 email="test@example.com",
                 name="Test User",
@@ -287,16 +266,37 @@ class TestAccountService:
             )
 
     def test_create_account_email_frozen(
-        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        unbound_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Test account creation with frozen email address."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
-            with pytest.raises(AccountRegisterError):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        with pytest.raises(AccountRegisterError):
+            AccountService.create_account(
+                email="frozen@example.com",
+                name="Test User",
+                interface_language="en-US",
+                session=unbound_session,
+            )
+
+    def test_create_account_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
                 AccountService.create_account(
-                    email="frozen@example.com",
+                    email="user@suspended.example",
                     name="Test User",
                     interface_language="en-US",
                     session=unbound_session,
@@ -309,7 +309,7 @@ class TestAccountService:
     ) -> None:
         """Test account creation without password (for invite-based registration)."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute test
@@ -331,6 +331,7 @@ class TestAccountService:
             assert result.password is None
             assert result.password_salt is None
             assert result.timezone is not None
+            assert result.last_login_ip is None
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
@@ -342,103 +343,33 @@ class TestAccountService:
             assert persisted_account.password is None
             assert persisted_account.password_salt is None
             assert persisted_account.timezone is not None
+            assert persisted_account.last_login_ip is None
 
-    # ==================== Password Management Tests ====================
-
-    def test_update_account_password_success(
+    def test_update_login_info_overwrites_initial_registration_ip(
         self,
         sqlite_session_factory: sessionmaker[Session],
-        mock_password_dependencies: _MockDependencies,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        """Test successful password update with correct current password and valid new password."""
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
         with sqlite_session_factory() as service_session:
-            account = Account(
-                name="Test User",
+            account = AccountService.create_account(
                 email="test@example.com",
-                password="hashed_password",
-                password_salt="salt",
-            )
-            service_session.add(account)
-            service_session.commit()
-            account_id = account.id
-
-            mock_password_dependencies["compare_password"].return_value = True
-            mock_password_dependencies["valid_password"].return_value = None
-            mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
-
-            result = AccountService.update_account_password(
-                account,
-                "old_password",
-                "new_password123",
+                name="Test User",
+                interface_language="en-US",
+                ip_address="203.0.113.10",
                 session=service_session,
             )
-            assert result is account
+            account_id = account.id
 
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "old_password", "hashed_password", "salt"
-        )
-        mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
+            AccountService.update_login_info(account, service_session, ip_address="203.0.113.11")
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
-            assert persisted_account.password is not None
-            assert persisted_account.password != "hashed_password"
-            assert persisted_account.password_salt is not None
-            assert persisted_account.password_salt != "salt"
-
-    def test_update_account_password_current_password_incorrect(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with incorrect current password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = False
-
-        # Execute test and verify exception
-        with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                mock_account,
-                "wrong_password",
-                "new_password123",
-                session=unbound_session,
-            )
-
-        # Verify password comparison was called
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "wrong_password", "hashed_password", "salt"
-        )
-
-    def test_update_account_password_invalid_new_password(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with invalid new password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = True
-        mock_password_dependencies["valid_password"].side_effect = ValueError("Password too short")
-
-        # Execute test and verify exception
-        with pytest.raises(ValueError):
-            AccountService.update_account_password(
-                mock_account,
-                "old_password",
-                "short",
-                session=unbound_session,
-            )
-
-        # Verify password validation was called
-        mock_password_dependencies["valid_password"].assert_called_once_with("short")
+            assert persisted_account.last_login_ip == "203.0.113.11"
+            assert persisted_account.last_login_at is not None
 
     # ==================== User Loading Tests ====================
 
@@ -462,6 +393,7 @@ class TestAccountService:
 
             assert result is account
             assert result.current_tenant_id == tenant.id
+            assert result.current_role == TenantAccountRole.NORMAL
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session) -> None:
@@ -689,6 +621,10 @@ class TestAccountService:
 
 
 class TestTenantService:
+    @pytest.fixture(autouse=True)
+    def _tenant_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+
     """
     Comprehensive unit tests for TenantService methods.
 
@@ -710,7 +646,7 @@ class TestTenantService:
     def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
         ):
             yield {
@@ -736,6 +672,14 @@ class TestTenantService:
         )
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
+
+    def _db_role_of(self, sqlite_session: Session, tenant: Tenant, account_id: str) -> str | None:
+        return sqlite_session.scalar(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        )
 
     def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session) -> None:
         tenant_id = "00000000-0000-0000-0000-000000000001"
@@ -901,6 +845,150 @@ class TestTenantService:
             assert persisted_tenant_account_join.account_id == account_id
             assert persisted_tenant_account_join.role == TenantAccountRole.NORMAL
 
+    def test_create_tenant_member_queues_joined_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """New regular members are synced into auto-included RBAC resource whitelists."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with (
+                config_overrides_context(RBAC_ENABLED=True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_called_once_with(
+            tenant_id,
+            account_id,
+            operator_account_id="operator-1",
+        )
+
+    def test_create_tenant_member_does_not_queue_pending_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """Pending invited members are synced after activation, not at invitation time."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com", status=AccountStatus.PENDING)
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            service_session.commit()
+
+            with (
+                config_overrides_context(RBAC_ENABLED=True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_not_called()
+
+    def test_join_enterprise_workspace_member_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with patch("services.account_service.TenantService.create_tenant_member") as create_tenant_member:
+                membership = TenantAccountJoin(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    role=TenantAccountRole.NORMAL,
+                )
+                create_tenant_member.return_value = membership
+
+                result = TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id="operator-1",
+                    session=service_session,
+                )
+
+                assert result is membership
+                create_tenant_member.assert_called_once()
+                call_args = create_tenant_member.call_args
+                assert call_args.args[0].id == tenant_id
+                assert call_args.args[1].id == account_id
+                assert call_args.kwargs == {
+                    "session": service_session,
+                    "role": "normal",
+                    "operator_account_id": "operator-1",
+                }
+
+    def test_join_enterprise_workspace_member_raises_when_workspace_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add(account)
+            service_session.flush()
+            account_id = account.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberWorkspaceNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id="missing-workspace",
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
+
+    def test_join_enterprise_workspace_member_raises_when_account_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            service_session.add(tenant)
+            service_session.flush()
+            tenant_id = tenant.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberAccountNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id="missing-account",
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
+
     # ==================== Member Removal Tests ====================
 
     def test_remove_pending_member_deletes_orphaned_account(
@@ -927,7 +1015,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -981,7 +1068,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -1026,7 +1112,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -1130,9 +1215,76 @@ class TestTenantService:
             assert persisted_target_join is not None
             assert persisted_target_join.role == TenantAccountRole.ADMIN
 
-    def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    @pytest.mark.parametrize(
+        ("outgoing_owner_role_tags", "expected_demoted_role_ids"),
+        [(["owner", "editor"], ["editor-role-id"]), (["owner"], ["no-access-role-id"])],
+    )
+    def test_update_member_role_to_owner_rbac_enabled(
+        self,
+        sqlite_session: Session,
+        outgoing_owner_role_tags: list[str],
+        expected_demoted_role_ids: list[str],
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        tenant = Tenant(name="Test Workspace")
+        sqlite_session.add(tenant)
+        sqlite_session.flush()
+
+        operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-1")
+        candidate = TestAccountAssociatedDataFactory.create_account_mock(account_id="candidate-1")
+        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.EDITOR)
+        self._add_tenant_account_join(sqlite_session, tenant, candidate.id, TenantAccountRole.EDITOR)
+        self._add_tenant_account_join(sqlite_session, tenant, "stale-db-owner", TenantAccountRole.OWNER)
+        sqlite_session.commit()
+
+        outgoing_owner_roles = MemberRolesResponse(
+            account_id="real-rbac-owner",
+            roles=[
+                RBACRole(id=f"{tag}-role-id", type="workspace", name=tag, role_tag=tag)
+                for tag in outgoing_owner_role_tags
+            ],
+        )
+
+        with (
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.role.manage"},
+            ),
+            patch(
+                "services.account_service.AccountService.get_rbac_workspace_owner_account_id",
+                return_value="real-rbac-owner",
+            ),
+            patch(
+                "services.account_service.AccountService._resolve_legacy_role_id",
+                side_effect=lambda *, role, **_kwargs: f"{role.value}-role-id",
+            ),
+            patch(
+                "services.account_service.AccountService._resolve_role_id_by_tag",
+                return_value="no-access-role-id",
+            ),
+            patch("services.account_service.RBACService.MemberRoles.get", return_value=outgoing_owner_roles),
+            patch("services.account_service.RBACService.MemberRoles.replace") as mock_replace,
+        ):
+            TenantService.update_member_role(tenant, candidate, "owner", operator, session=sqlite_session)
+
+        mock_replace.assert_any_call(
+            tenant_id=tenant.id,
+            account_id=operator.id,
+            member_account_id="real-rbac-owner",
+            role_ids=expected_demoted_role_ids,
+            session=sqlite_session,
+        )
+        assert self._db_role_of(sqlite_session, tenant, "stale-db-owner") == TenantAccountRole.NORMAL
+        assert self._db_role_of(sqlite_session, tenant, candidate.id) == TenantAccountRole.OWNER
+
+    def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
@@ -1145,7 +1297,6 @@ class TestTenantService:
         sqlite_session.flush()
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
             patch(
                 "services.account_service.AccountService._resolve_legacy_role_id",
@@ -1238,7 +1389,7 @@ class TestTenantService:
     def test_check_member_permission_operate_self(self, unbound_session: Session) -> None:
         """Test member permission check when operator tries to operate self."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
 
@@ -1281,9 +1432,12 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(tenant, mock_operator, mock_member, "remove", session=sqlite_session)
 
-    def test_rbac_member_can_remove_non_owner_member(self, sqlite_session: Session) -> None:
+    def test_rbac_member_can_remove_non_owner_member(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC workspace.member.manage allows removing a non-owner member."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1292,7 +1446,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
         ):
@@ -1300,9 +1453,12 @@ class TestTenantService:
                 mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
             )
 
-    def test_rbac_member_cannot_remove_without_permission(self, sqlite_session: Session) -> None:
+    def test_rbac_member_cannot_remove_without_permission(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC permission check rejects removal without workspace.member.manage."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1311,7 +1467,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.role.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
         ):
             with pytest.raises(NoPermissionError):
@@ -1319,9 +1474,12 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    def test_rbac_member_cannot_remove_owner_member(self, sqlite_session: Session) -> None:
+    def test_rbac_member_cannot_remove_owner_member(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC permission check rejects removing an owner member."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1330,7 +1488,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
         ):
@@ -1366,6 +1523,10 @@ class TestTenantService:
 
 
 class TestRegisterService:
+    @pytest.fixture(autouse=True)
+    def _register_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
     """
     Comprehensive unit tests for RegisterService methods.
 
@@ -1388,7 +1549,7 @@ class TestRegisterService:
     def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
             patch("services.account_service.PassportService") as mock_passport_service,
         ):
@@ -1413,7 +1574,7 @@ class TestRegisterService:
     ) -> None:
         """Test successful system setup."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account
@@ -1441,6 +1602,7 @@ class TestRegisterService:
                         interface_language="en-US",
                         password="password123",
                         is_setup=True,
+                        ip_address="192.168.1.1",
                         session=service_session,
                     )
                     mock_create_tenant.assert_called_once_with(
@@ -1463,7 +1625,7 @@ class TestRegisterService:
         sqlite_session_factory: sessionmaker[Session],
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
@@ -1493,7 +1655,7 @@ class TestRegisterService:
         sqlite_session_factory: sessionmaker[Session],
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.seats.is_available.return_value = True
@@ -1524,12 +1686,12 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Enterprise-only side effect should be invoked for the ENTERPRISE edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1548,10 +1710,21 @@ class TestRegisterService:
                 name="Test User",
                 interface_language="en-US",
                 password=None,
+                ip_address="203.0.113.10",
                 session=sqlite_session,
             )
 
             assert result == mock_account
+            mock_create_account.assert_called_once_with(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+                timezone=None,
+                ip_address="203.0.113.10",
+                check_normalized_email=False,
+                session=sqlite_session,
+            )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
             mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
@@ -1559,12 +1732,10 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked for the COMMUNITY edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY, raising=False)
 
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1593,13 +1764,13 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should still be attempted when personal workspace creation fails."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1630,7 +1801,7 @@ class TestRegisterService:
     ) -> None:
         """Test successful account registration."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1651,6 +1822,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    ip_address="203.0.113.10",
                     session=sqlite_session,
                 )
 
@@ -1665,20 +1837,46 @@ class TestRegisterService:
                     password="password123",
                     is_setup=False,
                     timezone=None,
+                    ip_address="203.0.113.10",
+                    check_normalized_email=True,
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
+
+    def test_register_rejects_existing_normalized_email(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            RegisterService.register(
+                email="user@googlemail.com",
+                name="New User",
+                language="en-US",
+                create_workspace_required=False,
+                session=sqlite_session,
+            )
 
     def test_register_calls_default_workspace_join_for_enterprise_edition(
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Enterprise-only side effect should be invoked after successful register commit."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1707,12 +1905,10 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked for the COMMUNITY edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY, raising=False)
 
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1740,13 +1936,13 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should run even when personal workspace creation raises."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1780,13 +1976,13 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should run before propagating workspace-limit registration failure."""
         from services.errors.workspace import WorkspacesLimitExceededError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1816,65 +2012,12 @@ class TestRegisterService:
 
             mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
-    def test_register_with_oauth(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
-    ) -> None:
-        """Test account registration with OAuth integration."""
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_license.return_value.workspaces.is_available.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Mock AccountService.create_account and link_account_integrate
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with (
-            patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch("services.account_service.AccountService.link_account_integrate") as mock_link_account,
-        ):
-            mock_create_account.return_value = mock_account
-
-            # Mock TenantService methods
-            with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
-            ):
-                mock_tenant = Tenant(name="Test User's Workspace")
-                sqlite_session.add(mock_tenant)
-                sqlite_session.flush()
-                mock_create_tenant.return_value = mock_tenant
-                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
-                    TenantAccountJoin(
-                        tenant_id=tenant.id,
-                        account_id=account.id,
-                        role=TenantAccountRole(role),
-                    )
-                )
-
-                # Execute test
-                result = RegisterService.register(
-                    email="test@example.com",
-                    name="Test User",
-                    password=None,
-                    open_id="oauth123",
-                    provider="google",
-                    language="en-US",
-                    session=sqlite_session,
-                )
-
-                # Verify results
-                assert result == mock_account
-                mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
-
     def test_register_with_pending_status(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         """Test account registration with pending status."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1925,7 +2068,7 @@ class TestRegisterService:
     ) -> None:
         """Test registration when workspace creation is not allowed."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1959,7 +2102,7 @@ class TestRegisterService:
     ) -> None:
         """Test registration with general exception handling."""
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account to raise exception
@@ -1984,7 +2127,7 @@ class TestRegisterService:
     def test_invite_new_member_new_account(self, sqlite_session: Session) -> None:
         """Test inviting a new member who doesn't have an account."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2028,6 +2171,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
@@ -2036,7 +2180,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Ensure inviting with mixed-case email normalizes before registering."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mixed_email = "Invitee@Example.com"
@@ -2074,6 +2218,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)
@@ -2084,7 +2229,13 @@ class TestRegisterService:
                         "add",
                         session=sqlite_session,
                     )
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "normal")
+                    mock_create_member.assert_called_once_with(
+                        mock_tenant,
+                        mock_new_account,
+                        sqlite_session,
+                        "normal",
+                        operator_account_id=mock_inviter.id,
+                    )
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=sqlite_session)
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
@@ -2096,7 +2247,7 @@ class TestRegisterService:
     ) -> None:
         """Test inviting a pending account that is not in the tenant yet."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2129,7 +2280,13 @@ class TestRegisterService:
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, sqlite_session, "normal")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_existing_account,
+                    sqlite_session,
+                    "normal",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
@@ -2140,7 +2297,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Existing active accounts outside the tenant receive an invite without immediate membership."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2184,7 +2341,7 @@ class TestRegisterService:
     def test_invite_new_member_already_in_tenant(self, sqlite_session: Session) -> None:
         """Test inviting a member who is already in the tenant."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2221,7 +2378,7 @@ class TestRegisterService:
     def test_invite_new_member_no_inviter(self, unbound_session: Session) -> None:
         """Test inviting a member without providing an inviter."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
 
         # Execute test and verify exception
         with pytest.raises(ValueError):
@@ -2237,18 +2394,19 @@ class TestRegisterService:
     # ==================== RBAC Member Invitation Tests ====================
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_new_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_new_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled, create the member join and replace RBAC member roles."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = True
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-rbac", email="rbac@example.com", name="rbacuser", status="pending"
@@ -2274,10 +2432,14 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, sqlite_session, TenantAccountRole.NORMAL.value
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_new_account.id,
                     role_ids=["rbac-role-id-123"],
@@ -2285,9 +2447,12 @@ class TestRegisterService:
                 )
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_existing_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_existing_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2296,10 +2461,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2322,9 +2485,10 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
@@ -2332,10 +2496,14 @@ class TestRegisterService:
                 )
 
     def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
-        self, sqlite_session: Session, mock_task_dependencies: MagicMock
+        self,
+        sqlite_session: Session,
+        mock_task_dependencies: MagicMock,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=True)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2344,10 +2512,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2369,9 +2535,10 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
@@ -2380,18 +2547,19 @@ class TestRegisterService:
                 mock_task_dependencies.delay.assert_not_called()
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_disabled_uses_legacy_role(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_disabled_uses_legacy_role(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
-        mock_tenant = MagicMock()
+        config_overrides(RBAC_ENABLED=False)
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-legacy"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = False
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="legacy-user", email="legacy@example.com", name="legacyuser", status="pending"
@@ -2416,7 +2584,13 @@ class TestRegisterService:
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "editor")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    "editor",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================
@@ -2424,7 +2598,7 @@ class TestRegisterService:
     def test_generate_invite_token_success(self, mock_redis_dependencies: MagicMock) -> None:
         """Test successful invite token generation."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
         mock_tenant.id = "tenant-456"
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="user-123", email="test@example.com"
@@ -2450,30 +2624,6 @@ class TestRegisterService:
             assert stored_data["workspace_id"] == "tenant-456"
             assert stored_data["role"] == "admin"
             assert stored_data["requires_setup"] is True
-
-    def test_is_valid_invite_token_valid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking valid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = b'{"test": "data"}'
-
-        # Execute test
-        result = RegisterService.is_valid_invite_token("valid-token")
-
-        # Verify results
-        assert result is True
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:valid-token")
-
-    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking invalid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = None
-
-        # Execute test
-        result = RegisterService.is_valid_invite_token("invalid-token")
-
-        # Verify results
-        assert result is False
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:invalid-token")
 
     def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test revoking token with workspace ID and email."""
@@ -2736,10 +2886,7 @@ class TestSessionInjectedGetters:
         assert AccountService.get_account_by_id("missing", session=sqlite_session) is None
 
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session) -> None:
-        """Plain getter — case-sensitive equality (callers needing the
-        case-insensitive existence check use
-        :meth:`has_active_account_with_email`).
-        """
+        """Plain getter uses case-sensitive equality."""
         account = Account(name="Alice", email="alice@example.com")
         sqlite_session.add(account)
         sqlite_session.commit()
@@ -2764,22 +2911,6 @@ class TestSessionInjectedGetters:
 
     def test_account_belongs_to_tenant_false_when_no_join(self, sqlite_session: Session) -> None:
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is False
-
-    def test_get_account_memberships_returns_join_tenant_pairs(self, sqlite_session: Session) -> None:
-        """Returns every ``(TenantAccountJoin, Tenant)`` pair for an account."""
-        tenant = Tenant(name="Joined Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        sqlite_session.add_all([tenant, other_tenant])
-        sqlite_session.flush()
-        join = self._add_tenant_account_join(sqlite_session, tenant, "user-123", TenantAccountRole.NORMAL, current=True)
-        self._add_tenant_account_join(sqlite_session, other_tenant, "other-user", TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        out = TenantService.get_account_memberships("user-123", session=sqlite_session)
-
-        assert len(out) == 1
-        assert out[0][0] is join
-        assert out[0][1] is tenant
 
     def test_get_workspaces_for_account_uses_session_execute(self, sqlite_session: Session) -> None:
         """The list endpoint orders by ``Tenant.created_at``; the helper
@@ -2868,7 +2999,7 @@ class TestSessionInjectedGetters:
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
-    account = Account(name="Case User", email="case@test.com")
+    account = Account(name="Case User", email="case@test.com", normalized_email=normalize_email("case@test.com"))
     sqlite_session.add(account)
     sqlite_session.commit()
 
@@ -2877,8 +3008,46 @@ def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: 
     assert result is account
 
 
+def test_get_account_by_email_with_case_fallback_finds_uppercase_row_from_lowercase_input(
+    sqlite_session: Session,
+) -> None:
+    """Regression test for CUS-1658: an SSO-provisioned account keeps the IdP's original casing
+    (e.g. `User@Example.com`), but the workspace invite flow always looks it up with an
+    already-lowercased email. The lookup must still find that account.
+    """
+    account = Account(name="SSO User", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("user@example.com", session=sqlite_session)
+
+    assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_returns_oldest_when_normalized_email_is_duplicated(
+    sqlite_session: Session,
+) -> None:
+    """normalized_email is indexed but not unique, so installations can already hold equivalent
+    accounts. The fallback must not raise and must resolve to the same (oldest) account every time.
+    """
+    newer = Account(name="Newer", email="user@example.com", normalized_email=normalize_email("user@example.com"))
+    newer.created_at = datetime(2026, 9, 2)
+    older = Account(name="Older", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    older.created_at = datetime(2026, 9, 1)
+    sqlite_session.add_all([newer, older])
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("USER@EXAMPLE.COM", session=sqlite_session)
+
+    assert result is older
+
+
 class TestIsEmailSendIpLimit:
     """The 10-minute first-strike window must actually take effect (#39477)."""
+
+    @pytest.fixture(autouse=True)
+    def _email_limit_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=60)
 
     def _mock_redis(self, *, minute_count: int, hour_count: int | None, frozen: bool = False) -> MagicMock:
         values = {
@@ -2895,12 +3064,12 @@ class TestIsEmailSendIpLimit:
         with patch("services.account_service.redis_client", redis_client):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
-    def test_first_strike_sets_ten_minute_window(self) -> None:
+    def test_first_strike_sets_ten_minute_window(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=None)
         redis_client.set.return_value = True
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
@@ -2910,22 +3079,22 @@ class TestIsEmailSendIpLimit:
         redis_client.incr.assert_not_called()
         redis_client.expire.assert_not_called()
 
-    def test_first_strike_lost_claim_freezes_immediately(self) -> None:
+    def test_first_strike_lost_claim_freezes_immediately(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=None)
         redis_client.set.return_value = None  # another worker claimed the strike first
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
         redis_client.setex.assert_called_once_with("email_send_ip_limit_freeze:1.2.3.4", 60 * 60, 1)
 
-    def test_second_strike_inside_window_freezes_for_an_hour(self) -> None:
+    def test_second_strike_inside_window_freezes_for_an_hour(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=1)
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
@@ -2935,6 +3104,5 @@ class TestIsEmailSendIpLimit:
         redis_client = self._mock_redis(minute_count=0, hour_count=None)
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False

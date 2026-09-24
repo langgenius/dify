@@ -4,11 +4,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 
-enum BadgeState {
-  Warning = 'warning',
-  Accent = 'accent',
-  Default = '',
-}
+const BadgeState = {
+  Warning: 'warning',
+  Accent: 'accent',
+  Default: '',
+} as const
+
+type BadgeState = (typeof BadgeState)[keyof typeof BadgeState]
 
 const BadgeVariants = cva('badge', {
   variants: {

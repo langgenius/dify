@@ -1,6 +1,6 @@
 import type { TriggerMetadata } from '@/models/log'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { Theme } from '@/types/app'
 import TriggerByDisplay from '../trigger-by-display'

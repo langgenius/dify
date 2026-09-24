@@ -78,12 +78,7 @@ const OperationsDropdown = ({
 
   return (
     <div
-      className={cn(
-        'absolute top-2 right-2 z-5',
-        open
-          ? 'pointer-events-auto visible'
-          : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
-      )}
+      className={cn('absolute right-2 z-5', dataset.embedding_available ? 'top-2' : 'top-6')}
       onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
@@ -105,10 +100,10 @@ const OperationsDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            className: 'min-w-[186px]',
           })}
         >
           <Operations

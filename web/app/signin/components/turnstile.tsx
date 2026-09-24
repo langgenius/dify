@@ -26,14 +26,23 @@ type TurnstileApi = {
 const getTurnstileApi = () => (window as Window & { turnstile?: TurnstileApi }).turnstile
 
 type TurnstileProps = {
+  action: 'signin_code' | 'signin_code_verify'
+  resetKey?: number
   siteKey: string
   onVerify: (token: string) => void
   onInvalidate: () => void
   onError?: () => void
 }
 
-export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: TurnstileProps) {
-  const { t } = useTranslation()
+export default function Turnstile({
+  action,
+  resetKey = 0,
+  siteKey,
+  onVerify,
+  onInvalidate,
+  onError,
+}: TurnstileProps) {
+  const { t } = useTranslation(['common', 'login'])
   const containerRef = useRef<HTMLDivElement>(null)
   const onVerifyRef = useRef(onVerify)
   const onInvalidateRef = useRef(onInvalidate)
@@ -68,7 +77,7 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: 
     try {
       widgetId = turnstile.render(container, {
         sitekey: siteKey,
-        action: 'signin_code',
+        action,
         appearance: 'always',
         size: 'flexible',
         theme: 'auto',
@@ -91,7 +100,7 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: 
       if (!widgetId) return
       turnstile.remove(widgetId)
     }
-  }, [handleChallengeError, hasError, invalidate, isScriptReady, siteKey])
+  }, [action, handleChallengeError, hasError, invalidate, isScriptReady, resetKey, siteKey])
 
   const handleScriptReady = () => {
     if (getTurnstileApi()) {

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PluginDeclaration } from '../../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'

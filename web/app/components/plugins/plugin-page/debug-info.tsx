@@ -1,6 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +14,7 @@ import { PluginSidecarPanel } from './plugin-sidecar-panel'
 const i18nPrefix = 'debugInfo'
 
 type DebugInfoProps = {
-  popupPlacement?: Placement
+  popupPlacement?: PopoverContentProps['placement']
   triggerClassName?: string
   triggerContent?: ReactNode
   triggerVariant?: ButtonProps['variant']
@@ -26,7 +26,7 @@ function DebugInfo({
   triggerContent,
   triggerVariant = 'secondary',
 }: DebugInfoProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })
@@ -60,7 +60,7 @@ function DebugInfo({
       />
       <PopoverContent
         placement={popupPlacement}
-        popupClassName="border-0 bg-transparent p-0 shadow-none"
+        className="border-0 bg-transparent p-0 shadow-none"
       >
         <PluginSidecarPanel
           title={title}

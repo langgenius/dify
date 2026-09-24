@@ -2,7 +2,7 @@
 
 The standalone stub server is only a convenience wrapper around the shared
 router. It reuses the main ``ServerSettings`` model and derives the Agent Stub
-token codec plus optional file and drive request bridges from the same helper
+token codec plus optional file and config request bridges from the same helper
 methods that the standard run server uses before mounting
 ``create_agent_stub_router(...)``.
 """
@@ -24,7 +24,6 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
             token_codec=resolved_settings.create_agent_stub_token_codec(),
             file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
             config_request_handler=resolved_settings.create_agent_stub_config_request_handler(),
-            drive_request_handler=resolved_settings.create_agent_stub_drive_request_handler(),
         )
     )
     return app

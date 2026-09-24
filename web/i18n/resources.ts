@@ -1,0 +1,48 @@
+import type Resources from './resources.generated'
+import { kebabCase } from 'string-ts'
+
+export const defaultNS = 'app' as const
+
+export const namespaces = [
+  'app',
+  'appAnnotation',
+  'appApi',
+  'appDebug',
+  'appLog',
+  'appOverview',
+  'agentV2',
+  'billing',
+  'common',
+  'custom',
+  'dataset',
+  'datasetCreation',
+  'datasetDocuments',
+  'datasetHitTesting',
+  'datasetPipeline',
+  'datasetSettings',
+  'deployments',
+  'deviceFlow',
+  'education',
+  'explore',
+  'layout',
+  'login',
+  'oauth',
+  'permission',
+  'permissionKeys',
+  'pipeline',
+  'plugin',
+  'pluginTags',
+  'pluginTrigger',
+  'register',
+  'runLog',
+  'share',
+  'skill',
+  'snippet',
+  'time',
+  'tools',
+  'workflow',
+] as const satisfies ReadonlyArray<keyof Resources>
+export type Namespace = (typeof namespaces)[number]
+
+const namespacesInFileName = namespaces.map((ns) => kebabCase(ns))
+export type NamespaceInFileName = (typeof namespacesInFileName)[number]

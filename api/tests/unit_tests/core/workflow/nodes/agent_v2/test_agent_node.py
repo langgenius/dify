@@ -9,10 +9,15 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
+    DIFY_AGENT_OUTPUT_LAYER_ID,
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
+    RunFailedEvent,
+    RunFailedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -21,6 +26,7 @@ from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
@@ -46,7 +52,13 @@ from core.workflow.nodes.agent_v2.session_store import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    NodeExecutionType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import StreamCompletedEvent
@@ -62,11 +74,12 @@ from models.agent_config_entities import (
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
-class FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        assert provider_name == "openai"
-        assert model_name == "gpt-test"
-        return {"api_key": "secret-key"}
+@pytest.fixture(autouse=True)
+def _stub_model_context_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
+        lambda **_kwargs: None,
+    )
 
 
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
@@ -130,7 +143,7 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
                 {
                     "workflow_prompt": "Use the previous output.",
                     "previous_node_output_refs": [{"node_id": "previous-node", "output": "text"}],
-                    "declared_outputs": [{"name": "text", "type": "string"}],
+                    "declared_outputs": [],
                 }
             ),
         )
@@ -204,6 +217,25 @@ class FakeSessionStore:
         self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
 
 
+class ExplodingSessionStore(FakeSessionStore):
+    def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
+        super().__init__(snapshot=snapshot)
+        self.save_attempts: list[CompositorSessionSnapshot | None] = []
+
+    def save_active_snapshot(
+        self,
+        *,
+        scope: WorkflowAgentSessionScope,
+        binding_id: str,
+        snapshot: CompositorSessionSnapshot | None,
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
+    ) -> None:
+        del scope, binding_id, pending_form_id, pending_tool_call_id
+        self.save_attempts.append(snapshot)
+        raise RuntimeError("simulated DB failure")
+
+
 class FileOutputBackendClient(FakeAgentBackendRunClient):
     output_payload: dict[str, object]
 
@@ -224,6 +256,24 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
                 created_at=_FIXED_TIME,
                 data=RunSucceededEventData(
                     output=self.output_payload,
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
+class PlainTextOutputBackendClient(FakeAgentBackendRunClient):
+    def _events(self, run_id: str):
+        from clients.agent_backend.fake_client import _FIXED_TIME
+
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+            RunSucceededEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=_FIXED_TIME,
+                data=RunSucceededEventData(
+                    output="hello agent",
                     session_snapshot=CompositorSessionSnapshot(layers=[]),
                 ),
             ),
@@ -258,6 +308,7 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def __init__(self) -> None:
         super().__init__()
         self.cancel_requests: list[CancelRunRequest | None] = []
+        self.cancel_after: list[str | None] = []
 
     def stream_events(
         self,
@@ -273,6 +324,50 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancel_requests.append(request)
         return CancelRunResponse(run_id=run_id, status="cancelled")
+
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        self.cancel_after.append(after)
+        return super().cancel_run_and_wait(run_id, request=request, after=after)
+
+
+class FailingAfterStartedStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        yield RunStartedEvent(id="cursor-1", run_id=run_id)
+        raise AgentBackendStreamError("stream failed after started")
+
+
+class TerminalWithoutSnapshotBackendClient(FakeAgentBackendRunClient):
+    def __init__(self, *, terminal_type: str) -> None:
+        super().__init__()
+        self.terminal_type = terminal_type
+
+    def _events(self, run_id: str):
+        if self.terminal_type == "failed":
+            terminal: RunEvent = RunFailedEvent(
+                id="2-0",
+                run_id=run_id,
+                data=RunFailedEventData(error="failed without snapshot"),
+            )
+        else:
+            terminal = RunCancelledEvent(
+                id="2-0",
+                run_id=run_id,
+                data=RunCancelledEventData(reason="cancelled without snapshot"),
+            )
+        return (RunStartedEvent(id="1-0", run_id=run_id), terminal)
 
 
 class EmptyStreamBackendClient(FailingStreamBackendClient):
@@ -315,6 +410,7 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -350,7 +446,18 @@ def _node(
 
     node = DifyAgentNode(
         node_id="agent-node",
-        data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
+        data=DifyAgentNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.AGENT,
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "agent_output_routes": binding_resolver.binding.node_job_config.output_routes.model_dump(),
+                "error_strategy": error_strategy,
+                "default_value": [{"key": "text", "type": "string", "value": "fallback"}]
+                if error_strategy == ErrorStrategy.DEFAULT_VALUE
+                else [],
+            }
+        ),
         graph_init_params=graph_init_params,
         graph_runtime_state=cast(
             GraphRuntimeState,
@@ -360,8 +467,7 @@ def _node(
             ),
         ),
         binding_resolver=binding_resolver,
-        runtime_request_builder=runtime_request_builder
-        or WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
+        runtime_request_builder=runtime_request_builder or WorkflowAgentRuntimeRequestBuilder(),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
@@ -391,7 +497,7 @@ def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_
 
 
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
-    events = list(_node()._run())
+    events = list(_node(agent_backend_client=PlainTextOutputBackendClient())._run())
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
@@ -402,7 +508,51 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
-    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+    assert "credentials" not in layers["llm"]["config"]
+    assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
+    assert "output_type_check" not in agent_log
+
+
+def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=FileOutputBackendClient(
+                output_payload={"text": "hello agent", "summary": "Short summary"}
+            ),
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
+    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert agent_log["output_type_check"] == {
+        "passed": True,
+        "results": [
+            {
+                "name": "summary",
+                "type": "string",
+                "status": "ready",
+                "reason": None,
+            }
+        ],
+    }
+
+
+def test_agent_node_structured_output_type_failure_stops_the_node():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=FileOutputBackendClient(output_payload={"summary": 42}),
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "output_type_check_failed"
+    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert agent_log["output_failure_decision"] == "fail_node"
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
@@ -447,6 +597,7 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert store.existing_scope_lookups[0]["node_execution_id"] == node.execution_id
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
+    assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
 
 
 def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
@@ -466,7 +617,7 @@ def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() ->
 
 def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder() -> None:
     store = FakeSessionStore()
-    request_builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
+    request_builder = WorkflowAgentRuntimeRequestBuilder()
     node = _node(session_store=store, runtime_request_builder=request_builder)
     execution_id = node.execution_id
 
@@ -599,13 +750,15 @@ def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_map
 
 
 def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED)._run())
+    store = FakeSessionStore()
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
+    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
 
 
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
@@ -634,12 +787,7 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     ``session_snapshot_persist_error`` in the agent_backend metadata so the
     incident is observable from the workflow_node_executions record."""
 
-    class _ExplodingSessionStore(FakeSessionStore):
-        def save_active_snapshot(self, **kwargs):  # type: ignore[override]
-            del kwargs
-            raise RuntimeError("simulated DB failure")
-
-    store = _ExplodingSessionStore()
+    store = ExplodingSessionStore()
     events = list(_node(session_store=store)._run())
 
     assert len(events) == 1
@@ -648,6 +796,46 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
     assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+
+
+@pytest.mark.parametrize("failure_kind", ["backend", "transport"])
+def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kind: str) -> None:
+    store = ExplodingSessionStore()
+    client = (
+        FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
+        if failure_kind == "backend"
+        else FailingStreamBackendClient()
+    )
+
+    events = list(_node(agent_backend_client=client, session_store=store)._run())
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    if failure_kind == "backend":
+        assert (result.error, result.error_type) == ("fake failure", "unit_test")
+    else:
+        assert result.error == "stream reconnect attempts exhausted"
+        assert result.error_type == "agent_backend_stream_error"
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["session_snapshot_persisted"] is False
+    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+    assert store.save_attempts == [CompositorSessionSnapshot(layers=[])]
+
+
+@pytest.mark.parametrize("terminal_type", ["failed", "cancelled"])
+def test_agent_node_terminal_without_snapshot_preserves_prior_session_without_write(terminal_type: str) -> None:
+    store = FakeSessionStore()
+
+    events = list(
+        _node(
+            agent_backend_client=TerminalWithoutSnapshotBackendClient(terminal_type=terminal_type),
+            session_store=store,
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert store.saved == []
 
 
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
@@ -817,12 +1005,29 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     assert len(client.cancel_requests) == 1
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() -> None:
+    client = FailingAfterStartedStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
+    assert failure is not None
+    assert failure.node_run_result.error == "stream failed after started"
+    assert client.cancel_after == ["cursor-1"]
 
 
 def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
@@ -836,7 +1041,7 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
@@ -853,7 +1058,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
     assert failure.node_run_result.error == "unexpected stream failure"
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
@@ -875,16 +1080,18 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
 
     assert terminal is None
     assert failure is not None
+    assert failure.node_run_result.error == "stream reconnect attempts exhausted"
+    assert failure.node_run_result.error_type == "agent_backend_stream_error"
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "workflow_graph_aborted"
-    assert "Failed to cancel Workflow Agent backend run" in caplog.text
+    assert "Failed to finish cancelling Workflow Agent backend run" in caplog.text
 
 
 def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
     client = FakeAgentBackendRunClient()
     node = _node(agent_backend_client=client)
-    node._agent_backend_client.cancel_run = MagicMock(  # type: ignore[method-assign]
-        return_value=CancelRunResponse(run_id="run-1", status="cancelled")
+    node._agent_backend_client.cancel_run_and_wait = MagicMock(  # type: ignore[method-assign]
+        return_value=RunCancelledEvent(run_id="run-1")
     )
     node._event_adapter.adapt = MagicMock(  # type: ignore[method-assign]
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
@@ -903,7 +1110,7 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
     )
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
-    node._agent_backend_client.cancel_run.assert_called_once()
+    node._agent_backend_client.cancel_run_and_wait.assert_called_once()
 
 
 def test_agent_node_records_stream_usage_metadata():
@@ -923,3 +1130,224 @@ def test_agent_node_records_stream_usage_metadata():
     assert agent_backend["last_stream_event_id"] == "1-1"
     assert agent_backend["last_stream_event_kind"] == "model_response"
     assert agent_backend["usage"] == {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}
+
+
+@pytest.mark.parametrize(
+    ("enabled", "count", "output", "expected_handle"),
+    [
+        (False, 2, "hello", "source"),
+        (True, 2, {"text": "hello", "switch": "route-1"}, "route-1"),
+    ],
+)
+def test_agent_node_selects_the_configured_success_exit(enabled, count, output, expected_handle):
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": enabled,
+                "routes": [{"id": f"route-{i}", "name": "Condition"} for i in range(count)],
+            }
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.edge_source_handle == expected_handle
+    assert result.outputs == (output if isinstance(output, dict) else {"text": output})
+
+
+@pytest.mark.parametrize(
+    ("enabled", "error_strategy", "expected_execution_type"),
+    [
+        (False, None, NodeExecutionType.EXECUTABLE),
+        (True, None, NodeExecutionType.BRANCH),
+        (False, ErrorStrategy.DEFAULT_VALUE, NodeExecutionType.EXECUTABLE),
+        (True, ErrorStrategy.FAIL_BRANCH, NodeExecutionType.BRANCH),
+        (True, ErrorStrategy.DEFAULT_VALUE, None),
+    ],
+)
+def test_agent_routes_initialize_through_workflow_node_factory(
+    enabled, error_strategy, expected_execution_type, config_overrides
+):
+    from core.workflow.node_factory import DifyNodeFactory
+
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    template = _node()
+    factory = DifyNodeFactory(template.graph_init_params, template.graph_runtime_state)
+    node_data = template.node_data.model_dump(mode="python", by_alias=True)
+    node_data.update(
+        agent_output_routes={
+            "enabled": enabled,
+            "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+        },
+        error_strategy=error_strategy,
+    )
+    # Exercise the production factory, which serializes data before construction.
+    node_config = {"id": "agent-node", "data": node_data}
+    if expected_execution_type is None:
+        with pytest.raises(ValueError, match="default-value"):
+            factory.create_node(node_config)
+        return
+
+    node = factory.create_node(node_config)
+    assert isinstance(node, DifyAgentNode)
+    assert node.execution_type == expected_execution_type
+    assert node.node_data.agent_output_routes.enabled is enabled
+
+
+def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches():
+    from graphon.enums import NodeState
+    from graphon.graph.edge import Edge
+    from graphon.graph.graph import Graph
+    from graphon.graph_engine.graph_state_manager import GraphStateManager
+    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
+    from graphon.graph_engine.graph_traversal.skip_propagator import SkipPropagator
+    from graphon.graph_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
+    from graphon.nodes.end.end_node import EndNode
+    from graphon.nodes.end.entities import EndNodeData
+
+    outputs = iter([{"score": "invalid", "switch": "a"}, {"score": 42, "switch": "b"}])
+
+    class RetryingBackendClient(FileOutputBackendClient):
+        def _events(self, run_id: str):
+            self.output_payload = next(outputs)
+            return super()._events(run_id)
+
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "score",
+                    "type": "number",
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+            },
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=RetryingBackendClient(output_payload={}))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["score"] == 42
+
+    edges = {
+        target: Edge(id=target, tail="agent-node", head=target, source_handle=handle)
+        for target, handle in [("a-end", "a"), ("b-end-1", "b"), ("b-end-2", "b")]
+    }
+    leaves = {
+        target: EndNode(
+            node_id=target,
+            data=EndNodeData(title=target, outputs=[]),
+            graph_init_params=node.graph_init_params,
+            graph_runtime_state=node.graph_runtime_state,
+        )
+        for target in edges
+    }
+    graph = Graph(
+        root_node=node,
+        nodes={"agent-node": node, **leaves},
+        edges=edges,
+        out_edges={"agent-node": list(edges)},
+        in_edges={target: [target] for target in edges},
+    )
+    state = GraphStateManager(graph, node.graph_runtime_state, "root")
+    ready, traversed = EdgeProcessor(graph, state, SkipPropagator(graph, state)).process_node_success(
+        "agent-node", result.edge_source_handle
+    )
+    assert ready == ["b-end-1", "b-end-2"]
+    assert [event.edge_id for event in traversed if isinstance(event, GraphEdgeTakenEvent)] == ["b-end-1", "b-end-2"]
+    assert [event.edge_id for event in traversed if isinstance(event, GraphEdgeSkippedEvent)] == ["a-end"]
+    assert leaves["a-end"].state == NodeState.SKIPPED
+
+
+@pytest.mark.parametrize("output", ["plain text", {}, {"switch": None}, {"switch": 1}, {"switch": "unknown"}])
+def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(output):
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+            }
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "output_route_selection_failed"
+
+
+@pytest.mark.parametrize(
+    ("enabled", "count", "expected"),
+    [
+        (False, 2, {}),
+        (
+            True,
+            2,
+            {
+                "agent-node.previous.report": ["previous", "report"],
+                "agent-node.env.threshold": ["env", "threshold"],
+            },
+        ),
+    ],
+)
+def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enabled, count, expected):
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_output_routes": {
+                "enabled": enabled,
+                "routes": [{"id": str(i), "name": "{{#previous.report#}} {{#env.threshold#}}"} for i in range(count)],
+            }
+        },
+    )
+    assert mapping == expected
+
+
+def test_disabled_routes_continue_through_graphon_default_values():
+    from graphon.graph.edge import Edge
+    from graphon.graph.graph import Graph
+    from graphon.graph_engine.error_handler import ErrorHandler
+    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
+    from graphon.graph_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
+    from graphon.node_events import NodeRunResult
+
+    node = _node(error_strategy=ErrorStrategy.DEFAULT_VALUE)
+    edges = {target: Edge(id=target, tail="agent-node", head=target) for target in ["next-a", "next-b"]}
+    graph = Graph(root_node=node, nodes={"agent-node": node}, edges=edges, out_edges={"agent-node": list(edges)})
+    failure = NodeRunFailedEvent(
+        id="execution",
+        node_id="agent-node",
+        node_type=BuiltinNodeTypes.AGENT,
+        start_at=datetime.now(UTC),
+        finished_at=datetime.now(UTC),
+        error="backend failed",
+        node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error="backend failed"),
+    )
+    result = ErrorHandler(graph, MagicMock()).handle_node_failure(frame_id="root", event=failure)
+    assert isinstance(result, NodeRunExceptionEvent)
+    assert result.node_run_result.outputs["text"] == "fallback"
+    ready, traversed = EdgeProcessor(graph, MagicMock(), MagicMock()).process_node_success(
+        "agent-node", result.node_run_result.edge_source_handle
+    )
+    assert ready == ["next-a", "next-b"]
+    assert [event.edge_id for event in traversed] == ["next-a", "next-b"]
+
+
+def test_enabled_routes_reject_default_value_before_execution():
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="default-value"):
+        _node(binding_resolver=resolver, error_strategy=ErrorStrategy.DEFAULT_VALUE)

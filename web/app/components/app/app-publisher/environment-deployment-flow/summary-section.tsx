@@ -1,7 +1,10 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
-import { DeploymentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
+import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -31,12 +34,15 @@ export function PublisherEnvironmentSummarySection({
   onGoToPublish: () => void
   onShowAllVersions: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments', 'workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version
-  const isDeploying = deploymentState?.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING
-  const deployingVersion = deploymentState?.latest_operation?.target_version
+  const latestOperation = deploymentState?.latest_operation
+  const isDeploying =
+    latestOperation?.type === DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY &&
+    latestOperation.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS
+  const deployingVersion = latestOperation?.target_version
   const deployingVersionName = deployingVersion
     ? getWorkflowVersionName(
         deployingVersion,
@@ -47,15 +53,10 @@ export function PublisherEnvironmentSummarySection({
   const versionsBehindLabel =
     versionsBehind === undefined
       ? undefined
-      : versionsBehind === 1
-        ? t(($) => $['studio.versionsBehind_one'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
-        : t(($) => $['studio.versionsBehind_other'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
+      : t(($) => $['studio.versionsBehind'], {
+          ns: 'deployments',
+          count: versionsBehind,
+        })
   const isLatestVersion = Boolean(
     deployedVersion &&
     (latestVersion
@@ -148,7 +149,7 @@ export function PublisherEnvironmentSummarySection({
                     </span>
                   }
                 />
-                <TooltipContent role="tooltip">{versionsBehindLabel}</TooltipContent>
+                <TooltipContent>{versionsBehindLabel}</TooltipContent>
               </Tooltip>
             )}
             {isLatestVersion && (

@@ -10,6 +10,7 @@ from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
     ShellCommandResult,
+    ShellExecutionMode,
 )
 from dify_agent.layers.shell.output_text import utf8_prefix
 
@@ -26,6 +27,7 @@ async def execute_complete_with_commands(
     env: dict[str, str] | None,
     timeout: float,
     max_output_bytes: int,
+    mode: ShellExecutionMode,
 ) -> CompleteShellCommandResult:
     """Run a command to completion with bounded output and deterministic cleanup."""
 
@@ -36,7 +38,13 @@ async def execute_complete_with_commands(
     captured_bytes = 0
     incomplete_reason: Literal["output_limit", "timeout"] | None = None
     try:
-        result = await commands.run(script, cwd=cwd, env=env, timeout=_remaining_time(deadline))
+        result = await commands.run(
+            script,
+            cwd=cwd,
+            env=env,
+            timeout=_remaining_time(deadline),
+            mode=mode,
+        )
         job_id = result.job_id
         while True:
             remaining_bytes = max(max_output_bytes - captured_bytes, 0)

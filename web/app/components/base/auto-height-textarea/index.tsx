@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { sleep } from '@/utils'
 
 type IProps = {
+  'aria-label'?: string
   placeholder?: string
   value: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
@@ -17,6 +18,7 @@ type IProps = {
 }
 
 const AutoHeightTextarea = ({
+  'aria-label': ariaLabel,
   ref: outerRef,
   value,
   onChange,
@@ -74,6 +76,7 @@ const AutoHeightTextarea = ({
       </div>
       <textarea
         ref={ref}
+        aria-label={ariaLabel}
         autoFocus={autoFocus}
         className={cn(className, 'absolute inset-0 resize-none overflow-auto')}
         style={{

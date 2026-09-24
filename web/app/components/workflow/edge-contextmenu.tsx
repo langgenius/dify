@@ -6,7 +6,7 @@ import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
 export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const contextMenuTarget = useStore((s) => s.contextMenuTarget)
   const edgeId = contextMenuTarget?.type === 'edge' ? contextMenuTarget.edgeId : undefined
   const { handleEdgeDeleteById } = useEdgesInteractions()
@@ -16,7 +16,7 @@ export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
   if (!edgeId || !currentEdgeExists) return null
 
   return (
-    <ContextMenuContent popupClassName="rounded-lg" sideOffset={4}>
+    <ContextMenuContent className="rounded-lg" sideOffset={4}>
       <ContextMenuItem
         variant="destructive"
         className="justify-between gap-4 px-3"

@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Turnstile from '../turnstile'
 
 type ScriptProps = {
@@ -88,7 +88,12 @@ describe('Turnstile', () => {
 
     render(
       <StrictMode>
-        <Turnstile siteKey="site-key" onVerify={vi.fn()} onInvalidate={vi.fn()} />
+        <Turnstile
+          action="signin_code"
+          siteKey="site-key"
+          onVerify={vi.fn()}
+          onInvalidate={vi.fn()}
+        />
       </StrictMode>,
     )
 
@@ -101,6 +106,7 @@ describe('Turnstile', () => {
     const onError = vi.fn()
     render(
       <Turnstile
+        action="signin_code"
         siteKey="site-key"
         onVerify={vi.fn()}
         onInvalidate={onInvalidate}
@@ -157,6 +163,7 @@ describe('Turnstile', () => {
     })
     render(
       <Turnstile
+        action="signin_code"
         siteKey="site-key"
         onVerify={vi.fn()}
         onInvalidate={onInvalidate}

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderHook } from '@/test/console/render'
 import useWorkspacePluginInstallPermission from '../use-workspace-plugin-install-permission'

@@ -1,11 +1,11 @@
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
 import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
@@ -14,7 +14,7 @@ import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
 let appMode = 'workflow'
-let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
   builtIn: vi.fn(),
   deployed: vi.fn(),
@@ -49,7 +49,13 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
-  BuiltInAccessPoints: (props: { appId: string; highlightedAccessPoint?: AccessPointType }) => {
+  BuiltInAccessPoints: (props: {
+    appId: string
+    canDeploy: boolean
+    canManageAccessPoint: boolean
+    canReleaseAndVersion: boolean
+    highlightedAccessPoint?: AccessPointType
+  }) => {
     accessPointMocks.builtIn(props)
     return null
   },
@@ -58,8 +64,7 @@ vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
 vi.mock('@/app/components/app/access-point/deployed-environment-access-points', () => ({
   DeployedEnvironmentAccessPoints: (props: {
     appId: string
-    canEdit: boolean
-    canManage: boolean
+    canManageAccessPoint: boolean
     environmentId: string
     highlightedAccessPoint?: AccessPointType
   }) => {
@@ -130,7 +135,7 @@ describe('AccessPoint', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appMode = 'workflow'
-    appPermissionKeys = [AppACLPermission.Deploy]
+    appPermissionKeys = [AppACLPermission.AccessPointView]
   })
 
   it('renders Built-in and only in-use environments from the API', () => {
@@ -210,7 +215,7 @@ describe('AccessPoint', () => {
     })
   })
 
-  it('shows the selected deployed environment with deploy permissions', () => {
+  it('shows the selected deployed environment with Access Point view permission', () => {
     renderAccessPoint({
       searchParams: '?environment=canary',
     })
@@ -218,8 +223,7 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).toHaveBeenCalledWith(
       expect.objectContaining({
         appId: 'app-1',
-        canEdit: false,
-        canManage: true,
+        canManageAccessPoint: false,
         environmentId: 'canary',
       }),
     )
@@ -249,7 +253,7 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
 
-  it('falls back to built-in access points without app deploy ACL permission', () => {
+  it('hides environment tabs without Access Point view permission', () => {
     appPermissionKeys = []
 
     renderAccessPoint({
@@ -259,5 +263,32 @@ describe('AccessPoint', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+  })
+
+  it('does not grant Access Point view from management permission', () => {
+    appPermissionKeys = [AppACLPermission.AccessPointManage]
+
+    renderAccessPoint({ searchParams: '?environment=canary' })
+
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canManageAccessPoint: true,
+      }),
+    )
+    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+  })
+
+  it('does not grant Access Point management from release permission', () => {
+    appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.ReleaseAndVersion]
+
+    renderAccessPoint({ searchParams: '?environment=canary' })
+
+    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canManageAccessPoint: false,
+        environmentId: 'canary',
+      }),
+    )
   })
 })

@@ -63,7 +63,7 @@ export function AppListHeader({
   onOpenTagManagement,
   showCreateButton,
 }: AppListHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)

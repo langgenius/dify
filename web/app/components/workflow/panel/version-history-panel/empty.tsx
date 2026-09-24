@@ -9,7 +9,7 @@ type EmptyProps = {
 }
 
 const Empty: FC<EmptyProps> = ({ onResetFilter }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex h-5/6 w-full flex-col justify-center gap-y-2">
@@ -20,7 +20,7 @@ const Empty: FC<EmptyProps> = ({ onResetFilter }) => {
         {t(($) => $['versionHistory.filter.empty'], { ns: 'workflow' })}
       </div>
       <div className="flex justify-center">
-        <Button nativeButton={false} size="small" onClick={onResetFilter}>
+        <Button size="small" onClick={onResetFilter}>
           {t(($) => $['versionHistory.filter.reset'], { ns: 'workflow' })}
         </Button>
       </div>

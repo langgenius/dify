@@ -1,9 +1,10 @@
 """Event sink contracts used by the runner and storage adapters.
 
-Non-terminal events remain append-only. Terminal events use ``finalize_run`` so
-the event and matching run status are committed as one compare-and-set
-transition. Tests can use ``InMemoryRunEventSink`` without Redis; production
-storage implements the same contract with Redis streams in
+Non-terminal events remain append-only. Successful and failed terminal events
+use ``finalize_run`` so the event and matching run status are committed as one
+compare-and-set transition. Cancellation has a dedicated intent-aware finalizer.
+Tests can use ``InMemoryRunEventSink`` without Redis; production storage
+implements the same contract with Redis streams in
 ``dify_agent.storage.redis_run_store``.
 """
 
@@ -21,8 +22,6 @@ from dify_agent.protocol.schemas import (
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
-    RunCancelledEvent,
-    RunCancelledEventData,
     RunFailedEvent,
     RunFailedEventData,
     RunFailureType,
@@ -35,7 +34,7 @@ from dify_agent.protocol.schemas import (
 
 
 _UNSET = object()
-TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent | RunCancelledEvent
+TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent
 NonTerminalRunEvent: TypeAlias = RunStartedEvent | PydanticAIStreamRunEvent
 
 
@@ -105,8 +104,6 @@ def terminal_event_status_fields(
             return "succeeded", None, None
         case RunFailedEvent():
             return "failed", event.data.error, event.data.error_type
-        case RunCancelledEvent():
-            return "cancelled", event.data.message or event.data.reason, None
 
 
 async def emit_run_event(
@@ -188,29 +185,20 @@ async def emit_run_failed(
     error: str,
     error_type: RunFailureType | None = None,
     reason: str | None = None,
+    session_snapshot: CompositorSessionSnapshot | None = None,
+    usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""
     return await sink.finalize_run(
         RunFailedEvent(
             run_id=run_id,
-            data=RunFailedEventData(error=error, error_type=error_type, reason=reason),
-            created_at=utc_now(),
-        ),
-    )
-
-
-async def emit_run_cancelled(
-    sink: RunEventSink,
-    *,
-    run_id: str,
-    reason: str | None = None,
-    message: str | None = None,
-) -> RunFinalizationResult:
-    """Finalize a run with a cancelled terminal event."""
-    return await sink.finalize_run(
-        RunCancelledEvent(
-            run_id=run_id,
-            data=RunCancelledEventData(reason=reason, message=message),
+            data=RunFailedEventData(
+                error=error,
+                error_type=error_type,
+                reason=reason,
+                session_snapshot=session_snapshot,
+                usage=usage,
+            ),
             created_at=utc_now(),
         ),
     )
@@ -223,7 +211,6 @@ __all__ = [
     "RunFinalizationResult",
     "TerminalRunEvent",
     "emit_pydantic_ai_event",
-    "emit_run_cancelled",
     "emit_run_event",
     "emit_run_failed",
     "emit_run_started",

@@ -39,9 +39,10 @@ const mockState = vi.hoisted(() => ({
       fileUploadConfig: undefined as { image_file_size_limit?: number } | undefined,
     },
   },
-  mockProviderContext: {
-    textGenerationModelList: [] as Array<{
+  mockModelListResult: {
+    data: [] as Array<{
       provider: string
+      status: string
       models: Array<{
         model: string
         features?: string[]
@@ -156,23 +157,6 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    state,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    state?: string
-  }) => (
-    <button type="button" data-testid="action-button" data-state={state} {...props}>
-      {children}
-    </button>
-  ),
-  ActionButtonState: {
-    Active: 'active',
-  },
-}))
-
 vi.mock('@/app/components/base/agent-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="agent-log-modal">
@@ -226,8 +210,9 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockState.mockProviderContext,
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockState.mockModelListResult,
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -324,7 +309,6 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
   readonly: false,
   canTestAndRun: true,
   appId: 'app-id',
-  isAPIKeySet: true,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -471,7 +455,6 @@ const renderDebug = (
 ) => {
   const onSetting = vi.fn()
   const props: ComponentProps<typeof Debug> = {
-    isAPIKeySet: true,
     onSetting,
     inputs: {},
     modelParameterParams: {
@@ -516,10 +499,11 @@ describe('Debug', () => {
       text2speech: { enabled: false },
       file: { enabled: false, allowed_file_upload_methods: [], fileUploadConfig: undefined },
     }
-    mockState.mockProviderContext = {
-      textGenerationModelList: [
+    mockState.mockModelListResult = {
+      data: [
         {
           provider: 'openai',
+          status: 'active',
           models: [
             {
               model: 'vision-model',
@@ -542,9 +526,7 @@ describe('Debug', () => {
             model_id: '',
           },
         },
-        props: {
-          isAPIKeySet: false,
-        },
+        props: {},
       })
 
       expect(screen.getByText('appDebug.noModelProviderConfigured'))!.toBeInTheDocument()
@@ -563,9 +545,7 @@ describe('Debug', () => {
             model_id: '',
           },
         },
-        props: {
-          isAPIKeySet: true,
-        },
+        props: {},
       })
 
       expect(screen.getByText('appDebug.noModelSelected'))!.toBeInTheDocument()

@@ -1,4 +1,6 @@
-import type { MockedFunction } from 'vitest'
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
+import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -13,7 +15,7 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -53,9 +55,9 @@ const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 
-const mockUseModelList = vi.fn()
-const mockUseModelListAndDefaultModel = vi.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockModelListQuery = vi.fn()
+const mockModelListQueryAndDefaultModel = vi.fn()
+const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
 const mockUseCurrentProviderAndModel = vi.fn()
 const mockCheckShowMultiModalTip = vi.fn()
 
@@ -91,25 +93,17 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [],
-    textGenerationModelList: [],
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (...args: unknown[]) => mockUseModelList(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
+  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -251,7 +245,7 @@ describe('SettingsModal', () => {
         ],
       },
     } as ReturnType<typeof useMembers>)
-    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
+    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
           data: [
@@ -264,8 +258,8 @@ describe('SettingsModal', () => {
       }
       return { data: [{ provider: 'embed-provider', models: [{ model: 'embed-model' }] }] }
     })
-    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       defaultModel: null,
       currentModel: null,
     })
@@ -284,7 +278,7 @@ describe('SettingsModal', () => {
       await renderSettingsModal(dataset)
 
       // Assert
-      expect(screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')).toHaveValue(
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveValue(
         'Test Dataset',
       )
       expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue(
@@ -333,7 +327,7 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
@@ -417,7 +411,7 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
@@ -436,7 +430,7 @@ describe('SettingsModal', () => {
     it('should block save when reranking is enabled without model', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockUseModelList.mockReturnValue({ data: [] })
+      mockModelListQuery.mockReturnValue({ data: [] })
       const dataset = createDataset(
         {},
         createRetrievalConfig({
@@ -483,7 +477,7 @@ describe('SettingsModal', () => {
       // Act
       await renderSettingsModal(dataset)
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
       await user.clear(nameInput)
       await user.type(nameInput, 'Updated Internal Dataset')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -510,6 +504,87 @@ describe('SettingsModal', () => {
           name: 'Updated Internal Dataset',
           retrieval_model_dict: expect.objectContaining({
             reranking_enable: true,
+          }),
+        }),
+      )
+    })
+
+    it('should persist reranking_enable=true for hybrid search with a rerank model and a stale false flag', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const hybridRetrieval = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: {
+          reranking_provider_name: 'rerank-provider',
+          reranking_model_name: 'rerank-model',
+        },
+      })
+      const dataset = createDataset({
+        retrieval_model: hybridRetrieval,
+        retrieval_model_dict: hybridRetrieval,
+      })
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.hybrid,
+              reranking_enable: true,
+            }),
+          }),
+        }),
+      )
+    })
+
+    it('should keep reranking_enable=false for hybrid search using weighted score', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const hybridRetrieval = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.WeightedScore,
+        reranking_model: {
+          reranking_provider_name: 'rerank-provider',
+          reranking_model_name: 'rerank-model',
+        },
+        weights: {
+          vector_setting: {
+            vector_weight: 0.7,
+            embedding_provider_name: 'embed-provider',
+            embedding_model_name: 'embed-model',
+          },
+          keyword_setting: {
+            keyword_weight: 0.3,
+          },
+        },
+      } as Partial<RetrievalConfig>)
+      const dataset = createDataset({
+        retrieval_model: hybridRetrieval,
+        retrieval_model_dict: hybridRetrieval,
+      })
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              reranking_enable: false,
+            }),
           }),
         }),
       )
@@ -600,4 +675,23 @@ describe('SettingsModal', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const args = options.queryKey[1].input?.params?.model_type
+      if (!args) throw new Error('Missing model type in query')
+      return mockModelListQuery(args)
+    },
+  }
 })

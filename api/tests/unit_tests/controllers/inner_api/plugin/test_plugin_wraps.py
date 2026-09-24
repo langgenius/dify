@@ -22,8 +22,8 @@ from controllers.inner_api.plugin.wraps import (
 )
 from models.account import Tenant
 from models.base import TypeBase
-from models.enums import EndUserType
-from models.model import DefaultEndUserSessionID, EndUser
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
+from models.model import EndUser
 
 
 @pytest.fixture
@@ -201,7 +201,7 @@ class TestGetUser:
         _persist_end_user(
             sqlite_plugin_engine,
             user_id="default-user-id",
-            session_id=DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+            session_id=DEFAULT_END_USER_SESSION_ID,
             is_anonymous=True,
         )
 
@@ -209,7 +209,7 @@ class TestGetUser:
             result = get_user("tenant123", None)
 
         assert result.id == "default-user-id"
-        assert result.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        assert result.session_id == DEFAULT_END_USER_SESSION_ID
 
     def test_should_raise_error_on_database_exception(self, sqlite_plugin_engine: Engine, app: Flask):
         """Test raising ValueError when database operation fails"""
@@ -219,8 +219,11 @@ class TestGetUser:
 
         event.listen(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
         try:
-            with app.app_context(), pytest.raises(ValueError, match="user not found"):
+            with app.app_context(), pytest.raises(ValueError, match="user not found") as exc_info:
                 get_user("tenant123", "user123")
+            # PEP 3134: the re-raised ValueError must chain the underlying database error.
+            assert isinstance(exc_info.value.__cause__, RuntimeError)
+            assert str(exc_info.value.__cause__) == "Database error"
         finally:
             event.remove(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
 
@@ -298,7 +301,7 @@ class TestGetUserTenant:
         _persist_end_user(
             sqlite_plugin_engine,
             user_id="default-user-id",
-            session_id=DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+            session_id=DEFAULT_END_USER_SESSION_ID,
             is_anonymous=True,
         )
 
@@ -309,7 +312,7 @@ class TestGetUserTenant:
 
         assert result["tenant"].id == "tenant123"
         assert result["user"].id == "default-user-id"
-        assert result["user"].session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        assert result["user"].session_id == DEFAULT_END_USER_SESSION_ID
 
 
 class PluginTestPayload:
@@ -351,8 +354,11 @@ class TestPluginData:
 
         # Act & Assert - Malformed JSON triggers ValueError
         with app.test_request_context(data="not valid json", content_type="application/json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as exc_info:
                 protected_view()
+            # PEP 3134: the re-raised ValueError must chain the underlying JSON parse failure.
+            assert exc_info.value.__cause__ is not None
+            assert isinstance(exc_info.value.__cause__, Exception)
 
     def test_should_raise_error_on_invalid_payload(self, app: Flask):
         """Test that ValueError is raised when payload validation fails"""
@@ -369,8 +375,11 @@ class TestPluginData:
 
         # Act & Assert
         with app.test_request_context(json={"data": "test"}):
-            with pytest.raises(ValueError, match="invalid payload"):
+            with pytest.raises(ValueError, match="invalid payload") as exc_info:
                 protected_view()
+            # PEP 3134: the re-raised ValueError must chain the original Exception from model_validate.
+            assert exc_info.value.__cause__ is not None
+            assert str(exc_info.value.__cause__) == "Validation failed"
 
     def test_should_work_as_parameterized_decorator(self, app: Flask):
         """Test that decorator works when used with parentheses"""

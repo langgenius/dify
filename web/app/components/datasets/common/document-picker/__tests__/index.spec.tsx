@@ -211,6 +211,8 @@ describe('DocumentPicker', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Document 1' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
+    expect(
+      (await screen.findByText('common.noData')).closest('[role="status"]'),
+    ).toBeInTheDocument()
   })
 })

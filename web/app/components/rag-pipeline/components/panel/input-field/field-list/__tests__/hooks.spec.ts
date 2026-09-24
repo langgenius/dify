@@ -1,7 +1,7 @@
 import type { InputVar } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useFieldList } from '../hooks'
 
 const mockToggleInputFieldEditPanel = vi.fn()
@@ -23,7 +23,7 @@ vi.mock('../../../../../hooks/use-pipeline', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: unknown[]) => mockToastNotify(...args),
   },

@@ -18,6 +18,31 @@ on this layer to reach the plugin daemon.
 | `invoke_from` | `Literal[...]` | Dify caller category recorded for observability and correlation. |
 | `app_id` / `workflow_id` / `workflow_run_id` / `node_id` / `node_execution_id` / `conversation_id` / `agent_id` / `agent_config_version_id` / `trace_id` | `str \| None` | Optional Dify-owned execution identifiers forwarded with the run. |
 
+## Trajectory span attributes
+
+When Agent trajectory export is enabled, this layer's fields are attached to every
+trajectory span of the run. The names follow the Dify Enterprise Data Push
+dictionary so a trajectory span joins the platform's own workflow and node signals
+on the same keys. Fields you leave unset are omitted, so an Agent App turn carries
+`dify.conversation.id` while a workflow Agent node carries the workflow keys.
+
+| Config field | Span attribute |
+| --- | --- |
+| `tenant_id` | `dify.tenant_id` |
+| `app_id` | `dify.app_id` |
+| `agent_id` | `dify.agent_id` |
+| `user_id` | `gen_ai.user.id` |
+| `invoke_from` | `dify.invoke_from` |
+| `conversation_id` | `dify.conversation.id` |
+| `workflow_id` | `dify.workflow.id` |
+| `workflow_run_id` | `dify.workflow.run_id` |
+| `node_id` | `dify.node.id` |
+| `node_execution_id` | `dify.node.execution_id` |
+| `trace_id` | `dify.trace_id` |
+
+`app_id` is the app the run was invoked through, so a workflow Agent node reports
+the workflow's own app rather than the Agent's.
+
 The execution-context layer type id is `dify.execution_context`.
 
 ## Basic usage

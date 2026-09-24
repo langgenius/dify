@@ -1,7 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChildSegmentDetail from '../child-segment-detail'
+
+vi.mock('../../context', () => ({
+  useDocumentContext: (selector: (state: { canEdit: boolean }) => unknown) =>
+    selector({ canEdit: true }),
+}))
 
 // Mock segment list context
 let mockFullScreen = false

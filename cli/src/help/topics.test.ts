@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { ENV_REGISTRY } from '@/env/registry'
 import { findTopic, TOPICS } from './topics'
 
@@ -40,10 +40,12 @@ describe('account topic', () => {
 describe('agent topic', () => {
   it('covers output, exit codes, auth, errors and HITL', () => {
     const out = render('agent')
-    expect(out).toContain('-o json')
     expect(out).toContain('EXIT CODES')
     expect(out).toContain('DIFY_TOKEN')
-    expect(out).toContain('difyctl help -o json')
+    expect(out).toContain('difyctl help <path> -o json')
+    expect(out).toContain('difyctl help -o json --compact')
+    expect(out).toMatch(/difyctl help -o json\s+full command tree/)
+    expect(out).toContain('difyctl get app -o json')
     expect(out).toContain('HUMAN-IN-THE-LOOP')
   })
 })

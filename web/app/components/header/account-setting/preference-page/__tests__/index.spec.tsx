@@ -1,10 +1,9 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { languages } from '@/i18n-config/language'
-import { updateUserProfile } from '@/service/common'
+import { AppToastHost } from '@/app/notifications/host'
+import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { timezones } from '@/utils/timezone'
@@ -26,19 +25,14 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 
-vi.mock('@/service/common', () => ({
-  updateUserProfile: vi.fn(),
-}))
-
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(),
 }))
-
-const updateUserProfileMock = vi.mocked(updateUserProfile)
 
 const createUserProfile = (
   overrides: Partial<GetAccountProfileResponse> = {},
@@ -59,7 +53,7 @@ const renderPage = () => {
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
-      <ToastHost />
+      <AppToastHost />
     </QueryClientProvider>,
   )
 }
@@ -149,7 +143,6 @@ describe('PreferencePage - Interactions', () => {
   it('should show success toast when language updates', async () => {
     const chinese = getLanguageOption('zh-Hans')
     mockUserProfile = createUserProfile({ interface_language: 'en-US' })
-    updateUserProfileMock.mockResolvedValueOnce({ result: 'success' })
 
     renderPage()
 
@@ -157,16 +150,17 @@ describe('PreferencePage - Interactions', () => {
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     await waitFor(() => {
-      expect(updateUserProfileMock).toHaveBeenCalledWith({
-        url: '/account/interface-language',
-        body: { interface_language: chinese.value },
-      })
+      expect(mockRequest).toHaveBeenCalled()
     })
+    expect(mockRequest.mock.calls[0]?.[0]).toEqual(expect.stringContaining('/account/profile'))
+    const request = mockRequest.mock.calls[0]?.[2]?.request as Request
+    expect(request.method).toBe('PATCH')
+    await expect(request.json()).resolves.toEqual({ interface_language: chinese.value })
   })
 
   it('should show error toast when language update fails', async () => {
     const chinese = getLanguageOption('zh-Hans')
-    updateUserProfileMock.mockRejectedValueOnce(new Error('Update failed'))
+    mockRequest.mockRejectedValueOnce(new Error('Update failed'))
 
     renderPage()
 
@@ -186,9 +180,9 @@ describe('PreferencePage - Interactions', () => {
     await waitFor(() => {
       expect(mockRequest).toHaveBeenCalled()
     })
-    expect(mockRequest.mock.calls[0]?.[0]).toEqual(expect.stringContaining('/account/timezone'))
+    expect(mockRequest.mock.calls[0]?.[0]).toEqual(expect.stringContaining('/account/profile'))
     const request = mockRequest.mock.calls[0]?.[2]?.request as Request
-    expect(request.method).toBe('POST')
+    expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ timezone: midwayTimezone.value })
   }, 15000)
 

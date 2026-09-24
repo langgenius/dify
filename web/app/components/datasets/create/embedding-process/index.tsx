@@ -1,16 +1,19 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import IndexingProgressItem from './indexing-progress-item'
@@ -32,13 +35,17 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
   isEmbedding,
   isCompleted,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
-    <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
+    <div
+      role="status"
+      aria-atomic="true"
+      className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary"
+    >
       {isEmbedding && (
         <>
-          <RiLoader2Fill className="size-4 animate-spin" />
+          <RiLoader2Fill aria-hidden="true" className="size-4 animate-spin" />
           <span>{t(($) => $['embedding.processing'], { ns: 'datasetDocuments' })}</span>
         </>
       )}
@@ -50,22 +57,30 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
 // Action buttons component
 const ActionButtons: FC<{
   apiReferenceUrl: string
-  onNavToDocuments: () => void
-}> = ({ apiReferenceUrl, onNavToDocuments }) => {
-  const { t } = useTranslation()
+  documentsHref: string
+  onNavigateToDocuments: () => void
+}> = ({ apiReferenceUrl, documentsHref, onNavigateToDocuments }) => {
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
-    <div className="mt-6 flex items-center gap-x-2 py-2">
-      <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-        <Button className="w-fit">
-          <RiTerminalBoxLine className="size-4" />
-          <span>Access the API</span>
-        </Button>
+    <div className="mt-6 flex flex-wrap items-center gap-2 py-2">
+      <Link
+        href={apiReferenceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants(), 'w-fit')}
+      >
+        <RiTerminalBoxLine className="size-4" />
+        <span>Access the API</span>
       </Link>
-      <Button className="w-fit" variant="primary" onClick={onNavToDocuments}>
+      <Link
+        href={documentsHref}
+        className={cn(buttonVariants({ variant: 'primary' }), 'w-fit')}
+        onClick={onNavigateToDocuments}
+      >
         <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
         <RiArrowRightLine className="size-4 stroke-current stroke-1" />
-      </Button>
+      </Link>
     </div>
   )
 }
@@ -77,8 +92,13 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { enableBilling, plan } = useProviderContext()
-  const router = useRouter()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const invalidDocumentList = useInvalidDocumentList()
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -95,14 +115,12 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   // Document lookup utilities - memoized for performance
   const documentLookup = useMemo(() => createDocumentLookup(documents), [documents])
 
-  const handleNavToDocuments = () => {
-    invalidDocumentList()
-    router.push(`/datasets/${datasetId}/documents`)
-  }
+  const documentsHref = `/datasets/${datasetId}/documents`
 
-  const showUpgradeBanner = enableBilling && plan.type !== 'team'
+  const showUpgradeBanner =
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
   const showVectorSpaceUpgrade =
-    enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
   const vectorSpaceAdmissionError = statusList.find(
     (detail) => detail.error_code === 'vector_space_estimate_exceeded',
   )
@@ -131,12 +149,11 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
               name={documentLookup.getName(detail.id)}
               sourceType={documentLookup.getSourceType(detail.id)}
               notionIcon={documentLookup.getNotionIcon(detail.id)}
-              enableBilling={enableBilling}
             />
           ))}
         </div>
 
-        <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
 
         <RuleDetail
           sourceData={ruleDetail}
@@ -145,7 +162,11 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
         />
       </div>
 
-      <ActionButtons apiReferenceUrl={apiReferenceUrl} onNavToDocuments={handleNavToDocuments} />
+      <ActionButtons
+        apiReferenceUrl={apiReferenceUrl}
+        documentsHref={documentsHref}
+        onNavigateToDocuments={invalidDocumentList}
+      />
     </>
   )
 }

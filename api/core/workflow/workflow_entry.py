@@ -7,15 +7,22 @@ from uuid import uuid4
 from configs import dify_config
 from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.entities.app_invoke_entities import (
+    InvokeFrom,
+    UserFrom,
+    build_dify_run_context,
+)
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.credit_usage import CreditUsageAppType
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -65,7 +72,10 @@ def iter_dify_graph_engine_events(
     yield from filter_graph_events(
         engine.run(),
         context=GraphEventFilterContext.from_engine(engine),
-        filters=[response_stream_filter or ResponseStreamFilter()],
+        filters=[
+            HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
+            response_stream_filter or ResponseStreamFilter(),
+        ],
     )
 
 
@@ -215,7 +225,11 @@ class WorkflowEntry:
         if node_type in {BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION}:
             raise ValueError("Loop and Iteration nodes must use their engine-backed debug endpoints")
         node_version = str(node_config_data.version)
-        node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+        node_cls = resolve_workflow_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_config_data,
+        )
 
         # init graph context and runtime state
         run_context = build_dify_run_context(
@@ -224,6 +238,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -383,6 +398,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id="",

@@ -1,10 +1,28 @@
 from libs.exception import BaseHTTPException
 
 
-class ApiKeyAuthFailedError(BaseHTTPException):
-    error_code = "auth_failed"
-    description = "{message}"
-    code = 500
+class DataSourceApiKeyAuthProviderNotSupportedError(BaseHTTPException):
+    error_code = "unsupported_data_source_api_key_auth_provider"
+    description = "The data-source API-key authentication provider is not supported."
+    code = 400
+
+
+class InvalidDataSourceApiKeyAuthCredentialsRequestError(BaseHTTPException):
+    error_code = "invalid_data_source_api_key_auth_credentials"
+    description = "The data-source API-key authentication credentials are invalid."
+    code = 400
+
+
+class DataSourceApiKeyAuthCredentialsRejectedRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_credentials_rejected"
+    description = "The data-source provider rejected the API-key authentication credentials."
+    code = 400
+
+
+class DataSourceApiKeyAuthProviderUnavailableRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_provider_unavailable"
+    description = "The data-source API-key authentication provider is temporarily unavailable."
+    code = 502
 
 
 class InvalidEmailError(BaseHTTPException):
@@ -37,7 +55,7 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -47,7 +65,7 @@ class EmailRegisterRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -57,7 +75,7 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -67,7 +85,7 @@ class OwnerTransferRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -75,6 +93,12 @@ class EmailCodeError(BaseHTTPException):
     error_code = "email_code_error"
     description = "Email code is invalid or expired."
     code = 400
+
+
+class EmailCodeLoginServiceUnavailableError(BaseHTTPException):
+    error_code = "email_code_login_service_unavailable"
+    description = "Email code verification is temporarily unavailable. Please try again later."
+    code = 503
 
 
 class EmailOrPasswordMismatchError(BaseHTTPException):
@@ -113,7 +137,7 @@ class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -123,7 +147,7 @@ class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -149,6 +173,11 @@ class EmailAlreadyInUseError(BaseHTTPException):
     error_code = "email_already_in_use"
     description = "A user with this email already exists."
     code = 400
+
+
+class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):
+    error_code = "normalized_email_already_in_use"
+    description = "An account with an equivalent email address already exists."
 
 
 class OwnerTransferLimitError(BaseHTTPException):

@@ -9,17 +9,16 @@ marks only the legacy paths as deprecated.
 from datetime import datetime
 from enum import StrEnum
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.fields import SuccessResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
     model_validate,
@@ -38,6 +37,10 @@ from core.plugin.impl.exc import PluginPermissionDeniedError
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
+
+
+class EndpointMutationResponse(ResponseModel):
+    success: Literal[True] = Field(description="Always true on success. Failures are returned as HTTP errors.")
 
 
 class EndpointCreatePayload(BaseModel):
@@ -156,7 +159,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    SuccessResponse,
+    EndpointMutationResponse,
     EndpointProviderConfigOptionResponse,
     EndpointProviderConfigResponse,
     EndpointDeclarationResponse,
@@ -166,7 +169,7 @@ register_response_schema_models(
 )
 
 
-def _create_endpoint(tenant_id: str, user_id: str, req_data: EndpointCreatePayload) -> bool:
+def _create_endpoint(tenant_id: str, user_id: str, req_data: EndpointCreatePayload) -> Literal[True]:
     """Create a plugin endpoint for the injected workspace and user."""
     try:
         return EndpointService.create_endpoint(
@@ -180,7 +183,7 @@ def _create_endpoint(tenant_id: str, user_id: str, req_data: EndpointCreatePaylo
         raise ValueError(e.description) from e
 
 
-def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str, req_data: EndpointUpdatePayload) -> bool:
+def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str, req_data: EndpointUpdatePayload) -> Literal[True]:
     """Update a plugin endpoint identified by the canonical path parameter."""
     return EndpointService.update_endpoint(
         tenant_id=tenant_id,
@@ -191,7 +194,7 @@ def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str, req_data: E
     )
 
 
-def _legacy_update_endpoint(tenant_id: str, user_id: str, req_data: LegacyEndpointUpdatePayload) -> bool:
+def _legacy_update_endpoint(tenant_id: str, user_id: str, req_data: LegacyEndpointUpdatePayload) -> Literal[True]:
     return EndpointService.update_endpoint(
         tenant_id=tenant_id,
         user_id=user_id,
@@ -201,7 +204,7 @@ def _legacy_update_endpoint(tenant_id: str, user_id: str, req_data: LegacyEndpoi
     )
 
 
-def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> bool:
+def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
     """Delete a plugin endpoint identified by the canonical path parameter."""
     return EndpointService.delete_endpoint(
         tenant_id=tenant_id,
@@ -210,11 +213,11 @@ def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> bool:
     )
 
 
-def _delete_endpoint_from_payload(tenant_id: str, user_id: str, req_data: EndpointIdPayload) -> bool:
+def _delete_endpoint_from_payload(tenant_id: str, user_id: str, req_data: EndpointIdPayload) -> Literal[True]:
     return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=req_data.endpoint_id)
 
 
-def _set_endpoint_enabled(tenant_id: str, user_id: str, req_data: EndpointIdPayload, *, enabled: bool) -> bool:
+def _set_endpoint_enabled(tenant_id: str, user_id: str, req_data: EndpointIdPayload, *, enabled: bool) -> Literal[True]:
     action = EndpointService.enable_endpoint if enabled else EndpointService.disable_endpoint
     return action(tenant_id=tenant_id, user_id=user_id, endpoint_id=req_data.endpoint_id)
 
@@ -229,19 +232,19 @@ class EndpointCollectionApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointCreatePayload)
     def post(self, req_data: EndpointCreatePayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_create_endpoint(tenant_id=tenant_id, user_id=user_id, req_data=req_data)
         ).model_dump(mode="json")
 
@@ -261,19 +264,19 @@ class DeprecatedEndpointCreateApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointCreatePayload)
     def post(self, req_data: EndpointCreatePayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_create_endpoint(tenant_id=tenant_id, user_id=user_id, req_data=req_data)
         ).model_dump(mode="json")
 
@@ -290,6 +293,8 @@ class EndpointListApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -318,6 +323,8 @@ class EndpointListForSinglePluginApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -345,18 +352,18 @@ class EndpointItemApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def delete(self, tenant_id: str, user_id: str, id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
         ).model_dump(mode="json")
 
@@ -367,19 +374,19 @@ class EndpointItemApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointUpdatePayload)
     def patch(self, req_data: EndpointUpdatePayload, tenant_id: str, user_id: str, id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id, req_data=req_data)
         ).model_dump(mode="json")
 
@@ -400,19 +407,19 @@ class DeprecatedEndpointDeleteApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointIdPayload)
     def post(self, req_data: EndpointIdPayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_delete_endpoint_from_payload(tenant_id=tenant_id, user_id=user_id, req_data=req_data)
         ).model_dump(mode="json")
 
@@ -433,19 +440,19 @@ class DeprecatedEndpointUpdateApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(LegacyEndpointUpdatePayload)
     def post(self, req_data: LegacyEndpointUpdatePayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_legacy_update_endpoint(tenant_id=tenant_id, user_id=user_id, req_data=req_data)
         ).model_dump(mode="json")
 
@@ -458,19 +465,19 @@ class EndpointEnableApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint enabled successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointIdPayload)
     def post(self, req_data: EndpointIdPayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_set_endpoint_enabled(tenant_id=tenant_id, user_id=user_id, req_data=req_data, enabled=True)
         ).model_dump(mode="json")
 
@@ -483,18 +490,18 @@ class EndpointDisableApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint disabled successfully",
-        console_ns.models[SuccessResponse.__name__],
+        console_ns.models[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     @model_validate(EndpointIdPayload)
     def post(self, req_data: EndpointIdPayload, tenant_id: str, user_id: str):
-        return SuccessResponse(
+        return EndpointMutationResponse(
             success=_set_endpoint_enabled(tenant_id=tenant_id, user_id=user_id, req_data=req_data, enabled=False)
         ).model_dump(mode="json")

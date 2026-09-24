@@ -2,15 +2,13 @@
 
 import type { FC } from 'react'
 import type { ResourceVarInputs } from '../types'
-import type {
-  CredentialFormSchema,
-  FormOption,
-  FormTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormInputSchema } from './form-input-item.helpers'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -22,7 +20,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
-import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -44,7 +41,6 @@ import {
   getCheckboxListValue,
   getFilterVar,
   getFormInputState,
-  getNumberInputValue,
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
@@ -56,8 +52,9 @@ import FormInputTypeSwitch from './form-input-type-switch'
 
 type Props = Readonly<{
   readOnly: boolean
+  labelId?: string
   nodeId: string
-  schema: CredentialFormSchema
+  schema: FormInputSchema
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
@@ -67,6 +64,7 @@ type Props = Readonly<{
   onManageInputField?: () => void
   extraParams?: Record<string, unknown>
   providerType?: 'tool' | 'trigger'
+  staticSchema?: boolean
   disableVariableInsertion?: boolean
 }>
 
@@ -81,6 +79,7 @@ type FormInputValue =
 
 const FormInputItem: FC<Props> = ({
   readOnly,
+  labelId,
   nodeId,
   schema,
   value,
@@ -91,6 +90,7 @@ const FormInputItem: FC<Props> = ({
   onManageInputField,
   extraParams,
   providerType,
+  staticSchema = false,
   disableVariableInsertion = false,
   inPanel,
 }) => {
@@ -103,15 +103,7 @@ const FormInputItem: FC<Props> = ({
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
-  const formState = getFormInputState(
-    schema as CredentialFormSchema & {
-      _type?: FormTypeEnum
-      multiple?: boolean
-      options?: FormOption[]
-      scope?: string
-    },
-    value[schema.variable],
-  )
+  const formState = getFormInputState(schema, value[schema.variable])
 
   const {
     defaultValue,
@@ -140,7 +132,9 @@ const FormInputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+      return textVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -165,7 +159,8 @@ const FormInputItem: FC<Props> = ({
         extra: extraParams,
         credential_id: currentProvider?.credential_id || '',
       },
-      isDynamicSelect &&
+      !staticSchema &&
+        isDynamicSelect &&
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
@@ -184,6 +179,7 @@ const FormInputItem: FC<Props> = ({
   useEffect(() => {
     const fetchPanelDynamicOptions = async () => {
       if (
+        !staticSchema &&
         isDynamicSelect &&
         currentTool &&
         currentProvider &&
@@ -204,6 +200,7 @@ const FormInputItem: FC<Props> = ({
 
     fetchPanelDynamicOptions()
   }, [
+    staticSchema,
     isDynamicSelect,
     currentTool?.name,
     currentProvider?.name,
@@ -237,14 +234,12 @@ const FormInputItem: FC<Props> = ({
 
   const handleValueChange = (newValue: FormInputValue) => {
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
-    let nextValue: FormInputValue = newValue
-    if (isNumber) nextValue = Number.parseFloat(String(newValue ?? ''))
     onChange({
       ...value,
       [variable]: {
         ...varInput,
         type: nextType,
-        value: nextValue,
+        value: newValue,
       },
     })
   }
@@ -345,13 +340,22 @@ const FormInputItem: FC<Props> = ({
         />
       )}
       {isNumber && isConstant && (
-        <Input
-          className="h-8 grow"
-          type="number"
-          value={getNumberInputValue(varInput?.value)}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder={placeholder?.[language] || placeholder?.en_US}
-        />
+        <NumberField
+          step="any"
+          min={staticSchema ? schema.min : undefined}
+          max={staticSchema ? schema.max : undefined}
+          className="min-w-0 grow"
+          value={varInput?.value == null || varInput.value === '' ? null : Number(varInput.value)}
+          readOnly={readOnly}
+          onValueChange={(value) => handleValueChange(value)}
+        >
+          <NumberFieldGroup>
+            <NumberFieldInput
+              aria-labelledby={labelId}
+              placeholder={placeholder?.[language] || placeholder?.en_US}
+            />
+          </NumberFieldGroup>
+        </NumberField>
       )}
       {isDate && isConstant && (
         <div className="min-w-0 grow">
@@ -395,7 +399,7 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly}
           onValueChange={(value) => value && handleValueChange(value)}
         >
-          <SelectTrigger className="h-8 grow">
+          <SelectTrigger className="h-8 min-w-0 grow">
             {selectedStaticOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
           </SelectTrigger>
           <SelectContent>
@@ -425,7 +429,7 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly || isLoadingOptions}
           onValueChange={(value) => value && handleValueChange(value)}
         >
-          <SelectTrigger className="h-8 grow">
+          <SelectTrigger className="h-8 min-w-0 grow">
             {selectedDynamicOption?.name ??
               (isLoadingOptions ? 'Loading...' : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>

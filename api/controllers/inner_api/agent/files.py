@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -39,6 +39,7 @@ class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     tenant_id: str
     user_id: str
     user_from: Literal["account", "end-user"] | None = None
+    max_size: int = Field(ge=0, description="Maximum upload size in bytes")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -127,6 +128,7 @@ class AgentFileUploadRequestApi(Resource):
                 user_id=owner_id,
                 conversation_id=payload.conversation_id,
                 user_from=payload.user_from,
+                max_size=payload.max_size,
             )
         except ValueError as exc:
             raise AgentFileRequestHttpError(

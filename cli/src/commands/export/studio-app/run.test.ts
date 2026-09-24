@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { bufferStreams } from '@/sys/io/streams'
 import { runExportApp } from './run.js'
 

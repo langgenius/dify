@@ -37,7 +37,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
       },
     ],
   },
-  checkValid(payload: IfElseNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: IfElseNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { cases } = payload
     if (!cases || cases.length === 0)

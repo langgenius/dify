@@ -19,6 +19,7 @@ type DetailSidebarRenderProps = {
 
 type DetailSidebarFrameProps = {
   className?: string
+  compact?: boolean
   renderTop: (props: DetailSidebarRenderProps) => ReactNode
   renderSection: (props: Pick<DetailSidebarRenderProps, 'expand'>) => ReactNode
 }
@@ -31,16 +32,15 @@ function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: str
   return (
     <HelpMenu
       triggerIcon={secondarySidebarHelpTriggerIcon}
-      triggerClassName={cn(
-        'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
-        triggerClassName,
-      )}
+      triggerSize="lg"
+      triggerClassName={triggerClassName}
     />
   )
 }
 
 export function DetailSidebarFrame({
   className,
+  compact = false,
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
@@ -49,8 +49,9 @@ export function DetailSidebarFrame({
     select: (data) => data.meta.currentEnv,
   })
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
+  const [compactExpanded, setCompactExpanded] = useState(false)
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
-  const detailNavigationExpanded = detailNavigationMode === 'expand'
+  const detailNavigationExpanded = compact ? compactExpanded : detailNavigationMode === 'expand'
   const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
   const [detailNavigationTransitionDisabled, setDetailNavigationTransitionDisabled] =
     useState(false)
@@ -59,13 +60,18 @@ export function DetailSidebarFrame({
   )
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen =
-    !detailNavigationExpanded && detailNavigationHoverPreviewOpen
+    !compact && !detailNavigationExpanded && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded =
     detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
   const bottomNavigationExpanded = detailNavigationVisibleExpanded
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   function handleToggleDetailNavigation() {
+    if (compact) {
+      setCompactExpanded((expanded) => !expanded)
+      return
+    }
+
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
         clearTimeout(detailNavigationTransitionTimerRef.current)
@@ -85,7 +91,7 @@ export function DetailSidebarFrame({
   }
 
   function openDetailNavigationHoverPreview() {
-    if (detailNavigationExpanded) return
+    if (compact || detailNavigationExpanded) return
 
     if (closeDetailNavigationHoverPreviewTimerRef.current)
       clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
@@ -112,7 +118,7 @@ export function DetailSidebarFrame({
   }, [])
 
   useHotkey(DETAIL_SIDEBAR_TOGGLE_HOTKEY, handleToggleDetailNavigation, {
-    ignoreInputs: false,
+    ignoreInputs: true,
     preventDefault: true,
   })
 
@@ -137,10 +143,12 @@ export function DetailSidebarFrame({
             : 'overflow-hidden rounded-lg bg-components-panel-bg',
           detailNavigationVisibleExpanded ? 'w-60' : 'w-14',
         )}
-        onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
         onMouseLeave={!detailNavigationExpanded ? closeDetailNavigationHoverPreview : undefined}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
+        >
           {renderTop({
             expand: detailNavigationVisibleExpanded,
             onToggle: handleToggleDetailNavigation,

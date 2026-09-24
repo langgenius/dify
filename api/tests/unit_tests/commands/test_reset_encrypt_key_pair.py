@@ -21,6 +21,8 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import Tenant
 from models.provider import Provider, ProviderModel, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_tenant
 
 
 def _invoke_reset() -> int:
@@ -37,9 +39,7 @@ USER_ID = "22222222-2222-2222-2222-222222222222"
 
 
 def _tenant(tenant_id: str, *, name: str = "Test tenant") -> Tenant:
-    tenant = Tenant(name=name, encrypt_public_key="old-key")
-    tenant.id = tenant_id
-    return tenant
+    return make_tenant(tenant_id=tenant_id, name=name, encrypt_public_key="old-key")
 
 
 def _encrypted_rows(tenant_id: str, *, suffix: str = "1") -> tuple[object, ...]:
@@ -88,7 +88,7 @@ def _bind_command_to_sqlite(monkeypatch: pytest.MonkeyPatch, session: Session) -
 
 
 def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
-    monkeypatch.setattr(system_commands.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     exit_code = _invoke_reset()
     captured = capsys.readouterr()
@@ -107,7 +107,7 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 ) -> None:
     """The command must purge LLM provider rows AND every tool provider table
     that stores ciphertext encrypted under the tenant key (#35396)."""
-    monkeypatch.setattr(system_commands.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
     _bind_command_to_sqlite(monkeypatch, sqlite_session)
 
@@ -147,7 +147,7 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 )
 def test_reset_iterates_all_tenants(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     """Multi-tenant deployments must purge every tenant, not just the first."""
-    monkeypatch.setattr(system_commands.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
 
     _bind_command_to_sqlite(monkeypatch, sqlite_session)

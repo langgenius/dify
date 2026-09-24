@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
@@ -6,6 +7,9 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
+from controllers.common.agent_access import resolve_agent_access_filter
+from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -14,7 +18,7 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
+from controllers.console.apikey import API_KEY_DELETE_ROLES, API_KEY_EDIT_ROLES, api_key_errors
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
     AppListQuery,
@@ -31,9 +35,9 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     enterprise_license_required,
@@ -45,6 +49,8 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -59,10 +65,12 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
@@ -76,14 +84,25 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AppListParams, AppService, CreateAppParams
+from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
+
+AgentPublicationStatus = Literal["published", "drafts"]
 
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+
+
+class AgentAppListQuery(AppListQuery):
+    publication_status: AgentPublicationStatus | None = Field(
+        default=None,
+        description="Filter by published or draft Agent configuration status",
+    )
 
 
 class AgentIdPath(BaseModel):
@@ -241,6 +260,7 @@ class AgentStatisticsQuery(BaseModel):
 
 
 class AgentAppPartial(GenericAppPartial):
+    permission_keys: list[str]
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -253,6 +273,7 @@ class AgentAppPartial(GenericAppPartial):
 
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
+    permission_keys: list[str]
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -275,6 +296,13 @@ class AgentPublishPayload(BaseModel):
 
 class AgentPublishResponse(ResponseModel):
     result: str
+    publication_kind: Literal["first", "update"] = Field(
+        description=(
+            "Classifies the publication by whether the Agent had a publish-visible active snapshot before publishing: "
+            "'first' if none existed, otherwise 'update'. This is not a historical first-publish indicator. "
+            "It does not depend on draft edits, Web App or API enablement, or the requesting user's access permissions."
+        )
+    )
     active_config_snapshot_id: str
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
     draft: AgentConfigDraftSummaryResponse | None = None
@@ -299,7 +327,19 @@ class AgentSimpleResultResponse(BaseModel):
     result: str
 
 
+class AgentPublicationCountsResponse(ResponseModel):
+    published: int = Field(
+        ge=0,
+        description="Published Agent Apps in the current list scope, excluding the publication status filter",
+    )
+    drafts: int = Field(
+        ge=0,
+        description="Draft Agent Apps in the current list scope, excluding the publication status filter",
+    )
+
+
 class AgentAppPagination(GenericAppPagination):
+    publication_counts: AgentPublicationCountsResponse
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
         validation_alias=AliasChoices("items", "data")
     )
@@ -314,6 +354,7 @@ register_schema_models(
     AgentBuildDraftCheckoutPayload,
     ComposerSavePayload,
     AgentApiStatusPayload,
+    AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
     AgentStatisticsQuery,
@@ -323,6 +364,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    AgentPublicationCountsResponse,
     AgentAppPagination,
     AgentApiAccessResponse,
     AgentAppPublishedReferenceResponse,
@@ -363,12 +405,12 @@ def _serialize_agent_app_detail(
     """
 
     app_model = AppService().get_app(app_model, session=session)
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
     roster_service = _agent_roster_service(session)
-    payload = AgentAppDetailWithSite.model_validate(
+    payload = GenericAppDetailWithSite.model_validate(
         app_model,
         from_attributes=True,
         context={"session": session},
@@ -405,10 +447,25 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
-    return payload
+    permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+        app_model.tenant_id,
+        current_user.id,
+        agent_id=agent.id,
+        session=session,
+    )
+    payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(agent.id, [])
+    return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
-def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_id: str, current_user: Account) -> dict:
+def _serialize_agent_app_pagination(
+    session: Session,
+    app_pagination,
+    *,
+    tenant_id: str,
+    current_user: Account,
+    publication_counts: AgentAppPublicationCounts,
+    agent_permissions: enterprise_rbac_service.ResourcePermissionSnapshot,
+) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
     Each item starts from the shared App list shape, then drops
@@ -440,11 +497,23 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
         agents=list(agents_by_app_id.values()),
         account_id=current_user.id,
     )
-    payload = AgentAppPagination.model_validate(
-        app_pagination,
-        from_attributes=True,
+    permission_keys_by_agent_id = agent_permissions.permission_keys_by_resource_ids(
+        [agent.id for agent in agents_by_app_id.values()]
+    )
+    payload = GenericAppPagination.model_validate(
+        {
+            "page": app_pagination.page,
+            "limit": app_pagination.per_page,
+            "total": app_pagination.total,
+            "has_more": app_pagination.has_next,
+            "data": app_pagination.items,
+        },
         context={"session": session},
     ).model_dump(mode="json")
+    payload["publication_counts"] = {
+        "published": publication_counts.published,
+        "drafts": publication_counts.drafts,
+    }
     for item in payload["data"]:
         app_id = item["id"]
         item.pop("bound_agent_id", None)
@@ -455,6 +524,7 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
             item["hidden_app_backed"] = False
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
+            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
@@ -562,17 +632,18 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AppListQuery))
+    @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
     @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account):
-        args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
+        args = query_params_from_request(AgentAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
+        agent_is_published = None if args.publication_status is None else args.publication_status == "published"
+
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -583,11 +654,43 @@ class AgentAppListApi(Resource):
             creator_ids=args.creator_ids,
             is_created_by_me=args.is_created_by_me,
             status="normal",
+            agent_is_published=agent_is_published,
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, session)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            current_tenant_id,
+            current_user.id,
+            session=session,
+        )
+        if dify_config.RBAC_ENABLED:
+            access_filter = resolve_agent_access_filter(
+                current_tenant_id,
+                current_user.id,
+                session=session,
+                permissions=permissions,
+            )
+            access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
+
+        app_service = AppService()
+        publication_counts = app_service.get_agent_publication_counts(
+            current_user.id,
+            current_tenant_id,
+            params,
+            session,
+        )
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params, session)
         if app_pagination is None:
-            empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            empty = AgentAppPagination(
+                page=args.page,
+                limit=args.limit,
+                total=0,
+                has_more=False,
+                publication_counts=AgentPublicationCountsResponse(
+                    published=publication_counts.published,
+                    drafts=publication_counts.drafts,
+                ),
+                data=[],
+            )
             return empty.model_dump(mode="json")
 
         return _serialize_agent_app_pagination(
@@ -595,17 +698,20 @@ class AgentAppListApi(Resource):
             app_pagination,
             tenant_id=current_tenant_id,
             current_user=current_user,
+            publication_counts=publication_counts,
+            agent_permissions=permissions.agent,
         )
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
+    @console_ns.response(409, "Agent name already exists")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -631,6 +737,7 @@ class AgentAppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
@@ -647,7 +754,7 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -680,7 +787,7 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_DELETE, AgentId()))
     @with_current_tenant_id
     @with_session
     def delete(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -701,6 +808,7 @@ class AgentDebugConversationRefreshApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -726,7 +834,7 @@ class AgentPublishApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -756,7 +864,7 @@ class AgentBuildDraftCheckoutApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -786,6 +894,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -803,6 +912,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -828,6 +938,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -847,7 +958,7 @@ class AgentBuildDraftApplyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -870,7 +981,8 @@ class AgentAppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -903,7 +1015,7 @@ class AgentApiAccessApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId()))
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -920,8 +1032,7 @@ class AgentApiStatusApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
     @with_current_tenant_id
     @with_session
     @model_validate(AgentApiStatusPayload)
@@ -932,59 +1043,44 @@ class AgentApiStatusApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
-class AgentApiKeyListApi(BaseApiKeyListResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-    token_prefix = "app-"
-
+class AgentApiKeyListApi(Resource):
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        with api_key_errors():
+            keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
+        return dump_response(ApiKeyList, {"data": keys})
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @with_session
-    def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
-        ), 201
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
+    def post(self, request_context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
+        with api_key_errors():
+            key = application_services().app_api_keys.create_agent_key(request_context, str(agent_id))
+        return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
-class AgentApiKeyApi(BaseApiKeyResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-
+class AgentApiKeyApi(Resource):
     @console_ns.response(204, "Agent service API key deleted")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @with_session
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
     def delete(
         self,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         agent_id: UUID,
         api_key_id: UUID,
     ) -> tuple[str, int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        with api_key_errors():
+            application_services().app_api_keys.delete_agent_key(request_context, str(agent_id), str(api_key_id))
         return "", 204
 
 
@@ -995,10 +1091,33 @@ class AgentInviteOptionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
     @model_validate(AgentInviteOptionsQuery)
-    def get(self, req_data: AgentInviteOptionsQuery, session: Session, tenant_id: str):
+    def get(
+        self,
+        req_data: AgentInviteOptionsQuery,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+    ):
+        accessible_agent_ids = None
+        if dify_config.RBAC_ENABLED:
+            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+                tenant_id,
+                current_user.id,
+                session=session,
+            )
+            access_filter = resolve_agent_access_filter(
+                tenant_id,
+                current_user.id,
+                session=session,
+                permissions=permissions,
+            )
+            if access_filter.accessible_agent_ids is not None:
+                accessible_agent_ids = sorted(access_filter.accessible_agent_ids)
+
         return dump_response(
             AgentInviteOptionsResponse,
             _agent_roster_service(session).list_invite_options(
@@ -1007,6 +1126,7 @@ class AgentInviteOptionsApi(Resource):
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
+                accessible_agent_ids=accessible_agent_ids,
             ),
         )
 
@@ -1018,7 +1138,7 @@ class AgentLogsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1057,7 +1177,7 @@ class AgentLogMessagesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1096,7 +1216,7 @@ class AgentLogSourcesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1117,7 +1237,7 @@ class AgentStatisticsSummaryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_MONITOR, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1150,7 +1270,7 @@ class AgentRosterVersionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -1166,7 +1286,7 @@ class AgentRosterVersionDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID, version_id: UUID):
@@ -1187,11 +1307,17 @@ class AgentRosterVersionRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and not FeatureService.get_workspace_plan(tenant_id).is_paid
+        ):
+            abort(403, description="This feature requires a paid plan.")
+
         return dump_response(
             AgentConfigSnapshotRestoreResponse,
             _agent_roster_service(session).restore_agent_version(

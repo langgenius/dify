@@ -4,17 +4,17 @@ import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
@@ -38,7 +38,7 @@ const mockConsoleState = vi.hoisted(() => ({
   deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -51,7 +51,7 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const { useState } = await import('react')
 
   return {
@@ -226,7 +226,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { skipToken } = await import('@tanstack/react-query')
   const getChatMessagesQueryKey = (input: unknown) => ['agent-chat-conversation-messages', input]
 
@@ -857,13 +857,13 @@ describe('AgentPreviewChat', () => {
         event: 'error',
         code: 'agent_run_limit_exceeded',
         status: 400,
-        message: 'Server-provided message',
+        message: 'Agent run exceeded the configured limit of 3600 seconds',
       }),
     ).toEqual({
       conversationId: undefined,
       messageId: undefined,
       errorCode: 'agent_run_limit_exceeded',
-      errorMessage: 'Server-provided message',
+      errorMessage: 'Agent run exceeded the configured limit of 3600 seconds',
     })
 
     expect(mockToastError).toHaveBeenCalledTimes(1)
@@ -886,6 +886,38 @@ describe('AgentPreviewChat', () => {
     )
     expect(learnMoreLink).toHaveAttribute('target', '_blank')
     expect(learnMoreLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('should show a dedicated error toast when an agent run reaches the model request limit', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        code: 'agent_run_limit_exceeded',
+        status: 400,
+        message: 'The next request would exceed the request_limit of 500',
+      }),
+    ).toEqual({
+      conversationId: undefined,
+      messageId: undefined,
+      errorCode: 'agent_run_limit_exceeded',
+      errorMessage: 'The next request would exceed the request_limit of 500',
+    })
+
+    expect(mockToastError).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.preview.errors.agentModelRequestLimitExceeded',
+      expect.objectContaining({
+        description: expect.anything(),
+        timeout: 0,
+      }),
+    )
   })
 
   it('should show the send button loading state while preparing a build run', async () => {

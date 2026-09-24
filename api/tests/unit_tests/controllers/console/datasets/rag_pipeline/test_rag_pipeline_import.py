@@ -19,10 +19,16 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineImportPayload,
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from models.account import Account
 from models.dataset import Pipeline
 from models.engine import db
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
+from tests.unit_tests.model_factories import make_account
+
+
+def _account() -> Account:
+    return make_account(name="RAG Import Tester", email="rag-import@example.com")
 
 
 @pytest.fixture
@@ -48,7 +54,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -87,7 +93,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,
@@ -120,7 +126,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.PENDING,
@@ -154,7 +160,7 @@ class TestRagPipelineImportConfirmApi:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -184,7 +190,7 @@ class TestRagPipelineImportConfirmApi:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,

@@ -51,6 +51,7 @@ describe('useActionMenu', () => {
       {
         key: VersionHistoryContextMenuOptions.restore,
         name: 'workflow.common.restore',
+        disabled: false,
       },
       {
         key: VersionHistoryContextMenuOptions.edit,

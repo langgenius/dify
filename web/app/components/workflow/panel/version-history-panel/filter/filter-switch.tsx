@@ -9,7 +9,7 @@ type FilterSwitchProps = {
 }
 
 const FilterSwitch: FC<FilterSwitchProps> = ({ enabled, handleSwitch }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex items-center p-1">

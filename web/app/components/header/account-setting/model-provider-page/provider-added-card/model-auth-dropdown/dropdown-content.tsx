@@ -37,7 +37,7 @@ function DropdownContent({
   onChangePriority,
   onClose,
 }: DropdownContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { available_credentials } = provider.custom_configuration
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
