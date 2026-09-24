@@ -2262,16 +2262,6 @@ export const zPluginDependency = z.object({
 })
 
 /**
- * RosterAgentPackageConflictResponse
- */
-export const zRosterAgentPackageConflictResponse = z.object({
-  code: z.string(),
-  leaked_dependencies: z.array(zPluginDependency).optional(),
-  message: z.string(),
-  status: z.literal(409).optional().default(409),
-})
-
-/**
  * CheckDependenciesResult
  */
 export const zCheckDependenciesResult = z.object({

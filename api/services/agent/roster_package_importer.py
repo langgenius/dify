@@ -39,12 +39,12 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.package_resource_importer import AgentPackageResourceImporter, _Storage
-from services.agent.roster_package_dependencies import check_package_dependencies
 from services.agent.roster_package_entities import AgentPackageResources, PackageIcon
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_dsl_service import AppDslService
 from services.app_import_source import download_app_import_source
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
@@ -204,7 +204,6 @@ class RosterAgentPackageImporter:
 
         # Resolve billing before uploading package members or opening the write transaction.
         allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(tenant_id)
-        check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
         try:
             materialized_icons = self._resources.materialize_icon_resources(
                 read_member=read_member, icons=icons, tenant_id=tenant_id, account_id=account.id
@@ -280,6 +279,16 @@ class RosterAgentPackageImporter:
                 app_id,
                 exc_info=True,
             )
+        if app_dsl.dependencies:
+            try:
+                AppDslService.cache_import_dependencies(app_id=app_id, dependencies=app_dsl.dependencies)
+            except Exception:
+                logger.warning(
+                    "Imported Agent App dependency check could not be cached: tenant_id=%s app_id=%s",
+                    tenant_id,
+                    app_id,
+                    exc_info=True,
+                )
         return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @staticmethod
