@@ -812,6 +812,14 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
     assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
+    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)

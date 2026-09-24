@@ -198,7 +198,7 @@ describe('useAppInfoActions', () => {
 
   describe('onEdit', () => {
     it('should update app info and close modal on success', async () => {
-      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const updatedApp = { ...mockAppDetail, name: 'Updated', max_active_requests: null }
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
 
       const { result } = renderHook(() => useAppInfoActions({}))
@@ -222,8 +222,8 @@ describe('useAppInfoActions', () => {
         expect.any(Function),
       )
       const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
-      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
-        expect.objectContaining({ id: 'app-1', name: 'Updated' }),
+      expect(updateCachedApp({ id: 'app-1', name: 'Old name', max_active_requests: 5 })).toEqual(
+        expect.objectContaining({ id: 'app-1', name: 'Updated', max_active_requests: null }),
       )
       expect(mockInvalidateQueries).toHaveBeenCalledWith({
         queryKey: consoleQuery.apps.get.key(),

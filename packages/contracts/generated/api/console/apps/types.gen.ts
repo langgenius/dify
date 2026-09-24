@@ -22,34 +22,34 @@ export type CreateAppPayload = {
 }
 
 export type AppDetailWithSite = {
-  access_mode?: string | null
-  api_base_url?: string | null
-  app_id?: string | null
-  bound_agent_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  access_mode: WebAppAccessMode | null
+  api_base_url: string
+  app_id: string | null
+  bound_agent_id: string | null
+  created_at: number
+  created_by: string | null
+  deleted_tools: Array<DeletedTool>
+  description: string
   enable_api: boolean
   enable_site: boolean
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
   readonly icon_url: string | null
   id: string
-  maintainer?: string | null
-  max_active_requests?: number | null
-  mode: string
-  model_config?: AppModelConfigResponse | null
+  maintainer: string | null
+  max_active_requests: number | null
+  mode: AppMode
+  model_config: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
-  site?: AppDetailSiteResponse | null
-  tags?: Array<Tag>
-  tracing?: unknown | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
+  permission_keys: Array<string>
+  site: AppDetailSiteResponse | null
+  tags: Array<Tag>
+  tracing: string | null
+  updated_at: number
+  updated_by: string | null
+  use_icon_as_answer_icon: boolean
+  workflow: WorkflowPartial | null
 }
 
 export type AppImportPayload = {
@@ -66,7 +66,7 @@ export type AppImportPayload = {
 
 export type Import = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version?: string
   error?: string
   id: string
@@ -362,26 +362,26 @@ export type AppApiStatusPayload = {
 }
 
 export type AppDetail = {
-  access_mode?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  description?: string | null
+  access_mode: WebAppAccessMode | null
+  created_at: number
+  created_by: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
-  icon?: string | null
-  icon_background?: string | null
+  icon: string | null
+  icon_background: string | null
   id: string
-  maintainer?: string | null
-  mode: string
-  model_config?: AppModelConfigResponse | null
+  maintainer: string | null
+  mode: AppMode
+  model_config: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
-  tags?: Array<Tag>
-  tracing?: unknown | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
+  permission_keys: Array<string>
+  tags: Array<Tag>
+  tracing: string | null
+  updated_at: number
+  updated_by: string | null
+  use_icon_as_answer_icon: boolean
+  workflow: WorkflowPartial | null
 }
 
 export type AudioTranscriptResponse = {
@@ -488,7 +488,7 @@ export type CopyAppPayload = {
 
 export type AppImportResponse = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version: string
   error?: string
   id: string
@@ -1199,7 +1199,7 @@ export type ApiKeyItem = {
 }
 
 export type AppPartial = {
-  access_mode?: string | null
+  access_mode?: WebAppAccessMode | null
   app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
@@ -1210,13 +1210,13 @@ export type AppPartial = {
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: IconType | null
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: ModelConfigPartial | null
   name: string
   permission_keys?: Array<string>
@@ -1229,65 +1229,89 @@ export type AppPartial = {
 
 export type IconType = 'emoji' | 'image' | 'link'
 
+export type WebAppAccessMode = 'private' | 'private_all' | 'public' | 'sso_verified'
+
 export type DeletedTool = {
   provider_id: string
   tool_name: string
   type: string
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppModelConfigResponse = {
-  agent_mode?: unknown | null
-  annotation_reply?: unknown | null
-  chat_prompt_config?: unknown | null
-  completion_prompt_config?: unknown | null
-  created_at?: number | null
-  created_by?: string | null
-  dataset_configs?: unknown | null
-  dataset_query_variable?: string | null
-  external_data_tools?: unknown | null
-  file_upload?: unknown | null
-  model?: unknown | null
-  more_like_this?: unknown | null
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  prompt_type?: string | null
-  retriever_resource?: unknown | null
-  sensitive_word_avoidance?: unknown | null
-  speech_to_text?: unknown | null
-  suggested_questions?: unknown | null
-  suggested_questions_after_answer?: unknown | null
-  text_to_speech?: unknown | null
-  updated_at?: number | null
-  updated_by?: string | null
-  user_input_form?: unknown | null
+  agent_mode: AppAgentModeResponse
+  annotation_reply: AppAnnotationReplyEnabledResponse | AppAnnotationReplyDisabledResponse
+  chat_prompt_config: AppChatPromptConfigResponse
+  completion_prompt_config: AppCompletionPromptConfigResponse
+  created_at: number
+  created_by: string | null
+  dataset_configs: AppDatasetConfigsResponse
+  dataset_query_variable: string | null
+  external_data_tools: Array<
+    AppEnabledExternalDataToolResponse | AppDisabledExternalDataToolResponse
+  >
+  file_upload: AppFileUploadResponse
+  model: AppModelSelectionResponse
+  more_like_this: AppEnabledConfigResponse
+  opening_statement: string | null
+  pre_prompt: string | null
+  prompt_type: PromptType
+  retriever_resource: AppEnabledConfigResponse
+  sensitive_word_avoidance: AppSensitiveWordAvoidanceResponse
+  speech_to_text: AppEnabledConfigResponse
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: AppSuggestedQuestionsAfterAnswerResponse
+  text_to_speech: AppTextToSpeechResponse
+  updated_at: number
+  updated_by: string | null
+  user_input_form: Array<
+    | AppTextInputFormResponse
+    | AppSelectFormResponse
+    | AppParagraphFormResponse
+    | AppNumberFormResponse
+    | AppCheckboxFormResponse
+    | AppFileFormResponse
+    | AppFileListFormResponse
+    | AppExternalDataToolFormResponse
+    | AppJsonObjectFormResponse
+  >
 }
 
 export type AppDetailSiteResponse = {
-  access_token?: string | null
-  app_base_url?: string | null
-  chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  code?: string | null
-  copyright?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  custom_disclaimer?: string | null
-  customize_domain?: string | null
-  customize_token_strategy?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | IconType | null
+  access_token: string | null
+  app_base_url: string
+  chat_color_theme: string | null
+  chat_color_theme_inverted: boolean
+  code: string | null
+  copyright: string | null
+  created_at: number
+  created_by: string | null
+  custom_disclaimer: string
+  customize_domain: string | null
+  customize_token_strategy: CustomizeTokenStrategy
+  default_language: string
+  description: string | null
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
   readonly icon_url: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  input_placeholder: string | null
+  privacy_policy: string | null
+  prompt_public: boolean
+  show_workflow_steps: boolean
+  title: string
+  updated_at: number
+  updated_by: string | null
+  use_icon_as_answer_icon: boolean
 }
 
 export type Tag = {
@@ -2088,11 +2112,177 @@ export type WorkflowDraftVariableFullContentResponse = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: unknown | null
+  model?: AppModelSelectionResponse | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
 }
+
+export type AppAgentModeResponse = {
+  enabled: boolean
+  max_iteration?: number
+  prompt?: AppAgentPromptResponse | string | null
+  strategy?: PlanningStrategy | 'cot' | 'function-calling' | null
+  tools?: Array<
+    | AppProviderAgentToolResponse
+    | AppLegacyDatasetToolResponse
+    | AppLegacyGoogleSearchToolResponse
+    | AppLegacyWebReaderToolResponse
+    | AppLegacyWikipediaToolResponse
+    | AppLegacyCurrentDatetimeToolResponse
+    | AppLegacySensitiveWordToolResponseItem
+  >
+  [key: string]: unknown
+}
+
+export type AppAnnotationReplyEnabledResponse = {
+  embedding_model: AppEmbeddingModelResponse
+  enabled: true
+  id: string
+  score_threshold: number
+}
+
+export type AppAnnotationReplyDisabledResponse = {
+  enabled: false
+}
+
+export type AppChatPromptConfigResponse = {
+  prompt?: Array<AppChatPromptMessageResponse>
+}
+
+export type AppCompletionPromptConfigResponse = {
+  conversation_histories_role?: AppConversationHistoriesRoleResponse
+  prompt?: AppCompletionPromptTextResponse
+}
+
+export type AppDatasetConfigsResponse = {
+  datasets?: AppDatasetListResponse
+  metadata_filtering_conditions?: AppMetadataFilteringConditionsResponse | null
+  metadata_filtering_mode?: 'automatic' | 'disabled' | 'manual'
+  metadata_model_config?: AppModelSelectionResponse | null
+  reranking_enable?: boolean
+  reranking_enabled?: boolean
+  reranking_mode?: RerankMode
+  reranking_model?: AppRerankingModelResponse | null
+  retrieval_model: 'multiple' | 'single'
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean
+  top_k?: number
+  weights?: AppWeightsResponse | null
+  [key: string]: unknown
+}
+
+export type AppEnabledExternalDataToolResponse = {
+  config: {
+    [key: string]: JsonValue2
+  }
+  enabled: true
+  icon?: string
+  icon_background?: string
+  label?: string
+  type: string
+  variable: string
+  [key: string]: unknown
+}
+
+export type AppDisabledExternalDataToolResponse = {
+  config?: {
+    [key: string]: JsonValue2
+  }
+  enabled: false
+  icon?: string
+  icon_background?: string
+  label?: string
+  type?: string
+  variable?: string
+  [key: string]: unknown
+}
+
+export type AppFileUploadResponse = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AppImageUploadResponse
+  number_limits?: number
+}
+
+export type AppModelSelectionResponse = {
+  completion_params?: {
+    [key: string]: JsonValue2
+  }
+  mode?: LlmMode | ''
+  name?: string
+  provider?: string
+  [key: string]: unknown
+}
+
+export type AppEnabledConfigResponse = {
+  enabled: boolean
+}
+
+export type PromptType = 'advanced' | 'simple'
+
+export type AppSensitiveWordAvoidanceResponse = {
+  config?: {
+    [key: string]: JsonValue2
+  }
+  configs?: Array<JsonValue2>
+  enabled: boolean
+  type?: string
+  [key: string]: unknown
+}
+
+export type AppSuggestedQuestionsAfterAnswerResponse = {
+  enabled: boolean
+  model?: AppModelSelectionResponse
+  prompt?: string
+}
+
+export type AppTextToSpeechResponse = {
+  autoPlay?: 'disabled' | 'enabled'
+  enabled: boolean
+  language?: string
+  voice?: string
+}
+
+export type AppTextInputFormResponse = {
+  'text-input': AppUserInputFormConfigResponse
+}
+
+export type AppSelectFormResponse = {
+  select: AppUserInputFormConfigResponse
+}
+
+export type AppParagraphFormResponse = {
+  paragraph: AppUserInputFormConfigResponse
+}
+
+export type AppNumberFormResponse = {
+  number: AppUserInputFormConfigResponse
+}
+
+export type AppCheckboxFormResponse = {
+  checkbox: AppUserInputFormConfigResponse
+}
+
+export type AppFileFormResponse = {
+  file: AppUserInputFormConfigResponse
+}
+
+export type AppFileListFormResponse = {
+  'file-list': AppUserInputFormConfigResponse
+}
+
+export type AppExternalDataToolFormResponse = {
+  external_data_tool: AppUserInputFormConfigResponse
+}
+
+export type AppJsonObjectFormResponse = {
+  json_object: AppUserInputFormConfigResponse
+}
+
+export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
@@ -2250,7 +2440,7 @@ export type WorkflowSuggestedQuestionsAfterAnswerPayload = {
 }
 
 export type WorkflowTextToSpeechPayload = {
-  autoPlay?: string | null
+  autoPlay?: 'disabled' | 'enabled' | null
   enabled?: boolean | null
   language?: string | null
   voice?: string | null
@@ -2484,6 +2674,156 @@ export type CheckResultView = {
   reason?: string | null
 }
 
+export type AppAgentPromptResponse = {
+  first_prompt?: string
+  next_iteration?: string
+  [key: string]: unknown
+}
+
+export type PlanningStrategy = 'function_call' | 'react' | 'react_router' | 'router'
+
+export type AppProviderAgentToolResponse = {
+  credential_id?: string | null
+  enabled?: boolean
+  isDeleted?: boolean
+  notAuthor?: boolean
+  plugin_unique_identifier?: string | null
+  provider_id: string
+  provider_name?: string
+  provider_type: ToolProviderType
+  tool_label?: string
+  tool_name: string
+  tool_parameters: {
+    [key: string]: JsonValue2
+  }
+  [key: string]: unknown
+}
+
+export type AppLegacyDatasetToolResponse = {
+  dataset: AppDatasetReferenceResponse
+  [key: string]: unknown
+}
+
+export type AppLegacyGoogleSearchToolResponse = {
+  google_search: {
+    [key: string]: JsonValue2
+  }
+  [key: string]: unknown
+}
+
+export type AppLegacyWebReaderToolResponse = {
+  web_reader: {
+    [key: string]: JsonValue2
+  }
+  [key: string]: unknown
+}
+
+export type AppLegacyWikipediaToolResponse = {
+  wikipedia: {
+    [key: string]: JsonValue2
+  }
+  [key: string]: unknown
+}
+
+export type AppLegacyCurrentDatetimeToolResponse = {
+  current_datetime: {
+    [key: string]: JsonValue2
+  }
+  [key: string]: unknown
+}
+
+export type AppLegacySensitiveWordToolResponseItem = {
+  'sensitive-word-avoidance': AppLegacySensitiveWordToolResponse
+  [key: string]: unknown
+}
+
+export type AppEmbeddingModelResponse = {
+  embedding_model_name: string
+  embedding_provider_name: string
+}
+
+export type AppChatPromptMessageResponse = {
+  role: string
+  text: string
+}
+
+export type AppConversationHistoriesRoleResponse = {
+  assistant_prefix: string
+  user_prefix: string
+}
+
+export type AppCompletionPromptTextResponse = {
+  text: string
+}
+
+export type AppDatasetListResponse = {
+  datasets: Array<AppDatasetItemResponse>
+  strategy?: string
+  [key: string]: unknown
+}
+
+export type AppMetadataFilteringConditionsResponse = {
+  conditions?: Array<AppMetadataConditionResponse> | null
+  logical_operator?: 'and' | 'or' | null
+  [key: string]: unknown
+}
+
+export type RerankMode = 'reranking_model' | 'weighted_score'
+
+export type AppRerankingModelResponse = {
+  reranking_model_name?: string
+  reranking_provider_name?: string
+  [key: string]: unknown
+}
+
+export type AppWeightsResponse = {
+  keyword_setting: AppKeywordSettingResponse
+  vector_setting: AppVectorSettingResponse
+  weight_type?: 'customized' | 'keyword_first' | 'semantic_first'
+  [key: string]: unknown
+}
+
+export type JsonValue2 = unknown
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AppImageUploadResponse = {
+  detail?: 'high' | 'low' | null
+  enabled?: boolean
+  number_limits?: number
+  transfer_methods?: Array<FileTransferMethod>
+}
+
+export type AppUserInputFormConfigResponse = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  config?: {
+    [key: string]: JsonValue2
+  }
+  default?: JsonValue2
+  description?: string
+  enabled?: boolean
+  hide?: boolean
+  icon?: string | null
+  icon_background?: string | null
+  json_schema?:
+    | string
+    | {
+        [key: string]: JsonValue2
+      }
+    | null
+  label: string
+  max_length?: number | null
+  options?: Array<string>
+  required?: boolean
+  type?: string
+  variable: string
+  [key: string]: unknown
+}
+
 export type UserActionConfig = {
   button_style?: ButtonStyle
   id: string
@@ -2503,8 +2843,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type JsonValue2 = unknown
 
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
@@ -2556,7 +2894,7 @@ export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
 }
 
 export type AgentTextToSpeechFeatureConfig = {
-  autoPlay?: string | null
+  autoPlay?: 'disabled' | 'enabled' | null
   enabled?: boolean
   language?: string | null
   voice?: string | null
@@ -2743,6 +3081,72 @@ export type AgentComposerKnowledgeDatasetCandidateResponse = {
   name?: string | null
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
+export type AppDatasetReferenceResponse = {
+  enabled?: boolean
+  id?: string
+  [key: string]: unknown
+}
+
+export type AppLegacySensitiveWordToolResponse = {
+  canned_response: string
+  enabled: boolean
+  words: Array<string>
+  [key: string]: unknown
+}
+
+export type AppDatasetItemResponse = {
+  dataset: AppDatasetReferenceResponse
+  [key: string]: unknown
+}
+
+export type AppMetadataConditionResponse = {
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
+  id?: string
+  metadata_id?: string
+  name: string
+  value?: string | Array<string> | number | number | null
+  [key: string]: unknown
+}
+
+export type AppKeywordSettingResponse = {
+  keyword_weight: number
+  [key: string]: unknown
+}
+
+export type AppVectorSettingResponse = {
+  embedding_model_name: string
+  embedding_provider_name: string
+  vector_weight: number
+  [key: string]: unknown
+}
+
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ParagraphInputConfig = {
@@ -2773,10 +3177,6 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: 'file-list'
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentFileUploadImageFeatureConfig = {
   enabled?: boolean
@@ -2839,15 +3239,6 @@ export type AgentSoulDifyToolCredentialRef = {
   provider?: string | null
   type?: 'provider' | 'tool'
 }
-
-export type ToolProviderType =
-  | 'api'
-  | 'app'
-  | 'builtin'
-  | 'dataset-retrieval'
-  | 'mcp'
-  | 'plugin'
-  | 'workflow'
 
 export type StringSource = {
   selector?: Array<string>
@@ -2936,33 +3327,33 @@ export type AppPaginationWritable = {
 }
 
 export type AppDetailWithSiteWritable = {
-  access_mode?: string | null
-  api_base_url?: string | null
-  app_id?: string | null
-  bound_agent_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  access_mode: WebAppAccessMode | null
+  api_base_url: string
+  app_id: string | null
+  bound_agent_id: string | null
+  created_at: number
+  created_by: string | null
+  deleted_tools: Array<DeletedTool>
+  description: string
   enable_api: boolean
   enable_site: boolean
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
   id: string
-  maintainer?: string | null
-  max_active_requests?: number | null
-  mode: string
-  model_config?: AppModelConfigResponse | null
+  maintainer: string | null
+  max_active_requests: number | null
+  mode: AppMode
+  model_config: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
-  site?: AppDetailSiteResponseWritable | null
-  tags?: Array<Tag>
-  tracing?: unknown | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
+  permission_keys: Array<string>
+  site: AppDetailSiteResponseWritable | null
+  tags: Array<Tag>
+  tracing: string | null
+  updated_at: number
+  updated_by: string | null
+  use_icon_as_answer_icon: boolean
+  workflow: WorkflowPartial | null
 }
 
 export type RecentAppListResponseWritable = {
@@ -2997,7 +3388,7 @@ export type WorkflowCommentDetailWritable = {
 }
 
 export type AppPartialWritable = {
-  access_mode?: string | null
+  access_mode?: WebAppAccessMode | null
   app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
@@ -3008,12 +3399,12 @@ export type AppPartialWritable = {
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: IconType | null
   id: string
   is_starred?: boolean
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: ModelConfigPartial | null
   name: string
   permission_keys?: Array<string>
@@ -3025,30 +3416,30 @@ export type AppPartialWritable = {
 }
 
 export type AppDetailSiteResponseWritable = {
-  access_token?: string | null
-  app_base_url?: string | null
-  chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  code?: string | null
-  copyright?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  custom_disclaimer?: string | null
-  customize_domain?: string | null
-  customize_token_strategy?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | IconType | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  access_token: string | null
+  app_base_url: string
+  chat_color_theme: string | null
+  chat_color_theme_inverted: boolean
+  code: string | null
+  copyright: string | null
+  created_at: number
+  created_by: string | null
+  custom_disclaimer: string
+  customize_domain: string | null
+  customize_token_strategy: CustomizeTokenStrategy
+  default_language: string
+  description: string | null
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
+  input_placeholder: string | null
+  privacy_policy: string | null
+  prompt_public: boolean
+  show_workflow_steps: boolean
+  title: string
+  updated_at: number
+  updated_by: string | null
+  use_icon_as_answer_icon: boolean
 }
 
 export type RecentAppResponseWritable = {
