@@ -149,9 +149,7 @@ describe('StatusItem', () => {
           canEdit
         />,
       )
-      // Switch component should be present in detail scene
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Available' })).toBeInTheDocument()
     })
 
     it('should not show switch in list scene', () => {

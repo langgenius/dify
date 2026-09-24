@@ -18,17 +18,18 @@ describe('Meta', () => {
     const { container } = render(<Meta status="running" />)
 
     expect(container.querySelectorAll('.bg-text-quaternary')).toHaveLength(6)
-    expect(screen.queryByText('SUCCESS')).not.toBeInTheDocument()
+    expect(screen.queryByText('appLog.status.succeeded')).not.toBeInTheDocument()
     expect(screen.queryByText('runLog.meta.steps')).toBeInTheDocument()
   })
 
   it.each([
-    ['succeeded', 'SUCCESS'],
-    ['partial-succeeded', 'PARTIAL SUCCESS'],
-    ['exception', 'EXCEPTION'],
-    ['failed', 'FAIL'],
-    ['stopped', 'STOP'],
-    ['paused', 'PENDING'],
+    ['scheduled', 'appLog.status.scheduled'],
+    ['succeeded', 'appLog.status.succeeded'],
+    ['partial-succeeded', 'appLog.status.partial-succeeded'],
+    ['exception', 'workflow.tracing.status.exception'],
+    ['failed', 'appLog.status.failed'],
+    ['stopped', 'appLog.status.stopped'],
+    ['paused', 'appLog.status.paused'],
   ] as const)('renders the %s status label', (status, label) => {
     render(<Meta status={status} />)
 

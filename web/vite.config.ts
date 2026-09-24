@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-import { getDeclaredRouteNamespaces } from './i18n/route-namespaces.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
 import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
@@ -58,8 +57,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
               selectorArgument: 1,
             },
           ],
-          getDeclaredNamespaces: getDeclaredRouteNamespaces,
-          // Runtime namespace providers remain unknown; validate detected usage only.
         }),
         Inspect(),
         inspector,
@@ -90,7 +87,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {

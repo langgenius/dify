@@ -105,3 +105,26 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
 
     assert result_app.id == app_model.id
     assert result_end_user.id == end_user.id
+
+
+@pytest.mark.usefixtures("app_query_services")
+@pytest.mark.parametrize("token", [None, "expired-token"])
+def test_web_auth_rejects_unknown_app_code_with_http_not_found(app, monkeypatch, token):
+    from controllers.web import wraps
+    from libs.external_api import ExternalApi
+
+    class ProtectedApi(wraps.WebApiResource):
+        def get(self, _app, _user):
+            pytest.fail("An unknown WebApp must not reach the protected resource")
+
+    def reject_token(_self, _token):
+        raise Unauthorized("Authentication has expired.")
+
+    monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: True))
+    monkeypatch.setattr(wraps, "extract_webapp_passport", lambda _code, _request: token)
+    monkeypatch.setattr(wraps.PassportService, "verify", reject_token)
+    api = ExternalApi(app)
+    api.add_resource(ProtectedApi, "/protected")
+    response = app.test_client().get("/protected", headers={"X-App-Code": "does-not-exist"})
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "app_not_found"

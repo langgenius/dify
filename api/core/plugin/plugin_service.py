@@ -16,9 +16,12 @@ metadata.
 
 import logging
 import time
+from collections import OrderedDict
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from hashlib import sha256
 from mimetypes import guess_type
+from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
@@ -109,6 +112,15 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
+    # Provider declarations are tenant-scoped but contain no tenant credentials. Cache the parsed tuple by payload
+    # content so unchanged Redis data does not pay the Pydantic validation cost on every retrieval request. The cached
+    # declarations are shared and consumers must treat them as read-only. A changed payload always has a different key,
+    # while the small LRU bounds per-process memory usage.
+    PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES = 8
+    _parsed_plugin_model_providers_cache: OrderedDict[tuple[int, bytes], tuple[PluginModelProviderDeclaration, ...]] = (
+        OrderedDict()
+    )
+    _parsed_plugin_model_providers_cache_lock = Lock()
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
     # the visible endpoint drawer exercise the same daemon pagination path.
@@ -217,6 +229,54 @@ class PluginService:
         except zstandard.ZstdError as exc:
             raise ValueError("Invalid compressed plugin model providers cache payload.") from exc
 
+    @staticmethod
+    def _plugin_model_providers_payload_cache_key(payload: bytes | bytearray | str) -> tuple[int, bytes]:
+        payload_bytes = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
+        return len(payload_bytes), sha256(payload_bytes).digest()
+
+    @classmethod
+    def _get_parsed_plugin_model_providers_from_local_cache(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...] | None:
+        cache_key = cls._plugin_model_providers_payload_cache_key(payload)
+        with cls._parsed_plugin_model_providers_cache_lock:
+            providers = cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
+            if providers is not None:
+                cls._parsed_plugin_model_providers_cache[cache_key] = providers
+        return providers
+
+    @classmethod
+    def _store_parsed_plugin_model_providers_in_local_cache(
+        cls,
+        payload: bytes | bytearray | str,
+        providers: tuple[PluginModelProviderDeclaration, ...],
+    ) -> None:
+        cache_key = cls._plugin_model_providers_payload_cache_key(payload)
+        with cls._parsed_plugin_model_providers_cache_lock:
+            cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
+            cls._parsed_plugin_model_providers_cache[cache_key] = providers
+            while len(cls._parsed_plugin_model_providers_cache) > cls.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES:
+                cls._parsed_plugin_model_providers_cache.popitem(last=False)
+
+    @classmethod
+    def _parse_plugin_model_providers_cache_payload(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        decoded_payload = cls._decode_plugin_model_providers_cache_payload(payload)
+        return tuple(_provider_entities_adapter.validate_json(decoded_payload))
+
+    @classmethod
+    def _get_or_parse_plugin_model_providers_cache_payload(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        providers = cls._get_parsed_plugin_model_providers_from_local_cache(payload)
+        if providers is not None:
+            return providers
+
+        providers = cls._parse_plugin_model_providers_cache_payload(payload)
+        cls._store_parsed_plugin_model_providers_in_local_cache(payload, providers)
+        return providers
+
     @classmethod
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
         cache_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
@@ -274,8 +334,7 @@ class PluginService:
                 continue
 
             try:
-                payload = cls._decode_plugin_model_providers_cache_payload(cached_providers)
-                providers = tuple(_provider_entities_adapter.validate_json(payload))
+                providers = cls._get_or_parse_plugin_model_providers_cache_payload(cached_providers)
                 return providers, True
             except (TypeError, ValueError, ValidationError):
                 logger.warning(
@@ -305,6 +364,7 @@ class PluginService:
                 _provider_entities_adapter.dump_json(list(providers))
             )
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
+            cls._store_parsed_plugin_model_providers_in_local_cache(payload, tuple(providers))
         except (RedisError, RuntimeError):
             logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)
 

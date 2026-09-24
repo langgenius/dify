@@ -296,10 +296,6 @@ export const fetchTryAppDatasets = (appId: string, ids: string[]) => {
   })
 }
 
-export const fetchTryAppFlowPreview = (appId: string) => {
-  return consoleClient.trialApps.byAppId.workflows.get({ params: { app_id: appId } })
-}
-
 export const fetchTryAppParams = (appId: string) => {
   return consoleClient.trialApps.byAppId.parameters
     .get({ params: { app_id: appId } })

@@ -1,17 +1,16 @@
-"""Unit tests for controllers.common.app_access RBAC app-id access filtering."""
+"""Unit tests for services.app.access RBAC app-id access filtering."""
 
 from __future__ import annotations
 
 import pytest
 from sqlalchemy.orm import Session
 
-from controllers.common.app_access import (
+from services.app.access import (
     APP_LIST_PERMISSION_KEYS,
     AppAccessFilter,
     has_app_list_permission,
     resolve_app_access_filter,
 )
-from services.app_service import AppListParams
 from services.enterprise.rbac_service import (
     MyPermissionsResponse,
     ResourcePermissionKeys,
@@ -19,8 +18,9 @@ from services.enterprise.rbac_service import (
     ResourceWhitelistResources,
     WorkspacePermissionSnapshot,
 )
+from services.entities.app_entities import AppListParams
 
-_RBAC_MODULE = "controllers.common.app_access.enterprise_rbac_service"
+_RBAC_MODULE = "services.app.access.enterprise_rbac_service"
 
 
 def _permissions(

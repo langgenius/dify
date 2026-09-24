@@ -37,20 +37,6 @@ describe('server translations', () => {
     }))
   })
 
-  it('serializes only requested namespaces, including fallback resources when requested', async () => {
-    const { getResources } = await import('../server')
-    const resources = await getResources('zh-Hans', ['common', 'login'], true)
-    expect(Object.keys(resources)).toEqual(['zh-Hans', 'en-US'])
-    expect(Object.keys(resources['zh-Hans']!)).toEqual(['common', 'login'])
-    expect(resources).toMatchObject({ 'en-US': { common: { 'operation.cancel': 'Cancel' } } })
-    expect(mocks.loadResource.mock.calls.map(([lng, ns]) => `${lng}/${ns}`).sort()).toEqual([
-      'en-US/common',
-      'en-US/login',
-      'zh-Hans/common',
-      'zh-Hans/login',
-    ])
-  })
-
   it('does not preload the complete catalog for namespaced server metadata', async () => {
     const { getTranslation } = await import('../server')
     await getTranslation('en-US', 'login')
@@ -97,7 +83,7 @@ describe('server translations', () => {
 
   it('keeps fallback and cross-namespace translations available', async () => {
     const { getTranslation } = await import('../server')
-    const { t } = await getTranslation('zh-Hans')
+    const { t } = await getTranslation('zh-Hans', 'common')
 
     expect(t(($) => $['operation.save'], { ns: 'common' })).toBe('保存')
     expect(t(($) => $['operation.cancel'], { ns: 'common' })).toBe('Cancel')

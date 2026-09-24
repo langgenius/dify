@@ -364,10 +364,10 @@ describe('IntegrationsPage', () => {
     const { container } = renderIntegrationsPage()
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-    expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
+    expect(screen.getAllByText('navigation.settings.provider')).toHaveLength(2)
     expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
     expect(
-      screen.getByRole('navigation', { name: 'common.settings.integrations' }),
+      screen.getByRole('navigation', { name: 'navigation.settings.integrations' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
@@ -383,7 +383,9 @@ describe('IntegrationsPage', () => {
   it('reconciles the route title with client branding', () => {
     renderIntegrationsPage(undefined, { section: 'provider', syncDocumentTitle: true })
 
-    expect(document.title).toBe('common.settings.provider · common.mainNav.integrations - Dify')
+    expect(document.title).toBe(
+      'navigation.settings.provider · navigation.mainNav.integrations - Dify',
+    )
   })
 
   it('renders the model provider section from the section query', () => {
@@ -399,7 +401,7 @@ describe('IntegrationsPage', () => {
     ).toHaveClass('px-6', 'pt-3', 'pb-2')
     expect(
       within(screen.getByTestId('model-provider-toolbar').closest('section')!).getByText(
-        'common.settings.provider',
+        'navigation.settings.provider',
       ),
     ).toHaveClass('title-2xl-semi-bold')
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass(
@@ -407,14 +409,14 @@ describe('IntegrationsPage', () => {
       'px-6',
     )
     expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
-    expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
-    expect(screen.getByRole('link', { name: 'common.settings.provider' })).toHaveAttribute(
+    expect(screen.getAllByText('navigation.settings.provider')).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'navigation.settings.provider' })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    expect(screen.getByRole('link', { name: 'common.settings.dataSource' })).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.dataSource' }),
+    ).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
   })
 
@@ -423,13 +425,13 @@ describe('IntegrationsPage', () => {
 
     const navText = screen.getByRole('navigation').textContent ?? ''
 
-    expect(navText.indexOf('common.settings.provider')).toBeLessThan(
-      navText.indexOf('common.menus.tools'),
+    expect(navText.indexOf('navigation.settings.provider')).toBeLessThan(
+      navText.indexOf('navigation.menus.tools'),
     )
-    expect(navText.indexOf('common.menus.tools')).toBeLessThan(
-      navText.indexOf('common.settings.dataSource'),
+    expect(navText.indexOf('navigation.menus.tools')).toBeLessThan(
+      navText.indexOf('navigation.settings.dataSource'),
     )
-    expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(
+    expect(navText.indexOf('navigation.settings.dataSource')).toBeLessThan(
       navText.indexOf('plugin.categorySingle.trigger'),
     )
     expect(navText.indexOf('plugin.categorySingle.trigger')).toBeLessThan(
@@ -439,7 +441,7 @@ describe('IntegrationsPage', () => {
       navText.indexOf('plugin.categorySingle.extension'),
     )
     expect(navText.indexOf('plugin.categorySingle.extension')).toBeLessThan(
-      navText.indexOf('common.settings.customEndpoint'),
+      navText.indexOf('navigation.settings.customEndpoint'),
     )
   })
 
@@ -448,11 +450,11 @@ describe('IntegrationsPage', () => {
 
     const targetRows = [
       {
-        label: 'common.settings.provider',
+        label: 'navigation.settings.provider',
         target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
       },
       {
-        label: 'common.toolsPage.toolPlugin',
+        label: 'navigation.toolsPage.toolPlugin',
         target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
       },
       {
@@ -460,7 +462,7 @@ describe('IntegrationsPage', () => {
         target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
       },
       {
-        label: 'common.settings.dataSource',
+        label: 'navigation.settings.dataSource',
         target: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
       },
       {
@@ -485,7 +487,7 @@ describe('IntegrationsPage', () => {
 
     expect(
       screen
-        .getByRole('link', { name: 'common.settings.dataSource' })
+        .getByRole('link', { name: 'navigation.settings.dataSource' })
         .querySelector('.i-ri-database-2-line'),
     ).toBeInTheDocument()
 
@@ -493,12 +495,12 @@ describe('IntegrationsPage', () => {
 
     expect(
       screen
-        .getByRole('link', { name: 'common.settings.dataSource' })
+        .getByRole('link', { name: 'navigation.settings.dataSource' })
         .querySelector('.i-ri-database-2-line'),
     ).toBeInTheDocument()
     expect(
       screen
-        .getByRole('link', { name: 'common.settings.dataSource' })
+        .getByRole('link', { name: 'navigation.settings.dataSource' })
         .querySelector('.i-ri-database-2-fill'),
     ).not.toBeInTheDocument()
   })
@@ -512,7 +514,7 @@ describe('IntegrationsPage', () => {
       'flex-col',
       'overflow-hidden',
     )
-    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })).toHaveAttribute(
       'href',
       '/integrations/tools/built-in',
     )
@@ -666,20 +668,22 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ category: 'mcp' })
 
     expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.menus.tools' })).not.toHaveClass(
+    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).not.toHaveClass(
       'bg-state-base-active',
     )
-    expect(screen.getByRole('button', { name: 'common.menus.tools' })).not.toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).not.toHaveAttribute(
       'aria-current',
     )
-    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })).toHaveAttribute(
       'href',
       '/integrations/tools/built-in',
     )
-    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveClass('pl-8')
+    expect(screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })).toHaveClass(
+      'pl-8',
+    )
     expect(
       screen
-        .getByRole('link', { name: 'common.toolsPage.toolPlugin' })
+        .getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })
         .querySelector('.i-custom-vender-integrations-tools'),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute(
@@ -688,29 +692,28 @@ describe('IntegrationsPage', () => {
     )
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'common.settings.swaggerAPIAsTool' })).toHaveAttribute(
-      'href',
-      '/integrations/tools/api',
-    )
-    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.swaggerAPIAsTool' }),
+    ).toHaveAttribute('href', '/integrations/tools/api')
+    expect(screen.getByRole('link', { name: 'navigation.common.workflowAsTool' })).toHaveAttribute(
       'href',
       '/integrations/tools/workflow',
     )
     const workflowToolIcon = screen
-      .getByRole('link', { name: 'workflow.common.workflowAsTool' })
+      .getByRole('link', { name: 'navigation.common.workflowAsTool' })
       .querySelector('.i-custom-vender-integrations-workflow-as-tool')
     expect(workflowToolIcon).toBeInTheDocument()
     expect(workflowToolIcon).toHaveClass('size-4')
     expect(
       screen
-        .getByRole('link', { name: 'workflow.common.workflowAsTool' })
+        .getByRole('link', { name: 'navigation.common.workflowAsTool' })
         .querySelector('.i-ri-node-tree'),
     ).not.toBeInTheDocument()
     expect(
       screen
-        .getByRole('link', { name: 'workflow.common.workflowAsTool' })
+        .getByRole('link', { name: 'navigation.common.workflowAsTool' })
         .compareDocumentPosition(
-          screen.getByRole('link', { name: 'common.settings.swaggerAPIAsTool' }),
+          screen.getByRole('link', { name: 'navigation.settings.swaggerAPIAsTool' }),
         ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -720,11 +723,11 @@ describe('IntegrationsPage', () => {
     const onSectionChange = vi.fn()
     renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
 
-    expect(screen.getByRole('button', { name: 'common.settings.provider' })).toHaveClass(
+    expect(screen.getByRole('button', { name: 'navigation.settings.provider' })).toHaveClass(
       'bg-state-base-active',
     )
 
-    const toolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
+    const toolsButton = screen.getByRole('button', { name: 'navigation.menus.tools' })
 
     expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
@@ -734,10 +737,12 @@ describe('IntegrationsPage', () => {
 
     expect(onSectionChange).toHaveBeenCalledWith('builtin')
     expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'navigation.toolsPage.toolPlugin' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.settings.provider' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.settings.provider' }))
 
     expect(onSectionChange).toHaveBeenCalledWith('provider')
     expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
@@ -756,15 +761,17 @@ describe('IntegrationsPage', () => {
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
-    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.menus.tools' }))
 
-    expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'navigation.toolsPage.toolPlugin' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'workflow.common.workflowAsTool' }),
+      screen.getByRole('button', { name: 'navigation.common.workflowAsTool' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.settings.swaggerAPIAsTool' }),
+      screen.getByRole('button', { name: 'navigation.settings.swaggerAPIAsTool' }),
     ).toBeInTheDocument()
   })
 
@@ -772,7 +779,7 @@ describe('IntegrationsPage', () => {
     const user = userEvent.setup()
     renderIntegrationsPage(undefined, 'provider')
 
-    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.menus.tools' }))
 
     expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/built-in')
   })
@@ -782,41 +789,43 @@ describe('IntegrationsPage', () => {
     const view = renderIntegrationsPage(undefined, 'mcp')
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
-    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
       'aria-expanded',
       'true',
     )
-    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.menus.tools' }))
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
-    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
     expect(
-      screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' }),
+      screen.queryByRole('link', { name: 'navigation.toolsPage.toolPlugin' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
 
     view.rerender(<IntegrationsPage section="provider" />)
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
     expect(
-      screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' }),
+      screen.queryByRole('link', { name: 'navigation.toolsPage.toolPlugin' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
 
     view.rerender(<IntegrationsPage section="mcp" />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
         'aria-expanded',
         'true',
       )
@@ -827,24 +836,23 @@ describe('IntegrationsPage', () => {
   it('renders the tools header for tool sections', () => {
     renderIntegrationsPage({ section: 'builtin' })
 
-    expect(screen.getAllByText('common.toolsPage.toolPlugin')).toHaveLength(2)
-    expect(screen.getByText('common.toolsPage.description')).toBeInTheDocument()
+    expect(screen.getAllByText('navigation.toolsPage.toolPlugin')).toHaveLength(2)
+    expect(screen.getByText('navigation.toolsPage.description')).toBeInTheDocument()
     expect(
-      screen.getByText('common.toolsPage.description').closest('[class*="max-w-[1600px]"]'),
+      screen.getByText('navigation.toolsPage.description').closest('[class*="max-w-[1600px]"]'),
     ).toHaveClass('px-6')
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
-      'href',
-      'https://docs.dify.ai/en/self-host/use-dify/workspace/tools',
-    )
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools')
   })
 
   it('aligns model provider headers to the unified content frame', () => {
     renderIntegrationsPage({ section: 'provider' })
 
-    const description = screen.getByText('common.modelProvider.pageDesc')
+    const description = screen.getByText('modelProvider.modelProvider.pageDesc')
     expect(description.closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
     expect(
-      screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i }),
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
     ).toBeInTheDocument()
   })
 
@@ -861,29 +869,30 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('MCP')).toHaveLength(2)
     expect(screen.getByText('common.mcpPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
-      'href',
-      'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#mcp',
-    )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#mcp')
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it('renders the custom tool header for the custom tool section', () => {
     renderIntegrationsPage({ section: 'custom-tool' })
 
-    expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
+    expect(screen.getAllByText('navigation.settings.swaggerAPIAsTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute(
       'href',
       'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#swagger-api',
     )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it.each([
     [
       'data-source',
-      'common.settings.dataSource',
+      'navigation.settings.dataSource',
       'common.dataSourcePage.description',
       'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
     ],
@@ -892,24 +901,25 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText(title)).toHaveLength(2)
     expect(screen.getByText(description)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
-      'href',
-      href,
-    )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute('href', href)
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it('renders the custom endpoint header with toolbar and docs link', () => {
     renderIntegrationsPage({ section: 'custom-endpoint' })
 
-    expect(screen.getAllByText('common.settings.customEndpoint')).toHaveLength(2)
+    expect(screen.getAllByText('navigation.settings.customEndpoint')).toHaveLength(2)
     expect(screen.getByText('common.apiBasedExtensionPage.description')).toBeInTheDocument()
     expect(screen.getByTestId('api-extension-toolbar')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute(
       'href',
       'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/endpoint',
     )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -936,27 +946,25 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText(title)).toHaveLength(2)
     expect(screen.getByText(description)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
-      'href',
-      href,
-    )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute('href', href)
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it('renders the workflow as tool header with a docs link', () => {
     renderIntegrationsPage({ section: 'workflow-tool' })
 
-    expect(screen.getAllByText('workflow.common.workflowAsTool')).toHaveLength(2)
+    expect(screen.getAllByText('navigation.common.workflowAsTool')).toHaveLength(2)
     expect(screen.getByText('common.workflowAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute(
-      'href',
-      'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow',
-    )
-    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow')
+    expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it.each([
-    ['builtin', 'common.toolsPage.description'],
+    ['builtin', 'navigation.toolsPage.description'],
     ['mcp', 'common.mcpPage.description'],
     ['custom-tool', 'common.swaggerAPIAsToolPage.description'],
     ['workflow-tool', 'common.workflowAsToolPage.description'],
@@ -1079,10 +1087,10 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     expect(
-      screen.getByText('common.settings.integrations').parentElement?.parentElement,
+      screen.getByText('navigation.settings.integrations').parentElement?.parentElement,
     ).toHaveClass('mb-3', 'pt-1', 'pb-0.5')
     expect(
-      screen.getByRole('link', { name: 'common.settings.provider' }).parentElement,
+      screen.getByRole('link', { name: 'navigation.settings.provider' }).parentElement,
     ).toHaveClass('py-4')
   })
 
@@ -1093,12 +1101,12 @@ describe('IntegrationsPage', () => {
       '--model-provider-warning-left: calc(240px + 200px)',
     )
 
-    expect(screen.getByText('common.settings.integrations')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.integrations')).toHaveClass(
+    expect(screen.getByText('navigation.settings.integrations')).toBeInTheDocument()
+    expect(screen.getByText('navigation.settings.integrations')).toHaveClass(
       'title-2xl-semi-bold',
       'text-text-primary',
     )
-    expect(screen.getByText('common.settings.integrations').parentElement).toHaveClass(
+    expect(screen.getByText('navigation.settings.integrations').parentElement).toHaveClass(
       'h-6',
       'items-center',
     )
@@ -1135,19 +1143,20 @@ describe('IntegrationsPage', () => {
       'pl-2',
       'system-sm-medium',
     )
-    expect(screen.queryByText('common.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
+    expect(screen.queryByText('navigation.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.customEndpoint' })).toHaveAttribute(
-      'href',
-      '/integrations/custom-endpoint',
-    )
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.customEndpoint' }),
+    ).toHaveAttribute('href', '/integrations/custom-endpoint')
     expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute(
       'href',
       '/integrations/trigger',
     )
     expect(
-      screen.queryByRole('button', { name: 'common.settings.collapse' }),
+      screen.queryByRole('button', { name: 'navigation.settings.collapse' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.settings.expand' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'navigation.settings.expand' }),
+    ).not.toBeInTheDocument()
   })
 })

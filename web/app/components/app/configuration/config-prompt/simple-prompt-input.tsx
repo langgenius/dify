@@ -209,7 +209,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                 <Infotip>
                   <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
                   <InfotipContent aria-labelledby={titleId} className="w-45">
-                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               )}

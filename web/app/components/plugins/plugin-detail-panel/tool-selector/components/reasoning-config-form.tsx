@@ -68,7 +68,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const fieldLabelId = useId()
 
-  const { t } = useTranslation(['plugin', 'tools', 'workflow'])
+  const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
   const language = useLanguage()
   const { data: timezone } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -207,7 +207,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                     <button
                       type="button"
                       aria-label={t(($) => $['nodes.agent.clickToViewParameterSchema'], {
-                        ns: 'workflow',
+                        ns: 'workflowAgent',
                       })}
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
@@ -217,7 +217,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   }
                 />
                 <TooltipContent>
-                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflowAgent' })}
                 </TooltipContent>
               </Tooltip>
             )}

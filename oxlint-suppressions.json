@@ -1667,14 +1667,6 @@
       "count": 4
     }
   },
-  "web/app/components/datasets/documents/components/list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source-options/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1913,14 +1905,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/hit-testing/components/query-input/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/hit-testing/components/result-item-external.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1938,22 +1922,6 @@
     }
   },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/edit-metadata-batch/edit-row.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -2490,17 +2458,7 @@
       "count": 4
     }
   },
-  "web/app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/rag-pipeline-header/run-mode.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/rag-pipeline/hooks/use-DSL.ts": {
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -2679,12 +2637,7 @@
   },
   "web/app/components/workflow-app/components/workflow-children.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-DSL.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
+      "count": 2
     }
   },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
@@ -4130,11 +4083,6 @@
       "count": 6
     }
   },
-  "web/app/components/workflow/update-dsl-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -4746,7 +4694,7 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/use-workflow.ts": {

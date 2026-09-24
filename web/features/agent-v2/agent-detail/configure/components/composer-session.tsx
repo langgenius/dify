@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
+import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import {
@@ -38,7 +39,6 @@ import {
 } from '../use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '../use-agent-configure-session-controller'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
-import { AgentConfigureComposerProvider } from './composer-provider'
 import { AgentConfigureClearSessionConfirmDialog } from './confirm-clear-session-dialog'
 import { AgentOrchestratePanel } from './orchestrate'
 import { AgentBuildDraftBar } from './orchestrate/build-draft-bar'
@@ -225,15 +225,9 @@ function AgentConfigurePageComposerSession({
       ]}
       name="AgentConfigureConversation"
     >
-      <AgentConfigureComposerProvider
+      <AgentComposerProvider
         key={composerSessionKey}
-        initialConfig={buildDraft.agentSoulConfig}
-        initializeDefaultModel={
-          configureData.capabilities.canEdit &&
-          configureData.composerQuery.isSuccess &&
-          !isViewingVersion &&
-          !buildDraft.isActive
-        }
+        initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
       >
         <AgentConfigurePageComposerContent
           agentId={agentId}
@@ -253,7 +247,7 @@ function AgentConfigurePageComposerSession({
           onRefreshPreviewConversation={refreshPreviewConversation}
           onSelectVersion={onSelectVersion}
         />
-      </AgentConfigureComposerProvider>
+      </AgentComposerProvider>
     </ScopeProvider>
   )
 }
@@ -300,7 +294,7 @@ function AgentConfigurePageComposerContent({
     agentSoulConfig,
   } = configureData
   const { t } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['modelProvider'])
   const [clearChatByMode, setClearChatByMode] = useState<
     Record<AgentConfigureRightPanelMode, boolean>
   >({
@@ -355,7 +349,7 @@ function AgentConfigurePageComposerContent({
     },
     [rebaseComposerDraft],
   )
-  const [currentModel, setCurrentModel] = useAtom(agentComposerModelAtom)
+  const [currentModel, setConfigureModel] = useAtom(agentComposerModelAtom)
   const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     agentName: agentQuery.data?.name,
@@ -517,7 +511,7 @@ function AgentConfigurePageComposerContent({
               />
             ) : undefined
           }
-          onSelectModel={setCurrentModel}
+          onSelectModel={setConfigureModel}
           onPublish={publishDraft}
           onOpenVersions={() => {
             workingDirectoryPanel.closeWorkingDirectory()
@@ -602,7 +596,9 @@ function AgentConfigurePageComposerContent({
                   rightPanelChatMode === 'build'
                     ? async () => {
                         if (!currentModel?.provider || !currentModel.model) {
-                          toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                          toast.error(
+                            tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }),
+                          )
                           throw new Error('Agent model is required.')
                         }
 

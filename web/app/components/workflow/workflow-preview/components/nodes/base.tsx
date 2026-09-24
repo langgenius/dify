@@ -19,7 +19,7 @@ type NodeCardProps = NodeProps & {
 }
 
 const BaseCard = ({ id, data, children }: NodeCardProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   return (
     <div
@@ -85,7 +85,9 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
                 </PopoverTrigger>
                 <PopoverContent className="w-45 px-3 py-2 system-xs-regular text-text-tertiary">
                   <div className="font-extrabold">
-                    {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
+                      ns: 'workflow',
+                    })}
                   </div>
                   {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
                 </PopoverContent>

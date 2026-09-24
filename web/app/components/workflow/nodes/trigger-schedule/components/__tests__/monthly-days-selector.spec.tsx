@@ -7,7 +7,7 @@ describe('trigger-schedule/monthly-days-selector', () => {
     render(<MonthlyDaysSelector selectedDays={[1]} onChange={vi.fn()} />)
 
     expect(
-      screen.getByRole('group', { name: 'workflow.nodes.triggerSchedule.days' }),
+      screen.getByRole('group', { name: 'workflowIntegrations.nodes.triggerSchedule.days' }),
     ).toBeInTheDocument()
   })
 
@@ -17,9 +17,11 @@ describe('trigger-schedule/monthly-days-selector', () => {
 
     render(<MonthlyDaysSelector selectedDays={[31]} onChange={onChange} />)
 
-    expect(screen.getByText('workflow.nodes.triggerSchedule.lastDayTooltip')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDayTooltip'),
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.nodes.triggerSchedule.lastDay'))
+    await user.click(screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDay'))
 
     expect(onChange).toHaveBeenCalled()
   })

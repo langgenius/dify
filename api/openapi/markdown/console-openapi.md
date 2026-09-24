@@ -1497,8 +1497,6 @@ Get advanced prompt templates based on app mode and model configuration
 | 400 | Invalid request parameters |  |
 
 ### [GET] /apps
-**Get app list**
-
 Get list of applications with pagination and filtering
 
 #### Parameters
@@ -1521,8 +1519,6 @@ Get list of applications with pagination and filtering
 | 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
 
 ### [POST] /apps
-**Create app**
-
 Create a new application
 
 #### Request Body
@@ -1585,8 +1581,6 @@ Create a new application
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
 
 ### [GET] /apps/recent
-**Return the lightweight app cards needed by the Explore home page**
-
 Get recently modified apps for the home Continue Work section
 
 #### Parameters
@@ -1639,8 +1633,6 @@ Get workflow online users
 | 200 | Workflow online users retrieved successfully | **application/json**: [WorkflowOnlineUsersResponse](#workflowonlineusersresponse)<br> |
 
 ### [DELETE] /apps/{app_id}
-**Delete app**
-
 Delete application
 
 #### Parameters
@@ -1657,8 +1649,6 @@ Delete application
 | 403 | Insufficient permissions |
 
 ### [GET] /apps/{app_id}
-**Get app detail**
-
 Get application details
 
 #### Parameters
@@ -1674,8 +1664,6 @@ Get application details
 | 200 | Success | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
 ### [PUT] /apps/{app_id}
-**Update app**
-
 Update application details
 
 #### Parameters
@@ -2681,8 +2669,6 @@ Convert Completion App to Workflow App
 | 403 | Permission denied |  |
 
 ### [POST] /apps/{app_id}/copy
-**Copy app**
-
 Create a copy of an existing application
 
 #### Parameters
@@ -2706,8 +2692,6 @@ Create a copy of an existing application
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/export
-**Export app**
-
 Export application configuration as DSL
 
 #### Parameters
@@ -2859,8 +2843,6 @@ Check if app name is available
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
-**Publish app to Creators Platform**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -3220,8 +3202,6 @@ Get available TTS voices for a specific language
 | 400 | Invalid language parameter |  |
 
 ### [GET] /apps/{app_id}/trace
-**Get app trace**
-
 Get app tracing configuration
 
 #### Parameters
@@ -3408,7 +3388,7 @@ Get workflow application execution logs
 | keyword | query | Search keyword for filtering logs | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
+| status | query | Execution status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
 
 #### Responses
 
@@ -4807,7 +4787,7 @@ Restore a published workflow version into the draft workflow
 | 404 | Workflow not found |  |
 
 ### [GET] /apps/{resource_id}/api-keys
-**Get all API keys for an app**
+Get all API keys for an app
 
 #### Parameters
 
@@ -4822,7 +4802,7 @@ Restore a published workflow version into the draft workflow
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
-**Create a new API key for an app**
+Create a new API key for an app
 
 #### Parameters
 
@@ -4838,7 +4818,7 @@ Restore a published workflow version into the draft workflow
 | 400 | Maximum keys exceeded |  |
 
 ### [DELETE] /apps/{resource_id}/api-keys/{api_key_id}
-**Delete an API key for an app**
+Delete an API key for an app
 
 #### Parameters
 
@@ -6447,7 +6427,7 @@ Check if dataset is in use
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
-**Get all API keys for a dataset**
+Get all API keys for a dataset
 
 #### Parameters
 
@@ -6462,7 +6442,7 @@ Check if dataset is in use
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
-**Create a new API key for a dataset**
+Create a new API key for a dataset
 
 #### Parameters
 
@@ -6478,7 +6458,7 @@ Check if dataset is in use
 | 400 | Maximum keys exceeded |  |
 
 ### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
-**Delete an API key for a dataset**
+Delete an API key for a dataset
 
 #### Parameters
 
@@ -6769,32 +6749,6 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
-
-### [POST] /installed-apps
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [InstalledAppCreatePayload](#installedappcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleMessageResponse](#simplemessageresponse)<br> |
-
-### [DELETE] /installed-apps/{installed_app_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | App uninstalled successfully |
 
 ### [GET] /installed-apps/{installed_app_id}
 #### Parameters
@@ -19179,12 +19133,6 @@ Input field definition for snippet parameters.
 | required | boolean |  | No |
 | type | string |  | No |
 
-#### InstalledAppCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-
 #### InstalledAppInfoResponse
 
 | Name | Type | Description | Required |
@@ -19217,7 +19165,6 @@ Input field definition for snippet parameters.
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
 | last_used_at | integer |  | Yes |
-| uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
 
@@ -22235,12 +22182,6 @@ Resource types understood by access policies.
 | message | string |  | Yes |
 | query | string |  | Yes |
 
-#### SimpleMessageResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| message | string |  | Yes |
-
 #### SimpleModelConfig
 
 | Name | Type | Description | Required |
@@ -24241,7 +24182,7 @@ How a workflow node is bound to an Agent.
 | keyword | string | Search keyword for filtering logs | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
-| status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
+| status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter | No |
 
 #### WorkflowAverageAppInteractionStatisticItem
 

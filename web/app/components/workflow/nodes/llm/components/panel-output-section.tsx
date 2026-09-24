@@ -31,7 +31,7 @@ const PanelOutputSection: FC<Props> = ({
 }) => {
   const structuredLabelId = React.useId()
 
-  const { t } = useTranslation(['app', 'workflow'])
+  const { t } = useTranslation(['app', 'workflowModels'])
   return (
     <>
       <Split />
@@ -84,19 +84,19 @@ const PanelOutputSection: FC<Props> = ({
           <VarItem
             name="text"
             type="string"
-            description={t(($) => $[`${i18nPrefix}.outputVars.output`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.output`], { ns: 'workflowModels' })}
           />
           <VarItem
             name="reasoning_content"
             type="string"
             description={t(($) => $[`${i18nPrefix}.outputVars.reasoning_content`], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
           />
           <VarItem
             name="usage"
             type="object"
-            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflowModels' })}
           />
           {inputs.structured_output_enabled && (
             <>

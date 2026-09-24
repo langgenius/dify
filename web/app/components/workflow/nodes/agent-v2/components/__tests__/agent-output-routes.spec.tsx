@@ -189,7 +189,7 @@ it('collapses routes independently of their enabled state and keeps one title', 
   expect(disclosure).toHaveAttribute('aria-disabled', 'true')
   await user.click(disclosure)
   expect(screen.queryByRole('textbox', { name: 'Condition' })).not.toBeInTheDocument()
-  expect(screen.queryByText('workflow.nodes.agent.outputRoutes.add')).not.toBeInTheDocument()
+  expect(screen.queryByText('workflowAgent.nodes.agent.outputRoutes.add')).not.toBeInTheDocument()
   await user.click(toggle)
   expect(disclosure).not.toHaveAttribute('aria-disabled', 'true')
   expect(disclosure).toHaveAttribute('aria-expanded', 'true')
