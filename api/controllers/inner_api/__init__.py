@@ -27,6 +27,7 @@ from .app import file_grants as _app_file_grants
 from .knowledge import retrieval as _knowledge_retrieval
 from .knowledge_fs import background as _knowledge_fs_background
 from .knowledge_fs import storage as _knowledge_fs_storage
+from .knowledge_fs import texts as _knowledge_fs_texts
 from .knowledge_fs import vectors as _knowledge_fs_vectors
 from .plugin import agent_config as _agent_config
 from .plugin import plugin as _plugin
@@ -46,6 +47,7 @@ __all__ = [
     "_app_file_grants",
     "_knowledge_fs_background",
     "_knowledge_fs_storage",
+    "_knowledge_fs_texts",
     "_knowledge_fs_vectors",
     "_knowledge_retrieval",
     "_mail",

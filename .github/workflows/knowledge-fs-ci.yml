@@ -480,6 +480,10 @@ jobs:
     if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: depot-ubuntu-24.04-4
     services:
+      qdrant:
+        image: qdrant/qdrant:v1.8.3
+        ports:
+          - 6333:6333
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
         env:
@@ -511,7 +515,7 @@ jobs:
           python-version: '3.12'
           cache-dependency-glob: api/uv.lock
       - name: Install native vector SDKs
-        run: uv sync --project api --locked --dev --group vdb-elasticsearch --group vdb-weaviate
+        run: uv sync --project api --locked --dev --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate
       - name: Wait for Weaviate readiness
         run: |
           for attempt in $(seq 1 60); do
@@ -521,6 +525,8 @@ jobs:
           exit 1
       - name: Exercise real write, retry, filtered search, isolation and deletion
         env:
+          QDRANT_URL: http://localhost:6333
+          QDRANT_GRPC_ENABLED: 'false'
           KNOWLEDGE_FS_VECTOR_INTEGRATION: '1'
           DEPLOYMENT_EDITION: COMMUNITY
           ELASTICSEARCH_HOST: localhost
