@@ -45,7 +45,7 @@ it('the map is one tree: leaves carry a summary, groups a count and sub-groups',
     count: expect.any(Number),
     groups: expect.arrayContaining(['console_app']),
   })
-  expect(map.list.groups).toEqual(expect.arrayContaining(['workspace']))
+  expect(map.get.groups).toEqual(expect.arrayContaining(['workspace']))
   expect(map.call).toBeUndefined()
   expect(map.ops).toBeUndefined()
   expect(w.io.outBuf()).toMatch(/\n {2}"login"/)
@@ -142,11 +142,11 @@ it('search reaches a word that only a field name carries', async () => {
 })
 
 it('help routes a word to a namespace listing or a search, and --full is the flat list', async () => {
-  const c = await world(true, ['help', 'list'])
+  const c = await world(true, ['help', 'get'])
   await (await c.ctx.get(commands)).run()
   const ids = JSON.parse(c.io.outBuf()).entries.map((e: { id: string }) => e.id)
-  expect(ids).toContain('list skills')
-  expect(ids).toContain('list workspace member')
+  expect(ids).toContain('get skills')
+  expect(ids).toContain('get workspace member')
   expect(ids).toEqual([...ids].sort())
 
   const d = await world(true, ['help', 'chatbot'])
@@ -231,41 +231,41 @@ it('the map reuses a cached catalog instead of fetching again', async () => {
   const reusing = await testContext({ login: true, argv: ['help'], reuseDirOf: w })
   worlds.push(reusing)
   await (await reusing.ctx.get(commands)).run()
-  expect(JSON.parse(reusing.io.outBuf()).list.count).toBeGreaterThan(3)
+  expect(JSON.parse(reusing.io.outBuf()).get.count).toBeGreaterThan(3)
   expect(reusing.mock.requestCount).toBe(1)
 })
 
 it('a catalog op resolves as a spaced command and takes its fields as flags', async () => {
-  const w = await world(true, ['list', 'console_app', '--limit', '2'])
+  const w = await world(true, ['get', 'console_app', '--limit', '2'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toContain('limit=2')
 })
 
 it('a command word may be spelled with dashes where the op id has underscores', async () => {
-  const w = await world(true, ['list', 'console-app'])
+  const w = await world(true, ['get', 'console-app'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps?workspace_id=ws-1')
 
-  const help = await world(true, ['list', 'console-app', '--help'])
+  const help = await world(true, ['get', 'console-app', '--help'])
   expect(await (await help.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(help.io.outBuf())).toMatchObject({
-    id: 'list console_app',
-    usage: 'difyctl list console_app [flags]',
+    id: 'get console_app',
+    usage: 'difyctl get console_app [flags]',
   })
 })
 
 it('an unknown path refetches the catalog once before giving up', async () => {
-  const w = await world(true, ['list', 'nope'])
+  const w = await world(true, ['get', 'nope'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unknown command: list nope',
+    message: 'unknown command: get nope',
     hint: 'run difyctl help',
   })
   expect(w.mock.requestCount).toBe(2) // the cached catalog, then one refetch
 
-  const typo = await world(true, ['list', 'consol_app'])
+  const typo = await world(true, ['get', 'consol_app'])
   await expect((await typo.ctx.get(commands)).run()).rejects.toMatchObject({
-    hint: 'did you mean: list console_app',
+    hint: 'did you mean: get console_app',
   })
 })
 
@@ -280,13 +280,13 @@ it('a known namespace and a help view answer from the cached catalog, with no re
 })
 
 it("an op's invalid input carries the op's own schema, not the parse-only one", async () => {
-  const w = await world(true, ['list', 'console_app', '--limit', '500'])
-  const expected = FIXTURE_OPS['list.console_app']?.input
+  const w = await world(true, ['get', 'console_app', '--limit', '500'])
+  const expected = FIXTURE_OPS['get.console_app']?.input
   expect(expected).toMatchObject({ required: ['workspace_id'] })
   expect(propertiesOf(expected ?? {})).not.toHaveProperty('input')
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
-    hint: 'run difyctl help list console_app',
+    hint: 'run difyctl help get console_app',
     schema: expected,
   })
 })
@@ -303,10 +303,10 @@ it('an unreachable catalog costs a notice, not the static suggestion', async () 
 })
 
 it('without a login only statics resolve and the hint says to log in', async () => {
-  const w = await world(false, ['list', 'console_app'])
+  const w = await world(false, ['get', 'console_app'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unknown command: list console_app',
+    message: 'unknown command: get console_app',
     hint: 'log in to use server operations',
   })
   expect(w.mock.requestCount).toBe(0)

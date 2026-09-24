@@ -1,7 +1,7 @@
 export const OP_SEPARATOR = '.'
 export const COMMAND_SEPARATOR = ' '
 
-/** An op id as the words it is typed as: `list.console_app` -> `list console_app`. */
+/** An op id as the words it is typed as: `get.console_app` -> `get console_app`. */
 export function spacedId(id: string): string {
   return id.split(OP_SEPARATOR).join(COMMAND_SEPARATOR)
 }

@@ -36,8 +36,8 @@ Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`i
 difyctl login --server https://dify.example.com   # opens the browser; approve the device code shown
 difyctl help                                      # the map: every command and operation namespace
 difyctl help chatbot                              # search commands and operations by plain words
-difyctl list workspace                            # workspaces visible to this account
-difyctl list console_app --limit 5                # list apps
+difyctl get workspace                             # workspaces visible to this account
+difyctl get console_app --limit 5                 # list apps
 difyctl run console_app workflow --app-id <id> --inputs @vars.json --stream
 ```
 
@@ -55,8 +55,8 @@ difyctl has no built-in business commands. Every operation the server publishes 
 | `set config <key> <value>` | Set a local config value                                        |
 | `unset config <key>`       | Remove a local config value, restoring its default              |
 | `refresh cache`            | Refetch the server catalog and replace the local cache          |
-| `clear cache`              | Delete the local server catalog cache                           |
-| `list skills`              | List the skills in the collection                               |
+| `delete cache`             | Delete the local server catalog cache                           |
+| `get skills`               | List the skills in the collection                               |
 | `install skills <dir>`     | Write skills from the collection into a skills root (`--skill`) |
 
 `login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job. In a sandbox it adds `--no-keyring` and sets `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
@@ -64,13 +64,13 @@ difyctl has no built-in business commands. Every operation the server publishes 
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
 
-`difyctl help` covers local commands and server operations as one tree. Bare, it prints the map. `difyctl help <namespace>` lists one namespace (the bare namespace, `difyctl console_app`, does the same), `difyctl help <words>` searches by plain words, and `difyctl help <id>` prints one descriptor, the same as `<command> --help`; the id may be dotted or spaced. `--all` adds hidden entries, `--full` on the bare `help` prints every descriptor. Help and errors are text on a terminal and JSON in a pipe; `--json` or `DIFY_OUTPUT=json` forces JSON. Results and streams are always JSON.
+`difyctl help` covers local commands and server operations as one tree. Bare, it prints the map. `difyctl help <namespace>` lists one namespace (the bare namespace, `difyctl get`, does the same), `difyctl help <words>` searches by plain words, and `difyctl help <id>` prints one descriptor, the same as `<command> --help`; the id may be dotted or spaced. `--all` adds hidden entries, `--full` on the bare `help` prints every descriptor. Help and errors are text on a terminal and JSON in a pipe; `--json` or `DIFY_OUTPUT=json` forces JSON. Results and streams are always JSON.
 
 ## Agent skills
 
 difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
 
-- `difyctl list skills` — the collection: each skill's name and description. Writes nothing.
+- `difyctl get skills` — the collection: each skill's name and description. Writes nothing.
 - `difyctl install skills <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
 
 difyctl does not detect agents. You name the root, and the same command re-run after an upgrade refreshes the copies.

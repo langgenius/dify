@@ -218,7 +218,7 @@ it('a listing is one aligned row per entry', () => {
   const listing = {
     entries: [
       {
-        id: 'list console_app',
+        id: 'get console_app',
         summary: 'List apps',
         effect: 'read' as const,
         kind: 'list',
@@ -235,7 +235,7 @@ it('a listing is one aligned row per entry', () => {
     total: 2,
   }
   expect(listingView(listing).text(plain)).toMatchInlineSnapshot(`
-    "list console_app        List apps                    read list
+    "get console_app         List apps                    read list
     legacy_run console_app  Deprecated: use the mode op  write sse deprecated"
   `)
 })

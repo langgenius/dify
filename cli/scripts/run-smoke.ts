@@ -30,17 +30,17 @@ const checks: Check[] = [
     },
   },
   {
-    name: 'help list.console_app carries .input.properties.workspace_id',
+    name: 'help get.console_app carries .input.properties.workspace_id',
     run: () => {
-      const body = JSON.parse(cli(['help', 'list.console_app', '--json']))
+      const body = JSON.parse(cli(['help', 'get.console_app', '--json']))
       if (body.input?.properties?.workspace_id === undefined)
         throw new Error('no .input.properties.workspace_id')
     },
   },
   {
-    name: 'list console_app returns .data',
+    name: 'get console_app returns .data',
     run: () => {
-      const body = JSON.parse(cli(['list', 'console_app', '--input', '{"limit":1}']))
+      const body = JSON.parse(cli(['get', 'console_app', '--input', '{"limit":1}']))
       if (body.data === undefined) throw new Error('no .data')
     },
   },

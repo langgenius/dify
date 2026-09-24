@@ -65,9 +65,9 @@ const ServerErrorCode = {
 } as const
 
 const OpId = {
-  AppList: 'list.console_app',
-  WorkspaceList: 'list.workspace',
-  AccountSessionsList: 'list.account.session',
+  AppList: 'get.console_app',
+  WorkspaceList: 'get.workspace',
+  AccountSessionsList: 'get.account.session',
   ChatRun: 'run.console_app.chat',
   AdvancedChatRun: 'run.console_app.advanced_chat',
   FormSubmit: 'submit.run.form',

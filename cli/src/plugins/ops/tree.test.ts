@@ -18,10 +18,10 @@ function fixtureOp(id: string): CatalogOp {
 
 it('builds a tree from dotted ids, one command per leaf', () => {
   const tree = opsTree({
-    'list.workspace': fixtureOp('list.workspace'),
+    'get.workspace': fixtureOp('get.workspace'),
     'invite.workspace.member': fixtureOp('invite.workspace.member'),
   })
-  expect(tree.list?.subcommands.workspace?.command?.facets().op).toBe('list.workspace')
+  expect(tree.get?.subcommands.workspace?.command?.facets().op).toBe('get.workspace')
   expect(tree.invite?.subcommands.workspace?.command).toBeUndefined()
   expect(tree.invite?.subcommands.workspace?.subcommands.member?.command?.facets().op).toBe(
     'invite.workspace.member',

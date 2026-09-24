@@ -1,6 +1,6 @@
 {
   "ops": {
-    "get.account": {
+    "describe.account": {
       "bind": {},
       "deprecated": false,
       "input": { "properties": {}, "required": [], "type": "object" },
@@ -10,7 +10,7 @@
       "path": "/openapi/v1/account",
       "summary": "Current account"
     },
-    "list.account.session": {
+    "get.account.session": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
       "input": {
@@ -33,7 +33,7 @@
       "path": "/openapi/v1/account/sessions",
       "summary": "List login sessions of the current account"
     },
-    "revoke.account.session": {
+    "delete.account.session": {
       "bind": { "session_id": "path" },
       "deprecated": false,
       "input": {
@@ -47,7 +47,7 @@
       "path": "/openapi/v1/account/sessions/{session_id}",
       "summary": "Revoke one login session by id"
     },
-    "revoke.account.current_session": {
+    "delete.account.current_session": {
       "bind": {},
       "deprecated": false,
       "input": { "properties": {}, "required": [], "type": "object" },
@@ -456,7 +456,7 @@
       "path": "/openapi/v1/apps/{app_id}/files",
       "summary": "Upload a file and get a file id for later runs"
     },
-    "list.console_app": {
+    "get.console_app": {
       "bind": {
         "limit": "query",
         "mode": "query",
@@ -658,7 +658,7 @@
       "path": "/openapi/v1/apps/{app_id}/workflow:run",
       "summary": "Run a workflow app; streams workflow events"
     },
-    "stream.run.event": {
+    "get.run.event": {
       "bind": {
         "app_id": "path",
         "continue_on_pause": "query",
@@ -692,7 +692,7 @@
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
       "summary": "Stream the events of a workflow run"
     },
-    "get.run.form": {
+    "describe.run.form": {
       "bind": { "app_id": "path", "form_token": "path" },
       "deprecated": false,
       "input": {
@@ -793,7 +793,7 @@
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
       "summary": "Stop a running task"
     },
-    "get.workspace": {
+    "describe.workspace": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -807,7 +807,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}",
       "summary": "Workspace detail"
     },
-    "list.workspace": {
+    "get.workspace": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
       "input": {
@@ -848,7 +848,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
       "summary": "Invite a member by email"
     },
-    "list.workspace.member": {
+    "get.workspace.member": {
       "bind": { "limit": "query", "page": "query", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -872,7 +872,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
       "summary": "List workspace members"
     },
-    "remove.workspace.member": {
+    "delete.workspace.member": {
       "bind": { "member_id": "path", "workspace_id": "path" },
       "deprecated": false,
       "input": {

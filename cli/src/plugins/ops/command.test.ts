@@ -21,7 +21,7 @@ function fixtureOp(id: string): CatalogOp {
   return op
 }
 
-const list = fixtureOp('list.console_app')
+const list = fixtureOp('get.console_app')
 
 const worlds: TestWorld[] = []
 async function world() {
@@ -36,14 +36,14 @@ afterEach(async () => {
 const NO_PATH: readonly string[] = []
 
 it('presents an op through the command interface', () => {
-  const Ctor = opCommand('list.console_app', list)
+  const Ctor = opCommand('get.console_app', list)
   expect(Ctor.summary).toBe(list.summary)
   expect(Ctor.effect).toBe('read')
   expect(Ctor.positional).toEqual([])
   expect(Ctor.examples).toEqual(list.examples)
   expect(Ctor.schema()).toBe(list.input)
   expect(Ctor.facets()).toMatchObject({
-    op: 'list.console_app',
+    op: 'get.console_app',
     method: 'GET',
     path: '/openapi/v1/apps',
     kind: 'list',
@@ -101,17 +101,17 @@ it.each(EFFECTS)('effect of %s is %s', (method, effect) => {
 
 it('help shows the business schema, the op facets, the call options and the pin', async () => {
   const w = await world()
-  const row = await opCommand('list.console_app', list).help({
-    path: ['list', 'console_app'],
+  const row = await opCommand('get.console_app', list).help({
+    path: ['get', 'console_app'],
     rest: [],
     ctx: w.ctx,
   })
   expect(row).toMatchObject({
-    id: 'list console_app',
-    usage: 'difyctl list console_app [flags]',
+    id: 'get console_app',
+    usage: 'difyctl get console_app [flags]',
     summary: list.summary,
     effect: 'read',
-    op: 'list.console_app',
+    op: 'get.console_app',
     method: 'GET',
     path: '/openapi/v1/apps',
     kind: 'list',
@@ -124,7 +124,7 @@ it('help shows the business schema, the op facets, the call options and the pin'
 
 it('runs the op from its own flags, pinning the workspace', async () => {
   const w = await world()
-  const Ctor = opCommand('list.console_app', list)
+  const Ctor = opCommand('get.console_app', list)
   const input = parseArgv(['--limit', '2'], { positional: Ctor.positional, schema: Ctor.flags() })
   const out = await new Ctor().run(Ctor.finalize(input, NO_PATH), w.ctx)
   expect(out).toMatchObject({ code: 0 })
@@ -133,8 +133,8 @@ it('runs the op from its own flags, pinning the workspace', async () => {
 
 it('help omits pins for an op whose schema takes no workspace_id', async () => {
   const w = await world()
-  const row = await opCommand('get.account', fixtureOp('get.account')).help({
-    path: ['get', 'account'],
+  const row = await opCommand('describe.account', fixtureOp('describe.account')).help({
+    path: ['describe', 'account'],
     rest: [],
     ctx: w.ctx,
   })

@@ -41,8 +41,8 @@ it('the map is one tree: leaves carry a summary, groups a count and sub-groups',
     groups: expect.arrayContaining(['console_app']),
   })
   expect(map.run?.summary).toBeUndefined()
-  expect(map.list?.groups).toEqual(expect.arrayContaining(['workspace']))
-  expect(map.list?.count).toBe(ids.filter((id) => id.startsWith('list ')).length)
+  expect(map.get?.groups).toEqual(expect.arrayContaining(['workspace']))
+  expect(map.get?.count).toBe(ids.filter((id) => id.startsWith('get ')).length)
   expect(map.call).toBeUndefined()
   expect(map.ops).toBeUndefined()
 })
@@ -86,7 +86,7 @@ it('search ranks the plain words against ids, summaries, fields and examples', (
 
 it('a single dotted word is the spaced path typed as one word', () => {
   expect(spacedWords(['run.console_app.workflow'])).toEqual(['run', 'console_app', 'workflow'])
-  expect(spacedWords(['list', 'console_app'])).toEqual(['list', 'console_app'])
+  expect(spacedWords(['get', 'console_app'])).toEqual(['get', 'console_app'])
   expect(spacedWords(['upload.file', 'now'])).toEqual(['upload.file', 'now'])
   expect(spacedWords([])).toEqual([])
 })

@@ -59,7 +59,7 @@ it('knows nothing before a catalog is loaded', async () => {
   const c = await build()
   expect(c.loaded).toBe(false)
   expect(c.ops()).toEqual({})
-  expect(c.op('list.console_app')).toBeUndefined()
+  expect(c.op('get.console_app')).toBeUndefined()
   expect(c.fingerprint).toBe('')
 })
 

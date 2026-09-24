@@ -16,7 +16,7 @@ An operation id is dotted, `run.console_app.chat`, and is typed as words: `difyc
 Four views under `help`, covering local commands and server operations as one tree:
 
 1. `difyctl help --json`: the map. Start here.
-2. `difyctl help <namespace> --json`: everything under one namespace (`difyctl help console_app`). The bare namespace, `difyctl console_app --json`, prints the same.
+2. `difyctl help <namespace> --json`: everything under one namespace (`difyctl help get`). The bare namespace, `difyctl get --json`, prints the same.
 3. `difyctl help <words> --json`: search by plain words (`difyctl help upload file`), top 20 entries plus `total`. Widen the words when nothing fits.
 4. `difyctl help <id> --json`: one descriptor, dotted or spaced id. For an operation: `input` (JSON Schema), `bind`, `kind`, `examples` and `pins` (values difyctl fills in, currently `workspace_id`). `<command> --help` prints the same.
 
@@ -46,7 +46,7 @@ Errors are one envelope on stderr: `{"error":{"code","message","hint"?,"details"
 
 ## Login and environment
 
-`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--no-keyring` keeps the token in a file; `--insecure` skips TLS verification). One login at a time. `difyctl use workspace <id>` pins a workspace; `difyctl list workspace` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
+`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--no-keyring` keeps the token in a file; `--insecure` skips TLS verification). One login at a time. `difyctl use workspace <id>` pins a workspace; `difyctl get workspace` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
 
 `login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add `--no-keyring` and set `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session. If background jobs do not survive between calls, run `login --no-wait` instead, relay the `verification_uri` and `user_code` it prints, and after the user approves run `login --resume` until it stops printing `status: pending`.
 
@@ -56,4 +56,4 @@ Operations that remove or revoke have no confirmation prompt. Confirm with the p
 
 ## Other skills
 
-Scenario skills add guidance for one kind of task. `difyctl list skills` shows them; `difyctl install skills <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. `difyctl install skills <skills root>` also refreshes this file after upgrading difyctl.
+Scenario skills add guidance for one kind of task. `difyctl get skills` shows them; `difyctl install skills <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. `difyctl install skills <skills root>` also refreshes this file after upgrading difyctl.

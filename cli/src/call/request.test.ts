@@ -7,7 +7,7 @@ import { buildRequest } from './request'
 
 const doc = parseCatalog(readFileSync(join(__dirname, '../../test/fixtures/catalog.json')))
 const run = doc.ops['run.console_app.workflow']!
-const list = doc.ops['list.console_app']!
+const list = doc.ops['get.console_app']!
 const readFile = async (p: string) => ({
   bytes: new TextEncoder().encode(`bytes-of-${p}`),
   name: p.split('/').pop() ?? p,

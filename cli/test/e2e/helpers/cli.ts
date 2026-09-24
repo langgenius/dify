@@ -168,7 +168,7 @@ export type AuthInjectionOptions = {
   workspaceId: string
   workspaceName: string
   workspaceRole?: string
-  /** Full available list workspace. Defaults to the primary workspace only. */
+  /** Full available get workspace. Defaults to the primary workspace only. */
   availableWorkspaces?: Array<{ id: string; name: string; role: string }>
   /**
    * Server-side session UUID (OAuthAccessToken.id).

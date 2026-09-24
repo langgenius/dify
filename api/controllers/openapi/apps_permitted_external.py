@@ -41,7 +41,7 @@ _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
     @endpoint(
-        op="list.console_app.external",
+        op="get.console_app.external",
         kind=Kind.LIST,
         summary="List apps an external SSO subject may run",
         examples=(Example(title="List the apps this SSO subject may run, first page", input={"page": 1, "limit": 20}),),

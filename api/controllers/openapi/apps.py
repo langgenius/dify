@@ -131,7 +131,7 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        op="list.console_app",
+        op="get.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(

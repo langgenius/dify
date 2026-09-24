@@ -16,12 +16,12 @@ afterEach(async () => {
 })
 
 it('fills the pin, validates, sends the fingerprint and prints a list with the server hint', async () => {
-  const w = await world(['list', 'console_app', '--input', '{"limit":1}'])
+  const w = await world(['get', 'console_app', '--input', '{"limit":1}'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps?limit=1&workspace_id=ws-1')
   expect(w.mock.lastRequest?.headers['x-dify-catalog']).toHaveLength(64)
   expect(JSON.parse(w.io.outBuf()).hints[0]).toMatchObject({
-    op: 'list.console_app',
+    op: 'get.console_app',
     input: { workspace_id: 'ws-1', limit: 1, page: 2 },
   })
 })

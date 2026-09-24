@@ -131,7 +131,7 @@ describe('dify-mock fixture server', () => {
     expect(body.hints).toEqual([
       {
         summary: 'Next page',
-        op: 'list.console_app',
+        op: 'get.console_app',
         input: { workspace_id: 'ws-1', page: 2, limit: 1 },
       },
     ])

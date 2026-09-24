@@ -2,10 +2,10 @@
 // Regenerate via `pnpm tree:gen`. Drift gated by `pnpm tree:check` in CI.
 
 import type { CommandTree } from '@/plugins/commands/registry'
-import ClearCache from '@/commands/clear/cache/index'
+import DeleteCache from '@/commands/delete/cache/index'
 import GetConfig from '@/commands/get/config/index'
+import GetSkills from '@/commands/get/skills/index'
 import InstallSkills from '@/commands/install/skills/index'
-import ListSkills from '@/commands/list/skills/index'
 import Login from '@/commands/login/index'
 import Logout from '@/commands/logout/index'
 import RefreshCache from '@/commands/refresh/cache/index'
@@ -15,24 +15,20 @@ import UseWorkspace from '@/commands/use/workspace/index'
 import Version from '@/commands/version/index'
 
 export const commandTree: CommandTree = {
-  clear: {
+  delete: {
     subcommands: {
-      cache: { command: ClearCache, subcommands: {} },
+      cache: { command: DeleteCache, subcommands: {} },
     },
   },
   get: {
     subcommands: {
       config: { command: GetConfig, subcommands: {} },
+      skills: { command: GetSkills, subcommands: {} },
     },
   },
   install: {
     subcommands: {
       skills: { command: InstallSkills, subcommands: {} },
-    },
-  },
-  list: {
-    subcommands: {
-      skills: { command: ListSkills, subcommands: {} },
     },
   },
   login: { command: Login, subcommands: {} },
