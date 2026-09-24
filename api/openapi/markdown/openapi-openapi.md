@@ -694,7 +694,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
@@ -971,7 +971,7 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
