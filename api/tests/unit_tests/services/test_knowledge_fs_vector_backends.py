@@ -263,6 +263,7 @@ def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate):
         execute_vector_request(store, request("upsert", points=[POINT]))
     name = VectorScope.model_validate(SCOPE).collection_name
     assert store.client.collections.use.call_args.args[0] == name[0].upper() + name[1:]
+    assert store.collection_name(VectorScope.model_validate(SCOPE)) == store.client.collections.use.call_args.args[0]
     point = collection.data.insert_many.call_args.args[0][0]
     assert str(point.uuid) == A
     assert point.properties == {"generation_id": GENERATION, "content_hash": "a" * 64}

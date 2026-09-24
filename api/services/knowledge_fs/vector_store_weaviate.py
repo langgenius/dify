@@ -58,6 +58,11 @@ class WeaviateVectorStore:
     def close(self) -> None:
         self.client.close()
 
+    @staticmethod
+    def collection_name(scope: VectorScope) -> str:
+        """Expose the native name for operational cleanup and acceptance checks."""
+        return scope.collection_name[0].upper() + scope.collection_name[1:]
+
     def _collection(self, scope: VectorScope, operation: str, name: str) -> "Collection | None":
         from weaviate.classes.config import (
             Configure,
