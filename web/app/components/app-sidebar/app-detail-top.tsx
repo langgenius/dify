@@ -23,7 +23,7 @@ type AppDetailTopProps = {
 }
 
 export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'navigation'])
 
   if (!expand) {
     return (
@@ -43,12 +43,12 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
-      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'common' })} className="flex-1">
+      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'navigation' })} className="flex-1">
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -63,7 +63,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
                   render={<Link href="/apps" />}
                   className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
                 >
-                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </>

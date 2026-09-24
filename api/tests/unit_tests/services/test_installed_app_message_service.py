@@ -17,7 +17,9 @@ from services.installed_app_message_service import (
     MessageRecord,
 )
 
-_REF = InstalledAppRef(id="installed", app_id="app", tenant_id="viewer-workspace", app_mode="chat")
+_REF = InstalledAppRef(
+    id="installed", app_id="app", tenant_id="viewer-workspace", app_owner_tenant_id="owner-workspace", app_mode="chat"
+)
 
 
 def _message(message_id: str) -> MessageRecord:

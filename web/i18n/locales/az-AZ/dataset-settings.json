@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Vektorlaşdırma modeli multimodal emalı dəstəkləyirsə, daha yaxşı nəticə üçün multimodal yenidən sıralama modeli seçin.",
   "form.retrievalSetting.title": "Məlumat axtarışı parametrləri",
   "form.save": "Yadda saxla",
-  "form.searchModel": "Axtarış modeli",
   "form.summaryAutoGen": "Xülasənin avtomatik yaradılması",
   "form.summaryAutoGenEnableTip": "Aktivləşdirildikdən sonra yeni əlavə edilən sənədlər üçün xülasələr avtomatik yaradılacaq. Mövcud sənədlər üçün xülasələri yenə də əl ilə yaratmaq mümkündür.",
   "form.summaryAutoGenTip": "Yeni əlavə edilən sənədlər üçün xülasələr avtomatik yaradılır. Mövcud sənədlər üçün xülasələri yenə də əl ilə yaratmaq mümkündür.",

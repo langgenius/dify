@@ -16,7 +16,7 @@ function getVersionFromMarketplaceIdentifier(identifier: string): string | undef
 }
 
 export const ChecklistPluginGroup = memo(({ items }: { items: ChecklistItem[] }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
 
   const identifiers = useMemo(
     () =>
@@ -66,7 +66,7 @@ export const ChecklistPluginGroup = memo(({ items }: { items: ChecklistItem[] })
             />
           }
         >
-          {t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })}
+          {t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflowAgent' })}
         </PopoverClose>
       </div>
       <div className="p-1">

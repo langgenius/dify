@@ -257,7 +257,7 @@ describe('AppDetailSection', () => {
 
         // Assert
         expect(
-          screen.getByRole('link', { name: 'common.settings.resourceAccess' }),
+          screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
         ).toHaveAttribute('href', '/app/app-1/access-config')
         expect(
           screen.queryByRole('link', { name: 'common.appMenus.overview' }),
@@ -275,7 +275,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -285,7 +285,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -299,7 +299,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
   })

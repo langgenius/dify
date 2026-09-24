@@ -95,7 +95,7 @@ describe('AppDetailLayout', () => {
       ['/app/app-1/logs', 'common.appMenus.logs', AppModeEnum.WORKFLOW],
       ['/app/app-1/annotations', 'common.appMenus.annotations', AppModeEnum.CHAT],
       ['/app/app-1/overview', 'common.appMenus.overview', AppModeEnum.WORKFLOW],
-      ['/app/app-1/access-config', 'common.settings.resourceAccess', AppModeEnum.WORKFLOW],
+      ['/app/app-1/access-config', 'navigation.settings.resourceAccess', AppModeEnum.WORKFLOW],
     ])('identifies the current detail page for %s', async (pathname, pageTitle, mode) => {
       mockPathname = pathname
       mockFetchAppDetailDirect.mockResolvedValue(

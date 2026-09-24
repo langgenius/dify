@@ -24,7 +24,7 @@ from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
-from extensions.application_services.app import build_app_api_key_service
+from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
 from extensions.application_services.knowledge import build_dataset_api_key_service
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
@@ -362,6 +362,7 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     account_activation: AccountActivationService
+    apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
@@ -627,6 +628,7 @@ def build_application_services(
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )
+    oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     return ApplicationServices(
         accounts=AccountServices(
             access=AccountAccessService(
@@ -782,6 +784,10 @@ def build_application_services(
                 enabled=dify_config.RBAC_ENABLED,
             ),
         ),
+        apps=build_app_services(
+            database_client=database_client,
+            oauth=oauth_server,
+        ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
@@ -892,7 +898,7 @@ def build_application_services(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
         ),
-        oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
+        oauth_server=oauth_server,
         oauth_device=_build_oauth_device_service(
             database_client=database_client,
             redis=redis,

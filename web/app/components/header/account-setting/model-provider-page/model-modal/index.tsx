@@ -83,7 +83,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const { credentials: formSchemasValue, available_credentials } = credentialData as any
 
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
   const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
     useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
@@ -193,17 +193,17 @@ const ModelModal: FC<ModelModalProps> = ({
   ])
 
   const modalTitle = useMemo(() => {
-    let label: string = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
+    let label: string = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'modelProvider' })
 
     if (
       mode === ModelModalModeEnum.configCustomModel ||
       mode === ModelModalModeEnum.addCustomModelToModelList
     )
-      label = t(($) => $['modelProvider.auth.addModel'], { ns: 'common' })
+      label = t(($) => $['modelProvider.auth.addModel'], { ns: 'modelProvider' })
     if (mode === ModelModalModeEnum.configModelCredential) {
       if (credential)
-        label = t(($) => $['modelProvider.auth.editModelCredential'], { ns: 'common' })
-      else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'common' })
+        label = t(($) => $['modelProvider.auth.editModelCredential'], { ns: 'modelProvider' })
+      else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })
     }
 
     return <div className="title-2xl-semi-bold text-text-primary">{label}</div>
@@ -213,7 +213,7 @@ const ModelModal: FC<ModelModalProps> = ({
     if (providerFormSchemaPredefined) {
       return (
         <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
         </div>
       )
     }
@@ -352,7 +352,7 @@ const ModelModal: FC<ModelModalProps> = ({
           )}
           {showCredentialLabel && (
             <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'common' })}
+              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
               <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
             </div>
           )}
@@ -372,7 +372,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
                       ? {
                           description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
-                            ns: 'common',
+                            ns: 'modelProvider',
                           }),
                         }
                       : {}),
@@ -434,7 +434,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 aria-hidden
                 className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
               />
-              {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
+              {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
               <a
                 className="mx-1 text-text-accent"
                 target="_blank"
@@ -443,7 +443,7 @@ const ModelModal: FC<ModelModalProps> = ({
               >
                 PKCS1_OAEP
               </a>
-              {t(($) => $['modelProvider.encrypted.back'], { ns: 'common' })}
+              {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
             </div>
           </div>
         )}
@@ -452,7 +452,7 @@ const ModelModal: FC<ModelModalProps> = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>

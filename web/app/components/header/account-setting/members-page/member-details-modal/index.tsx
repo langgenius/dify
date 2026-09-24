@@ -29,7 +29,7 @@ const MemberDetailsModal = ({
   onClose,
   onAssignSubmit,
 }: MemberDetailsModalProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
@@ -47,11 +47,11 @@ const MemberDetailsModal = ({
   const assignedRolesLabel =
     selectedRoleIds.length === 1
       ? t(($) => $['members.memberDetails.assignedRole'], {
-          ns: 'common',
+          ns: 'workspaceMembers',
           defaultValue: 'Assigned Role',
         })
       : t(($) => $['members.memberDetails.assignedRoles'], {
-          ns: 'common',
+          ns: 'workspaceMembers',
           defaultValue: 'Assigned Roles',
         })
   const assignActionIconClassName = allowMultipleRoles
@@ -59,7 +59,7 @@ const MemberDetailsModal = ({
     : 'i-ri-edit-line h-3.5 w-3.5'
   const assignActionLabel = allowMultipleRoles
     ? t(($) => $['members.memberDetails.assign'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue: 'Assign',
       })
     : t(($) => $['operation.edit'], { ns: 'common' })
@@ -122,7 +122,7 @@ const MemberDetailsModal = ({
             />
             <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
               {t(($) => $['members.memberDetails.title'], {
-                ns: 'common',
+                ns: 'workspaceMembers',
                 defaultValue: 'Member Details',
               })}
             </DialogTitle>
@@ -164,7 +164,7 @@ const MemberDetailsModal = ({
                   <div className="mt-4">
                     <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['members.memberDetails.generalGroup'], {
-                        ns: 'common',
+                        ns: 'workspaceMembers',
                       })}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -185,7 +185,7 @@ const MemberDetailsModal = ({
                   <div className="mt-4">
                     <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['members.memberDetails.customGroup'], {
-                        ns: 'common',
+                        ns: 'workspaceMembers',
                       })}
                     </div>
                     <div className="flex flex-wrap gap-1.5">

@@ -16,7 +16,7 @@ type DeleteAccountProps = {
 }
 
 export default function CheckEmail(props: DeleteAccountProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'accountSettings'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -44,20 +44,22 @@ export default function CheckEmail(props: DeleteAccountProps) {
       }}
     >
       <div className="py-1 body-md-medium text-text-destructive">
-        {t(($) => $['account.deleteTip'], { ns: 'common' })}
+        {t(($) => $['account.deleteTip'], { ns: 'accountSettings' })}
       </div>
       <div className="pt-1 pb-2 body-md-regular text-text-secondary">
-        {t(($) => $['account.deletePrivacyLinkTip'], { ns: 'common' })}
+        {t(($) => $['account.deletePrivacyLinkTip'], { ns: 'accountSettings' })}
         <Link href="https://dify.ai/privacy" className="text-text-accent">
-          {t(($) => $['account.deletePrivacyLink'], { ns: 'common' })}
+          {t(($) => $['account.deletePrivacyLink'], { ns: 'accountSettings' })}
         </Link>
       </div>
       <Field name="email" className="mt-3">
         <FieldLabel className="system-sm-semibold">
-          {t(($) => $['account.deleteLabel'], { ns: 'common' })}
+          {t(($) => $['account.deleteLabel'], { ns: 'accountSettings' })}
         </FieldLabel>
         <Input
-          placeholder={t(($) => $['account.deletePlaceholder'], { ns: 'common' }) as string}
+          placeholder={
+            t(($) => $['account.deletePlaceholder'], { ns: 'accountSettings' }) as string
+          }
           value={userInputEmail}
           onValueChange={setUserInputEmail}
         />
@@ -70,7 +72,7 @@ export default function CheckEmail(props: DeleteAccountProps) {
           loading={isSendingEmail}
           variant="primary"
         >
-          {t(($) => $['account.sendVerificationButton'], { ns: 'common' })}
+          {t(($) => $['account.sendVerificationButton'], { ns: 'accountSettings' })}
         </Button>
         <Button type="button" className="w-full" onClick={props.onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
