@@ -69,4 +69,34 @@ node web/scripts/bundle-analysis.ts collect web "$(git rev-parse HEAD)" /tmp/cur
 node web/scripts/bundle-analysis.ts compare /tmp/base.json /tmp/current.json /tmp/report.md
 ```
 
+## Next.js / Turbopack analysis
+
+The Web `analyze` script uses Next.js's built-in Turbopack analyzer:
+
+```sh
+pnpm --dir web analyze --output
+```
+
+Save `web/.next/diagnostics/analyze` before changing code, then collect another
+report with the same compiler version and environment. Omit `--output` to open
+the interactive analyzer and inspect route-specific client/server import chains.
+These reports are separate from the Vinext snapshots above.
+
+If analysis panics inside `next-api/src/nft.rs`, move
+`web/.next/cache/turbopack` outside `.next` and retry before changing production
+configuration. A stale filesystem cache caused this failure locally with
+Next.js 16.3.6; rebuilding the cache let the unchanged configuration complete.
+
+Check import chains before adding configuration. Next.js already optimizes
+imports from libraries such as `ahooks` and Heroicons. `serverExternalPackages`
+affects server bundling; it does not remove dependencies from browser bundles.
+
+A lazy component can still have eager dependencies if shared utilities import
+its SDK statically. Console analytics keeps its initialization state and event
+helpers lightweight, loading Amplitude and session replay only after analytics
+is enabled and consent is granted. Keep SDK imports in shared helpers type-only
+and use the initialized client for events. When changing this boundary, verify
+revocation and unmount during loading, concurrent initialization, and failure
+recovery as well as entry static dependencies and total emitted bytes.
+
 [Rolldown analyzer documentation]: https://rolldown.rs/builtin-plugins/bundle-analyzer
