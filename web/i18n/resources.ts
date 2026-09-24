@@ -4,6 +4,11 @@ import { kebabCase } from 'string-ts'
 export const defaultNS = 'app' as const
 
 export const namespaces = [
+  'onboarding',
+  'modelProvider',
+  'workspaceMembers',
+  'navigation',
+  'accountSettings',
   'app',
   'appAnnotation',
   'appApi',

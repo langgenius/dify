@@ -256,7 +256,6 @@
   "common.viewRunHistory": "ເບິ່ງປະຫວັດການລັນ",
   "common.webhookDebugFailed": "Webhook debug ບໍ່ສຳເລັດ",
   "common.webhookDebugRequestFailed": "ຄຳຂໍ Webhook debug ບໍ່ສຳເລັດ",
-  "common.workflowAsTool": "Workflow ໃນຖານະເຄື່ອງມື",
   "common.workflowAsToolDescription": "ໃຊ້ເປັນເຄື່ອງມືໃນແອັບອື່ນ",
   "common.workflowAsToolDisabledHint": "ກະລຸນາເຜີຍແຜ່ Workflow ຫຼ້າສຸດ ແລະ ກວດສອບໃຫ້ແນ່ໃຈວ່າໄດ້ເຊື່ອມຕໍ່ໂນດ User Input ກ່ອນທີ່ຈະຕັ້ງຄ່າເປັນເຄື່ອງມື.",
   "common.workflowAsToolReady": "ພ້ອມໃຊ້ງານ",

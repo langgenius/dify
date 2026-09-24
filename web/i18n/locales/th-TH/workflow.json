@@ -256,7 +256,6 @@
   "common.viewRunHistory": "ดูประวัติการวิ่ง",
   "common.webhookDebugFailed": "การดีบัก Webhook ล้มเหลว",
   "common.webhookDebugRequestFailed": "คำขอดีบัก Webhook ล้มเหลว",
-  "common.workflowAsTool": "เวิร์กโฟลว์เป็นเครื่องมือ",
   "common.workflowAsToolDescription": "ใช้เป็นเครื่องมือในแอปอื่น",
   "common.workflowAsToolDisabledHint": "เผยแพร่เวิร์กโฟลว์ล่าสุดและตรวจสอบให้แน่ใจว่ามีโหนดป้อนข้อมูลผู้ใช้เชื่อมต่อก่อนที่จะกำหนดค่าเป็นเครื่องมือ",
   "common.workflowAsToolReady": "พร้อม",

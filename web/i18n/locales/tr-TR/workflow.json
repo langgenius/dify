@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Çalıştırma geçmişini görüntüle",
   "common.webhookDebugFailed": "Webhook hata ayıklama başarısız oldu",
   "common.webhookDebugRequestFailed": "Webhook hata ayıklama isteği başarısız oldu",
-  "common.workflowAsTool": "Araç Olarak İş Akışı",
   "common.workflowAsToolDescription": "Diğer uygulamalarda araç olarak kullan",
   "common.workflowAsToolDisabledHint": "En son iş akışını yayınlayın ve bunu bir araç olarak yapılandırmadan önce bağlı bir Kullanıcı Girdisi düğümünün olduğundan emin olun.",
   "common.workflowAsToolReady": "Hazır",

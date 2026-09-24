@@ -46,7 +46,7 @@ const getModelSelectionKey = (
   `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,
@@ -138,7 +138,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
             )
           handleModelChanged(model, filtered)
         } catch {
@@ -189,7 +189,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
             )
           handleModelSelectorChange(modelSelector, filtered)
         } catch {

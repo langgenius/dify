@@ -577,7 +577,9 @@ describe('GotoAnything', () => {
 
       await user.type(input, '/')
 
-      expect(screen.getByText('common.modelProvider.systemModelSettingsDesc')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.systemModelSettingsDesc'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('Fallback description')).not.toBeInTheDocument()
     })
 

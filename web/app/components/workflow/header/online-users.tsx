@@ -48,7 +48,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['workflow', 'workspaceMembers'])
   const appId = useStore((s) => s.appId)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
@@ -65,7 +65,7 @@ const OnlineUsers = () => {
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
   const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername

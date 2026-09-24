@@ -256,7 +256,6 @@
   "common.viewRunHistory": "실행 기록 보기",
   "common.webhookDebugFailed": "Webhook 디버그 실패",
   "common.webhookDebugRequestFailed": "Webhook 디버그 요청 실패",
-  "common.workflowAsTool": "도구로서의 워크플로우",
   "common.workflowAsToolDescription": "다른 앱에서 도구로 사용합니다",
   "common.workflowAsToolDisabledHint": "최신 워크플로를 게시하고 도구로 구성하기 전에 연결된 사용자 입력 노드가 있는지 확인하세요.",
   "common.workflowAsToolReady": "준비됨",

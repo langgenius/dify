@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Visualizza cronologia esecuzioni",
   "common.webhookDebugFailed": "Debug del Webhook non riuscito",
   "common.webhookDebugRequestFailed": "Richiesta di debug del Webhook non riuscita",
-  "common.workflowAsTool": "Flusso di lavoro come Strumento",
   "common.workflowAsToolDescription": "Usalo come strumento in altre app",
   "common.workflowAsToolDisabledHint": "Pubblica il flusso di lavoro più recente e assicurati che ci sia un nodo di Input Utente collegato prima di configurarlo come strumento.",
   "common.workflowAsToolReady": "Pronto",

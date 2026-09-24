@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Ver histórico de execução",
   "common.webhookDebugFailed": "Falha na depuração do Webhook",
   "common.webhookDebugRequestFailed": "Falha na solicitação de depuração do Webhook",
-  "common.workflowAsTool": "Fluxo de trabalho como ferramenta",
   "common.workflowAsToolDescription": "Usar como ferramenta em outros aplicativos",
   "common.workflowAsToolDisabledHint": "Publique o fluxo de trabalho mais recente e garanta que haja um nó de Entrada do Usuário conectado antes de configurá-lo como uma ferramenta.",
   "common.workflowAsToolReady": "Pronto",

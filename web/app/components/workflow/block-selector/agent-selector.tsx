@@ -235,7 +235,7 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common'])
+  const { t } = useTranslation(['agentV2', 'navigation'])
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
@@ -259,7 +259,7 @@ export function AgentBlockItem({
             <Badge
               size="xs"
               variant="dimm"
-              text={t(($) => $['menus.status'], { ns: 'common' })}
+              text={t(($) => $['menus.status'], { ns: 'navigation' })}
               className="ml-2 shrink-0"
             />
             <span

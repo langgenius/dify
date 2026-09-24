@@ -256,7 +256,6 @@
   "common.viewRunHistory": "İcra tarixçəsinə bax",
   "common.webhookDebugFailed": "Webhook sazlaması uğursuz oldu",
   "common.webhookDebugRequestFailed": "Webhook sazlama sorğusu uğursuz oldu",
-  "common.workflowAsTool": "Alət kimi iş axını",
   "common.workflowAsToolDescription": "Digər tətbiqlərdə alət kimi istifadə et",
   "common.workflowAsToolDisabledHint": "İş axınını alət kimi konfiqurasiya etməzdən əvvəl onun son versiyasını dərc edin və istifadəçi girişi düyününün qoşulduğuna əmin olun.",
   "common.workflowAsToolReady": "Hazırdır",

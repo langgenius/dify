@@ -256,7 +256,6 @@
   "common.viewRunHistory": "रन इतिहास देखें",
   "common.webhookDebugFailed": "Webhook डीबग विफल",
   "common.webhookDebugRequestFailed": "Webhook डीबग अनुरोध विफल",
-  "common.workflowAsTool": "टूल के रूप में कार्यप्रवाह",
   "common.workflowAsToolDescription": "इसे अन्य ऐप्स में टूल के रूप में उपयोग करें",
   "common.workflowAsToolDisabledHint": "सबसे नया वर्कफ़्लो प्रकाशित करें और इसे टूल के रूप में कॉन्फ़िगर करने से पहले एक कनेक्टेड यूज़र इनपुट नोड सुनिश्चित करें।",
   "common.workflowAsToolReady": "तैयार",

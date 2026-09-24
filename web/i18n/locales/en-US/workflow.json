@@ -256,7 +256,6 @@
   "common.viewRunHistory": "View run history",
   "common.webhookDebugFailed": "Webhook debug failed",
   "common.webhookDebugRequestFailed": "Webhook debug request failed",
-  "common.workflowAsTool": "Workflow as Tool",
   "common.workflowAsToolDescription": "Use as a tool in other apps",
   "common.workflowAsToolDisabledHint": "Publish the latest workflow and ensure a connected User Input node before configuring it as a tool.",
   "common.workflowAsToolReady": "Ready",

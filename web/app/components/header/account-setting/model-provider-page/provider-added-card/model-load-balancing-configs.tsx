@@ -55,7 +55,7 @@ const ModelLoadBalancingConfigs = ({
 }: ModelLoadBalancingConfigsProps) => {
   const loadBalancingLabelId = useId()
 
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -190,7 +190,7 @@ const ModelLoadBalancingConfigs = ({
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
               <span id={loadBalancingLabelId}>
-                {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
+                {t(($) => $['modelProvider.loadBalancing'], { ns: 'modelProvider' })}
               </span>
               <Infotip>
                 <InfotipTrigger
@@ -199,12 +199,12 @@ const ModelLoadBalancingConfigs = ({
                   iconSize="small"
                 />
                 <InfotipContent aria-labelledby={loadBalancingLabelId}>
-                  {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'modelProvider' })}
                 </InfotipContent>
               </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">
-              {t(($) => $['modelProvider.loadBalancingDescription'], { ns: 'common' })}
+              {t(($) => $['modelProvider.loadBalancingDescription'], { ns: 'modelProvider' })}
             </div>
           </div>
           {withSwitch && (
@@ -247,19 +247,21 @@ const ModelLoadBalancingConfigs = ({
                             }
                           />
                           <TooltipContent>
-                            {t(($) => $['modelProvider.apiKeyStatusNormal'], { ns: 'common' })}
+                            {t(($) => $['modelProvider.apiKeyStatusNormal'], {
+                              ns: 'modelProvider',
+                            })}
                           </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
                     <div className="mr-1 text-[13px] text-text-secondary">
                       {isProviderManaged
-                        ? t(($) => $['modelProvider.defaultConfig'], { ns: 'common' })
+                        ? t(($) => $['modelProvider.defaultConfig'], { ns: 'modelProvider' })
                         : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
                       <Badge className="ml-2">
-                        {t(($) => $['modelProvider.providerManaged'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.providerManaged'], { ns: 'modelProvider' })}
                       </Badge>
                     )}
                     {credential?.from_enterprise && <Badge className="ml-2">Enterprise</Badge>}
@@ -318,7 +320,7 @@ const ModelLoadBalancingConfigs = ({
         {draftConfig.enabled && validDraftConfigList.length < 2 && (
           <div className="flex h-8.5 items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
             <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
-            {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'common' })}
+            {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'modelProvider' })}
           </div>
         )}
       </div>
@@ -327,7 +329,7 @@ const ModelLoadBalancingConfigs = ({
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}>
-              {t(($) => $['modelProvider.upgradeForLoadBalancing'], { ns: 'common' })}
+              {t(($) => $['modelProvider.upgradeForLoadBalancing'], { ns: 'modelProvider' })}
             </div>
             <UpgradeBtn />
           </div>

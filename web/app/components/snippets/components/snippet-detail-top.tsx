@@ -25,7 +25,7 @@ type SnippetDetailTopProps = {
 }
 
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
-  const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { t } = useTranslation(['app', 'common', 'workflow', 'navigation'])
   const router = useRouter()
 
   if (!expand) {
@@ -58,7 +58,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             </IconButton>
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="size-4 justify-center"
             >
               <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />

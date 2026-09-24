@@ -256,7 +256,6 @@
   "common.viewRunHistory": "查看运行历史",
   "common.webhookDebugFailed": "Webhook 调试失败",
   "common.webhookDebugRequestFailed": "Webhook 调试请求失败",
-  "common.workflowAsTool": "工作流作为工具",
   "common.workflowAsToolDescription": "作为工具供其他应用调用",
   "common.workflowAsToolDisabledHint": "请先发布最新的工作流，并确保已连接的 User Input 节点后再配置为工具。",
   "common.workflowAsToolReady": "已就绪",

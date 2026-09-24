@@ -156,6 +156,20 @@ Tests cover on-demand feature loading, navigation state, language persistence,
 English fallback, and concurrent streaming SSR in different locales. Production
 Vinext/browser checks are also needed when changing the Provider or loading strategy.
 
+### Namespace ownership
+
+Keep `common` limited to shared operations, statuses, and basic controls. Navigation
+and route titles belong to `navigation`; account settings, workspace members,
+model providers, and the step-by-step tour own `accountSettings`,
+`workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
+copy is shared with model configuration, not owned by dataset settings.
+
+Declare resources at the component that renders them. A hidden feature should not
+request its dictionary just because its controller is mounted. The tour keeps its
+session controller mounted and renders its translation consumer only when the
+checklist, guide, or recovery prompt is visible. Preserve all existing locale
+values and language-specific plural forms when moving keys.
+
 ### Provider trial verification
 
 On 2026-09-23, the production Vinext standalone build was checked in fresh

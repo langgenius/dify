@@ -39,7 +39,7 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -165,7 +165,7 @@ const ModelListItem = ({
               }
             />
             <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
-              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
+              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'modelProvider' })}
             </PopoverContent>
           </Popover>
         ) : (

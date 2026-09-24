@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Переглянути історію запусків",
   "common.webhookDebugFailed": "Помилка налагодження Webhook",
   "common.webhookDebugRequestFailed": "Помилка запиту налагодження Webhook",
-  "common.workflowAsTool": "Робочий потік як інструмент",
   "common.workflowAsToolDescription": "Використовувати як інструмент в інших застосунках",
   "common.workflowAsToolDisabledHint": "Опублікуйте останній робочий процес і переконайтеся, що перед налаштуванням його як інструменту є підключений вузол введення користувача.",
   "common.workflowAsToolReady": "Готово",

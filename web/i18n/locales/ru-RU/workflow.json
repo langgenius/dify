@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Посмотреть историю запусков",
   "common.webhookDebugFailed": "Ошибка отладки Webhook",
   "common.webhookDebugRequestFailed": "Ошибка запроса отладки Webhook",
-  "common.workflowAsTool": "Рабочий процесс как инструмент",
   "common.workflowAsToolDescription": "Использовать как инструмент в других приложениях",
   "common.workflowAsToolDisabledHint": "Опубликуйте последний рабочий процесс и убедитесь, что подключен узел ввода пользователя, прежде чем настраивать его как инструмент.",
   "common.workflowAsToolReady": "Готово",

@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Xem lịch sử chạy",
   "common.webhookDebugFailed": "Gỡ lỗi Webhook thất bại",
   "common.webhookDebugRequestFailed": "Yêu cầu gỡ lỗi Webhook thất bại",
-  "common.workflowAsTool": "Quy trình làm việc như công cụ",
   "common.workflowAsToolDescription": "Sử dụng làm công cụ trong các ứng dụng khác",
   "common.workflowAsToolDisabledHint": "Xuất bản quy trình làm việc mới nhất và đảm bảo một nút Nhập liệu Người dùng kết nối trước khi cấu hình nó như một công cụ.",
   "common.workflowAsToolReady": "Sẵn sàng",

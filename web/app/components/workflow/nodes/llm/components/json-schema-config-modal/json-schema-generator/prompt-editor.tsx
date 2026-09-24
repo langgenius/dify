@@ -38,7 +38,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
 
   const handleInstructionChange = useCallback(
     (value: string) => {
@@ -69,7 +69,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Content */}
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $['modelProvider.model'], { ns: 'common' })}
+          {t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
         </div>
         <ModelParameterModal
           popupClassName="w-[448px]!"
