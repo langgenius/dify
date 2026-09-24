@@ -441,8 +441,8 @@ catalogs:
       specifier: 4.0.2
       version: 4.0.2
     cron-parser:
-      specifier: 5.6.2
-      version: 5.6.2
+      specifier: 5.7.0
+      version: 5.7.0
     dayjs:
       specifier: 1.11.23
       version: 1.11.23
@@ -1493,7 +1493,7 @@ importers:
         version: 4.0.2
       cron-parser:
         specifier: 'catalog:'
-        version: 5.6.2
+        version: 5.7.0
       dayjs:
         specifier: 'catalog:'
         version: 1.11.23
@@ -6028,10 +6028,9 @@ packages:
   cose-base@2.2.0:
     resolution: {integrity: sha512-AzlgcsCbUMymkADOJtQm3wO9S3ltPfYOFD5033keQn9NJzIbtnZj+UdBJe7DYml/8TdbtHJW3j58SOnKhWY/5g==}
 
-  cron-parser@5.6.2:
-    resolution: {integrity: sha512-yJ/G1LVir6CnlkLI40CsampPLKl1SprGGlUagWtGJxewytRVYezv5xVyzzbT+Pvzx+VIRvZVF7/a0eEMTxdnTA==}
+  cron-parser@5.7.0:
+    resolution: {integrity: sha512-iSpDHpwwW/GhIg4JVODYlWUEpMNSimaHvqOhHpOz1W+Y97z1lL1nf+dpcF17cNwFRpTtKN9devgi1fxflp3Phw==}
     engines: {node: '>=18'}
-    deprecated: 'Published tarball was built from a stale dist/ and is missing the fixes from #414 and #415 — its contents are effectively v5.6.1. Upgrade to v5.7.0.'
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -13497,7 +13496,7 @@ snapshots:
     dependencies:
       layout-base: 2.0.1
 
-  cron-parser@5.6.2:
+  cron-parser@5.7.0:
     dependencies:
       luxon: 3.7.2
 
@@ -17884,7 +17883,7 @@ time:
   code-inspector-plugin@1.6.6: '2026-07-07T04:00:26.523Z'
   concurrently@10.0.5: '2026-08-15T03:33:20.323Z'
   copy-to-clipboard@4.0.2: '2026-04-24T22:15:18.933Z'
-  cron-parser@5.6.2: '2026-07-13T10:55:48.380Z'
+  cron-parser@5.7.0: '2026-08-01T18:20:53.444Z'
   dayjs@1.11.23: '2026-08-17T11:52:35.217Z'
   decimal.js@10.6.0: '2025-07-06T22:50:38.844Z'
   dompurify@3.4.15: '2026-09-06T11:39:57.312Z'
