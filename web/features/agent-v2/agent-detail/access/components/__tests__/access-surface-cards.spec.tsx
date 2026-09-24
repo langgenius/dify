@@ -700,7 +700,7 @@ describe('Agent access surface cards', () => {
       })
     })
 
-    it('should save settings through the backing app id and update the agent detail cache', async () => {
+    it('should save settings through the backing app id and invalidate agent detail', async () => {
       const user = userEvent.setup()
       mocks.getUserCanAccess.mockResolvedValue({ result: false })
       const agent = createAgent({
@@ -774,18 +774,9 @@ describe('Agent access surface cards', () => {
         })
       })
       expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
-      expect(
-        queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1']),
-      ).toMatchObject({
-        site: {
-          access_token: 'new-site-token',
-          chat_color_theme: '#123456',
-          description: 'Updated web description.',
-          icon_url: null,
-          title: 'Support Portal',
-        },
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
       })
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
     })
 
     it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
@@ -1239,22 +1230,19 @@ describe('Agent access surface cards', () => {
       expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeDisabled()
     })
 
-    it.each([null, 'future-access-mode'])(
-      'should hide the access mode entry when the access mode is %s',
-      (accessMode) => {
-        renderWithQueryClient(
-          <WebAppAccessCard
-            agent={createAgent({ access_mode: accessMode })}
-            agentId="agent-1"
-            isLoading={false}
-          />,
-        )
+    it('should hide the access mode entry when the access mode is unavailable', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: null })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
 
-        expect(
-          screen.queryByRole('button', { name: organizationAccessLabel }),
-        ).not.toBeInTheDocument()
-      },
-    )
+      expect(
+        screen.queryByRole('button', { name: organizationAccessLabel }),
+      ).not.toBeInTheDocument()
+    })
 
     it('should open the shared App access control dialog for the backing app', async () => {
       const user = userEvent.setup()

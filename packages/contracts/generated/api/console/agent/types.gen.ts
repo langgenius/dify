@@ -23,7 +23,7 @@ export type AgentAppCreatePayload = {
 }
 
 export type AgentAppDetailWithSite = {
-  access_mode: string | null
+  access_mode: WebAppAccessMode | null
   access_ready?: boolean
   api_base_url: string
   app_id?: string | null
@@ -56,7 +56,7 @@ export type AgentAppDetailWithSite = {
   tracing: string | null
   updated_at: number
   updated_by: string | null
-  use_icon_as_answer_icon: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
 }
 
@@ -486,6 +486,8 @@ export type AgentPublicationCountsResponse = {
 
 export type IconType = 'emoji' | 'image' | 'link'
 
+export type WebAppAccessMode = 'private' | 'private_all' | 'public' | 'sso_verified'
+
 export type DeletedTool = {
   provider_id: string
   tool_name: string
@@ -503,60 +505,42 @@ export type AppMode =
   | 'workflow'
 
 export type AppModelConfigResponse = {
-  agent_mode: {
-    [key: string]: JsonValue2
-  }
-  annotation_reply: {
-    [key: string]: JsonValue2
-  }
-  chat_prompt_config: {
-    [key: string]: JsonValue2
-  }
-  completion_prompt_config: {
-    [key: string]: JsonValue2
-  }
+  agent_mode: AppAgentModeResponse
+  annotation_reply: AppAnnotationReplyEnabledResponse | AppAnnotationReplyDisabledResponse
+  chat_prompt_config: AppChatPromptConfigResponse
+  completion_prompt_config: AppCompletionPromptConfigResponse
   created_at: number
   created_by: string | null
-  dataset_configs: {
-    [key: string]: JsonValue2
-  }
+  dataset_configs: AppDatasetConfigsResponse
   dataset_query_variable: string | null
-  external_data_tools: Array<{
-    [key: string]: JsonValue2
-  }>
-  file_upload: {
-    [key: string]: JsonValue2
-  }
-  model: {
-    [key: string]: JsonValue2
-  }
-  more_like_this: {
-    [key: string]: JsonValue2
-  }
+  external_data_tools: Array<
+    AppEnabledExternalDataToolResponse | AppDisabledExternalDataToolResponse
+  >
+  file_upload: AppFileUploadResponse
+  model: AppModelSelectionResponse
+  more_like_this: AppEnabledConfigResponse
   opening_statement: string | null
   pre_prompt: string | null
-  prompt_type: string
-  retriever_resource: {
-    [key: string]: JsonValue2
-  }
-  sensitive_word_avoidance: {
-    [key: string]: JsonValue2
-  }
-  speech_to_text: {
-    [key: string]: JsonValue2
-  }
+  prompt_type: PromptType
+  retriever_resource: AppEnabledConfigResponse
+  sensitive_word_avoidance: AppSensitiveWordAvoidanceResponse
+  speech_to_text: AppEnabledConfigResponse
   suggested_questions: Array<string>
-  suggested_questions_after_answer: {
-    [key: string]: JsonValue2
-  }
-  text_to_speech: {
-    [key: string]: JsonValue2
-  }
+  suggested_questions_after_answer: AppSuggestedQuestionsAfterAnswerResponse
+  text_to_speech: AppTextToSpeechResponse
   updated_at: number
   updated_by: string | null
-  user_input_form: Array<{
-    [key: string]: JsonValue2
-  }>
+  user_input_form: Array<
+    | AppTextInputFormResponse
+    | AppSelectFormResponse
+    | AppParagraphFormResponse
+    | AppNumberFormResponse
+    | AppCheckboxFormResponse
+    | AppFileFormResponse
+    | AppFileListFormResponse
+    | AppExternalDataToolFormResponse
+    | AppJsonObjectFormResponse
+  >
 }
 
 export type AppDetailSiteResponse = {
@@ -570,7 +554,7 @@ export type AppDetailSiteResponse = {
   created_by: string | null
   custom_disclaimer: string
   customize_domain: string | null
-  customize_token_strategy: string
+  customize_token_strategy: CustomizeTokenStrategy
   default_language: string
   description: string | null
   icon: string | null
@@ -1043,7 +1027,163 @@ export type AgentAppPublishedReferenceResponse = {
   app_name: string
 }
 
-export type JsonValue2 = unknown
+export type AppAgentModeResponse = {
+  enabled: boolean
+  max_iteration?: number
+  prompt?: AppAgentPromptResponse | string | null
+  strategy: string | null
+  tools: Array<
+    | AppProviderAgentToolResponse
+    | AppLegacyDatasetToolResponse
+    | AppLegacyGoogleSearchToolResponse
+    | AppLegacyWebReaderToolResponse
+    | AppLegacyWikipediaToolResponse
+    | AppLegacyCurrentDatetimeToolResponse
+    | AppLegacySensitiveWordToolResponseItem
+  >
+}
+
+export type AppAnnotationReplyEnabledResponse = {
+  embedding_model: AppEmbeddingModelResponse
+  enabled: true
+  id: string
+  score_threshold: number
+}
+
+export type AppAnnotationReplyDisabledResponse = {
+  enabled: false
+}
+
+export type AppChatPromptConfigResponse = {
+  prompt?: Array<AppChatPromptMessageResponse>
+}
+
+export type AppCompletionPromptConfigResponse = {
+  conversation_histories_role?: AppConversationHistoriesRoleResponse
+  prompt?: AppCompletionPromptTextResponse
+}
+
+export type AppDatasetConfigsResponse = {
+  datasets?: AppDatasetListResponse
+  metadata_filtering_conditions?: AppMetadataFilteringConditionsResponse | null
+  metadata_filtering_mode?: string
+  metadata_model_config?: AppModelSelectionResponse | null
+  reranking_enabled?: boolean
+  reranking_mode?: string
+  reranking_model?: AppRerankingModelResponse | null
+  retrieval_model: 'multiple' | 'single'
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean
+  top_k?: number
+  weights?: AppWeightsResponse | null
+}
+
+export type AppEnabledExternalDataToolResponse = {
+  config: {
+    [key: string]: JsonValue2
+  }
+  enabled: true
+  icon?: string
+  icon_background?: string
+  label?: string
+  type: string
+  variable: string
+}
+
+export type AppDisabledExternalDataToolResponse = {
+  config?: {
+    [key: string]: JsonValue2
+  }
+  enabled: false
+  icon?: string
+  icon_background?: string
+  label?: string
+  type?: string
+  variable?: string
+}
+
+export type AppFileUploadResponse = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<string>
+  allowed_file_upload_methods?: Array<string>
+  enabled?: boolean
+  image?: AppImageUploadResponse
+  number_limits?: number
+}
+
+export type AppModelSelectionResponse = {
+  completion_params?: {
+    [key: string]: JsonValue2
+  }
+  mode?: string
+  name?: string
+  provider?: string
+}
+
+export type AppEnabledConfigResponse = {
+  enabled: boolean
+}
+
+export type PromptType = 'advanced' | 'simple'
+
+export type AppSensitiveWordAvoidanceResponse = {
+  config?: {
+    [key: string]: JsonValue2
+  }
+  enabled: boolean
+  type?: string
+}
+
+export type AppSuggestedQuestionsAfterAnswerResponse = {
+  enabled: boolean
+  model?: AppModelSelectionResponse
+  prompt?: string
+}
+
+export type AppTextToSpeechResponse = {
+  autoPlay?: 'disabled' | 'enabled'
+  enabled: boolean
+  language?: string
+  voice?: string
+}
+
+export type AppTextInputFormResponse = {
+  'text-input': AppUserInputFormConfigResponse
+}
+
+export type AppSelectFormResponse = {
+  select: AppUserInputFormConfigResponse
+}
+
+export type AppParagraphFormResponse = {
+  paragraph: AppUserInputFormConfigResponse
+}
+
+export type AppNumberFormResponse = {
+  number: AppUserInputFormConfigResponse
+}
+
+export type AppCheckboxFormResponse = {
+  checkbox: AppUserInputFormConfigResponse
+}
+
+export type AppFileFormResponse = {
+  file: AppUserInputFormConfigResponse
+}
+
+export type AppFileListFormResponse = {
+  'file-list': AppUserInputFormConfigResponse
+}
+
+export type AppExternalDataToolFormResponse = {
+  external_data_tool: AppUserInputFormConfigResponse
+}
+
+export type AppJsonObjectFormResponse = {
+  json_object: AppUserInputFormConfigResponse
+}
+
+export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
 export type AgentKind = 'dify_agent'
 
@@ -1383,6 +1523,132 @@ export type AgentConfigRevisionOperation =
   | 'save_new_version'
   | 'save_to_roster'
 
+export type AppAgentPromptResponse = {
+  first_prompt?: string
+  next_iteration?: string
+}
+
+export type AppProviderAgentToolResponse = {
+  credential_id?: string | null
+  enabled?: boolean
+  isDeleted?: boolean
+  notAuthor?: boolean
+  plugin_unique_identifier?: string | null
+  provider_id: string
+  provider_name?: string
+  provider_type: string
+  tool_label?: string
+  tool_name: string
+  tool_parameters: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type AppLegacyDatasetToolResponse = {
+  dataset: AppDatasetReferenceResponse
+}
+
+export type AppLegacyGoogleSearchToolResponse = {
+  google_search: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type AppLegacyWebReaderToolResponse = {
+  web_reader: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type AppLegacyWikipediaToolResponse = {
+  wikipedia: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type AppLegacyCurrentDatetimeToolResponse = {
+  current_datetime: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type AppLegacySensitiveWordToolResponseItem = {
+  'sensitive-word-avoidance': AppLegacySensitiveWordToolResponse
+}
+
+export type AppEmbeddingModelResponse = {
+  embedding_model_name: string
+  embedding_provider_name: string
+}
+
+export type AppChatPromptMessageResponse = {
+  role: string
+  text: string
+}
+
+export type AppConversationHistoriesRoleResponse = {
+  assistant_prefix: string
+  user_prefix: string
+}
+
+export type AppCompletionPromptTextResponse = {
+  text: string
+}
+
+export type AppDatasetListResponse = {
+  datasets: Array<AppDatasetItemResponse>
+  strategy?: string
+}
+
+export type AppMetadataFilteringConditionsResponse = {
+  conditions?: Array<AppMetadataConditionResponse> | null
+  logical_operator?: 'and' | 'or' | null
+}
+
+export type AppRerankingModelResponse = {
+  reranking_model_name?: string
+  reranking_provider_name?: string
+}
+
+export type AppWeightsResponse = {
+  keyword_setting: AppKeywordSettingResponse
+  vector_setting: AppVectorSettingResponse
+  weight_type?: 'customized' | 'keyword_first' | 'semantic_first'
+}
+
+export type JsonValue2 = unknown
+
+export type AppImageUploadResponse = {
+  detail?: string
+  enabled?: boolean
+  number_limits?: number
+  transfer_methods?: Array<string>
+}
+
+export type AppUserInputFormConfigResponse = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<string>
+  allowed_file_upload_methods?: Array<string>
+  config?: {
+    [key: string]: JsonValue2
+  }
+  default?: JsonValue2
+  description?: string
+  hide?: boolean
+  json_schema?:
+    | string
+    | {
+        [key: string]: JsonValue2
+      }
+    | null
+  label: string
+  max_length?: number | null
+  options?: Array<string>
+  required?: boolean
+  type?: string
+  variable: string
+}
+
 export type AgentFileUploadFeatureConfig = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
@@ -1634,6 +1900,37 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
+export type AppDatasetReferenceResponse = {
+  enabled?: boolean
+  id?: string
+}
+
+export type AppLegacySensitiveWordToolResponse = {
+  canned_response: string
+  enabled: boolean
+  words: Array<string>
+}
+
+export type AppDatasetItemResponse = {
+  dataset: AppDatasetReferenceResponse
+}
+
+export type AppMetadataConditionResponse = {
+  comparison_operator: string
+  name: string
+  value?: string | Array<string> | number | number | null
+}
+
+export type AppKeywordSettingResponse = {
+  keyword_weight: number
+}
+
+export type AppVectorSettingResponse = {
+  embedding_model_name: string
+  embedding_provider_name: string
+  vector_weight: number
+}
+
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
@@ -1812,7 +2109,7 @@ export type AgentAppPaginationWritable = {
 }
 
 export type AgentAppDetailWithSiteWritable = {
-  access_mode: string | null
+  access_mode: WebAppAccessMode | null
   access_ready?: boolean
   api_base_url: string
   app_id?: string | null
@@ -1844,7 +2141,7 @@ export type AgentAppDetailWithSiteWritable = {
   tracing: string | null
   updated_at: number
   updated_by: string | null
-  use_icon_as_answer_icon: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
 }
 
@@ -1895,7 +2192,7 @@ export type AppDetailSiteResponseWritable = {
   created_by: string | null
   custom_disclaimer: string
   customize_domain: string | null
-  customize_token_strategy: string
+  customize_token_strategy: CustomizeTokenStrategy
   default_language: string
   description: string | null
   icon: string | null

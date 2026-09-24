@@ -13670,7 +13670,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | Yes |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
 | access_ready | boolean |  | No |
 | api_base_url | string |  | Yes |
 | app_id | string |  | No |
@@ -15742,17 +15742,125 @@ This class is used to store the schema information of an api based tool.
 | app_id | string |  | No |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 
+#### AppAgentModeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| max_iteration | integer |  | No |
+| prompt | [AppAgentPromptResponse](#appagentpromptresponse)<br>string |  | No |
+| strategy | string |  | Yes |
+| tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | Yes |
+
+#### AppAgentPromptResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_prompt | string |  | No |
+| next_iteration | string |  | No |
+
+#### AppAnnotationReplyDisabledResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### AppAnnotationReplyEnabledResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | [AppEmbeddingModelResponse](#appembeddingmodelresponse) |  | Yes |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+| score_threshold | number |  | Yes |
+
 #### AppApiStatusPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enable_api | boolean | Enable or disable API | Yes |
 
+#### AppChatPromptConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| prompt | [ [AppChatPromptMessageResponse](#appchatpromptmessageresponse) ] |  | No |
+
+#### AppChatPromptMessageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string |  | Yes |
+| text | string |  | Yes |
+
+#### AppCheckboxFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkbox | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppCompletionPromptConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_histories_role | [AppConversationHistoriesRoleResponse](#appconversationhistoriesroleresponse) |  | No |
+| prompt | [AppCompletionPromptTextResponse](#appcompletionprompttextresponse) |  | No |
+
+#### AppCompletionPromptTextResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
+#### AppConversationHistoriesRoleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| assistant_prefix | string |  | Yes |
+| user_prefix | string |  | Yes |
+
+#### AppDatasetConfigsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [AppDatasetListResponse](#appdatasetlistresponse) |  | No |
+| metadata_filtering_conditions | [AppMetadataFilteringConditionsResponse](#appmetadatafilteringconditionsresponse) |  | No |
+| metadata_filtering_mode | string |  | No |
+| metadata_model_config | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
+| reranking_enabled | boolean |  | No |
+| reranking_mode | string |  | No |
+| reranking_model | [AppRerankingModelResponse](#apprerankingmodelresponse) |  | No |
+| retrieval_model | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | Yes |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
+| weights | [AppWeightsResponse](#appweightsresponse) |  | No |
+
+#### AppDatasetItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetReferenceResponse](#appdatasetreferenceresponse) |  | Yes |
+
+#### AppDatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AppDatasetItemResponse](#appdatasetitemresponse) ] |  | Yes |
+| strategy | string |  | No |
+
+#### AppDatasetReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| id | string |  | No |
+
 #### AppDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | Yes |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
 | description | string |  | Yes |
@@ -15787,7 +15895,7 @@ This class is used to store the schema information of an api based tool.
 | created_by | string |  | Yes |
 | custom_disclaimer | string |  | Yes |
 | customize_domain | string |  | Yes |
-| customize_token_strategy | string |  | Yes |
+| customize_token_strategy | [CustomizeTokenStrategy](#customizetokenstrategy) |  | Yes |
 | default_language | string |  | Yes |
 | description | string |  | Yes |
 | icon | string |  | Yes |
@@ -15807,7 +15915,7 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | Yes |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
 | api_base_url | string |  | Yes |
 | app_id | string |  | Yes |
 | bound_agent_id | string |  | Yes |
@@ -15836,11 +15944,48 @@ This class is used to store the schema information of an api based tool.
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
+#### AppDisabledExternalDataToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | No |
+| variable | string |  | No |
+
 #### AppDslVersionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_dsl_version | string |  | Yes |
+
+#### AppEmbeddingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+
+#### AppEnabledConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### AppEnabledExternalDataToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | Yes |
+| variable | string |  | Yes |
 
 #### AppExportQuery
 
@@ -15857,6 +16002,35 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | data | string |  | Yes |
 
+#### AppExternalDataToolFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| external_data_tool | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileListFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file-list | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| enabled | boolean |  | No |
+| image | [AppImageUploadResponse](#appimageuploadresponse) |  | No |
+| number_limits | integer |  | No |
+
 #### AppIconPayload
 
 | Name | Type | Description | Required |
@@ -15864,6 +16038,15 @@ This class is used to store the schema information of an api based tool.
 | icon | string | Icon data | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
+
+#### AppImageUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string |  | No |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ string ] |  | No |
 
 #### AppImportPayload
 
@@ -15891,6 +16074,62 @@ This class is used to store the schema information of an api based tool.
 | imported_dsl_version | string |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 | warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
+
+#### AppJsonObjectFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| json_object | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppKeywordSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_weight | number |  | Yes |
+
+#### AppLegacyCurrentDatetimeToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_datetime | object |  | Yes |
+
+#### AppLegacyDatasetToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetReferenceResponse](#appdatasetreferenceresponse) |  | Yes |
+
+#### AppLegacyGoogleSearchToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| google_search | object |  | Yes |
+
+#### AppLegacySensitiveWordToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canned_response | string |  | Yes |
+| enabled | boolean |  | Yes |
+| words | [ string ] |  | Yes |
+
+#### AppLegacySensitiveWordToolResponseItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sensitive-word-avoidance | [AppLegacySensitiveWordToolResponse](#applegacysensitivewordtoolresponse) |  | Yes |
+
+#### AppLegacyWebReaderToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| web_reader | object |  | Yes |
+
+#### AppLegacyWikipediaToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| wikipedia | object |  | Yes |
 
 #### AppListQuery
 
@@ -15926,6 +16165,21 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
 
+#### AppMetadataConditionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string |  | Yes |
+| name | string |  | Yes |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
+
+#### AppMetadataFilteringConditionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [AppMetadataConditionResponse](#appmetadataconditionresponse) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or" |  | No |
+
 #### AppMode
 
 | Name | Type | Description | Required |
@@ -15936,36 +16190,51 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_mode | object |  | Yes |
-| annotation_reply | object |  | Yes |
-| chat_prompt_config | object |  | Yes |
-| completion_prompt_config | object |  | Yes |
+| agent_mode | [AppAgentModeResponse](#appagentmoderesponse) |  | Yes |
+| annotation_reply | [AppAnnotationReplyEnabledResponse](#appannotationreplyenabledresponse)<br>[AppAnnotationReplyDisabledResponse](#appannotationreplydisabledresponse) |  | Yes |
+| chat_prompt_config | [AppChatPromptConfigResponse](#appchatpromptconfigresponse) |  | Yes |
+| completion_prompt_config | [AppCompletionPromptConfigResponse](#appcompletionpromptconfigresponse) |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
-| dataset_configs | object |  | Yes |
+| dataset_configs | [AppDatasetConfigsResponse](#appdatasetconfigsresponse) |  | Yes |
 | dataset_query_variable | string |  | Yes |
-| external_data_tools | [ object ] |  | Yes |
-| file_upload | object |  | Yes |
-| model | object |  | Yes |
-| more_like_this | object |  | Yes |
+| external_data_tools | [ [AppEnabledExternalDataToolResponse](#appenabledexternaldatatoolresponse)<br>[AppDisabledExternalDataToolResponse](#appdisabledexternaldatatoolresponse) ] |  | Yes |
+| file_upload | [AppFileUploadResponse](#appfileuploadresponse) |  | Yes |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | Yes |
+| more_like_this | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
 | opening_statement | string |  | Yes |
 | pre_prompt | string |  | Yes |
-| prompt_type | string |  | Yes |
-| retriever_resource | object |  | Yes |
-| sensitive_word_avoidance | object |  | Yes |
-| speech_to_text | object |  | Yes |
+| prompt_type | [PromptType](#prompttype) |  | Yes |
+| retriever_resource | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
+| sensitive_word_avoidance | [AppSensitiveWordAvoidanceResponse](#appsensitivewordavoidanceresponse) |  | Yes |
+| speech_to_text | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | object |  | Yes |
-| text_to_speech | object |  | Yes |
+| suggested_questions_after_answer | [AppSuggestedQuestionsAfterAnswerResponse](#appsuggestedquestionsafteranswerresponse) |  | Yes |
+| text_to_speech | [AppTextToSpeechResponse](#apptexttospeechresponse) |  | Yes |
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
-| user_input_form | [ object ] |  | Yes |
+| user_input_form | [ [AppTextInputFormResponse](#apptextinputformresponse)<br>[AppSelectFormResponse](#appselectformresponse)<br>[AppParagraphFormResponse](#appparagraphformresponse)<br>[AppNumberFormResponse](#appnumberformresponse)<br>[AppCheckboxFormResponse](#appcheckboxformresponse)<br>[AppFileFormResponse](#appfileformresponse)<br>[AppFileListFormResponse](#appfilelistformresponse)<br>[AppExternalDataToolFormResponse](#appexternaldatatoolformresponse)<br>[AppJsonObjectFormResponse](#appjsonobjectformresponse) ] |  | Yes |
+
+#### AppModelSelectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | No |
+| provider | string |  | No |
 
 #### AppNamePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string | Name to check | Yes |
+
+#### AppNumberFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| number | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
 
 #### AppPagination
 
@@ -15976,6 +16245,12 @@ AppMCPServer Status Enum
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### AppParagraphFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| paragraph | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
 
 #### AppPartial
 
@@ -16008,11 +16283,48 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppProviderAgentToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| enabled | boolean |  | No |
+| isDeleted | boolean |  | No |
+| notAuthor | boolean |  | No |
+| plugin_unique_identifier | string |  | No |
+| provider_id | string |  | Yes |
+| provider_name | string |  | No |
+| provider_type | string |  | Yes |
+| tool_label | string |  | No |
+| tool_name | string |  | Yes |
+| tool_parameters | object |  | Yes |
+
+#### AppRerankingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
+#### AppSelectFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| select | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
 #### AppSelectorScope
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppSelectorScope | string |  |  |
+
+#### AppSensitiveWordAvoidanceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | Yes |
+| type | string |  | No |
 
 #### AppSiteResponse
 
@@ -16063,6 +16375,29 @@ AppMCPServer Status Enum
 | title | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### AppSuggestedQuestionsAfterAnswerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
+| prompt | string |  | No |
+
+#### AppTextInputFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text-input | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppTextToSpeechResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" | *Enum:* `"disabled"`, `"enabled"` | No |
+| enabled | boolean |  | Yes |
+| language | string |  | No |
+| voice | string |  | No |
+
 #### AppTracePayload
 
 | Name | Type | Description | Required |
@@ -16077,6 +16412,25 @@ AppMCPServer Status Enum
 | enabled | boolean |  | No |
 | tracing_provider | string |  | No |
 
+#### AppUserInputFormConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| config | object |  | No |
+| default | [JsonValue](#jsonvalue) |  | No |
+| description | string |  | No |
+| hide | boolean |  | No |
+| json_schema | string<br>object |  | No |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
+| variable | string |  | Yes |
+
 #### AppVariableConfig
 
 | Name | Type | Description | Required |
@@ -16085,6 +16439,22 @@ AppMCPServer Status Enum
 | name | string |  | Yes |
 | required | boolean |  | No |
 | type | string |  | Yes |
+
+#### AppVectorSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+| vector_weight | number |  | Yes |
+
+#### AppWeightsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [AppKeywordSettingResponse](#appkeywordsettingresponse) |  | Yes |
+| vector_setting | [AppVectorSettingResponse](#appvectorsettingresponse) |  | Yes |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
 
 #### AudioBinaryResponse
 
@@ -16976,6 +17346,14 @@ Model class for provider custom model configuration.
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 | unadded_to_model_list | boolean |  | No |
+
+#### CustomizeTokenStrategy
+
+Site token customization strategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CustomizeTokenStrategy | string | Site token customization strategy |  |
 
 #### CustomizedPipelineTemplatePayload
 
@@ -21263,6 +21641,14 @@ Dataset Process Rule Mode
 | mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
 
+#### PromptType
+
+Prompt configuration type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PromptType | string | Prompt configuration type |  |
+
 #### ProviderConfig
 
 Model class for common provider settings like credentials
@@ -24021,6 +24407,12 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WebAppAccessMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebAppAccessMode | string |  |  |
 
 #### WebAppAuthModel
 
