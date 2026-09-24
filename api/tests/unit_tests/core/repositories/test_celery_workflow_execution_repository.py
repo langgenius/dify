@@ -175,6 +175,22 @@ class TestCeleryWorkflowExecutionRepository:
         with pytest.raises(Exception, match="Celery is down"):
             repo.save(sample_workflow_execution)
 
+    @patch("core.repositories.celery_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository")
+    def test_save_synchronously_delegates_to_sqlalchemy_repository(
+        self, mock_repository, sqlite_session_factory, account, sample_workflow_execution
+    ):
+        repo = CeleryWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test-app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        repo.save_synchronously(sample_workflow_execution)
+
+        mock_repository.return_value.save_synchronously.assert_called_once_with(sample_workflow_execution)
+
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
     def test_save_operation_fire_and_forget(
         self, mock_task, sqlite_session_factory, account, sample_workflow_execution

@@ -190,3 +190,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             except Exception:
                 logger.exception("Failed to dual-write workflow execution to SQL database: id=%s", execution.id_)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.save(execution)

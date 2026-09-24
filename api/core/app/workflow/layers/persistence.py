@@ -218,7 +218,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.outputs = event.outputs
         self._populate_completion_statistics(execution, update_finished=False)
 
-        self._workflow_execution_repository.save(execution)
+        self._workflow_execution_repository.save_synchronously(execution)
 
     # ------------------------------------------------------------------
     # Node-level handlers
