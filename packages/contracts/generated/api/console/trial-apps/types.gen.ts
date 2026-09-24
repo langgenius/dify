@@ -46,6 +46,54 @@ export type AgentAppComposerResponse = {
   variant: 'agent_app'
 }
 
+export type AgentConfigFileListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentConfigDownloadResponse = {
+  url: string
+}
+
+export type AgentConfigFilePreviewResponse = {
+  binary: boolean
+  name: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigSkillItemResponse>
+}
+
+export type AgentConfigSkillFilePreviewResponse = {
+  binary: boolean
+  path: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }> | null
+  files?: Array<AgentConfigSkillFileResponse>
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+  skill_md: AgentConfigSkillMarkdownResponse
+  source: 'config_skill_zip'
+  warnings?: Array<string>
+}
+
 export type AudioTranscriptResponse = {
   text: string
 }
@@ -652,6 +700,49 @@ export type ComposerValidationFindingsResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type AgentConfigVersionResponse = {
+  id: string
+  kind: 'build_draft' | 'draft' | 'snapshot'
+  writable: boolean
+}
+
+export type AgentConfigFileItemResponse = {
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillItemResponse = {
+  description?: string
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillFileResponse = {
+  downloadable: boolean
+  name: string
+  path: string
+  previewable: boolean
+  type: 'directory' | 'file'
+}
+
+export type AgentConfigSkillMarkdownResponse = {
+  binary: false
+  path: 'SKILL.md'
+  size?: number | null
+  text: string
+  truncated: boolean
+}
+
 export type TrialDatasetResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -1219,6 +1310,178 @@ export type GetTrialAppsByAppIdAgentComposerResponses = {
 
 export type GetTrialAppsByAppIdAgentComposerResponse =
   GetTrialAppsByAppIdAgentComposerResponses[keyof GetTrialAppsByAppIdAgentComposerResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponses = {
+  200: AgentConfigFileListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponse =
+  GetTrialAppsByAppIdAgentConfigFilesResponses[keyof GetTrialAppsByAppIdAgentConfigFilesResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
+  200: AgentConfigFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponses = {
+  200: AgentConfigSkillListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
+  200: Blob | File
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
+  200: AgentConfigSkillFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never

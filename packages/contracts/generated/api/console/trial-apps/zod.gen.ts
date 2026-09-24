@@ -3,6 +3,35 @@
 import * as z from 'zod'
 
 /**
+ * AgentConfigDownloadResponse
+ */
+export const zAgentConfigDownloadResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * AgentConfigFilePreviewResponse
+ */
+export const zAgentConfigFilePreviewResponse = z.object({
+  binary: z.boolean(),
+  name: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentConfigSkillFilePreviewResponse
+ */
+export const zAgentConfigSkillFilePreviewResponse = z.object({
+  binary: z.boolean(),
+  path: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
  * AudioTranscriptResponse
  */
 export const zAudioTranscriptResponse = z.object({
@@ -230,6 +259,99 @@ export const zComposerSaveStrategy = z.enum([
   'save_to_current_version',
   'save_to_roster',
 ])
+
+/**
+ * AgentConfigVersionResponse
+ */
+export const zAgentConfigVersionResponse = z.object({
+  id: z.string(),
+  kind: z.enum(['build_draft', 'draft', 'snapshot']),
+  writable: z.boolean(),
+})
+
+/**
+ * AgentConfigFileItemResponse
+ */
+export const zAgentConfigFileItemResponse = z.object({
+  file_id: z.string().nullish(),
+  hash: z.string().nullish(),
+  id: z.string(),
+  is_missing: z.boolean().optional().default(false),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int().nullish(),
+})
+
+/**
+ * AgentConfigFileListResponse
+ */
+export const zAgentConfigFileListResponse = z.object({
+  agent_id: z.string(),
+  config_version: zAgentConfigVersionResponse,
+  items: z.array(zAgentConfigFileItemResponse).optional(),
+})
+
+/**
+ * AgentConfigSkillItemResponse
+ */
+export const zAgentConfigSkillItemResponse = z.object({
+  description: z.string().optional().default(''),
+  file_id: z.string().nullish(),
+  hash: z.string().nullish(),
+  id: z.string(),
+  is_missing: z.boolean().optional().default(false),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int().nullish(),
+})
+
+/**
+ * AgentConfigSkillListResponse
+ */
+export const zAgentConfigSkillListResponse = z.object({
+  agent_id: z.string(),
+  config_version: zAgentConfigVersionResponse,
+  items: z.array(zAgentConfigSkillItemResponse).optional(),
+})
+
+/**
+ * AgentConfigSkillFileResponse
+ */
+export const zAgentConfigSkillFileResponse = z.object({
+  downloadable: z.boolean(),
+  name: z.string(),
+  path: z.string(),
+  previewable: z.boolean(),
+  type: z.enum(['directory', 'file']),
+})
+
+/**
+ * AgentConfigSkillMarkdownResponse
+ */
+export const zAgentConfigSkillMarkdownResponse = z.object({
+  binary: z.literal(false),
+  path: z.literal('SKILL.md'),
+  size: z.int().nullish(),
+  text: z.string(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentConfigSkillInspectResponse
+ */
+export const zAgentConfigSkillInspectResponse = z.object({
+  description: z.string().optional().default(''),
+  file_tree: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z.array(zAgentConfigSkillFileResponse).optional(),
+  hash: z.string().nullish(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int().nullish(),
+  skill_md: zAgentConfigSkillMarkdownResponse,
+  source: z.literal('config_skill_zip'),
+  warnings: z.array(z.string()).optional(),
+})
 
 /**
  * TrialDatasetResponse
@@ -1574,6 +1696,141 @@ export const zGetTrialAppsByAppIdAgentComposerPath = z.object({
  * Published Agent configuration
  */
 export const zGetTrialAppsByAppIdAgentComposerResponse = zAgentAppComposerResponse
+
+export const zGetTrialAppsByAppIdAgentConfigFilesPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigFilesQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigFilesResponse = zAgentConfigFileListResponse
+
+export const zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse =
+  zAgentConfigDownloadResponse
+
+export const zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse =
+  zAgentConfigFilePreviewResponse
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsResponse = zAgentConfigSkillListResponse
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse =
+  zAgentConfigDownloadResponse
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery = z.object({
+  path: z.string(),
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse = z.custom<
+  Blob | File
+>((value) => value instanceof Blob || value instanceof File)
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadQuery = z.object({
+  path: z.string(),
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse =
+  zAgentConfigDownloadResponse
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewQuery = z.object({
+  path: z.string(),
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse =
+  zAgentConfigSkillFilePreviewResponse
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Published template resource
+ */
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
+  zAgentConfigSkillInspectResponse
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),

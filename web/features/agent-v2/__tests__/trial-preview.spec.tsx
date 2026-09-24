@@ -1,7 +1,6 @@
 import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { AgentTrialPreview } from '../trial-preview'
 
 const { fetchPreview } = vi.hoisted(() => ({
@@ -50,9 +49,7 @@ function renderPreview() {
   )
 }
 
-beforeEach(() => vi.clearAllMocks())
-
-it('shows published configuration with read-only collapsible sections', async () => {
+it('shows published configuration without editing controls', async () => {
   fetchPreview.mockResolvedValue({
     variant: 'agent_app',
     agent: { id: 'agent-1', name: 'Research', description: '', scope: 'roster', status: 'active' },
@@ -91,7 +88,6 @@ it('shows published configuration with read-only collapsible sections', async ()
       config_files: [{ name: 'guide.txt', file_kind: 'upload_file', file_id: 'file-1' }],
     },
   })
-  const user = userEvent.setup()
   renderPreview()
 
   expect(await screen.findByText('You are a research assistant.')).toBeVisible()
@@ -102,11 +98,7 @@ it('shows published configuration with read-only collapsible sections', async ()
   expect(screen.getByText('Handbook')).toBeVisible()
   expect(screen.getByText('guide.txt')).toBeVisible()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  await user.click(
-    screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.label' }),
-  )
-  expect(screen.queryByText('Research skill')).not.toBeInTheDocument()
-  expect(fetchPreview).toHaveBeenCalledTimes(1)
+  expect(screen.getByText('Research skill')).toBeVisible()
 })
 
 it('shows unavailable instead of stale configuration when preview fails', async () => {

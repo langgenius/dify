@@ -115,12 +115,10 @@ class RosterAgentPackageImporter:
     ) -> RosterAgentPackageImportResult:
         try:
             parsed = urlsplit(url)
-            valid_url = (
-                parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password
-            )
+            credential_free = not parsed.username and not parsed.password
         except ValueError:
-            valid_url = False
-        if not valid_url:
+            credential_free = False
+        if not credential_free:
             raise InvalidRosterAgentPackageError("Package URL must be an HTTP(S) URL without credentials")
         with download_app_import_source(url, max_bytes=dify_config.AGENT_PACKAGE_MAX_BYTES) as source:
             return self.import_package(
