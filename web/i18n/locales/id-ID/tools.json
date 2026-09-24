@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Tambahkan Judul",
   "mcp.modal.authentication": "Otentikasi",
   "mcp.modal.cancel": "Membatalkan",
+  "mcp.modal.changeIcon": "Ubah ikon server",
   "mcp.modal.clientID": "ID Klien",
   "mcp.modal.clientSecret": "Rahasia Klien",
   "mcp.modal.clientSecretPlaceholder": "Rahasia Klien",

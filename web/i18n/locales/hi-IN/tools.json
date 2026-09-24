@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "हेडर जोड़ें",
   "mcp.modal.authentication": "प्रमाणीकरण",
   "mcp.modal.cancel": "रद्द करें",
+  "mcp.modal.changeIcon": "सर्वर आइकन बदलें",
   "mcp.modal.clientID": "क्लाइंट आईडी",
   "mcp.modal.clientSecret": "क्लाइंट सीक्रेट",
   "mcp.modal.clientSecretPlaceholder": "क्लाइंट सीक्रेट",

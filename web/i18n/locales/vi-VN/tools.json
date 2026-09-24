@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Thêm tiêu đề",
   "mcp.modal.authentication": "Xác thực",
   "mcp.modal.cancel": "Hủy",
+  "mcp.modal.changeIcon": "Thay đổi biểu tượng máy chủ",
   "mcp.modal.clientID": "ID khách hàng",
   "mcp.modal.clientSecret": "Bí mật của khách hàng",
   "mcp.modal.clientSecretPlaceholder": "Bí mật của khách hàng",

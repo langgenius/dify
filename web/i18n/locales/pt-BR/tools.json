@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Adicionar Cabeçalho",
   "mcp.modal.authentication": "Autenticação",
   "mcp.modal.cancel": "Cancelar",
+  "mcp.modal.changeIcon": "Alterar ícone do servidor",
   "mcp.modal.clientID": "ID do Cliente",
   "mcp.modal.clientSecret": "Segredo do Cliente",
   "mcp.modal.clientSecretPlaceholder": "Segredo do Cliente",

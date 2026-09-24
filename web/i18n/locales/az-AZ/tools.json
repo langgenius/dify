@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Başlıq əlavə et",
   "mcp.modal.authentication": "Kimliyin doğrulanması",
   "mcp.modal.cancel": "Ləğv et",
+  "mcp.modal.changeIcon": "Server ikonunu dəyişdir",
   "mcp.modal.clientID": "Müştəri ID-si",
   "mcp.modal.clientSecret": "Müştərinin məxfi açarı",
   "mcp.modal.clientSecretPlaceholder": "Müştərinin məxfi açarı",

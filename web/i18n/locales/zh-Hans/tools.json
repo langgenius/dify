@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "添加请求头",
   "mcp.modal.authentication": "认证",
   "mcp.modal.cancel": "取消",
+  "mcp.modal.changeIcon": "更改服务器图标",
   "mcp.modal.clientID": "客户端 ID",
   "mcp.modal.clientSecret": "客户端密钥",
   "mcp.modal.clientSecretPlaceholder": "客户端密钥",

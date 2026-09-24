@@ -4643,6 +4643,7 @@ export default interface Resources {
     'mcp.modal.addHeader': 'Add Header'
     'mcp.modal.authentication': 'Authentication'
     'mcp.modal.cancel': 'Cancel'
+    'mcp.modal.changeIcon': 'Change server icon'
     'mcp.modal.clientID': 'Client ID'
     'mcp.modal.clientSecret': 'Client Secret'
     'mcp.modal.clientSecretPlaceholder': 'Client Secret'

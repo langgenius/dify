@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Aggiungi intestazione",
   "mcp.modal.authentication": "Autenticazione",
   "mcp.modal.cancel": "Annulla",
+  "mcp.modal.changeIcon": "Modifica icona del server",
   "mcp.modal.clientID": "ID cliente",
   "mcp.modal.clientSecret": "Segreto del Cliente",
   "mcp.modal.clientSecretPlaceholder": "Segreto del Cliente",

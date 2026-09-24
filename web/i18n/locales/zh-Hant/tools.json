@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "新增標題",
   "mcp.modal.authentication": "身份驗證",
   "mcp.modal.cancel": "取消",
+  "mcp.modal.changeIcon": "變更伺服器圖示",
   "mcp.modal.clientID": "客戶編號",
   "mcp.modal.clientSecret": "客戶端密鑰",
   "mcp.modal.clientSecretPlaceholder": "客戶端密鑰",

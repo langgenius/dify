@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "إضافة رأس",
   "mcp.modal.authentication": "المصادقة",
   "mcp.modal.cancel": "إلغاء",
+  "mcp.modal.changeIcon": "تغيير أيقونة الخادم",
   "mcp.modal.clientID": "معرف العميل",
   "mcp.modal.clientSecret": "سر العميل",
   "mcp.modal.clientSecretPlaceholder": "سر العميل",

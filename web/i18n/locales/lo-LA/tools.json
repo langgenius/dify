@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "ເພີ່ມສ່ວນຫົວ (Header)",
   "mcp.modal.authentication": "ການຢືນຢັນຕົວຕົນ",
   "mcp.modal.cancel": "ຍົກເລີກ",
+  "mcp.modal.changeIcon": "ປ່ຽນໄອຄອນເຊີບເວີ",
   "mcp.modal.clientID": "Client ID",
   "mcp.modal.clientSecret": "Client Secret",
   "mcp.modal.clientSecretPlaceholder": "Client Secret",

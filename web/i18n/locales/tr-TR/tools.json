@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Başlık Ekle",
   "mcp.modal.authentication": "Kimlik Doğrulama",
   "mcp.modal.cancel": "İptal",
+  "mcp.modal.changeIcon": "Sunucu simgesini değiştir",
   "mcp.modal.clientID": "Müşteri Kimliği",
   "mcp.modal.clientSecret": "İstemci Sırrı",
   "mcp.modal.clientSecretPlaceholder": "İstemci Sırrı",

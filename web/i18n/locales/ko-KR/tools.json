@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "헤더 추가",
   "mcp.modal.authentication": "인증",
   "mcp.modal.cancel": "취소",
+  "mcp.modal.changeIcon": "서버 아이콘 변경",
   "mcp.modal.clientID": "클라이언트 ID",
   "mcp.modal.clientSecret": "클라이언트 시크릿",
   "mcp.modal.clientSecretPlaceholder": "클라이언트 시크릿",

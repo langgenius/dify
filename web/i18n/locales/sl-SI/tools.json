@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Dodaj glavo",
   "mcp.modal.authentication": "Avtentikacija",
   "mcp.modal.cancel": "Prekliči",
+  "mcp.modal.changeIcon": "Spremeni ikono strežnika",
   "mcp.modal.clientID": "ID odjemalca",
   "mcp.modal.clientSecret": "Skrivnost odjemalca",
   "mcp.modal.clientSecretPlaceholder": "Skrivnost odjemalca",

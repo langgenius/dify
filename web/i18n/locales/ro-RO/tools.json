@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Adăugați antet",
   "mcp.modal.authentication": "Autentificare",
   "mcp.modal.cancel": "Anulare",
+  "mcp.modal.changeIcon": "Schimbă pictograma serverului",
   "mcp.modal.clientID": "ID client",
   "mcp.modal.clientSecret": "Secretul Clientului",
   "mcp.modal.clientSecretPlaceholder": "Secretul Clientului",

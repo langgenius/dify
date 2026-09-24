@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "هدر اضافه کنید",
   "mcp.modal.authentication": "احراز هویت",
   "mcp.modal.cancel": "لغو",
+  "mcp.modal.changeIcon": "تغییر نماد سرور",
   "mcp.modal.clientID": "شناسه مشتری",
   "mcp.modal.clientSecret": "رمز مشتری",
   "mcp.modal.clientSecretPlaceholder": "رمز مشتری",

@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "Добавить заголовок",
   "mcp.modal.authentication": "Аутентификация",
   "mcp.modal.cancel": "Отмена",
+  "mcp.modal.changeIcon": "Изменить значок сервера",
   "mcp.modal.clientID": "Идентификатор клиента",
   "mcp.modal.clientSecret": "Секрет клиента",
   "mcp.modal.clientSecretPlaceholder": "Секрет клиента",

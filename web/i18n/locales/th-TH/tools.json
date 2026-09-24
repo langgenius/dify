@@ -113,6 +113,7 @@
   "mcp.modal.addHeader": "เพิ่มหัวเรื่อง",
   "mcp.modal.authentication": "การตรวจสอบตัวตน",
   "mcp.modal.cancel": "ยกเลิก",
+  "mcp.modal.changeIcon": "เปลี่ยนไอคอนเซิร์ฟเวอร์",
   "mcp.modal.clientID": "รหัสลูกค้า",
   "mcp.modal.clientSecret": "รหัสลับของลูกค้า",
   "mcp.modal.clientSecretPlaceholder": "รหัสลับของลูกค้า",
