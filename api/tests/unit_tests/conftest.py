@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 from collections.abc import Callable, Iterator
@@ -47,6 +49,10 @@ from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from tests.unit_tests.config_override import apply_config_overrides
+
+if TYPE_CHECKING:
+    from extensions.application_services.app import AppServices
+    from services.tag_application_service import TagApplicationService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -251,7 +257,7 @@ def account_domain(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
-) -> "AccountDomain":
+) -> AccountDomain:
     from blinker import Signal
 
     from enums import DeploymentEdition
@@ -266,8 +272,8 @@ def account_domain(
 
 @pytest.fixture
 def account_application_services(
-    sqlite_session_factory: sessionmaker[Session], account_domain: "AccountDomain"
-) -> "ApplicationServices":
+    sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
+) -> ApplicationServices:
     from dataclasses import replace
     from unittest.mock import Mock
 
@@ -291,3 +297,23 @@ def account_application_services(
             invitations=account_domain.invitations,
         ),
     )
+
+
+@pytest.fixture
+def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+    from extensions.application_services.app import build_app_services
+    from extensions.ext_application_services import _build_oauth_server_service
+    from extensions.ext_redis import redis_client
+
+    return build_app_services(
+        database_client=sqlite_session_factory,
+        oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+    )
+
+
+@pytest.fixture
+def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplicationService:
+    from repositories.tag_repository import TagRepository
+    from services.tag_application_service import TagApplicationService
+
+    return TagApplicationService(tags=TagRepository(sqlite_session_factory))

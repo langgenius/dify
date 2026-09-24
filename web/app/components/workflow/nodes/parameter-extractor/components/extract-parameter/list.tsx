@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const List: FC<Props> = ({ list, onChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [isShowEditModal, setIsShowEditModal] = useState(false)
 
   const handleItemChange = useCallback(
@@ -58,7 +58,7 @@ const List: FC<Props> = ({ list, onChange }) => {
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $[`${i18nPrefix}.extractParametersNotSet`], { ns: 'workflow' })}
+        {t(($) => $[`${i18nPrefix}.extractParametersNotSet`], { ns: 'workflowModels' })}
       </ListNoDataPlaceholder>
     )
   }

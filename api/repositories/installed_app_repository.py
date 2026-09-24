@@ -104,14 +104,20 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
 
             # An installed public app can belong to another workspace. Admission
             # preserves the existence check; publication policy belongs to its callers.
-            app = session.execute(select(App.id, App.mode).where(App.id == installed_app.app_id).limit(1)).first()
+            app = session.execute(
+                select(App.id, App.tenant_id, App.mode).where(App.id == installed_app.app_id).limit(1)
+            ).first()
             if app is None:
                 session.delete(installed_app)
                 session.commit()
                 return None
 
             return InstalledAppRef(
-                id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id, app_mode=app.mode.value
+                id=installed_app.id,
+                app_id=app.id,
+                tenant_id=installed_app.tenant_id,
+                app_owner_tenant_id=app.tenant_id,
+                app_mode=app.mode.value,
             )
 
     @override

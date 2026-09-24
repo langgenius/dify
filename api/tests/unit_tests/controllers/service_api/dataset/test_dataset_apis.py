@@ -189,6 +189,7 @@ def assert_dataset_detail_shape(response: dict[str, object], *, with_partial_mem
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("app_query_services")
 class TestDatasetListApiGet:
     """Test suite for DatasetListApi.get() endpoint."""
 

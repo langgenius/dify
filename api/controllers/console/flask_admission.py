@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from functools import wraps
+from http import HTTPStatus
 from typing import Concatenate
 
 from flask import Response, abort, request
@@ -128,7 +129,7 @@ def console_account_admission[T, **P, R](
         @wraps(admitted)
         def checked(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
             if editions is not None and dify_config.DEPLOYMENT_EDITION not in editions:
-                abort(404)
+                abort(HTTPStatus.NOT_FOUND)
             return admitted(self, *args, **kwargs)
 
         return checked

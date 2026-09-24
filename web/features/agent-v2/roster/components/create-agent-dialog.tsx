@@ -49,7 +49,7 @@ function CreateAgentFormSession({
   onCancel,
   onSubmit,
 }: CreateAgentFormSessionProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
@@ -58,10 +58,10 @@ function CreateAgentFormSession({
     <>
       <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.createDialog.title'])}
+          {t(($) => $['roster.createDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          {t(($) => $['roster.createDialog.description'])}
+          {t(($) => $['roster.createDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
       </div>
       <Form<AgentFormValues>
@@ -72,7 +72,7 @@ function CreateAgentFormSession({
           ref={nameInputRef}
           defaultValues={createAgentDefaultValues}
           icon={agentIcon}
-          iconAriaLabel={t(($) => $['roster.createForm.changeIcon'])}
+          iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
           onIconClick={() => setIconPickerOpen(true)}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
@@ -99,7 +99,7 @@ function CreateAgentFormSession({
 }
 
 export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps = {}) {
-  const { t } = useTranslation(['agentV2', 'common'])
+  const { t } = useTranslation(['common', 'agentRoster'])
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -155,7 +155,9 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
         {open === undefined && (
           <DialogTrigger render={<Button variant="primary" className="h-8" />}>
             <span aria-hidden className="i-ri-add-line size-4" />
-            <span className="system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
+            <span className="system-sm-medium">
+              {t(($) => $['roster.createAgent'], { ns: 'agentRoster' })}
+            </span>
           </DialogTrigger>
         )}
         <DialogContent

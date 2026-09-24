@@ -7,6 +7,8 @@ EE blueprint chain so this module is unreachable there.
 
 from __future__ import annotations
 
+from http import HTTPStatus
+
 from flask_restx import Resource
 
 from constants.oauth_bearer import Scope
@@ -30,10 +32,9 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from models import App
 from models.enums import AppStatus
-from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
+from services.entities.app_entities import AppSummary
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
@@ -50,7 +51,7 @@ class PermittedExternalAppsListApi(Resource):
             CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
         ),
         query=PermittedExternalAppsListQuery,
-        returns=(200, PermittedExternalAppsListResponse, "Permitted external apps list"),
+        returns=(HTTPStatus.OK, PermittedExternalAppsListResponse, "Permitted external apps list"),
         edition=_ENTERPRISE_ONLY,
     )
     def get(self, ctx: Context, *, query: PermittedExternalAppsListQuery):
@@ -67,8 +68,8 @@ class PermittedExternalAppsListApi(Resource):
             )
             return env
 
-        apps_by_id: dict[str, App] = {
-            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, ctx.session)
+        apps_by_id: dict[str, AppSummary] = {
+            str(a.id): a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
         tenants_by_id = {str(t.id): t for t in application_services().workspaces.management.get_many(tenant_ids)}

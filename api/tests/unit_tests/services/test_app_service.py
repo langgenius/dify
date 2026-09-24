@@ -29,6 +29,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
+from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -387,7 +388,7 @@ class TestCreateAppRBACAccessInitialization:
 
 @pytest.mark.parametrize(
     "update_status",
-    [AppService.update_app_site_status, AppService.update_app_api_status],
+    [AppService.update_app_api_status],
 )
 def test_app_status_updates_commit_before_signal(update_status: Callable[..., App], sqlite_session: Session) -> None:
     account = _persist_account(sqlite_session)
@@ -407,7 +408,6 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
 @pytest.mark.parametrize(
     "update_status",
     [
-        AppService.update_app_site_status,
         AppService.update_app_api_status,
     ],
 )
@@ -567,7 +567,7 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 
     event.listen(bind, "before_cursor_execute", record_sql)
     try:
-        recent_apps = AppService().get_recent_apps(
+        recent_apps = ConsoleAppRepository.get_recent_apps(
             account.id,
             tenant_id,
             AppListParams(limit=2),

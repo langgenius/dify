@@ -346,7 +346,9 @@ describe('VariableModal', () => {
     })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mockToastError).toHaveBeenCalledWith('common.modelProvider.selector.incompatibleTip')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'modelProvider.modelProvider.selector.incompatibleTip',
+    )
     expect(onSave).toHaveBeenCalledWith(env)
   })
 })

@@ -64,7 +64,7 @@ vi.mock('../lazy-custom-model-actions', () => ({
         <div data-testid="manage-credentials" />
       )}
       <button type="button" data-testid="add-custom-model">
-        common.modelProvider.addModel
+        modelProvider.modelProvider.addModel
       </button>
     </>
   ),
@@ -438,7 +438,7 @@ describe('ModelList', () => {
 
     expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
   })
 
