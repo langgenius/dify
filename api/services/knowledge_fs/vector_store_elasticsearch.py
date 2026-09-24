@@ -3,7 +3,13 @@
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from services.knowledge_fs.vector_store import VectorPoint, VectorRequest, VectorScope, VectorStoreUnavailableError
+from services.knowledge_fs.vector_store import (
+    VectorPoint,
+    VectorRequest,
+    VectorResult,
+    VectorScope,
+    VectorStoreUnavailableError,
+)
 
 if TYPE_CHECKING:
     from elasticsearch import Elasticsearch
@@ -50,17 +56,14 @@ class ElasticsearchVectorStore:
     def close(self) -> None:
         self.client.close()
 
-    def _ensure_index(self, scope: VectorScope, operation: str) -> bool:
+    def _ensure_index(self, scope: VectorScope, operation: str, index: str) -> bool:
         from elasticsearch import BadRequestError, NotFoundError
 
         if scope.dimension > 4096:
             raise VectorStoreUnavailableError("Elasticsearch supports at most 4096 vector dimensions")
-        index = scope.collection_name
         try:
             info = self.client.indices.get_mapping(index=index)
         except NotFoundError:
-            if operation == "search":
-                raise VectorStoreUnavailableError("KnowledgeFS vector collection is missing") from None
             if operation != "upsert":
                 return False
             try:
@@ -101,8 +104,8 @@ class ElasticsearchVectorStore:
             raise VectorStoreUnavailableError("KnowledgeFS vector collection has incompatible schema")
         return True
 
-    def _get(self, scope: VectorScope, ids: list[str]) -> list[dict[str, Any]]:
-        result = self.client.mget(index=scope.collection_name, ids=ids)
+    def _get(self, index: str, ids: list[str]) -> list[dict[str, Any]]:
+        result = self.client.mget(index=index, ids=ids)
         if len(result["docs"]) != len(ids) or any("error" in doc for doc in result["docs"]):
             raise VectorStoreUnavailableError("Elasticsearch vector read was incomplete")
         return [
@@ -122,11 +125,10 @@ class ElasticsearchVectorStore:
         ):
             raise VectorStoreUnavailableError("Elasticsearch vector batch was not fully acknowledged")
 
-    def execute(self, payload: VectorRequest) -> dict[str, object]:
-        scope = payload.scope
-        if not self._ensure_index(scope, payload.operation):
-            return {"points": [], "matches": []}
-        index = scope.collection_name
+    def execute_collection(self, payload: VectorRequest, index: str) -> VectorResult | None:
+        """Use a server-derived current/legacy name; None means the index is absent."""
+        if not self._ensure_index(payload.scope, payload.operation, index):
+            return None
         if payload.operation == "upsert":
             operations: list[dict[str, Any]] = []
             for point in payload.points:
@@ -138,7 +140,7 @@ class ElasticsearchVectorStore:
                 )
             self._bulk(operations, len(payload.points), deleting=False)
         elif payload.operation == "get":
-            return {"points": self._get(scope, payload.ids), "matches": []}
+            return {"points": self._get(index, payload.ids), "matches": []}
         elif payload.operation == "search":
             result = self.client.search(
                 index=index,
@@ -166,6 +168,6 @@ class ElasticsearchVectorStore:
                 len(payload.ids),
                 deleting=True,
             )
-            if self._get(scope, payload.ids):
+            if self._get(index, payload.ids):
                 raise VectorStoreUnavailableError("KnowledgeFS vector deletion is not yet visible")
         return {"points": [], "matches": []}

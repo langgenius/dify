@@ -3,7 +3,14 @@
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from services.knowledge_fs.vector_store import VectorPoint, VectorRequest, VectorScope, VectorStoreUnavailableError
+from services.knowledge_fs.vector_store import (
+    VectorMatch,
+    VectorPoint,
+    VectorRequest,
+    VectorResult,
+    VectorScope,
+    VectorStoreUnavailableError,
+)
 
 if TYPE_CHECKING:
     from weaviate import WeaviateClient
@@ -51,12 +58,7 @@ class WeaviateVectorStore:
     def close(self) -> None:
         self.client.close()
 
-    @staticmethod
-    def collection_name(scope: VectorScope) -> str:
-        # Weaviate class names start uppercase. All other scope identity is unchanged.
-        return scope.collection_name[0].upper() + scope.collection_name[1:]
-
-    def _collection(self, scope: VectorScope, operation: str) -> "Collection | None":
+    def _collection(self, scope: VectorScope, operation: str, name: str) -> "Collection | None":
         from weaviate.classes.config import (
             Configure,
             ConsistencyLevel,
@@ -66,11 +68,8 @@ class WeaviateVectorStore:
             VectorDistances,
         )
 
-        name = self.collection_name(scope)
         description = f"KnowledgeFS v1; dimension={scope.dimension}; metric=cosine"
         if not self.client.collections.exists(name):
-            if operation == "search":
-                raise VectorStoreUnavailableError("KnowledgeFS vector collection is missing")
             if operation != "upsert":
                 return None
             try:
@@ -106,13 +105,15 @@ class WeaviateVectorStore:
             raise VectorStoreUnavailableError("KnowledgeFS vector collection has incompatible schema")
         return collection
 
-    def execute(self, payload: VectorRequest) -> dict[str, object]:
+    def execute_collection(self, payload: VectorRequest, name: str) -> VectorResult | None:
+        """Use a server-derived current/legacy name; None means the class is absent."""
         from weaviate.classes.data import DataObject
         from weaviate.classes.query import Filter, MetadataQuery
 
-        collection = self._collection(payload.scope, payload.operation)
+        # Weaviate class names start uppercase. All other scope identity is unchanged.
+        collection = self._collection(payload.scope, payload.operation, name[0].upper() + name[1:])
         if collection is None:
-            return {"points": [], "matches": []}
+            return None
         if payload.operation == "upsert":
             result = collection.data.insert_many(
                 [
@@ -147,7 +148,7 @@ class WeaviateVectorStore:
                 return_metadata=MetadataQuery(distance=True),
                 return_properties=False,
             ).objects
-            matches = []
+            matches: list[VectorMatch] = []
             for obj in objects:
                 if obj.metadata.distance is None:
                     raise VectorStoreUnavailableError("Weaviate vector search omitted distance")

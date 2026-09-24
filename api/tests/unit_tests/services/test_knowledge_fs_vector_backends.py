@@ -39,8 +39,9 @@ def es_error(status, name):
 @pytest.fixture
 def es():
     client = MagicMock()
+    scope = VectorScope.model_validate(SCOPE)
     client.indices.get_mapping.return_value = {
-        VectorScope.model_validate(SCOPE).collection_name: {
+        name: {
             "mappings": {
                 "properties": {
                     "vector": {"type": "dense_vector", "dims": 2, "index": True, "similarity": "cosine"},
@@ -49,6 +50,7 @@ def es():
                 }
             }
         }
+        for name in (scope.collection_name, scope.legacy_collection_name)
     }
     client.bulk.return_value = {"items": [{"index": {"status": 201}}]}
     return ElasticsearchVectorStore(client)
@@ -59,6 +61,7 @@ def test_elasticsearch_retry_write_readback_filter_and_cosine(es):
         execute_vector_request(es, request("upsert", points=[POINT]))
     write = es.client.bulk.call_args.kwargs
     assert write["operations"][0]["index"]["_id"] == A
+    assert write["operations"][0]["index"]["_index"] == VectorScope.model_validate(SCOPE).collection_name
     assert write["operations"][1] == {key: val for key, val in POINT.items() if key != "id"}
     assert write["refresh"] == "wait_for"
     es.client.mget.return_value = {"docs": [{"_id": A, "found": True, "_source": write["operations"][1]}]}
@@ -69,6 +72,43 @@ def test_elasticsearch_retry_write_readback_filter_and_cosine(es):
     search = es.client.search.call_args.kwargs
     assert search["knn"]["filter"] == {"ids": {"values": [A]}}
     assert search["allow_partial_search_results"] is False
+
+
+@pytest.mark.parametrize("operation", ["get", "search", "delete"])
+@pytest.mark.parametrize("names", ["legacy", "current", "both"])
+def test_elasticsearch_names_preserve_existing_vectors_and_cleanup(es, operation, names):
+    scope = VectorScope.model_validate(SCOPE)
+    available = {
+        name: mapping
+        for name, mapping in es.client.indices.get_mapping.return_value.items()
+        if names == "both" or name == (scope.legacy_collection_name if names == "legacy" else scope.collection_name)
+    }
+
+    def get_mapping(*, index):
+        if index not in available:
+            raise es_error(404, "missing")
+        return {index: available[index]}
+
+    es.client.indices.get_mapping.side_effect = get_mapping
+    es.client.mget.return_value = {
+        "docs": [{"_id": A, "found": operation != "delete", "_source": {k: v for k, v in POINT.items() if k != "id"}}]
+    }
+    es.client.search.return_value = {"hits": {"hits": [{"_id": A, "_score": 1.0}]}}
+    es.client.bulk.return_value = {"items": [{"delete": {"status": 200}}]}
+    result = execute_vector_request(
+        es, request(operation, ids=[A], **({"query_vector": [1, 0], "limit": 1} if operation == "search" else {}))
+    )
+    assert result == {
+        "points": [POINT] if operation == "get" else [],
+        "matches": [{"id": A, "score": 1.0}] if operation == "search" else [],
+    }
+    if operation == "delete":
+        calls = es.client.bulk.call_args_list
+        assert {call.kwargs["operations"][0]["delete"]["_index"] for call in calls} == set(available)
+    else:
+        calls = (es.client.mget if operation == "get" else es.client.search).call_args_list
+        assert {call.kwargs["index"] for call in calls} == set(available)
+    es.client.indices.create.assert_not_called()
 
 
 @pytest.mark.parametrize("race", [False, True])
@@ -221,6 +261,8 @@ def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate):
     store, collection = weaviate
     for _ in range(2):
         execute_vector_request(store, request("upsert", points=[POINT]))
+    name = VectorScope.model_validate(SCOPE).collection_name
+    assert store.client.collections.use.call_args.args[0] == name[0].upper() + name[1:]
     point = collection.data.insert_many.call_args.args[0][0]
     assert str(point.uuid) == A
     assert point.properties == {"generation_id": GENERATION, "content_hash": "a" * 64}
@@ -237,6 +279,38 @@ def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate):
     assert where.value == [A]
     store.client.collections.use.return_value.with_consistency_level.assert_called_with(ConsistencyLevel.ALL)
     assert store.client.collections.use.call_args.args[0].startswith("Knowledgefs_v1_")
+
+
+@pytest.mark.parametrize("operation", ["get", "search", "delete"])
+@pytest.mark.parametrize("names", ["legacy", "current", "both"])
+def test_weaviate_names_preserve_existing_vectors_and_cleanup(weaviate, operation, names):
+    store, collection = weaviate
+    scope = VectorScope.model_validate(SCOPE)
+    available = {
+        name[0].upper() + name[1:]
+        for name in (scope.collection_name, scope.legacy_collection_name)
+        if names == "both" or name == (scope.legacy_collection_name if names == "legacy" else scope.collection_name)
+    }
+    store.client.collections.exists.side_effect = available.__contains__
+    obj = SimpleNamespace(
+        uuid=A,
+        properties={k: v for k, v in POINT.items() if k not in {"id", "vector"}},
+        vector={"default": [3, 4]},
+        metadata=SimpleNamespace(distance=0.0),
+    )
+    collection.query.fetch_objects.return_value = SimpleNamespace(objects=[] if operation == "delete" else [obj])
+    collection.query.near_vector.return_value = SimpleNamespace(objects=[obj])
+    result = execute_vector_request(
+        store, request(operation, ids=[A], **({"query_vector": [1, 0], "limit": 1} if operation == "search" else {}))
+    )
+    assert result == {
+        "points": [POINT] if operation == "get" else [],
+        "matches": [{"id": A, "score": 1.0}] if operation == "search" else [],
+    }
+    assert {call.args[0] for call in store.client.collections.use.call_args_list} == available
+    if operation == "delete":
+        assert collection.data.delete_many.call_count == len(available)
+    store.client.collections.create.assert_not_called()
 
 
 @pytest.mark.parametrize("race", [False, True])

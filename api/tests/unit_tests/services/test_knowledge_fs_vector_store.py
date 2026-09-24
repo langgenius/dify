@@ -41,7 +41,16 @@ def client():
         VectorScope.model_validate(SCOPE).collection_name,
         vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE),
     )
-    yield client
+    native_get = client.get_collection
+
+    def get_collection(name):
+        # Match the remote API's 404 contract while exercising native vector I/O.
+        if not client.collection_exists(name):
+            raise UnexpectedResponse(404, "missing", b"{}", {})
+        return native_get(name)
+
+    with patch.object(client, "get_collection", side_effect=get_collection):
+        yield client
     client.close()
 
 
@@ -71,11 +80,93 @@ def test_native_vector_roundtrip_authorized_id_filter_and_idempotent_deletion(cl
     [("tenant_id", B), ("knowledge_space_id", B), ("vector_space_id", "other"), ("kind", "visual"), ("dimension", 3)],
 )
 def test_each_scope_dimension_has_a_distinct_reserved_namespace(field, value):
-    original = VectorScope.model_validate(SCOPE).collection_name
-    other = VectorScope.model_validate({**SCOPE, field: value}).collection_name
-    assert other != original
-    assert original.startswith("knowledgefs_v1_")
-    assert SPACE not in original
+    original = VectorScope.model_validate(SCOPE)
+    other = VectorScope.model_validate({**SCOPE, field: value})
+    assert other.collection_name != original.collection_name
+    assert other.legacy_collection_name != original.legacy_collection_name
+    assert original.collection_name.startswith("knowledgefs_v1_dense_")
+    assert SPACE not in original.collection_name
+
+
+@pytest.mark.parametrize("kind", ["dense", "visual", "graph-entity", "graph-relation"])
+def test_typed_collection_names_fit_sql_identifiers_and_normalize_uuid_case(kind):
+    scope = VectorScope.model_validate({**SCOPE, "kind": kind})
+    prefix = f"knowledgefs_v1_{kind.replace('-', '_')}_"
+    assert scope.collection_name.startswith(prefix)
+    assert len(scope.collection_name.removeprefix(prefix)) == 32
+    assert len(scope.collection_name) <= 64
+    assert VectorScope.model_validate({**SCOPE, "kind": kind, "tenant_id": TENANT.upper()}) == scope
+
+
+def test_legacy_namespace_keeps_pre_rename_hash():
+    # Pin the pre-rename format so compatibility cannot drift with the new one.
+    scope = VectorScope.model_validate(SCOPE)
+    assert scope.legacy_collection_name == "knowledgefs_v1_488d91e70fe33beedcda4cb5e47b954dd5af7ca3"
+    assert (
+        scope.collection_name
+        == "knowledgefs_v1_dense_" + scope.legacy_collection_name.removeprefix("knowledgefs_v1_")[:32]
+    )
+
+
+def test_legacy_and_typed_points_remain_searchable_and_deletable_together(client):
+    scope = VectorScope.model_validate(SCOPE)
+    legacy = scope.legacy_collection_name
+    current = scope.collection_name
+    client.create_collection(legacy, vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE))
+    points = [
+        {"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [3, 4]},
+        {"id": B, "generation_id": GENERATION, "content_hash": "b" * 64, "vector": [1, 0]},
+    ]
+    client.upsert(
+        legacy,
+        points=[
+            models.PointStruct(
+                id=point["id"],
+                vector=point["vector"],
+                payload={k: v for k, v in point.items() if k not in {"id", "vector"}},
+            )
+            for point in points
+        ],
+    )
+    client.delete_collection(current)
+    assert len(execute_vector_request(client, request("get", ids=[A, B]))["points"]) == 2
+    assert execute_vector_request(client, request("search", ids=[B], query_vector=[1, 0]))["matches"][0]["id"] == B
+    assert not client.collection_exists(current)
+
+    # A new document in this scope must create the typed name, without hiding old A.
+    execute_vector_request(client, request("upsert", points=[points[1]]))
+    assert client.count(current).count == 1
+    assert client.count(legacy).count == 2
+    assert len(execute_vector_request(client, request("get", ids=[A, B]))["points"]) == 2
+    matches = execute_vector_request(client, request("search", ids=[A, B], query_vector=[1, 0], limit=1))["matches"]
+    assert [match["id"] for match in matches] == [B]
+    # B exists in both collections, but cannot crowd out an authorized point A.
+    matches = execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0], limit=1))["matches"]
+    assert [match["id"] for match in matches] == [A]
+    for _ in range(2):
+        execute_vector_request(client, request("delete", ids=[B]))
+    assert client.retrieve(current, [B]) == []
+    assert client.retrieve(legacy, [B]) == []
+    assert len(execute_vector_request(client, request("get", ids=[A]))["points"]) == 1
+
+
+@pytest.mark.parametrize("operation", ["get", "search", "delete"])
+def test_legacy_backend_failure_never_returns_partial_success(client, operation):
+    execute_vector_request(
+        client,
+        request("upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]),
+    )
+    native_get = client.get_collection
+
+    def get_collection(name):
+        if name == VectorScope.model_validate(SCOPE).legacy_collection_name:
+            raise UnexpectedResponse(503, "unavailable", b"{}", {})
+        return native_get(name)
+
+    payload = request(operation, ids=[A], **({"query_vector": [1, 0]} if operation == "search" else {}))
+    with patch.object(client, "get_collection", side_effect=get_collection):
+        with pytest.raises(UnexpectedResponse):
+            execute_vector_request(client, payload)
 
 
 @pytest.mark.parametrize(

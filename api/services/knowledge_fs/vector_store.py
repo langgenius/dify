@@ -7,7 +7,7 @@ point IDs for each search. Neither document text nor permission data is copied.
 import hashlib
 import json
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypedDict
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, FiniteFloat, model_validator
 
@@ -37,9 +37,19 @@ class VectorScope(BaseModel):
 
     @property
     def collection_name(self) -> str:
+        # The longest name (graph_relation) is 62 characters, within TiDB's
+        # 64-character table identifier limit. Keep 128 bits of scope identity.
+        return f"knowledgefs_v1_{self.kind.replace('-', '_')}_{self._identity_hash[:32]}"
+
+    @property
+    def legacy_collection_name(self) -> str:
+        """Pre-type names remain readable/deletable until their data is retired."""
+        return f"knowledgefs_v1_{self._identity_hash[:40]}"
+
+    @property
+    def _identity_hash(self) -> str:
         identity = json.dumps(self.model_dump(), sort_keys=True, separators=(",", ":"))
-        # Stay below SQL-backed providers' identifier bounds as well as Qdrant's.
-        return "knowledgefs_v1_" + hashlib.sha256(identity.encode()).hexdigest()[:40]
+        return hashlib.sha256(identity.encode()).hexdigest()
 
 
 class VectorPoint(BaseModel):
@@ -86,6 +96,16 @@ class VectorRequest(BaseModel):
 
 class VectorStoreUnavailableError(Exception):
     """Safe error; must not include native exceptions containing backend secrets."""
+
+
+class VectorMatch(TypedDict):
+    id: str
+    score: float
+
+
+class VectorResult(TypedDict):
+    points: list[dict[str, Any]]
+    matches: list[VectorMatch]
 
 
 @contextmanager
@@ -166,31 +186,64 @@ def execute_vector_request(
     payload: VectorRequest,
     *,
     check_admission: bool = True,
-) -> dict[str, object]:
+) -> VectorResult:
+    """Write typed names; read and clean up both naming generations.
+
+    A scope can contain old points and new points simultaneously. Falling back
+    only when the new collection is absent would hide published old documents.
+    Missing collections are distinct from backend errors: never turn a failed
+    read or deletion in either namespace into a partial success.
+    """
     from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
     from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
 
-    scope = payload.scope
-    point_ids: list[int | str] = list(payload.ids)
-    collection = scope.collection_name
     if check_admission:
         admit_vector_request(payload)
-    if isinstance(client, (ElasticsearchVectorStore, WeaviateVectorStore)):
-        return client.execute(payload)
+    names = [payload.scope.collection_name]
+    if payload.operation != "upsert":
+        names.append(payload.scope.legacy_collection_name)
+
+    found_collection = False
+    points: dict[str, dict[str, Any]] = {}
+    matches: dict[str, VectorMatch] = {}
+    for name in names:
+        result = (
+            client.execute_collection(payload, name)
+            if isinstance(client, (ElasticsearchVectorStore, WeaviateVectorStore))
+            else _execute_qdrant_collection(client, payload, name)
+        )
+        if result is None:
+            continue
+        found_collection = True
+        for point in result["points"]:
+            points.setdefault(point["id"], point)
+        for match in result["matches"]:
+            previous = matches.get(match["id"])
+            if previous is None or match["score"] > previous["score"]:
+                matches[match["id"]] = match
+    if payload.operation == "search" and not found_collection:
+        raise VectorStoreUnavailableError("KnowledgeFS vector collection is missing")
+    return {
+        "points": list(points.values()),
+        "matches": sorted(matches.values(), key=lambda match: (-match["score"], match["id"]))[: payload.limit],
+    }
+
+
+def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, collection: str) -> VectorResult | None:
+    """Return None only for a missing collection; all uncertain I/O must fail."""
 
     from qdrant_client.http import models
     from qdrant_client.http.exceptions import UnexpectedResponse
 
+    scope = payload.scope
+    point_ids: list[int | str] = list(payload.ids)
     try:
         info = client.get_collection(collection)
     except UnexpectedResponse as error:
         if error.status_code != 404:
             raise
-        if payload.operation == "search":
-            raise VectorStoreUnavailableError("KnowledgeFS vector collection is missing") from None
         if payload.operation != "upsert":
-            # Missing vectors are detected by callers' receipt verification.
-            return {"points": [], "matches": []}
+            return None
         try:
             client.create_collection(
                 collection_name=collection,
