@@ -416,12 +416,8 @@ function AgentBuildNoteInfotip() {
 
   return (
     <Infotip>
-      <InfotipTrigger
-        aria-label={BUILD_NOTE_FILE_NAME}
-        className="size-5 hover:text-text-quaternary"
-        iconSize="large"
-      />
-      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME} className="w-57.5">
+      <InfotipTrigger aria-label={BUILD_NOTE_FILE_NAME} iconSize="large" />
+      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME}>
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
