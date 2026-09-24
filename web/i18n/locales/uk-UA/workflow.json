@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Почати нову розмову",
   "difyBuilder.resourceNeedsAuthorization": "Потрібна авторизація",
   "difyBuilder.resourceReady": "Готово",
+  "difyBuilder.runTest": "Запустити тест",
   "difyBuilder.useActions": "Скористайтеся наведеними вище варіантами, щоб продовжити",
   "difyTeam": "Команда Dify",
   "draftConflict.description": "Завантажте актуальну чернетку, щоб продовжити редагування. Незбережені зміни буде втрачено.",

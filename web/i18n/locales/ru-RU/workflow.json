@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Начать новый диалог",
   "difyBuilder.resourceNeedsAuthorization": "Требуется авторизация",
   "difyBuilder.resourceReady": "Готово",
+  "difyBuilder.runTest": "Запустить тест",
   "difyBuilder.useActions": "Используйте варианты выше, чтобы продолжить",
   "difyTeam": "Команда Dify",
   "draftConflict.description": "Загрузите актуальный черновик, чтобы продолжить редактирование. Несохранённые изменения будут потеряны.",

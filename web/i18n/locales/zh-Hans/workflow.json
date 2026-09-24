@@ -265,6 +265,7 @@
   "difyBuilder.reset": "开始新对话",
   "difyBuilder.resourceNeedsAuthorization": "需要授权",
   "difyBuilder.resourceReady": "已就绪",
+  "difyBuilder.runTest": "运行测试",
   "difyBuilder.useActions": "使用上方选项继续",
   "difyTeam": "Dify 团队",
   "draftConflict.description": "请重新加载最新草稿后继续编辑。重新加载将丢弃未保存的本地修改。",

@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Začni nov pogovor",
   "difyBuilder.resourceNeedsAuthorization": "Potrebna je odobritev",
   "difyBuilder.resourceReady": "Pripravljeno",
+  "difyBuilder.runTest": "Zaženi test",
   "difyBuilder.useActions": "Za nadaljevanje uporabite zgornje možnosti",
   "difyTeam": "Ekipa Dify",
   "draftConflict.description": "Za nadaljevanje urejanja naložite najnovejši osnutek. Neshranjene spremembe bodo zavržene.",

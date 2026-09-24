@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Bắt đầu cuộc trò chuyện mới",
   "difyBuilder.resourceNeedsAuthorization": "Cần cấp quyền",
   "difyBuilder.resourceReady": "Sẵn sàng",
+  "difyBuilder.runTest": "Chạy thử nghiệm",
   "difyBuilder.useActions": "Sử dụng các tùy chọn phía trên để tiếp tục",
   "difyTeam": "Đội ngũ Dify",
   "draftConflict.description": "Tải lại bản nháp mới nhất để tiếp tục chỉnh sửa. Các thay đổi chưa lưu sẽ bị hủy.",

@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Mulai percakapan baru",
   "difyBuilder.resourceNeedsAuthorization": "Otorisasi diperlukan",
   "difyBuilder.resourceReady": "Siap",
+  "difyBuilder.runTest": "Jalankan pengujian",
   "difyBuilder.useActions": "Gunakan opsi di atas untuk melanjutkan",
   "difyTeam": "Tim Dify",
   "draftConflict.description": "Muat ulang draf terbaru untuk melanjutkan pengeditan. Perubahan yang belum disimpan akan dibuang.",

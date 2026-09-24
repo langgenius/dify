@@ -265,6 +265,7 @@
   "difyBuilder.reset": "شروع گفت‌وگوی جدید",
   "difyBuilder.resourceNeedsAuthorization": "نیاز به مجوز",
   "difyBuilder.resourceReady": "آماده",
+  "difyBuilder.runTest": "اجرای آزمون",
   "difyBuilder.useActions": "برای ادامه از گزینه‌های بالا استفاده کنید",
   "difyTeam": "تیم Dify",
   "draftConflict.description": "برای ادامه ویرایش، آخرین پیش‌نویس را دوباره بارگیری کنید. تغییرات ذخیره‌نشده شما حذف خواهند شد.",

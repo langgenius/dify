@@ -527,7 +527,7 @@ describe('DifyBuilderPanel', () => {
     )
 
     const input = screen.getByRole('textbox', { name: 'Topic' })
-    const action = screen.getByRole('button', { name: 'common.operation.submit' })
+    const action = screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' })
     const form = input.closest('form')
     expect(form).not.toBeNull()
     expect(action).toHaveAttribute('type', 'submit')
@@ -575,7 +575,7 @@ describe('DifyBuilderPanel', () => {
 
     const inputText = screen.getByRole('textbox', { name: 'Input Text' })
     const modelName = screen.getByRole('textbox', { name: 'Model Name' })
-    const submit = screen.getByRole('button', { name: 'common.operation.submit' })
+    const submit = screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(inputText).not.toHaveAttribute('aria-invalid')
     expect(modelName).not.toHaveAttribute('aria-invalid')
@@ -633,7 +633,7 @@ describe('DifyBuilderPanel', () => {
     )
 
     await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'AI agents')
-    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' }))
 
     const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
     expect(
@@ -692,11 +692,11 @@ describe('DifyBuilderPanel', () => {
     })
 
     expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
-    expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' })).toBeDisabled()
     act(() =>
       store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: 2 }),
     )
-    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' }))
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
       mode: 'provide',
       inputs: { topic: 'AI agents' },
@@ -731,7 +731,7 @@ describe('DifyBuilderPanel', () => {
       [card],
     )
     const input = screen.getByRole('textbox', { name: 'Profile' })
-    const action = screen.getByRole('button', { name: 'common.operation.submit' })
+    const action = screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' })
 
     await user.click(input)
     await user.paste('{"name":')

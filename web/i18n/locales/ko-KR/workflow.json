@@ -265,6 +265,7 @@
   "difyBuilder.reset": "새 대화 시작",
   "difyBuilder.resourceNeedsAuthorization": "인증 필요",
   "difyBuilder.resourceReady": "준비됨",
+  "difyBuilder.runTest": "테스트 실행",
   "difyBuilder.useActions": "계속하려면 위 옵션을 사용하세요",
   "difyTeam": "디파이 팀",
   "draftConflict.description": "편집을 계속하려면 최신 초안을 다시 불러오세요. 저장하지 않은 변경 사항은 삭제됩니다.",

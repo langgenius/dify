@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Een nieuw gesprek starten",
   "difyBuilder.resourceNeedsAuthorization": "Autorisatie vereist",
   "difyBuilder.resourceReady": "Gereed",
+  "difyBuilder.runTest": "Test uitvoeren",
   "difyBuilder.useActions": "Gebruik de opties hierboven om door te gaan",
   "difyTeam": "Dify Team",
   "draftConflict.description": "Laad het nieuwste concept om verder te bewerken. Niet-opgeslagen wijzigingen worden verwijderd.",

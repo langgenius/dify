@@ -265,6 +265,7 @@
   "difyBuilder.reset": "ເລີ່ມການສົນທະນາໃໝ່",
   "difyBuilder.resourceNeedsAuthorization": "ຕ້ອງການການອະນຸຍາດ",
   "difyBuilder.resourceReady": "ພ້ອມແລ້ວ",
+  "difyBuilder.runTest": "ດຳເນີນການທົດສອບ",
   "difyBuilder.useActions": "ໃຊ້ຕົວເລືອກດ້ານເທິງເພື່ອສືບຕໍ່",
   "difyTeam": "ທີມງານ Dify",
   "draftConflict.description": "ໂຫຼດສະບັບຮ່າງຫຼ້າສຸດຄືນໃໝ່ເພື່ອແກ້ໄຂຕໍ່. ການປ່ຽນແປງທີ່ຍັງບໍ່ໄດ້ບັນທຶກຈະຖືກລຶບ.",

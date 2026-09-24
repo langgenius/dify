@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Yeni bir konuşma başlat",
   "difyBuilder.resourceNeedsAuthorization": "Yetkilendirme gerekli",
   "difyBuilder.resourceReady": "Hazır",
+  "difyBuilder.runTest": "Testi çalıştır",
   "difyBuilder.useActions": "Devam etmek için yukarıdaki seçenekleri kullanın",
   "difyTeam": "Dify Ekibi",
   "draftConflict.description": "Düzenlemeye devam etmek için en son taslağı yeniden yükleyin. Kaydedilmemiş değişiklikleriniz silinecektir.",

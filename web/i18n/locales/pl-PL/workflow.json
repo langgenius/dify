@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Rozpocznij nową rozmowę",
   "difyBuilder.resourceNeedsAuthorization": "Wymagana autoryzacja",
   "difyBuilder.resourceReady": "Gotowe",
+  "difyBuilder.runTest": "Uruchom test",
   "difyBuilder.useActions": "Użyj powyższych opcji, aby kontynuować",
   "difyTeam": "Zespół Dify",
   "draftConflict.description": "Wczytaj najnowszą wersję roboczą, aby kontynuować edycję. Niezapisane zmiany zostaną odrzucone.",

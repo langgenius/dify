@@ -265,6 +265,7 @@
   "difyBuilder.reset": "Începe o conversație nouă",
   "difyBuilder.resourceNeedsAuthorization": "Autorizare necesară",
   "difyBuilder.resourceReady": "Pregătit",
+  "difyBuilder.runTest": "Rulează testul",
   "difyBuilder.useActions": "Folosește opțiunile de mai sus pentru a continua",
   "difyTeam": "Echipa Dify",
   "draftConflict.description": "Reîncarcă cea mai recentă ciornă pentru a continua editarea. Modificările nesalvate vor fi pierdute.",

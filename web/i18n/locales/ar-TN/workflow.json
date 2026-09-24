@@ -265,6 +265,7 @@
   "difyBuilder.reset": "بدء محادثة جديدة",
   "difyBuilder.resourceNeedsAuthorization": "التفويض مطلوب",
   "difyBuilder.resourceReady": "جاهز",
+  "difyBuilder.runTest": "شغّل الاختبار",
   "difyBuilder.useActions": "استخدم الخيارات أعلاه للمتابعة",
   "difyTeam": "فريق Dify",
   "draftConflict.description": "أعد تحميل أحدث مسودة لمتابعة التعديل. ستُفقد التغييرات غير المحفوظة.",

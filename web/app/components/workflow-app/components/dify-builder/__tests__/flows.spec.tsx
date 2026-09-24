@@ -473,7 +473,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     await waitFor(() => expect(input).toBeEnabled())
     expect(input).toHaveValue('Sample question')
     expect(mocks.action).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.runTest' }))
     await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
     expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
       action_id: 'provide_testdata',
@@ -917,7 +917,14 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
       ).not.toBeInTheDocument()
 
-      await user.click(getSubmitButton())
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            actionId === 'provide_testdata'
+              ? 'workflow.difyBuilder.runTest'
+              : 'common.operation.submit',
+        }),
+      )
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
       expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
         action_id: actionId,
