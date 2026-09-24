@@ -19,6 +19,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   missing registry entry, mirroring Go's non-sentinel ``fmt.Errorf``).
 """
 
+import logging
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -28,7 +29,7 @@ from core.dify_builder import recovery
 from core.dify_builder.contract import (
     AgentMessageEventData,
     AssistantTurnItem,
-    ErrorCard,
+    ConversationItemAppendedEventData,
     ExecutionProgress,
     ProgressEventData,
     ReasoningEventData,
@@ -47,30 +48,48 @@ from core.dify_builder.models import (
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
 from core.dify_builder.state import PcState, is_terminal, is_waiting
 
-__all__ = ["CommittedTransition", "Env", "Handler", "Runner", "StepResult"]
+__all__ = ["Env", "Handler", "Runner", "StepResult"]
 
 _MESSAGE_HISTORY_LIMIT = 24
 _MAX_REASONING_CHARS = 64_000
+_ASSISTANT_TEXT_CHUNK_CHARS = 16
+_ASSISTANT_TEXT_BREAKS = frozenset(" \t\r\n.,!?;:，。！？；：")
+
+logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class CommittedTransition:
-    """One durable session transition, observable only after its CAS wins.
+def _assistant_text_chunks(text: str) -> list[str]:
+    """Split deterministic copy into exact, natural-looking SSE deltas."""
+    chunks: list[str] = []
+    start = 0
+    while len(text) - start > _ASSISTANT_TEXT_CHUNK_CHARS:
+        ceiling = start + _ASSISTANT_TEXT_CHUNK_CHARS
+        floor = start + (_ASSISTANT_TEXT_CHUNK_CHARS // 2)
+        split = next(
+            (index + 1 for index in range(ceiling - 1, floor - 1, -1) if text[index] in _ASSISTANT_TEXT_BREAKS),
+            ceiling,
+        )
+        chunks.append(text[start:split])
+        start = split
+    if start < len(text):
+        chunks.append(text[start:])
+    return chunks
 
-    ``settled`` marks the transition after which this ``advance`` invocation
-    returns. It is deliberately independent from the destination state's
-    waiting/terminal classification: stop, resume, and conversational turns
-    settle even when they leave the program counter on a working state.
-    """
 
+@dataclass
+class _AssistantStream:
     session_id: str
+    command_id: str
     operation_id: str
-    stage_id: str
+    turn_id: str
+    seq: int
     at_version: int
-    version: int
-    state: PcState
-    settled: bool
-    items: list[ConversationItem]
+    stage_id: str
+    execution: ExecutionProgress
+    cards: list[str]
+    parts: list[str] = field(default_factory=list)
+    text_bytes: int = 0
+    sealed_text: str | None = None
 
 
 @dataclass
@@ -88,18 +107,16 @@ class Env:
     # Build wants one event per intent, Edit suppresses these and fires one
     # coarse apply_edit_plan itself instead.
     emit_canvas: Callable[[dict], None] | None = None
-    # Called after (and only after) a successful compare-and-advance CAS.
-    # The async task uses this to expose durable conversation increments to
-    # the POST stream without turning an intermediate transition into a
-    # terminal state frame.
-    emit_commit: Callable[[CommittedTransition], None] | None = None
-    # Called for each assistant text delta before the completed assistant item
-    # is committed. The accumulated reply becomes authoritative in the
-    # CAS-backed commit below.
+    # Called for each assistant text delta and its final marker. The sequence
+    # is allocated before streaming; the final marker is emitted after the
+    # assistant turn commits, before any attached conversation items.
     emit_message: Callable[[AgentMessageEventData], None] | None = None
-    # Called for low-frequency, curated execution snapshots while a handler is
-    # doing structured cognition or external work. These events are transient;
-    # the next CAS-backed commit remains authoritative.
+    # Called after a CAS commit for every durable, frontend-visible item except
+    # assistant_turn. Assistant content already travels through emit_message.
+    emit_item: Callable[[ConversationItemAppendedEventData], None] | None = None
+    # Called for low-frequency, curated execution-activity deltas while a
+    # handler is doing structured cognition or external work. These events are
+    # transient; the next CAS-backed commit remains authoritative.
     emit_progress: Callable[[ProgressEventData], None] | None = None
     # Called for model-provided reasoning deltas. Reasoning is accumulated on
     # the current operation and persisted with its assistant turn, independent
@@ -128,6 +145,9 @@ class Env:
     at_version: int = 0
     event_revision: int = 0
     reasoning_text: str = ""
+    command_id: str = ""
+    prelocalized_seqs: set[int] = field(default_factory=set)
+    assistant_streams: dict[int, _AssistantStream] = field(default_factory=dict)
 
     def begin_operation(self, session: Session) -> None:
         self.session_id = session.id
@@ -136,6 +156,8 @@ class Env:
         self.at_version = session.version + 1
         self.event_revision = 0
         self.reasoning_text = ""
+        self.prelocalized_seqs.clear()
+        self.assistant_streams.clear()
         if isinstance(self.agent, ReasoningStreamingAgent):
             self.agent.set_reasoning_callback(self.record_reasoning)
 
@@ -163,6 +185,131 @@ class Env:
                     delta=accepted,
                 )
             )
+
+    def begin_assistant_stream(
+        self,
+        session: Session,
+        *,
+        turn_id: str,
+        seq: int,
+        at_version: int,
+        execution: ExecutionProgress,
+        cards: list[str] | None = None,
+    ) -> None:
+        if seq in self.assistant_streams:
+            raise RuntimeError(f"dify_builder: assistant stream already exists for seq {seq}")
+        self.assistant_streams[seq] = _AssistantStream(
+            session_id=session.id,
+            command_id=self.command_id,
+            operation_id=self.operation_id,
+            turn_id=turn_id,
+            seq=seq,
+            at_version=at_version,
+            stage_id=str(session.current_state),
+            execution=execution,
+            cards=list(cards or []),
+        )
+
+    def emit_assistant_delta(self, seq: int, delta: str) -> None:
+        if not delta:
+            return
+        stream = self.assistant_streams[seq]
+        if stream.sealed_text is not None:
+            raise RuntimeError(f"dify_builder: assistant stream already sealed for seq {seq}")
+        stream.parts.append(delta)
+        stream.text_bytes += len(delta.encode("utf-8"))
+        if self.emit_message is not None:
+            self.emit_message(
+                AgentMessageEventData(
+                    session_id=stream.session_id,
+                    command_id=stream.command_id,
+                    operation_id=stream.operation_id,
+                    turn_id=stream.turn_id,
+                    delta=delta,
+                    seq=stream.seq,
+                    at_version=stream.at_version,
+                    revision=self.next_event_revision(),
+                    stage_id=stream.stage_id,
+                    done=False,
+                    text_bytes=stream.text_bytes,
+                )
+            )
+
+    def seal_assistant_stream(self, seq: int, text: str) -> None:
+        stream = self.assistant_streams[seq]
+        emitted_text = "".join(stream.parts)
+        if emitted_text != text:
+            raise RuntimeError(f"dify_builder: streamed assistant text differs from persisted text for seq {seq}")
+        stream.sealed_text = text
+
+    def validate_assistant_stream(self, item: ConversationItem) -> None:
+        stream = self.assistant_streams.get(item.seq)
+        if stream is None or stream.sealed_text is None:
+            raise RuntimeError(f"dify_builder: missing sealed assistant stream for seq {item.seq}")
+        reply_text = item.payload.get("reply_text")
+        persisted_text = reply_text if isinstance(reply_text, str) else ""
+        if persisted_text != stream.sealed_text:
+            raise RuntimeError(f"dify_builder: assistant stream does not match item for seq {item.seq}")
+
+    def finish_assistant_stream(self, seq: int) -> None:
+        stream = self.assistant_streams.pop(seq)
+        if stream.sealed_text is None:
+            raise RuntimeError(f"dify_builder: assistant stream is not sealed for seq {seq}")
+        if self.emit_message is not None:
+            self.emit_message(
+                AgentMessageEventData(
+                    session_id=stream.session_id,
+                    command_id=stream.command_id,
+                    operation_id=stream.operation_id,
+                    turn_id=stream.turn_id,
+                    delta="",
+                    seq=stream.seq,
+                    at_version=stream.at_version,
+                    revision=self.next_event_revision(),
+                    stage_id=stream.stage_id,
+                    done=True,
+                    text_bytes=stream.text_bytes,
+                    execution=stream.execution,
+                    cards=stream.cards,
+                )
+            )
+
+    def append_assistant_turn(
+        self,
+        session: Session,
+        context: DifyBuilderContext,
+        *,
+        reply_text: str,
+        execution: ExecutionProgress,
+        cards: list[str] | None = None,
+        turn_id: str | None = None,
+    ) -> list[ConversationItem]:
+        """Stream deterministic copy and persist the exact accumulated text."""
+        item = AssistantTurnItem(
+            turn_id=turn_id or self.operation_id or str(uuid.uuid4()),
+            stage_id=str(session.current_state),
+            execution=execution,
+            reply_text=reply_text,
+            cards=list(cards or []),
+        ).to_item(seq=context.next_seq, at_version=session.version + 1)
+        if self.localize_items is not None and context.reply_language:
+            item = self.localize_items([item], context.reply_language)[0]
+            self.prelocalized_seqs.add(item.seq)
+        localized_text = item.payload.get("reply_text")
+        text = localized_text if isinstance(localized_text, str) else ""
+        self.begin_assistant_stream(
+            session,
+            turn_id=str(item.payload["turn_id"]),
+            seq=item.seq,
+            at_version=session.version + 1,
+            execution=execution,
+            cards=cards,
+        )
+        for chunk in _assistant_text_chunks(text):
+            self.emit_assistant_delta(item.seq, chunk)
+        self.seal_assistant_stream(item.seq, text)
+        context.next_seq += 1
+        return [item]
 
 
 @dataclass
@@ -194,7 +341,16 @@ class Runner:
     ) -> None:
         at_version = session.version + 1
         if self._env.localize_items is not None and context.reply_language:
-            items = self._env.localize_items(items, context.reply_language)
+            pending_localization = [
+                item
+                for item in items
+                if item.seq not in self._env.prelocalized_seqs and item.kind != "interaction_response"
+            ]
+            localized = (
+                self._env.localize_items(pending_localization, context.reply_language) if pending_localization else []
+            )
+            localized_by_seq = {item.seq: item for item in localized}
+            items = [localized_by_seq.get(item.seq, item) for item in items]
         for item in items:
             # Handler helpers own conversation sequence numbers; the runner is
             # the only layer that knows which CAS version will make them
@@ -203,6 +359,9 @@ class Runner:
             item.at_version = at_version
             if item.kind == "assistant_turn" and self._env.reasoning_text:
                 item.payload["reasoning_text"] = self._env.reasoning_text
+            if item.kind == "assistant_turn":
+                self._env.validate_assistant_stream(item)
+        context.last_command_id = self._env.command_id
         new_version = self._env.repo.compare_and_advance(
             session.id,
             session.version,
@@ -212,19 +371,33 @@ class Runner:
         )
         session.version = new_version
         session.current_state = next_state
-        if self._env.emit_commit is not None:
-            self._env.emit_commit(
-                CommittedTransition(
-                    session_id=session.id,
-                    operation_id=self._env.operation_id,
-                    stage_id=self._env.stage_id,
-                    at_version=new_version,
-                    version=new_version,
-                    state=next_state,
-                    settled=settled,
-                    items=list(items),
+        for item in items:
+            if item.kind == "assistant_turn":
+                self._env.finish_assistant_stream(item.seq)
+        if self._env.emit_item is not None:
+            for item in items:
+                if item.kind == "assistant_turn":
+                    continue
+                self._env.emit_item(
+                    ConversationItemAppendedEventData(
+                        session_id=session.id,
+                        command_id=self._env.command_id,
+                        item=item,
+                    )
                 )
-            )
+        logger.info(
+            "dify_builder transition committed",
+            extra={
+                "session_id": session.id,
+                "command_id": self._env.command_id,
+                "operation_id": self._env.operation_id,
+                "from_stage": self._env.stage_id,
+                "to_state": str(next_state),
+                "version": new_version,
+                "settled": settled,
+                "item_count": len(items),
+            },
+        )
 
     def fail(self, session_id: str) -> Session:
         """Durably close an unexpected worker failure.
@@ -247,12 +420,13 @@ class Runner:
                 f"at version {session.version} state {session.current_state}"
             )
         self._env.begin_operation(session)
-        item = ErrorCard(
-            title="Builder step failed",
-            body="The operation could not be completed. Restart from the current draft to continue.",
-        ).to_item(seq=context.next_seq, at_version=session.version + 1)
-        context.next_seq += 1
-        self._commit(session, PcState.FAILED, context, [item], settled=True)
+        items = self._env.append_assistant_turn(
+            session,
+            context,
+            reply_text="The operation could not be completed. Restart from the current draft to continue.",
+            execution=ExecutionProgress(status="error"),
+        )
+        self._commit(session, PcState.FAILED, context, items, settled=True)
         return session
 
     def advance(self, session_id: str, turn: Turn) -> Session:
@@ -264,6 +438,8 @@ class Runner:
         version race raises ConflictError with nothing applied.
         """
         s, fc = self._env.repo.get_session(session_id)
+        if turn.action is not None:
+            self._env.command_id = turn.action.command_id
         self._env.begin_operation(s)
 
         if self._env.detect_language is not None:
@@ -307,14 +483,23 @@ class Runner:
             self._commit(s, s.current_state, fc, [], settled=True)
             return s
         if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
+            response_item = None
+            if turn.action is not None and turn.action.interaction_response is not None:
+                response_item = ConversationItem(
+                    seq=fc.next_seq,
+                    kind="interaction_response",
+                    payload=turn.action.interaction_response,
+                    at_version=s.version + 1,
+                )
+                fc.next_seq += 1
             next_state, items = recovery.apply_recovery_action(self._env.dify, turn, s, fc)
-            # check_recovery / recovery_continue stay at the current waiting state,
-            # and recovery_restart into BUILD/EDIT lands on the waiting
-            # capability_check — all rest here. recovery_restart into FIX /
-            # FIX_CHECKLIST lands on a *working* entry state (fix.diagnose /
-            # checklist.diagnose) that the runner must drive, exactly like any
-            # transition into a working state — fall through to the advance loop
-            # with the recovery action consumed.
+            if response_item is not None:
+                items.insert(0, response_item)
+            # check_recovery / recovery_continue stay at the current waiting
+            # state. Restart into EDIT still rests at its input gate; BUILD,
+            # FIX, and FIX_CHECKLIST restart into working entry states that the
+            # runner must drive, so those fall through with the recovery action
+            # consumed.
             settled = is_waiting(next_state) or is_terminal(next_state)
             self._commit(s, next_state, fc, items, settled=settled)
             if settled:
@@ -349,22 +534,21 @@ class Runner:
             graph, _graph_hash = self._env.dify.read_graph(s.app_id, turn.actor)
             assistant_seq = fc.next_seq
             assistant_version = s.version + 1
+            streamed_parts: list[str] = []
+            execution = ExecutionProgress(status="completed")
+            self._env.begin_assistant_stream(
+                s,
+                turn_id=turn_id,
+                seq=assistant_seq,
+                at_version=assistant_version,
+                execution=execution,
+            )
 
             def emit_delta(delta: str) -> None:
-                if not delta or self._env.emit_message is None:
+                if not delta:
                     return
-                self._env.emit_message(
-                    AgentMessageEventData(
-                        session_id=s.id,
-                        operation_id=self._env.operation_id,
-                        id=turn_id,
-                        answer=delta,
-                        seq=assistant_seq,
-                        at_version=assistant_version,
-                        revision=self._env.next_event_revision(),
-                        stage_id=str(s.current_state),
-                    )
-                )
+                streamed_parts.append(delta)
+                self._env.emit_assistant_delta(assistant_seq, delta)
 
             message_history = self._env.repo.list_recent_conversation(
                 session_id,
@@ -378,12 +562,33 @@ class Runner:
                 text,
                 emit_delta,
             )
+            streamed_reply = "".join(streamed_parts)
+            if not streamed_reply:
+                # Protocol adapters are expected to use ``on_delta``. Preserve
+                # the invariant for simpler implementations by turning their
+                # returned reply into one stream delta before the final marker.
+                emit_delta(reply)
+                streamed_reply = reply
+            elif streamed_reply != reply:
+                logger.warning(
+                    "dify_builder agent returned text that differed from its streamed deltas; "
+                    "persisting the streamed text",
+                    extra={
+                        "session_id": s.id,
+                        "command_id": self._env.command_id,
+                        "operation_id": self._env.operation_id,
+                    },
+                )
+            self._env.seal_assistant_stream(assistant_seq, streamed_reply)
             assistant_item = AssistantTurnItem(
                 turn_id=turn_id,
                 stage_id=str(s.current_state),
-                execution=ExecutionProgress(status="completed"),
-                reply_text=reply,
+                execution=execution,
+                reply_text=streamed_reply,
             ).to_item(seq=assistant_seq, at_version=assistant_version)
+            # The live stream is the text authority. Do not let the generic
+            # item-localization pass rewrite this reply before persistence.
+            self._env.prelocalized_seqs.add(assistant_seq)
             fc.next_seq += 1
             # The program counter stays at the current gate. Only explicit
             # actions may approve, publish, revert, run, or mutate a workflow.
@@ -407,6 +612,29 @@ class Runner:
             res = handler(self._env, step_turn, s, fc)
             if res.context is None:
                 res.context = fc
+
+            if first and turn.action is not None and turn.action.interaction_response is not None:
+                response_index = next(
+                    (index for index, item in enumerate(res.items) if item.kind == "decision"),
+                    None,
+                )
+                if response_index is None:
+                    response_item = ConversationItem(
+                        seq=res.context.next_seq,
+                        kind="interaction_response",
+                        payload=turn.action.interaction_response,
+                        at_version=s.version + 1,
+                    )
+                    res.context.next_seq += 1
+                    res.items.append(response_item)
+                else:
+                    previous = res.items[response_index]
+                    res.items[response_index] = ConversationItem(
+                        seq=previous.seq,
+                        kind="interaction_response",
+                        payload=turn.action.interaction_response,
+                        at_version=previous.at_version,
+                    )
 
             # Persist side effects (checkpoint, run) BEFORE the CAS commit. On a
             # lost CAS race these rows are orphaned (harmless, unreferenced) —

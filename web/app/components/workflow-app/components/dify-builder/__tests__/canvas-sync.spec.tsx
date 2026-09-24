@@ -16,10 +16,8 @@ import {
 } from '../store'
 
 const canvasEvent = (event: CanvasEventData['event'], nodeId?: string): CanvasEventData => ({
-  kind: 'canvas',
   session_id: 'session-1',
   operation_id: 'operation-1',
-  stage_id: 'edit.apply_changes',
   at_version: 2,
   revision: 1,
   event,
@@ -74,7 +72,6 @@ const setup = (
     difyBuilderSessionViewAtom,
     createSessionView({
       version: 2,
-      state: 'edit.apply_changes',
       phase: 'modify',
       run_status: 'waiting_input',
     }),

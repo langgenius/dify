@@ -1,4 +1,4 @@
-"""Curated, replaceable execution progress for long-running Builder handlers."""
+"""Curated execution progress for long-running Builder handlers."""
 
 import uuid
 from collections.abc import Callable, Iterable
@@ -24,12 +24,13 @@ class _ActivityRecord:
 
 
 class ProgressReporter:
-    """Publish snapshots of actions that have actually started.
+    """Publish ordered deltas for actions that have actually started.
 
     Handlers may declare their possible stages up front, but pending stages
-    stay private. A stage enters the public snapshot only when activate is
-    called. Workflow node events are folded into the same authoritative stream
-    as child activities, so clients never have to merge two timelines.
+    stay private. A stage enters the public stream only when activate is called.
+    Workflow node events are folded into the same authoritative stream as child
+    activities, so clients never have to merge two timelines. ``finish`` still
+    returns a full snapshot for durable assistant output.
     """
 
     def __init__(
@@ -101,17 +102,22 @@ class ProgressReporter:
     def activate(self, activity_id: str) -> None:
         """Complete prior active work and reveal the next stage."""
         activity = self._find(activity_id)
-        for current in self._activities:
-            if current.state == "active":
-                current.state = "done"
-        activity.state = "active"
         self._status = "running"
-        self._publish()
+        for current in self._activities:
+            if current.state == "active" and current.id != activity_id:
+                current.state = "done"
+                self._publish(current)
+        if activity.state != "active":
+            activity.state = "active"
+            self._publish(activity)
 
     def complete(self, activity_id: str) -> None:
         """Mark one revealed activity complete while the operation continues."""
-        self._find(activity_id).state = "done"
-        self._publish()
+        activity = self._find(activity_id)
+        if activity.state == "done":
+            return
+        activity.state = "done"
+        self._publish(activity)
 
     def add_steps(self, steps: Iterable[tuple[str, str]]) -> None:
         """Declare branch-specific stages without revealing them yet."""
@@ -124,8 +130,11 @@ class ProgressReporter:
 
     def fail_step(self, activity_id: str) -> None:
         """Mark one observable activity as failed before recovery continues."""
-        self._find(activity_id).state = "failed"
-        self._publish()
+        activity = self._find(activity_id)
+        if activity.state == "failed":
+            return
+        activity.state = "failed"
+        self._publish(activity)
 
     def observe_node(self, parent_id: str, event: NodeEvent) -> None:
         """Fold a workflow node event into the canonical execution timeline."""
@@ -152,25 +161,30 @@ class ProgressReporter:
             activity.state = "active"
         else:
             activity.state = "stopped"
-        self._publish()
+        self._publish(activity)
 
     def finish(
         self,
         *,
         status: Literal["completed", "error", "stopped"] = "completed",
     ) -> ExecutionProgress:
-        """Publish and return the final snapshot for durable assistant output."""
+        """Publish terminal deltas and return the durable full snapshot."""
         if self._finished:
             return self._snapshot()
-        self._status = status
-        for activity in self._activities:
-            if activity.state != "active":
-                continue
+        active = [activity for activity in self._activities if activity.state == "active"]
+        for activity in active:
             activity.state = "done" if status == "completed" else "failed" if status == "error" else "stopped"
-        execution = self._snapshot()
         self._finished = True
-        self._publish(execution)
-        return execution
+        if not active:
+            self._status = status
+            self._publish(None)
+            return self._snapshot()
+
+        for activity in active[:-1]:
+            self._publish(activity)
+        self._status = status
+        self._publish(active[-1])
+        return self._snapshot()
 
     def _find(self, activity_id: str) -> _ActivityRecord:
         activity = next((item for item in self._activities if item.id == activity_id), None)
@@ -181,24 +195,24 @@ class ProgressReporter:
     def _snapshot(self) -> ExecutionProgress:
         return ExecutionProgress(
             status=self._status,
-            activities=[
-                ExecutionActivity(
-                    id=activity.id,
-                    label=activity.label,
-                    state=activity.state,
-                    kind=activity.kind,
-                    parent_id=activity.parent_id,
-                )
-                for activity in self._activities
-                if activity.state != "pending"
-            ],
+            activities=[self._as_activity(activity) for activity in self._activities if activity.state != "pending"],
         )
 
-    def _publish(self, execution: ExecutionProgress | None = None) -> None:
+    @staticmethod
+    def _as_activity(activity: _ActivityRecord) -> ExecutionActivity:
+        assert activity.state != "pending", "pending execution activities are private"
+        return ExecutionActivity(
+            id=activity.id,
+            label=activity.label,
+            state=activity.state,
+            kind=activity.kind,
+            parent_id=activity.parent_id,
+        )
+
+    def _publish(self, activity: _ActivityRecord | None) -> None:
         self._revision += 1
         if self._emit is None:
             return
-        snapshot = execution or self._snapshot()
         self._emit(
             ProgressEventData(
                 session_id=self._session_id,
@@ -206,18 +220,7 @@ class ProgressReporter:
                 stage_id=self._stage_id,
                 at_version=self._at_version,
                 revision=self._revision,
-                execution=ExecutionProgress(
-                    status=snapshot.status,
-                    activities=[
-                        ExecutionActivity(
-                            id=activity.id,
-                            label=activity.label,
-                            state=activity.state,
-                            kind=activity.kind,
-                            parent_id=activity.parent_id,
-                        )
-                        for activity in snapshot.activities
-                    ],
-                ),
+                status=self._status,
+                activity=self._as_activity(activity) if activity is not None else None,
             )
         )

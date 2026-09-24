@@ -52,6 +52,7 @@ from core.dify_builder.models import (
     MutationIntent,
     NodeEvent,
     NodeOutput,
+    PublishResult,
     Risk,
     Run,
     Session,
@@ -370,8 +371,9 @@ class FakeDifyPort:
             per_node=[NodeOutput(node_id="output", status="failed", error="still broken")],
         )
 
-    def publish(self, _app_id: str, _actor: Actor) -> None:
+    def publish(self, _app_id: str, _actor: Actor) -> PublishResult:
         self.published = True
+        return PublishResult(version_name="# 1", status="live")
 
     def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
         self.expected_revision = expected_revision
@@ -591,8 +593,9 @@ class FakeBuildDifyPort:
             per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
         )
 
-    def publish(self, _app_id: str, _actor: Actor) -> None:
+    def publish(self, _app_id: str, _actor: Actor) -> PublishResult:
         self.published = True
+        return PublishResult(version_name="# 1", status="live")
 
     def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
         self.expected_revision = expected_revision

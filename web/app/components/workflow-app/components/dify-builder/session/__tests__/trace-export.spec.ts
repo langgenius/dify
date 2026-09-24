@@ -15,34 +15,33 @@ const snapshot: TraceSnapshot = {
       seq: 2,
       ts: '2026-09-04T00:00:01.000Z',
       dir: 'in',
-      kind: 'state',
-      payload: { state: 'build.plan_approval' },
+      kind: 'command_finished',
+      payload: { phase: 'plan', run_status: 'waiting_input' },
     },
   ],
   truncated: true,
 }
 
-const view = {
+const view: SessionView = {
   session_id: 's1',
-  app_id: 'app-1',
   version: 7,
-  state: 'build.plan_approval',
-  entry_mode: 'build',
+  phase: 'plan',
   run_status: 'waiting_input',
   canvas_read_only: false,
   interrupted: false,
   conversation_last_seq: 2,
+  last_command_id: 'command-1',
+  actions: [],
   model: { provider: 'anthropic', name: 'claude' },
-} as unknown as SessionView
+}
 
 describe('buildTraceExport', () => {
   it('assembles meta from the view and counts entries', () => {
     const result = buildTraceExport(snapshot, view)
     expect(result.meta).toMatchObject({
       session_id: 's1',
-      app_id: 'app-1',
-      entry_mode: 'build',
-      state: 'build.plan_approval',
+      phase: 'plan',
+      run_status: 'waiting_input',
       version: 7,
       entry_count: 2,
       truncated: true,
@@ -55,8 +54,8 @@ describe('buildTraceExport', () => {
     const result = buildTraceExport({ entries: [], truncated: false }, null)
     expect(result.meta).toMatchObject({
       session_id: '',
-      app_id: '',
-      state: '',
+      phase: null,
+      run_status: null,
       version: 0,
       entry_count: 0,
       truncated: false,

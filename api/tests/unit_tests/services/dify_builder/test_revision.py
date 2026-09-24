@@ -11,7 +11,7 @@ from core.dify_builder.state import PcState
 from graphon.variables import SecretVariable, StringVariable
 from models.workflow import Workflow
 from services.dify_builder.graph_ops import apply_connect, apply_create_node
-from services.dify_builder.revision import execution_revision
+from services.dify_builder.revision import execution_revision, merge_canvas_presentation
 from services.dify_builder.service import DifyBuilderService, SessionLock
 
 
@@ -51,6 +51,52 @@ def test_canvas_changes_preserve_execution_revision_but_change_persistence_hash(
 
     assert execution_revision(workflow) == revision
     assert workflow.unique_hash != storage_hash
+
+
+def test_repair_preserves_concurrent_canvas_presentation(workflow: Workflow) -> None:
+    before = deepcopy(workflow.graph_dict)
+    after = deepcopy(before)
+    after["nodes"][0]["data"]["prompt_template"][0]["text"] = "Builder edit"
+    latest = deepcopy(before)
+    latest["nodes"][0].update(position={"x": 900, "y": 500}, selected=True)
+    latest["nodes"][0]["data"].update(selected=True, _runningStatus="succeeded")
+    latest["edges"][0]["data"] = {"sourceType": "llm", "_waitingRun": True}
+    latest["viewport"] = {"x": 50, "y": 70, "zoom": 2}
+    latest["nodes"].append({"id": "note-1", "type": "custom-note", "data": {"text": "Keep me"}})
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged["nodes"][0]["data"]["prompt_template"][0]["text"] == "Builder edit"
+    assert merged["nodes"][0]["position"] == {"x": 900, "y": 500}
+    assert merged["nodes"][0]["data"]["_runningStatus"] == "succeeded"
+    assert merged["edges"][0]["data"] == {"sourceType": "llm", "_waitingRun": True}
+    assert merged["viewport"] == latest["viewport"]
+    assert merged["nodes"][-1] == latest["nodes"][-1]
+
+
+def test_repair_keeps_builder_layout_when_canvas_did_not_change_it(workflow: Workflow) -> None:
+    before = deepcopy(workflow.graph_dict)
+    after = deepcopy(before)
+    after["nodes"][0]["position"] = {"x": 300, "y": 400}
+    after["viewport"] = {"x": 10, "y": 20, "zoom": 1.5}
+    latest = deepcopy(before)
+    latest["nodes"][0]["data"]["selected"] = True
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged["nodes"][0]["position"] == {"x": 300, "y": 400}
+    assert merged["nodes"][0]["data"]["selected"] is True
+    assert merged["viewport"] == {"x": 10, "y": 20, "zoom": 1.5}
+
+
+def test_repair_does_not_add_empty_edge_data(workflow: Workflow) -> None:
+    before = deepcopy(workflow.graph_dict)
+    after = deepcopy(before)
+    latest = deepcopy(before)
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged == after
 
 
 @pytest.fixture

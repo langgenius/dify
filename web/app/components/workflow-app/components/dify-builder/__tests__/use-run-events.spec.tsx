@@ -3,7 +3,7 @@ import type {
   WorkflowRunNodeExecutionListResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
-import type { ConversationItem } from '../types'
+import type { CanvasEventData, ConversationItem } from '../types'
 import type { Node } from '@/app/components/workflow/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
@@ -61,18 +61,23 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const resultCard: ConversationItem = {
+const resultCard = {
   kind: 'test_result',
   seq: 0,
   at_version: 2,
   payload: {
-    title: 'Test passed',
-    subtitle: '',
-    tone: 'success',
-    run_ids: ['builder-internal'],
+    status: 'succeeded',
     dify_run_id: 'dify-run',
   },
-}
+} satisfies ConversationItem
+
+const canvasEvent = (event: CanvasEventData['event'], revision = 1): CanvasEventData => ({
+  session_id: 'session-1',
+  operation_id: 'op',
+  at_version: 2,
+  revision,
+  event,
+})
 
 const setup = () => {
   const store = createStore()
@@ -161,19 +166,8 @@ describe('Builder run event handlers', () => {
       result.current.events.onWorkflowEvent(workflowEvent(nodeFinished()))
       result.current.events.onWorkflowEvent(workflowEvent(runFinished()))
       result.current.events.restoreRun('session-1', [resultCard])
-      result.current.events.onCanvasEvent({
-        ...workflowEvent(runStarted()),
-        kind: 'canvas',
-        event: 'mark_test_success',
-        dify_run_id: 'dify-run',
-        revision: 2,
-      })
-      result.current.events.onCanvasEvent({
-        ...workflowEvent(runStarted()),
-        kind: 'canvas',
-        event: 'mark_review_ready',
-        revision: 3,
-      })
+      result.current.events.onCanvasEvent(canvasEvent('mark_test_success', 2))
+      result.current.events.onCanvasEvent(canvasEvent('mark_review_ready', 3))
       result.current.events.finishCommand()
     })
     expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded')
@@ -331,14 +325,6 @@ describe('Builder run event handlers', () => {
           data: { reasoning: 'thinking', is_final: true },
         }),
       )
-      send(
-        workflowEvent({
-          event: 'message_end',
-          task_id: 'task-1',
-          id: 'message-1',
-          metadata: { usage: { total_tokens: 7 } },
-        }),
-      )
     })
     const data = workflow.getState().workflowRunningData
     expect(data?.resultText).toBe('replacement')
@@ -481,13 +467,9 @@ describe('Builder run event handlers', () => {
       act(() => {
         result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
         result.current.events.onWorkflowEvent(workflowEvent(runFinished(status)))
-        result.current.events.onCanvasEvent({
-          ...workflowEvent(runStarted()),
-          kind: 'canvas',
-          event: 'mark_test_error',
-        })
+        result.current.events.onCanvasEvent(canvasEvent('mark_test_error'))
         result.current.events.restoreRun('session-1', [
-          { ...resultCard, payload: { ...resultCard.payload, tone: 'error' } },
+          { ...resultCard, payload: { ...resultCard.payload, status: 'failed' } },
         ])
         result.current.events.finishCommand()
       })
@@ -621,11 +603,7 @@ describe('Builder run event handlers', () => {
           },
         }),
       )
-      result.current.events.onCanvasEvent({
-        ...workflowEvent(runStarted()),
-        kind: 'canvas',
-        event: 'mark_test_error',
-      })
+      result.current.events.onCanvasEvent(canvasEvent('mark_test_error'))
       result.current.events.restoreRun('session-1', [resultCard])
       result.current.events.finishCommand()
       result.current.events.onCanvasRefreshed()

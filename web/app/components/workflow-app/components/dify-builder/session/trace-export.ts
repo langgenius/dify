@@ -4,10 +4,9 @@ import type { TraceEntry, TraceSnapshot } from './trace-buffer'
 export type TraceExport = {
   meta: {
     session_id: string
-    app_id: string
-    entry_mode: string
-    state: string
     version: number
+    phase: SessionView['phase'] | null
+    run_status: SessionView['run_status'] | null
     model: SessionView['model']
     captured_at: string
     entry_count: number
@@ -22,10 +21,9 @@ export const buildTraceExport = (
 ): TraceExport => ({
   meta: {
     session_id: view?.session_id ?? '',
-    app_id: view?.app_id ?? '',
-    entry_mode: view?.entry_mode ?? '',
-    state: view?.state ?? '',
     version: view?.version ?? 0,
+    phase: view?.phase ?? null,
+    run_status: view?.run_status ?? null,
     model: view?.model ?? null,
     captured_at: new Date().toISOString(),
     entry_count: snapshot.entries.length,
