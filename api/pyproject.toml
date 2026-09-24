@@ -121,6 +121,7 @@ override-dependencies = [
 # Required for development and running tests
 ############################################################
 dev = [
+    "ast-grep-cli==0.45.3",
     "coverage>=7.16.1",
     "dotenv-linter>=0.9.0",
     "faker>=40.39.0",
