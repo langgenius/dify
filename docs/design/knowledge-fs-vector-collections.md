@@ -10,12 +10,15 @@ The Dify vector bridge writes a collection per vector scope using
 | Graph entities | `knowledgefs_v1_graph_entity_` |
 | Graph relations | `knowledgefs_v1_graph_relation_` |
 
-The hash is the first 32 hexadecimal characters of SHA-256 over the canonical
-JSON scope: tenant ID, knowledge space ID, vector space ID, vector kind, and
-dimension. UUIDs are normalized to lowercase; keys are sorted and JSON has no
-optional whitespace. The longest collection name is 62 characters, within
-TiDB's 64-character table-name limit. Weaviate capitalizes the initial `K` to
-meet its class-name requirements.
+The hash is a hexadecimal SHA-256 prefix over the canonical JSON scope: tenant
+ID, knowledge space ID, vector space ID, vector kind, and dimension. UUIDs are
+normalized to lowercase; keys are sorted and JSON has no optional whitespace.
+The suffix uses up to 32 characters while keeping the entire name at most 56
+characters: 32 for dense/visual, 28 for graph entities, and 26 for graph relations
+(at least 104 bits). The deployed TiDB-on-Qdrant gateway accepts longer names on
+write and search but returns 404 from point deletion for names over 56 characters;
+TiDB's SQL table-name limit alone is insufficient. Weaviate capitalizes the
+initial `K` to meet its class-name requirements.
 
 ## Existing collections
 
@@ -52,3 +55,13 @@ re-embedding or mutation during a read. An index is initialized automatically
 only while a collection is empty, so adding it cannot hide older points that
 lack the ID payload. Nonempty collections require a separate complete backfill
 before enabling the indexed path.
+
+The gateway also acknowledges multi-ID `PointIdsList` deletion without removing
+the points. Indexed collections therefore delete through the same ID field
+filter. Unindexed collections delete one authorized ID per call, with at most
+four concurrent calls. Both paths still verify absence before acknowledging
+cleanup, and any failed or uncertain operation remains retryable.
+If a legacy collection has no payload indexes at all, deletion first initializes
+a keyword index on its existing `content_hash` field: the gateway otherwise
+fails to parse empty index metadata. This does not rewrite vectors or enable
+the new indexed-search path for points without an ID payload.

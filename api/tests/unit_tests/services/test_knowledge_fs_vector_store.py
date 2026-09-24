@@ -90,12 +90,13 @@ def test_each_scope_dimension_has_a_distinct_reserved_namespace(field, value):
 
 
 @pytest.mark.parametrize("kind", ["dense", "visual", "graph-entity", "graph-relation"])
-def test_typed_collection_names_fit_sql_identifiers_and_normalize_uuid_case(kind):
+def test_typed_collection_names_fit_tidb_delete_endpoint_and_normalize_uuid_case(kind):
     scope = VectorScope.model_validate({**SCOPE, "kind": kind})
     prefix = f"knowledgefs_v1_{kind.replace('-', '_')}_"
     assert scope.collection_name.startswith(prefix)
-    assert len(scope.collection_name.removeprefix(prefix)) == 32
-    assert len(scope.collection_name) <= 64
+    assert len(scope.collection_name.removeprefix(prefix)) == min(32, 56 - len(prefix))
+    assert len(scope.collection_name.removeprefix(prefix)) >= 26
+    assert len(scope.collection_name) <= 56
     assert VectorScope.model_validate({**SCOPE, "kind": kind, "tenant_id": TENANT.upper()}) == scope
 
 
@@ -526,3 +527,61 @@ def test_tidb_unindexed_search_rejects_unrequested_points(tidb_client):
     client.retrieve.return_value = [SimpleNamespace(id=B, vector=[1, 0])]
     with pytest.raises(VectorStoreUnavailableError, match="unauthorized"):
         execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
+
+
+def test_tidb_indexed_delete_uses_field_filter_and_verifies_absence(tidb_client):
+    client, info = tidb_client
+    info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=2)
+    client.retrieve.return_value = []
+    execute_vector_request(client, request("delete", ids=[A, B]))
+    assert client.delete.call_args.kwargs["points_selector"] == models.FilterSelector(
+        filter=models.Filter(must=[models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=[A, B]))])
+    )
+    client.delete.assert_called_once()
+    client.retrieve.return_value = [SimpleNamespace(id=A)]
+    with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
+        execute_vector_request(client, request("delete", ids=[A, B]))
+
+
+def test_tidb_unindexed_delete_uses_single_ids_and_propagates_errors(tidb_client):
+    client, _ = tidb_client
+    client.retrieve.return_value = []
+    execute_vector_request(client, request("delete", ids=[A, B]))
+    client.create_payload_index.assert_called_once_with(
+        collection_name=VectorScope.model_validate(SCOPE).collection_name,
+        field_name="content_hash",
+        field_schema=models.PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
+    selectors = [call.kwargs["points_selector"] for call in client.delete.call_args_list]
+    assert sorted(selector.points for selector in selectors) == [[A], [B]]
+    assert all(call.kwargs["wait"] for call in client.delete.call_args_list)
+    client.delete.side_effect = RuntimeError("delete failed")
+    with pytest.raises(RuntimeError, match="delete failed"):
+        execute_vector_request(client, request("delete", ids=[A, B]))
+
+
+@pytest.mark.parametrize("remaining", [[], [SimpleNamespace(id=A)]])
+def test_tidb_delete_not_found_still_requires_readback(tidb_client, remaining):
+    client, info = tidb_client
+    info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
+    client.delete.side_effect = UnexpectedResponse(404, "missing", b"{}", {})
+    client.retrieve.return_value = remaining
+    if remaining:
+        with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
+            execute_vector_request(client, request("delete", ids=[A]))
+    else:
+        execute_vector_request(client, request("delete", ids=[A]))
+    client.retrieve.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [404, 503])
+def test_tidb_delete_readback_only_accepts_missing_collection(tidb_client, status):
+    client, info = tidb_client
+    info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
+    client.retrieve.side_effect = UnexpectedResponse(status, "unavailable", b"{}", {})
+    if status == 404:
+        execute_vector_request(client, request("delete", ids=[A]))
+    else:
+        with pytest.raises(UnexpectedResponse):
+            execute_vector_request(client, request("delete", ids=[A]))

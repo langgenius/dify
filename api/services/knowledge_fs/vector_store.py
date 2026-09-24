@@ -42,9 +42,11 @@ class VectorScope(BaseModel):
 
     @property
     def collection_name(self) -> str:
-        # The longest name (graph_relation) is 62 characters, within TiDB's
-        # 64-character table identifier limit. Keep 128 bits of scope identity.
-        return f"knowledgefs_v1_{self.kind.replace('-', '_')}_{self._identity_hash[:32]}"
+        # TiDB-on-Qdrant accepts longer names on write/search but its point
+        # deletion endpoint rejects names over 56 characters. Keep the full kind
+        # and as much scope identity as fits (at least 104 bits for relations).
+        prefix = f"knowledgefs_v1_{self.kind.replace('-', '_')}_"
+        return f"{prefix}{self._identity_hash[: min(32, 56 - len(prefix))]}"
 
     @property
     def legacy_collection_name(self) -> str:
@@ -284,18 +286,7 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
         if tidb and TIDB_POINT_ID_FIELD not in info.payload_schema and info.points_count == 0:
             # An index on an empty collection proves every subsequent point is
             # written with our ID payload. Do not mark old, unbackfilled data ready.
-            try:
-                client.create_payload_index(
-                    collection_name=collection,
-                    field_name=TIDB_POINT_ID_FIELD,
-                    field_schema=models.PayloadSchemaType.KEYWORD,
-                    wait=True,
-                )
-            except Exception:
-                # Concurrent first writers can also race on the payload index.
-                index = client.get_collection(collection).payload_schema.get(TIDB_POINT_ID_FIELD)
-                if index is None or index.data_type != models.PayloadSchemaType.KEYWORD:
-                    raise
+            _ensure_qdrant_keyword_index(client, collection, TIDB_POINT_ID_FIELD)
         client.upsert(
             collection_name=collection,
             wait=True,
@@ -349,11 +340,68 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
             raise VectorStoreUnavailableError("KnowledgeFS vector search returned an unauthorized point")
         return {"points": [], "matches": [{"id": str(point.id), "score": point.score} for point in matches]}
     else:
-        client.delete(collection_name=collection, points_selector=models.PointIdsList(points=point_ids), wait=True)
+
+        def delete_points(selector: models.PointIdsList | models.FilterSelector) -> None:
+            try:
+                client.delete(collection_name=collection, points_selector=selector, wait=True)
+            except UnexpectedResponse as error:
+                # A concurrent deletion or an already-empty TiDB filter can
+                # return 404. Confirm absence below before acknowledging it.
+                if error.status_code != 404:
+                    raise
+
+        if tidb and id_index is not None and id_index.data_type == models.PayloadSchemaType.KEYWORD:
+            # The gateway acknowledges multi-ID PointIdsList deletions without
+            # removing their points. Its indexed field selector deletes them.
+            delete_points(
+                models.FilterSelector(
+                    filter=models.Filter(
+                        must=[models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=payload.ids))]
+                    )
+                )
+            )
+        elif tidb:
+            if not info.payload_schema:
+                # The gateway cannot deserialize its empty index metadata during
+                # deletion. Index an existing field without marking old points
+                # as having the new ID payload or rewriting their vectors.
+                _ensure_qdrant_keyword_index(client, collection, "content_hash")
+
+            # Single-ID deletion also works for old points without the payload
+            # index. Do not rewrite points while cleaning them up.
+            def delete_point(point_id: str) -> None:
+                delete_points(models.PointIdsList(points=[point_id]))
+
+            with ThreadPoolExecutor(max_workers=min(4, len(payload.ids))) as pool:
+                list(pool.map(delete_point, payload.ids))
+        else:
+            delete_points(models.PointIdsList(points=point_ids))
         # An uncertain acknowledgement must leave SQL cleanup eligible for retry.
-        if client.retrieve(collection_name=collection, ids=point_ids, with_payload=False, with_vectors=False):
+        try:
+            remaining = client.retrieve(
+                collection_name=collection, ids=point_ids, with_payload=False, with_vectors=False
+            )
+        except UnexpectedResponse as error:
+            if error.status_code != 404:
+                raise
+            remaining = []
+        if remaining:
             raise VectorStoreUnavailableError("KnowledgeFS vector deletion is not yet visible")
     return {"points": [], "matches": []}
+
+
+def _ensure_qdrant_keyword_index(client: "QdrantClient", collection: str, field: str) -> None:
+    from qdrant_client.http import models
+
+    try:
+        client.create_payload_index(
+            collection_name=collection, field_name=field, field_schema=models.PayloadSchemaType.KEYWORD, wait=True
+        )
+    except Exception:
+        # Concurrent first writers/deleters can race on the same payload index.
+        index = client.get_collection(collection).payload_schema.get(field)
+        if index is None or index.data_type != models.PayloadSchemaType.KEYWORD:
+            raise
 
 
 def _search_unindexed_tidb_points(client: "QdrantClient", payload: VectorRequest, collection: str) -> VectorResult:
