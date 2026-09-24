@@ -104,17 +104,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     startCursorTracking,
     stopCursorTracking,
     onlineUsers,
-    cursors,
     isConnected,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId || '', appACLCapabilities.canEdit, reactFlowStore)
   const myUserId = useMemo(
     () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
     [isCollaborationEnabled, isConnected],
-  )
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
 
   useEffect(() => {
@@ -348,17 +343,29 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     )
     const unsubscribeApplied = collaborationManager.onServerDraftApplied((update) => {
       const state = workflowStore.getState()
+      const hadUnsavedChanges = state.workflowDraftLocalRevision > state.workflowDraftSavedRevision
       // A refresh already invalidated queued saves. Keep that refresh alive
       // while its server-approved graph and matching metadata arrive.
       if (!state.isSyncingWorkflowDraft) state.invalidateWorkflowDraftSync()
       state.setSyncWorkflowDraftHash(update.hash)
       state.setDraftUpdatedAt(update.updated_at)
+      if (hadUnsavedChanges && !state.isSyncingWorkflowDraft) {
+        state.markWorkflowDraftDirty()
+        if (state.workflowDraftSyncPhase === 'idle')
+          state.debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+      }
     })
     return () => {
       unsubscribeRequest()
       unsubscribeApplied()
     }
-  }, [appId, getWorkflowDraftGraphForCanvas, isCollaborationEnabled, workflowStore])
+  }, [
+    appId,
+    doSyncWorkflowDraft,
+    getWorkflowDraftGraphForCanvas,
+    isCollaborationEnabled,
+    workflowStore,
+  ])
 
   // Legacy import/restore notifications also go through the server's single writer.
   useEffect(() => {
@@ -624,7 +631,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
               onWorkflowDataUpdate={handleWorkflowDataUpdate}
               hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
               isCollaborationEnabled={isCollaborationEnabled}
-              cursors={filteredCursors}
               myUserId={myUserId}
               onlineUsers={onlineUsers}
             >

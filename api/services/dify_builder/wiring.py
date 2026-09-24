@@ -7,8 +7,10 @@ controller module so it is unit-testable without the Flask request stack.
 import dataclasses
 import json
 import time
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterator, Sequence
+from typing import Any
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -16,8 +18,9 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
-from core.dify_builder.models import Action, Actor
+from core.dify_builder.models import Action, Actor, ConversationItem
 from extensions.ext_database import db
+from fields.workflow_stream_fields import WorkflowStreamPayload
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
@@ -35,10 +38,12 @@ __all__ = [
 
 _HEARTBEAT_SECONDS = 15
 _MAX_STREAM_SECONDS = dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HEARTBEAT_SECONDS
-_TERMINAL_KINDS = ("state", "error")
+_TERMINAL_KINDS = ("command_finished", "error")
 _PROGRESS_KINDS = frozenset(
-    {"workflow", "canvas", "agent_message", "reasoning", "progress", "commit", *_TERMINAL_KINDS}
+    {"workflow", "canvas", "agent_message", "conversation_item_appended", "reasoning", "progress", *_TERMINAL_KINDS}
 )
+_IGNORED_WORKFLOW_EVENTS = frozenset({"message_end", "message_file", "tts_message", "tts_message_end"})
+_WORKFLOW_PAYLOAD_ADAPTER = TypeAdapter(WorkflowStreamPayload)
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
@@ -104,8 +109,69 @@ def build_service() -> DifyBuilderService:
     )
 
 
-def session_view_to_dict(view: SessionView) -> dict:
-    return dataclasses.asdict(view)
+def _public_actions(actions: object) -> list[dict[str, object]]:
+    if not isinstance(actions, list):
+        return []
+    return [
+        {"id": action.get("id", ""), "label": action.get("label", ""), "kind": action.get("kind", "secondary")}
+        for action in actions
+        if isinstance(action, dict)
+    ]
+
+
+def _public_active_interaction(interaction: object) -> dict[str, object] | None:
+    if not isinstance(interaction, dict):
+        return None
+    card = interaction.get("card")
+    if not isinstance(card, dict) or not isinstance(card.get("seq"), int):
+        return None
+    return {
+        "action_id": interaction.get("action_id", ""),
+        "card_seq": card["seq"],
+        "valid_at_version": interaction.get("valid_at_version", 0),
+    }
+
+
+def _public_app_revision(revision: object) -> dict[str, object] | None:
+    if not isinstance(revision, dict):
+        return None
+    return {
+        "current": revision.get("current", ""),
+        "conflicted": revision.get("conflicted", False),
+    }
+
+
+def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool) -> dict[str, object]:
+    """Project the internal engine view onto the browser-owned UI contract."""
+    projected: dict[str, object] = {
+        "session_id": view.get("session_id", ""),
+        "version": view.get("version", 0),
+        "canvas_read_only": view.get("canvas_read_only", False),
+        "run_status": view.get("run_status", "failed"),
+        "interrupted": view.get("interrupted", False),
+        "conversation_last_seq": view.get("conversation_last_seq", -1),
+        "phase": view.get("phase", "understand"),
+        "actions": _public_actions(view.get("actions")),
+    }
+    if view.get("decision") is not None:
+        projected["decision"] = view["decision"]
+    active_interaction = _public_active_interaction(view.get("active_interaction"))
+    if active_interaction is not None:
+        projected["active_interaction"] = active_interaction
+    for key in ("recovery", "model"):
+        if view.get(key) is not None:
+            projected[key] = view[key]
+    app_revision = _public_app_revision(view.get("app_revision"))
+    if app_revision is not None:
+        projected["app_revision"] = app_revision
+    if include_last_command_id:
+        projected["last_command_id"] = view.get("last_command_id", "")
+    return projected
+
+
+def session_view_to_dict(view: SessionView) -> dict[str, object]:
+    """Serialize only the session fields consumed by the browser."""
+    return _public_session_view(dataclasses.asdict(view), include_last_command_id=True)
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
@@ -135,14 +201,134 @@ def _event_frame(event: str, data: object) -> str:
     return f"event: message\ndata: {json.dumps({'event': event, 'data': data})}\n\n"
 
 
-def _progress_event(raw: bytes) -> tuple[str, object]:
+def _error_event(data: dict[str, Any], fallback: str) -> dict[str, object]:
+    message = data.get("message") or data.get("error") or fallback
+    event: dict[str, object] = {"message": str(message)}
+    for field in ("session_id", "command_id", "code"):
+        value = data.get(field)
+        if value is not None:
+            event[field] = value
+    return event
+
+
+def _public_activity(activity: object) -> dict[str, object] | None:
+    if not isinstance(activity, dict):
+        return None
+    public_activity: dict[str, object] = {
+        "id": activity.get("id", ""),
+        "label": activity.get("label", ""),
+        "state": activity.get("state", "active"),
+    }
+    if activity.get("parent_id") is not None:
+        public_activity["parent_id"] = activity["parent_id"]
+    return public_activity
+
+
+def _public_execution(execution: object) -> dict[str, object] | None:
+    if not isinstance(execution, dict):
+        return None
+    activities = execution.get("activities")
+    public_activities: list[dict[str, object]] = []
+    if isinstance(activities, list):
+        for activity in activities:
+            public_activity = _public_activity(activity)
+            if public_activity is not None:
+                public_activities.append(public_activity)
+    return {
+        "status": execution.get("status", "running"),
+        "activities": public_activities,
+    }
+
+
+def _progress_event(raw: bytes) -> tuple[str, object] | None:
     try:
         data = json.loads(raw)
     except (UnicodeDecodeError, ValueError, TypeError):
-        return "error", {"kind": "error", "error": "invalid Builder progress event"}
+        return "error", _error_event({}, "invalid Builder progress event")
     if not isinstance(data, dict) or data.get("kind") not in _PROGRESS_KINDS:
-        return "error", {"kind": "error", "error": "invalid Builder progress event"}
-    return data["kind"], data
+        return "error", _error_event({}, "invalid Builder progress event")
+
+    kind = data["kind"]
+    if kind == "workflow":
+        payload = data.get("payload")
+        if isinstance(payload, dict) and payload.get("event") in _IGNORED_WORKFLOW_EVENTS:
+            return None
+        try:
+            public_payload = _WORKFLOW_PAYLOAD_ADAPTER.validate_python(payload).model_dump(
+                mode="json", exclude_none=True, exclude_unset=True
+            )
+        except ValidationError:
+            return "error", _error_event(data, "invalid Builder workflow event")
+        return kind, {
+            "session_id": data.get("session_id", ""),
+            "operation_id": data.get("operation_id", ""),
+            "at_version": data.get("at_version", 0),
+            "revision": data.get("revision", 0),
+            "payload": public_payload,
+        }
+    if kind == "canvas":
+        event = {
+            "session_id": data.get("session_id", ""),
+            "operation_id": data.get("operation_id", ""),
+            "at_version": data.get("at_version", 0),
+            "revision": data.get("revision", 0),
+            "event": data.get("event"),
+        }
+        if data.get("node_id") is not None:
+            event["node_id"] = data["node_id"]
+        return kind, event
+    if kind == "agent_message":
+        event = {
+            "session_id": data.get("session_id", ""),
+            "command_id": data.get("command_id", ""),
+            "operation_id": data.get("operation_id", ""),
+            "turn_id": data.get("turn_id", ""),
+            "delta": data.get("delta", ""),
+            "seq": data.get("seq", 0),
+            "at_version": data.get("at_version", 0),
+            "revision": data.get("revision", 0),
+            "done": data.get("done", False),
+            "text_bytes": data.get("text_bytes", 0),
+        }
+        execution = _public_execution(data.get("execution"))
+        if execution is not None:
+            event["execution"] = execution
+        cards = data.get("cards")
+        if cards:
+            event["cards"] = cards
+        return kind, event
+    if kind == "conversation_item_appended":
+        return kind, {
+            "session_id": data.get("session_id", ""),
+            "command_id": data.get("command_id", ""),
+            "item": data.get("item"),
+        }
+    if kind == "reasoning":
+        return kind, {
+            "session_id": data.get("session_id", ""),
+            "operation_id": data.get("operation_id", ""),
+            "at_version": data.get("at_version", 0),
+            "revision": data.get("revision", 0),
+            "delta": data.get("delta", ""),
+        }
+    if kind == "progress":
+        return kind, {
+            "session_id": data.get("session_id", ""),
+            "operation_id": data.get("operation_id", ""),
+            "at_version": data.get("at_version", 0),
+            "revision": data.get("revision", 0),
+            "status": data.get("status", "running"),
+            "activity": _public_activity(data.get("activity")),
+        }
+    if kind == "command_finished":
+        event = {
+            **_public_session_view(data, include_last_command_id=False),
+            "command_id": data.get("command_id", ""),
+        }
+        if data.get("post_canvas_action_id") is not None:
+            event["post_canvas_action_id"] = data["post_canvas_action_id"]
+        return kind, event
+    return "error", _error_event(data, "Builder command failed")
 
 
 class _ClosingFrameStream:
@@ -180,15 +366,20 @@ def stream_advance_frames(
     subscription,
     expect_advance: bool,
     *,
-    emit_state_when_settled: bool = False,
+    emit_command_finished_when_settled: bool = False,
+    emit_command_started: bool = True,
+    command_id: str = "",
+    initial_items: Sequence[ConversationItem] = (),
 ) -> Iterator[str]:
     """Emit a bounded command handshake, then relay incremental progress.
 
-    The handshake and terminal state intentionally exclude conversation
-    history. Durable rows arrive through ``commit`` events and can be repaired
-    through the JSON conversation endpoint. Settle-only calls yield just the
-    handshake unless ``emit_state_when_settled`` is requested. The stream is
-    bounded by ``_MAX_STREAM_SECONDS``.
+    The handshake and terminal projection intentionally exclude conversation
+    history. Durable items are relayed one at a time; ``initial_items`` covers
+    rows created synchronously before the subscription/worker starts. Clients
+    use the JSON conversation endpoint only when the terminal sequence
+    watermark exposes a missing event. Settle-only calls yield just the
+    handshake unless ``emit_command_finished_when_settled`` is requested. The
+    stream is bounded by ``_MAX_STREAM_SECONDS``.
 
     Returns a ``_ClosingFrameStream`` (not a bare generator) so the eagerly
     activated ``subscription`` is closed even when the WSGI server closes the
@@ -196,10 +387,37 @@ def stream_advance_frames(
 
     def _frames() -> Generator[str, None, None]:
         try:
-            yield _event_frame("command_started", {"kind": "command_started", **view_dict})
+            if emit_command_started:
+                yield _event_frame(
+                    "command_started",
+                    {
+                        "session_id": view_dict.get("session_id", ""),
+                        "command_id": command_id,
+                        "version": view_dict.get("version", 0),
+                        "phase": view_dict.get("phase", "understand"),
+                        "run_status": "processing" if expect_advance else view_dict.get("run_status", "processing"),
+                    },
+                )
+            for item in initial_items:
+                if item.kind == "assistant_turn":
+                    continue
+                yield _event_frame(
+                    "conversation_item_appended",
+                    {
+                        "session_id": view_dict.get("session_id", ""),
+                        "command_id": command_id,
+                        "item": dataclasses.asdict(item),
+                    },
+                )
             if not expect_advance:
-                if emit_state_when_settled:
-                    yield _event_frame("state", {"kind": "state", **view_dict})
+                if emit_command_finished_when_settled:
+                    yield _event_frame(
+                        "command_finished",
+                        {
+                            **_public_session_view(view_dict, include_last_command_id=False),
+                            "command_id": command_id,
+                        },
+                    )
                 return
             if subscription is None:
                 return
@@ -212,17 +430,20 @@ def stream_advance_frames(
                 if raw is None:
                     yield ": keep-alive\n\n"
                     continue
-                kind, data = _progress_event(raw)
+                progress_event = _progress_event(raw)
+                if progress_event is None:
+                    continue
+                kind, data = progress_event
                 yield _event_frame(kind, data)
                 if kind in _TERMINAL_KINDS:
                     return
             yield _event_frame(
                 "error",
                 {
-                    "kind": "error",
-                    "error": "Builder operation timed out",
                     "code": "timeout",
-                    "recoverable": True,
+                    "message": "Builder operation timed out",
+                    "session_id": view_dict.get("session_id"),
+                    "command_id": command_id,
                 },
             )
         finally:

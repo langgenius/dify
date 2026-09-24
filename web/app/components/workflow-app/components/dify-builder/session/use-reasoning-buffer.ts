@@ -1,10 +1,11 @@
 'use client'
 
-import type { ReasoningEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { DifyBuilderReasoningEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { DifyBuilderReasoning } from '../types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderReasoningAtom,
   difyBuilderSessionViewAtom,
@@ -35,10 +36,9 @@ const cancelFrame = (frame: ScheduledFrame) => {
   globalThis.clearTimeout(frame.id)
 }
 
-const toReasoning = (event: ReasoningEventData): DifyBuilderReasoning => ({
+const toReasoning = (event: DifyBuilderReasoningEventData): DifyBuilderReasoning => ({
   sessionId: event.session_id,
   operationId: event.operation_id,
-  stageId: event.stage_id,
   atVersion: event.at_version,
   revision: event.revision,
   text: event.delta,
@@ -53,33 +53,52 @@ const isSameReasoning = (left: DifyBuilderReasoning, right: DifyBuilderReasoning
 export const useDifyBuilderReasoningBuffer = () => {
   const store = useStore()
   const setReasoning = useSetAtom(difyBuilderReasoningAtom)
-  const pendingReasoningRef = useRef<DifyBuilderReasoning | null>(null)
+  const accumulatedReasoningRef = useRef<DifyBuilderReasoning | null>(null)
   const scheduledFrameRef = useRef<ScheduledFrame | null>(null)
 
   const flush = useCallback(() => {
     scheduledFrameRef.current = null
-    const pending = pendingReasoningRef.current
-    pendingReasoningRef.current = null
-    if (!pending) return
+    const accumulated = accumulatedReasoningRef.current
+    if (!accumulated) return
 
     const view = store.get(difyBuilderSessionViewAtom)
+    const activeCommand = store.get(difyBuilderActiveCommandAtom)
     if (
-      store.get(difyBuilderActiveSessionIdAtom) !== pending.sessionId ||
-      view?.session_id !== pending.sessionId ||
-      view.version >= pending.atVersion
+      store.get(difyBuilderActiveSessionIdAtom) !== accumulated.sessionId ||
+      (view?.session_id !== accumulated.sessionId &&
+        activeCommand?.session_id !== accumulated.sessionId) ||
+      (view?.session_id === accumulated.sessionId && view.version >= accumulated.atVersion) ||
+      (activeCommand?.session_id === accumulated.sessionId &&
+        activeCommand.version >= accumulated.atVersion)
     )
       return
 
     setReasoning((current) => {
-      if (!current || !isSameReasoning(current, pending))
-        return current && current.atVersion > pending.atVersion ? current : pending
-      if (current.revision >= pending.revision) return current
-      return {
-        ...pending,
-        text: `${current.text}${pending.text}`,
-      }
+      if (current && current.atVersion > accumulated.atVersion) return current
+      if (
+        current &&
+        isSameReasoning(current, accumulated) &&
+        current.revision >= accumulated.revision
+      )
+        return current
+      return accumulated
     })
   }, [setReasoning, store])
+
+  const accumulate = useCallback((event: DifyBuilderReasoningEventData) => {
+    const next = toReasoning(event)
+    const current = accumulatedReasoningRef.current
+    if (current && isSameReasoning(current, next) && current.revision >= next.revision)
+      return current
+    if (current && !isSameReasoning(current, next) && current.atVersion > next.atVersion)
+      return current
+    const accumulated =
+      current && isSameReasoning(current, next)
+        ? { ...next, text: `${current.text}${next.text}` }
+        : next
+    accumulatedReasoningRef.current = accumulated
+    return accumulated
+  }, [])
 
   const cancelPendingFrame = useCallback(() => {
     if (!scheduledFrameRef.current) return
@@ -89,16 +108,16 @@ export const useDifyBuilderReasoningBuffer = () => {
 
   const clear = useCallback(() => {
     cancelPendingFrame()
-    pendingReasoningRef.current = null
+    accumulatedReasoningRef.current = null
     setReasoning(null)
   }, [cancelPendingFrame, setReasoning])
 
   const clearThroughVersion = useCallback(
     (sessionId: string, version: number) => {
-      const pending = pendingReasoningRef.current
-      if (pending?.sessionId === sessionId && pending.atVersion <= version) {
+      const accumulated = accumulatedReasoningRef.current
+      if (accumulated?.sessionId === sessionId && accumulated.atVersion <= version) {
         cancelPendingFrame()
-        pendingReasoningRef.current = null
+        accumulatedReasoningRef.current = null
       }
       setReasoning((current) =>
         current?.sessionId === sessionId && current.atVersion <= version ? null : current,
@@ -108,33 +127,45 @@ export const useDifyBuilderReasoningBuffer = () => {
   )
 
   const enqueue = useCallback(
-    (event: ReasoningEventData) => {
+    (event: DifyBuilderReasoningEventData) => {
       if (!event.delta) return
       const view = store.get(difyBuilderSessionViewAtom)
+      const activeCommand = store.get(difyBuilderActiveCommandAtom)
       if (
         store.get(difyBuilderActiveSessionIdAtom) !== event.session_id ||
-        view?.session_id !== event.session_id ||
-        view.version >= event.at_version
+        (view?.session_id !== event.session_id && activeCommand?.session_id !== event.session_id) ||
+        (view?.session_id === event.session_id && view.version >= event.at_version)
       )
         return
 
-      const next = toReasoning(event)
-      const pending = pendingReasoningRef.current
-      if (pending && isSameReasoning(pending, next) && pending.revision >= next.revision) return
-      if (pending && !isSameReasoning(pending, next) && pending.atVersion > next.atVersion) return
-      pendingReasoningRef.current =
-        pending && isSameReasoning(pending, next)
-          ? { ...next, text: `${pending.text}${next.text}` }
-          : next
+      if (!accumulate(event)) return
       if (!scheduledFrameRef.current) scheduledFrameRef.current = scheduleFrame(flush)
     },
-    [flush, store],
+    [accumulate, flush, store],
+  )
+
+  const finish = useCallback(
+    (sessionId: string, operationId: string, atVersion: number) => {
+      const accumulated = accumulatedReasoningRef.current
+      if (
+        !accumulated ||
+        accumulated.sessionId !== sessionId ||
+        accumulated.operationId !== operationId ||
+        accumulated.atVersion !== atVersion
+      )
+        return ''
+      cancelPendingFrame()
+      accumulatedReasoningRef.current = null
+      setReasoning((current) => (current && isSameReasoning(current, accumulated) ? null : current))
+      return accumulated.text
+    },
+    [cancelPendingFrame, setReasoning],
   )
 
   useEffect(() => clear, [clear])
 
   return useMemo(
-    () => ({ clear, clearThroughVersion, enqueue }),
-    [clear, clearThroughVersion, enqueue],
+    () => ({ clear, clearThroughVersion, enqueue, finish }),
+    [clear, clearThroughVersion, enqueue, finish],
   )
 }

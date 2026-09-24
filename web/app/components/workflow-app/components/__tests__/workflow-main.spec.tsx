@@ -3,6 +3,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
@@ -13,6 +14,8 @@ const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
 const mockSetEnvSecrets = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
+const mockSetDraftUpdatedAt = vi.fn()
+let draftStore: ReturnType<typeof createWorkflowStore>
 const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
@@ -79,7 +82,6 @@ const collaborationRuntime = vi.hoisted(() => ({
   startCursorTracking: vi.fn(),
   stopCursorTracking: vi.fn(),
   onlineUsers: [] as Array<{ user_id: string; username: string; avatar: string; sid: string }>,
-  cursors: {} as Record<string, { x: number; y: number; userId: string; timestamp: number }>,
   isConnected: false,
   isEnabled: false,
 }))
@@ -97,6 +99,7 @@ const collaborationListeners = vi.hoisted(() => ({
     | null
     | ((request: { generation: number; token: number; attempt: number }) => void | Promise<void>),
   graphReadyChange: null as null | ((isReady: boolean) => void),
+  serverDraftApplied: null as null | ((update: { hash: string; updated_at: number }) => void),
 }))
 
 let capturedContextProps: Record<string, unknown> | null = null
@@ -104,7 +107,7 @@ let hasWorkflowDraftConflict = false
 
 type MockWorkflowWithInnerContextProps = Pick<
   WorkflowProps,
-  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'
+  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'myUserId' | 'onlineUsers'
 > & {
   hooksStore?: Record<string, unknown>
   children?: ReactNode
@@ -144,12 +147,14 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
   useWorkflowStore: () => ({
     getState: () => ({
+      ...draftStore.getState(),
       hasWorkflowDraftConflict,
       envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
+      setDraftUpdatedAt: mockSetDraftUpdatedAt,
     }),
   }),
 }))
@@ -202,7 +207,10 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     onServerDraftRequest: vi.fn(() => vi.fn()),
-    onServerDraftApplied: vi.fn(() => vi.fn()),
+    onServerDraftApplied: vi.fn((handler: typeof collaborationListeners.serverDraftApplied) => {
+      collaborationListeners.serverDraftApplied = handler
+      return vi.fn()
+    }),
     onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
       (handler: (update: unknown) => void | Promise<void>) => {
         collaborationListeners.varsAndFeaturesUpdate = handler
@@ -255,7 +263,6 @@ vi.mock('@/app/components/workflow', () => ({
     viewport,
     onWorkflowDataUpdate,
     hooksStore,
-    cursors,
     myUserId,
     onlineUsers,
     children,
@@ -265,7 +272,6 @@ vi.mock('@/app/components/workflow', () => ({
       edges,
       viewport,
       hooksStore,
-      cursors,
       myUserId,
       onlineUsers,
     }
@@ -480,6 +486,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    draftStore = createWorkflowStore({})
     capturedContextProps = null
     hasWorkflowDraftConflict = false
     mockDifyBuilderProvider.callbacks = null
@@ -487,7 +494,6 @@ describe('WorkflowMain', () => {
     collaborationRuntime.startCursorTracking.mockReset()
     collaborationRuntime.stopCursorTracking.mockReset()
     collaborationRuntime.onlineUsers = []
-    collaborationRuntime.cursors = {}
     collaborationRuntime.isConnected = false
     collaborationRuntime.isEnabled = false
     collaborationListeners.varsAndFeaturesUpdate = null
@@ -495,6 +501,7 @@ describe('WorkflowMain', () => {
     collaborationListeners.syncRequest = null
     collaborationListeners.graphReloadRequired = null
     collaborationListeners.graphReadyChange = null
+    collaborationListeners.serverDraftApplied = null
     mockFetchWorkflowDraft.mockReset()
     hookFns.doSyncWorkflowDraft.mockReset()
     mockGetIsLeader.mockReturnValue(true)
@@ -644,17 +651,12 @@ describe('WorkflowMain', () => {
     }
   })
 
-  it('passes collaboration props and tracks cursors when collaboration is enabled', () => {
+  it('passes collaboration identity and tracks the local cursor when enabled', () => {
     collaborationRuntime.isEnabled = true
     collaborationRuntime.isConnected = true
     collaborationRuntime.onlineUsers = [
       { user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' },
     ]
-    collaborationRuntime.cursors = {
-      'current-user': { x: 1, y: 2, userId: 'current-user', timestamp: 1 },
-      'user-other': { x: 20, y: 30, userId: 'user-other', timestamp: 2 },
-    }
-
     const { unmount } = render(
       <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
     )
@@ -663,9 +665,6 @@ describe('WorkflowMain', () => {
     expect(capturedContextProps).toMatchObject({
       myUserId: 'current-user',
       onlineUsers: [{ user_id: 'u-1' }],
-      cursors: {
-        'user-other': expect.objectContaining({ userId: 'user-other' }),
-      },
     })
 
     unmount()
@@ -684,6 +683,32 @@ describe('WorkflowMain', () => {
 
     act(() => collaborationListeners.graphReadyChange?.(true))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('saves local canvas edits after an accepted Builder draft replaces the pending save', () => {
+    collaborationRuntime.isEnabled = true
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    draftStore.getState().markWorkflowDraftDirty()
+    draftStore.getState().debouncedSyncWorkflowDraft(hookFns.doSyncWorkflowDraft)
+    act(() => collaborationListeners.serverDraftApplied?.({ hash: 'builder-hash', updated_at: 3 }))
+    draftStore.getState().flushPendingSync()
+
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('builder-hash')
+    expect(draftStore.getState().workflowDraftLocalRevision).toBeGreaterThan(
+      draftStore.getState().workflowDraftSavedRevision,
+    )
+  })
+
+  it('does not resave an accepted Builder draft when there are no local canvas edits', () => {
+    collaborationRuntime.isEnabled = true
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => collaborationListeners.serverDraftApplied?.({ hash: 'builder-hash', updated_at: 3 }))
+    draftStore.getState().flushPendingSync()
+
+    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('disables collaboration for view-only apps', () => {

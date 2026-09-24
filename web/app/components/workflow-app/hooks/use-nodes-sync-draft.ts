@@ -79,6 +79,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       isSyncingWorkflowDraft,
       hasWorkflowDraftConflict,
       workflowDraftGeneration,
+      workflowDraftLocalRevision,
     } = workflowStore.getState()
 
     if (
@@ -131,6 +132,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     return {
       appId,
       generation: workflowDraftGeneration,
+      localRevision: workflowDraftLocalRevision,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -242,6 +244,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         })
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
+        workflowStore.getState().markWorkflowDraftSaved(baseParams.localRevision)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } catch (error: unknown) {
@@ -295,6 +298,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         isWorkflowDataLoaded,
         isSyncingWorkflowDraft,
         workflowDraftGeneration,
+        workflowDraftLocalRevision,
         hasWorkflowDraftConflict,
         workflowDraftSyncPhase,
       } = workflowStore.getState()
@@ -342,6 +346,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
         setSyncWorkflowDraftHash(result.hash)
         setDraftUpdatedAt(result.updatedAt)
+        workflowStore.getState().markWorkflowDraftSaved(workflowDraftLocalRevision)
         callback?.onSuccess?.()
         return result
       } catch (error) {

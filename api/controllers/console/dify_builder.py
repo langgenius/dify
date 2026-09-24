@@ -212,7 +212,7 @@ def _get_session(session_id: str, actor: Actor) -> dict | tuple[dict, int]:
         if mapped is None:
             raise
         return mapped
-    return dump_response(DifyBuilderSessionViewResponse, view)
+    return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
 
 
 def _conversation(session_id: str, query_args, actor: Actor) -> dict | tuple[dict, int]:
@@ -264,6 +264,9 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
             session_view_to_dict(view),
             subscription,
             expect_advance=view.run_status == "processing" and not view.interrupted,
+            emit_command_finished_when_settled=True,
+            emit_command_started=False,
+            command_id=view.last_command_id,
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,

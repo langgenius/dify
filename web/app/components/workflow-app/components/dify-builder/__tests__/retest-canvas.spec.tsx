@@ -162,16 +162,14 @@ describe('Builder repair graph and test run', () => {
       const queryClient = createConsoleQueryClient()
       store.set(queryClientAtom, queryClient)
       const before = createSessionView({
-        state: 'build.await_repair',
         phase: 'test',
         run_status: 'waiting_confirmation',
       })
       const after = createSessionView({
-        state: 'build.execution',
         phase: 'modify',
         version: 2,
         run_status: 'waiting_input',
-        app_revision: { current: 'repaired', observed: 'repaired', conflicted: false },
+        app_revision: { current: 'repaired', conflicted: false },
       })
       store.set(difyBuilderSessionViewAtom, before)
       store.set(difyBuilderActiveSessionIdAtom, before.session_id)
@@ -179,7 +177,12 @@ describe('Builder repair graph and test run', () => {
       const repairRefresh = new Promise<boolean>((resolve) => {
         finishRefresh = resolve
       })
-      mocks.action.mockResolvedValueOnce(streamOf(commandStartedEvent(before), stateEvent(after)))
+      mocks.action.mockResolvedValueOnce(
+        streamOf(
+          commandStartedEvent(before),
+          stateEvent(after, { post_canvas_action_id: 'run_test' }),
+        ),
+      )
       mocks.action.mockImplementationOnce(async () => {
         expect(mocks.graphApplied).toHaveBeenCalledOnce()
         return streamOf(
@@ -188,7 +191,7 @@ describe('Builder repair graph and test run', () => {
             event: 'workflow' as const,
             data: workflowEvent(payload, { at_version: 3, revision: index + 1 }),
           })),
-          stateEvent({ ...after, version: 3, state: 'build.review', phase: 'review' }),
+          stateEvent({ ...after, version: 3, phase: 'review' }),
         )
       })
       render(

@@ -1,45 +1,95 @@
 import type {
   ConversationItem,
-  DifyBuilderActionPayloadChange,
-  DifyBuilderActionValidityChange,
-  SessionView,
+  DifyBuilderLocalInteractionResponse,
+  DifyBuilderLocalUserMessage,
 } from '../types'
+import type { DifyBuilderConversationGroup } from './group-conversation-items'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConversationCard } from './conversation-card'
+import { ConversationCard, UserMessage } from './conversation-card'
 import { groupConversationItems } from './group-conversation-items'
 import { StreamingAssistantTurn } from './streaming-assistant-turn'
+
+type ConversationRenderEntry =
+  | DifyBuilderConversationGroup
+  | { type: 'local-user'; message: DifyBuilderLocalUserMessage }
+  | { type: 'local-interaction'; response: DifyBuilderLocalInteractionResponse }
+
+const firstSequence = (group: DifyBuilderConversationGroup) =>
+  group.type === 'standalone' ? group.item.seq : (group.cards[0]?.seq ?? group.turn.seq)
+
+const insertLocalEntry = (
+  entries: ConversationRenderEntry[],
+  entry: ConversationRenderEntry,
+  afterSequence: number,
+) => {
+  const insertionIndex = entries.findIndex(
+    (candidate) =>
+      candidate.type !== 'local-user' &&
+      candidate.type !== 'local-interaction' &&
+      firstSequence(candidate) > afterSequence,
+  )
+  if (insertionIndex < 0) return [...entries, entry]
+  return [...entries.slice(0, insertionIndex), entry, ...entries.slice(insertionIndex)]
+}
+
+const addLocalEntries = (
+  groups: DifyBuilderConversationGroup[],
+  items: ConversationItem[],
+  message?: DifyBuilderLocalUserMessage | null,
+  interactionResponse?: DifyBuilderLocalInteractionResponse | null,
+): ConversationRenderEntry[] => {
+  let entries: ConversationRenderEntry[] = [...groups]
+  if (
+    message &&
+    !items.some(
+      (item) =>
+        item.kind === 'user' &&
+        (message.turnId
+          ? item.payload.turn_id === message.turnId
+          : item.payload.text === message.text),
+    )
+  )
+    entries = insertLocalEntry(entries, { type: 'local-user', message }, message.afterSequence)
+  if (
+    interactionResponse &&
+    !items.some(
+      (item) =>
+        item.kind === 'interaction_response' &&
+        item.at_version === interactionResponse.item.at_version,
+    )
+  )
+    entries = insertLocalEntry(
+      entries,
+      { type: 'local-interaction', response: interactionResponse },
+      interactionResponse.afterSequence,
+    )
+  return entries
+}
 
 export const DifyBuilderConversation = memo(
   ({
     busy,
-    activeInteraction,
-    viewVersion,
-    activeFormId,
     interrupted,
     items,
-    onActionPayloadChange,
-    onActionValidityChange,
-    onActiveFormSubmit,
+    localInteractionResponse,
+    localUserMessage,
     onStreamingContentChange,
   }: {
     busy: boolean
-    activeInteraction: SessionView['active_interaction']
-    viewVersion: SessionView['version']
-    activeFormId?: string
     interrupted: boolean
     items: ConversationItem[]
-    onActionPayloadChange: DifyBuilderActionPayloadChange
-    onActionValidityChange?: DifyBuilderActionValidityChange
-    onActiveFormSubmit?: () => void
+    localInteractionResponse?: DifyBuilderLocalInteractionResponse | null
+    localUserMessage?: DifyBuilderLocalUserMessage | null
     onStreamingContentChange?: () => void
   }) => {
     const { t } = useTranslation(['workflow'])
     const groups = useMemo(() => groupConversationItems(items), [items])
-    const activeCard = activeInteraction?.card
-    const interactionIsCurrent = activeInteraction?.valid_at_version === viewVersion
-
+    const entries = useMemo(
+      () => addLocalEntries(groups, items, localUserMessage, localInteractionResponse),
+      [groups, items, localInteractionResponse, localUserMessage],
+    )
     return (
       <div className="flex flex-col gap-3 px-4 py-4">
         {interrupted && (
@@ -57,18 +107,39 @@ export const DifyBuilderConversation = memo(
           aria-relevant="additions"
           className="flex flex-col gap-3"
         >
-          {groups.map((group) => {
-            if (group.type === 'standalone') {
-              if (group.item.seq === activeCard?.seq) return null
+          {entries.map((group) => {
+            if (group.type === 'local-user') {
+              return <UserMessage key={`user-${group.message.localId}`} text={group.message.text} />
+            }
+
+            if (group.type === 'local-interaction') {
               return (
                 <ConversationCard
-                  key={`${group.item.seq}-${group.item.kind}`}
-                  item={group.item}
-                  busy={busy}
-                  interactive={interactionIsCurrent && group.item.seq === activeCard?.seq}
+                  key={`interaction-${group.response.item.at_version}`}
+                  item={group.response.item}
                   invalidated={false}
-                  onActionPayloadChange={onActionPayloadChange}
-                  onActionValidityChange={onActionValidityChange}
+                />
+              )
+            }
+
+            if (group.type === 'standalone') {
+              if (group.item.kind === 'user') {
+                return (
+                  <UserMessage
+                    key={`user-${group.item.payload.turn_id}`}
+                    text={group.item.payload.text}
+                  />
+                )
+              }
+              return (
+                <ConversationCard
+                  key={
+                    group.item.kind === 'interaction_response'
+                      ? `interaction-${group.item.at_version}`
+                      : `${group.item.seq}-${group.item.kind}`
+                  }
+                  item={group.item}
+                  invalidated={false}
                 />
               )
             }
@@ -84,44 +155,18 @@ export const DifyBuilderConversation = memo(
                     <span>{t(($) => $['difyBuilder.invalidated'], { ns: 'workflow' })}</span>
                   </div>
                 )}
-                <ConversationCard
-                  item={group.turn}
-                  busy={busy}
-                  interactive={interactionIsCurrent && group.turn.seq === activeCard?.seq}
-                  invalidated={group.invalidated}
-                  onActionPayloadChange={onActionPayloadChange}
-                  onActionValidityChange={onActionValidityChange}
-                />
-                {group.cards
-                  .filter((item) => item.seq !== activeCard?.seq)
-                  .map((item) => (
-                    <ConversationCard
-                      key={`${item.seq}-${item.kind}`}
-                      item={item}
-                      busy={busy}
-                      interactive={interactionIsCurrent && item.seq === activeCard?.seq}
-                      invalidated={group.invalidated}
-                      onActionPayloadChange={onActionPayloadChange}
-                      onActionValidityChange={onActionValidityChange}
-                    />
-                  ))}
+                <ConversationCard item={group.turn} invalidated={group.invalidated} />
+                {group.cards.map((item) => (
+                  <ConversationCard
+                    key={`${item.seq}-${item.kind}`}
+                    item={item}
+                    invalidated={group.invalidated}
+                  />
+                ))}
               </div>
             )
           })}
         </div>
-        {activeCard && (
-          <ConversationCard
-            key={`active-${activeInteraction?.action_id}-${activeCard.seq}-${activeCard.kind}`}
-            item={activeCard}
-            busy={busy}
-            formId={activeFormId}
-            interactive={interactionIsCurrent}
-            invalidated={false}
-            onActionPayloadChange={onActionPayloadChange}
-            onActionValidityChange={onActionValidityChange}
-            onFormSubmit={onActiveFormSubmit}
-          />
-        )}
         <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
       </div>
     )

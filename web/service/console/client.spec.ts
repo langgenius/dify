@@ -465,22 +465,20 @@ describe('consoleQuery transport context', () => {
 
   it('should expose Dify Builder restore as a typed streamed query', async () => {
     const started = {
-      app_id: 'app-1',
-      canvas_read_only: true,
-      conversation_last_seq: -1,
-      interrupted: false,
-      kind: 'command_started' as const,
+      command_id: 'command-1',
+      phase: 'understand' as const,
       run_status: 'processing',
       session_id: 'session-1',
-      state: 'fix.diagnose',
       version: 1,
     } as const
     const terminal = {
-      ...started,
       canvas_read_only: false,
-      kind: 'state' as const,
+      command_id: 'command-1',
+      conversation_last_seq: -1,
+      interrupted: false,
+      phase: 'clarify' as const,
       run_status: 'waiting_input' as const,
-      state: 'fix.await_approval',
+      session_id: 'session-1',
       version: 2,
     }
     const request = vi.fn().mockResolvedValue(
@@ -490,7 +488,7 @@ describe('consoleQuery transport context', () => {
           `data: ${JSON.stringify({ event: 'command_started', data: started })}`,
           '',
           'event: message',
-          `data: ${JSON.stringify({ event: 'state', data: terminal })}`,
+          `data: ${JSON.stringify({ event: 'command_finished', data: terminal })}`,
           '',
           '',
         ].join('\n'),
@@ -514,7 +512,7 @@ describe('consoleQuery transport context', () => {
     expectTypeOf(events[0]!).toMatchTypeOf<DifyBuilderStreamEventResponse>()
     expect(events).toEqual([
       { event: 'command_started', data: started },
-      { event: 'state', data: terminal },
+      { event: 'command_finished', data: terminal },
     ])
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/dify-builder/sessions/session-1/stream'),

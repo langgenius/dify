@@ -27,17 +27,19 @@ def test_progress_reporter_reveals_only_started_activities_with_monotonic_revisi
     reporter.activate("draft")
     final_execution = reporter.finish()
 
-    assert [event.revision for event in events] == [1, 2, 3]
-    assert [(item.id, item.state) for item in events[0].execution.activities] == [("review", "active")]
-    assert [(item.id, item.state) for item in events[1].execution.activities] == [
+    assert [event.revision for event in events] == [1, 2, 3, 4]
+    assert (events[0].activity.id, events[0].activity.state) == ("review", "active")
+    assert (events[1].activity.id, events[1].activity.state) == ("review", "done")
+    assert (events[2].activity.id, events[2].activity.state) == ("draft", "active")
+    assert (events[3].activity.id, events[3].activity.state) == ("draft", "done")
+    assert [(item.id, item.state) for item in final_execution.activities] == [
         ("review", "done"),
-        ("draft", "active"),
+        ("draft", "done"),
     ]
-    assert [item.state for item in events[2].execution.activities] == ["done", "done"]
-    assert final_execution == events[2].execution
-    assert events[0].execution.activities[0].state == "active"
-    assert events[2].operation_id == "operation-1"
-    assert events[2].at_version == 4
+    assert final_execution.status == "completed"
+    assert events[-1].status == "completed"
+    assert events[-1].operation_id == "operation-1"
+    assert events[-1].at_version == 4
 
 
 def test_progress_reporter_keeps_unselected_branch_steps_private() -> None:
@@ -53,7 +55,8 @@ def test_progress_reporter_keeps_unselected_branch_steps_private() -> None:
     reporter.activate("run")
     reporter.fail_step("run")
     reporter.add_steps([("diagnose", "Diagnose the failed workflow")])
-    assert [item.id for item in events[-1].execution.activities] == ["run"]
+    assert events[-1].activity is not None
+    assert events[-1].activity.id == "run"
 
     reporter.activate("diagnose")
     final_execution = reporter.finish()
@@ -62,7 +65,7 @@ def test_progress_reporter_keeps_unselected_branch_steps_private() -> None:
         ("run", "failed"),
         ("diagnose", "done"),
     ]
-    assert events[-1].execution.status == "completed"
+    assert events[-1].status == "completed"
 
 
 def test_progress_reporter_nests_workflow_nodes_under_the_running_stage() -> None:
@@ -79,7 +82,8 @@ def test_progress_reporter_nests_workflow_nodes_under_the_running_stage() -> Non
     reporter.observe_node("run", NodeEvent(node_id="llm", title="Generate answer", status="running"))
     reporter.observe_node("run", NodeEvent(node_id="llm", title="Generate answer", status="succeeded"))
 
-    node = events[-1].execution.activities[-1]
+    node = events[-1].activity
+    assert node is not None
     assert (node.id, node.kind, node.parent_id, node.state) == ("node:llm", "node", "run", "done")
 
 
@@ -101,5 +105,6 @@ def test_progress_reporter_context_marks_active_activity_failed_on_exception() -
     with pytest.raises(RuntimeError, match="boom"):
         run_failing_reporter()
 
-    assert events[-1].execution.status == "error"
-    assert events[-1].execution.activities[0].state == "failed"
+    assert events[-1].status == "error"
+    assert events[-1].activity is not None
+    assert events[-1].activity.state == "failed"

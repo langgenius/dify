@@ -1,4 +1,4 @@
-import { createTraceBuffer, readTraceState, readTraceVersion } from '../trace-buffer'
+import { createTraceBuffer, readTraceVersion } from '../trace-buffer'
 
 describe('createTraceBuffer', () => {
   it('stamps a monotonic seq (starting at 1) and an ISO timestamp on each append', () => {
@@ -9,7 +9,6 @@ describe('createTraceBuffer', () => {
       kind: 'progress',
       payload: { b: 2 },
       version: 3,
-      state: 'build.execution',
     })
     const { entries, truncated } = buffer.snapshot()
     expect(entries.map((e) => e.seq)).toEqual([1, 2])
@@ -18,7 +17,6 @@ describe('createTraceBuffer', () => {
       dir: 'in',
       kind: 'progress',
       version: 3,
-      state: 'build.execution',
     })
     expect(entries[1]?.ts).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
     expect(truncated).toBe(false)
@@ -58,11 +56,5 @@ describe('createTraceBuffer', () => {
     expect(readTraceVersion({ at_version: 4 })).toBe(4)
     expect(readTraceVersion({})).toBeUndefined()
     expect(readTraceVersion(null)).toBeUndefined()
-  })
-
-  it('readTraceState returns a string state or undefined', () => {
-    expect(readTraceState({ state: 'build.publish' })).toBe('build.publish')
-    expect(readTraceState({})).toBeUndefined()
-    expect(readTraceState('x')).toBeUndefined()
   })
 })

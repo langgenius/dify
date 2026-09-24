@@ -57,6 +57,7 @@ from core.dify_builder.models import (
     MutationIntent,
     NodeEvent,
     NodeOutput,
+    PublishResult,
     Run,
 )
 from core.workflow import graph_normalizers
@@ -73,7 +74,7 @@ from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.preflight import new_preflight_problems
-from services.dify_builder.revision import execution_revision
+from services.dify_builder.revision import execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
     error_from_stream_chunk,
     is_unfinished_run_status,
@@ -221,119 +222,132 @@ class WorkflowServiceDifyPort:
         *,
         expected_revision: str,
     ) -> ApplyResult:
+        # Build and validate against a snapshot outside the write transaction.
+        # The final row lock rechecks this revision before replacing the graph.
+        before_graph, revision = self.read_graph(app_id, actor)
+        if revision != expected_revision:
+            raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+        graph: Graph = before_graph
+
+        # Idempotent re-entry (interrupted-step Retry): a re-applied fix.apply
+        # re-sends the same intents against an already-mutated draft. Drop
+        # create_node for an id already present and connect for an edge already
+        # present so the re-apply is a clean no-op. Uses the ORIGINAL draft graph
+        # (before_graph) as the reference, so an in-batch duplicate of a NEW id
+        # still reaches graph_ops and raises (validation preserved).
+        #
+        # The rule itself lives in graph_ops (including handlers_build.py's M2
+        # guard for a delete_node + create_node of the same id in one batch),
+        # because graph_ops.filter_applicable's dry run has to skip exactly what
+        # this drops: otherwise the dry run rejects a duplicate create_node the
+        # write would have quietly no-op'd, and burns the corrective re-prompt.
+        _already_present = graph_ops.already_present_predicate(before_graph, intents)
+        intents = [intent for intent in intents if not _already_present(intent)]
+
+        changed_nodes: list[str] = []
+        canvas_events: list[dict[str, Any]] = []
+        # The nodes whose DATA this batch wrote, which is a narrower set
+        # than the change set and is kept separately for that reason: the
+        # preflight below gives a node in it no exemption at all, so an id
+        # that lands here wrongly turns someone else's pre-existing defect
+        # into a veto. ``connect`` writes an EDGE -- ``apply_connect``
+        # reports both endpoints, correctly for a diff, but adding an edge
+        # cannot change either endpoint's ``validate_node_config`` verdict.
+        # Mirrors ``graph_ops.filter_applicable``, which must produce the
+        # same set or the dry run would be predicting a different write.
+        written_nodes: list[str] = []
+        for intent in intents:
+            apply_fn = graph_ops.APPLY_FNS.get(intent.op)
+            if apply_fn is None:
+                continue
+            graph_ops.validate_intent_args(intent)
+            graph, changed = apply_fn(graph, **intent.args)
+            changed_nodes.extend(changed)
+            if intent.op != "connect":
+                written_nodes.extend(changed)
+            if on_canvas is not None:
+                canvas_events.append(_canvas_payload(intent, changed))
+
+        if not changed_nodes:
+            with _session_factory()() as session:
+                app = load_app(session, app_id, actor)
+                workflow = _load_draft_workflow_or_raise(app, session=session)
+                session.refresh(workflow, with_for_update=True)
+                if execution_revision(workflow) != revision:
+                    raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+            return ApplyResult(
+                changed_nodes=[],
+                new_hash=revision,
+                changes=[],
+                scope="",
+                structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
+            )
+
+        # ``written_nodes`` is complete at this point and is deliberately
+        # NOT extended by the heal below: the healer scans the whole graph,
+        # so a node it merely normalized is not one this batch is
+        # answerable for.
+        #
+        # The deterministic heal set every pre-preflight caller shares
+        # (core.workflow.graph_normalizers.heal_nodes_for_preflight), for
+        # the intents the generator never saw: a Fix/Edit repair that
+        # writes an ASCII comparison operator (F4's ``>=``) or a condition
+        # value as a JSON number (ESQ1-285's flip-flop), an http body item
+        # without ``type``, or a parameter-extractor ``query`` written as
+        # an array of selector arrays (Blocker A). Must run BEFORE the
+        # preflight, which would reject them. It scans every node in
+        # ``graph``, not just the ones the intents named, so a node it
+        # heals may not be in ``changed_nodes`` yet -- fold its returned
+        # ids in (order-preserving, deduped) so it agrees with
+        # ``diff_graphs`` below, which sees the healed node too.
+        healed_ids = graph_normalizers.heal_nodes_for_preflight(graph.get("nodes", []))
+        for node_id in healed_ids:
+            if node_id not in changed_nodes:
+                changed_nodes.append(node_id)
+
+        # Dry-validate what the draft would become. Whatever raises here
+        # would raise at Graph.init and kill the very first test run
+        # (ESQ1-302 and ESQ1-303 both died there). A node this batch WROTE
+        # must be startable -- a repair that leaves its own culprit refused
+        # is not a repair, however little it changed about why. Every other
+        # node keeps the new-problems-only exemption: one the repair did not
+        # touch must not veto an unrelated fix, and a repair that heals it
+        # passes. The same function the Edit/Fix dry run predicts this
+        # refusal with (``preflight.vet_intents``), on the same ``touched``
+        # set, so the two cannot answer differently.
+        new_problems = new_preflight_problems(before_graph, graph, written_nodes)
+        if new_problems:
+            raise PreflightError("the draft would not start: " + "; ".join(new_problems))
+
+        changes, scope = graph_ops.diff_graphs(before_graph, graph)
+        nodes = describe_changed_nodes(changed_nodes, before_graph, graph)
+        fingerprint = graph_ops.structural_fingerprint(graph)
+
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
-
-            # Lock AND refresh before inspecting the graph: this Session may
-            # already contain an older Workflow in its identity map. Keep the
-            # execution check and mutation in the same short transaction.
             session.refresh(workflow, with_for_update=True)
-            revision = execution_revision(workflow)
-            if revision != expected_revision:
+            if execution_revision(workflow) != revision:
                 raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+            committed_previous_graph = dict(workflow.graph_dict)
+            graph = merge_canvas_presentation(before_graph, graph, committed_previous_graph)
+            updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
+            new_hash = execution_revision(updated)
 
-            before_graph: Graph = dict(workflow.graph_dict)
-            graph: Graph = before_graph
-            unique_hash = workflow.unique_hash
+        notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
+        if on_canvas is not None:
+            for event in canvas_events:
+                on_canvas(event)
 
-            # Idempotent re-entry (interrupted-step Retry): a re-applied fix.apply
-            # re-sends the same intents against an already-mutated draft. Drop
-            # create_node for an id already present and connect for an edge already
-            # present so the re-apply is a clean no-op. Uses the ORIGINAL draft graph
-            # (before_graph) as the reference, so an in-batch duplicate of a NEW id
-            # still reaches graph_ops and raises (validation preserved).
-            #
-            # The rule itself lives in graph_ops (including handlers_build.py's M2
-            # guard for a delete_node + create_node of the same id in one batch),
-            # because graph_ops.filter_applicable's dry run has to skip exactly what
-            # this drops: otherwise the dry run rejects a duplicate create_node the
-            # write would have quietly no-op'd, and burns the corrective re-prompt.
-            _already_present = graph_ops.already_present_predicate(before_graph, intents)
-            intents = [intent for intent in intents if not _already_present(intent)]
-
-            changed_nodes: list[str] = []
-            # The nodes whose DATA this batch wrote, which is a narrower set
-            # than the change set and is kept separately for that reason: the
-            # preflight below gives a node in it no exemption at all, so an id
-            # that lands here wrongly turns someone else's pre-existing defect
-            # into a veto. ``connect`` writes an EDGE -- ``apply_connect``
-            # reports both endpoints, correctly for a diff, but adding an edge
-            # cannot change either endpoint's ``validate_node_config`` verdict.
-            # Mirrors ``graph_ops.filter_applicable``, which must produce the
-            # same set or the dry run would be predicting a different write.
-            written_nodes: list[str] = []
-            for intent in intents:
-                apply_fn = graph_ops.APPLY_FNS.get(intent.op)
-                if apply_fn is None:
-                    continue
-                graph_ops.validate_intent_args(intent)
-                graph, changed = apply_fn(graph, **intent.args)
-                changed_nodes.extend(changed)
-                if intent.op != "connect":
-                    written_nodes.extend(changed)
-                if on_canvas is not None:
-                    on_canvas(_canvas_payload(intent, changed))
-
-            if not changed_nodes:
-                return ApplyResult(
-                    changed_nodes=[],
-                    new_hash=revision,
-                    changes=[],
-                    scope="",
-                    structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
-                )
-
-            # ``written_nodes`` is complete at this point and is deliberately
-            # NOT extended by the heal below: the healer scans the whole graph,
-            # so a node it merely normalized is not one this batch is
-            # answerable for.
-            #
-            # The deterministic heal set every pre-preflight caller shares
-            # (core.workflow.graph_normalizers.heal_nodes_for_preflight), for
-            # the intents the generator never saw: a Fix/Edit repair that
-            # writes an ASCII comparison operator (F4's ``>=``) or a condition
-            # value as a JSON number (ESQ1-285's flip-flop), an http body item
-            # without ``type``, or a parameter-extractor ``query`` written as
-            # an array of selector arrays (Blocker A). Must run BEFORE the
-            # preflight, which would reject them. It scans every node in
-            # ``graph``, not just the ones the intents named, so a node it
-            # heals may not be in ``changed_nodes`` yet -- fold its returned
-            # ids in (order-preserving, deduped) so it agrees with
-            # ``diff_graphs`` below, which sees the healed node too.
-            healed_ids = graph_normalizers.heal_nodes_for_preflight(graph.get("nodes", []))
-            for node_id in healed_ids:
-                if node_id not in changed_nodes:
-                    changed_nodes.append(node_id)
-
-            # Dry-validate what the draft would become. Whatever raises here
-            # would raise at Graph.init and kill the very first test run
-            # (ESQ1-302 and ESQ1-303 both died there). A node this batch WROTE
-            # must be startable -- a repair that leaves its own culprit refused
-            # is not a repair, however little it changed about why. Every other
-            # node keeps the new-problems-only exemption: one the repair did not
-            # touch must not veto an unrelated fix, and a repair that heals it
-            # passes. The same function the Edit/Fix dry run predicts this
-            # refusal with (``preflight.vet_intents``), on the same ``touched``
-            # set, so the two cannot answer differently.
-            new_problems = new_preflight_problems(before_graph, graph, written_nodes)
-            if new_problems:
-                raise PreflightError("the draft would not start: " + "; ".join(new_problems))
-
-            changes, scope = graph_ops.diff_graphs(before_graph, graph)
-
-            updated = _sync_graph_only(app, graph, workflow, unique_hash, account, session, app_id)
-            notify_workflow_draft_changed(updated, previous_graph=before_graph)
-
-            return ApplyResult(
-                changed_nodes=changed_nodes,
-                nodes=describe_changed_nodes(changed_nodes, before_graph, graph),
-                new_hash=execution_revision(updated),
-                changes=changes,
-                scope=scope,
-                structure_fingerprint=graph_ops.structural_fingerprint(graph),
-            )
+        return ApplyResult(
+            changed_nodes=changed_nodes,
+            nodes=nodes,
+            new_hash=new_hash,
+            changes=changes,
+            scope=scope,
+            structure_fingerprint=fingerprint,
+        )
 
     def structural_fingerprint(self, graph: Graph) -> str:
         return graph_ops.structural_fingerprint(graph)
@@ -497,7 +511,7 @@ class WorkflowServiceDifyPort:
             return map_unknown_run_outcome(recovered, node_execs)
         return map_run_result(recovered, node_execs)
 
-    def publish(self, app_id: str, actor: Actor) -> None:
+    def publish(self, app_id: str, actor: Actor) -> PublishResult:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -515,3 +529,7 @@ class WorkflowServiceDifyPort:
             app_in_session.updated_at = naive_utc_now()
 
             session.commit()
+            return PublishResult(
+                version_name=getattr(workflow, "marked_name", None) or f"# {workflow.version_number}",
+                status="live",
+            )

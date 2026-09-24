@@ -24,17 +24,17 @@ export type DifyBuilderStreamEventResponse =
       event: 'agent_message'
     } & DifyBuilderAgentMessageEventResponse)
   | ({
+      event: 'conversation_item_appended'
+    } & DifyBuilderConversationItemAppendedEventResponse)
+  | ({
       event: 'reasoning'
     } & DifyBuilderReasoningEventResponse)
   | ({
       event: 'progress'
     } & DifyBuilderProgressEventResponse)
   | ({
-      event: 'commit'
-    } & DifyBuilderCommitEventResponse)
-  | ({
-      event: 'state'
-    } & DifyBuilderStateEventResponse)
+      event: 'command_finished'
+    } & DifyBuilderCommandFinishedEventResponse)
   | ({
       event: 'error'
     } & DifyBuilderErrorEventResponse)
@@ -46,22 +46,19 @@ export type DifyBuilderErrorResponse = {
 }
 
 export type DifyBuilderSessionViewResponse = {
-  actions?: Array<Action>
+  actions?: Array<DifyBuilderActionResponse>
   active_interaction?: DifyBuilderActiveInteractionResponse | null
-  app_id: string
-  app_revision?: AppRevision | null
+  app_revision?: DifyBuilderAppRevisionResponse | null
   canvas_read_only: boolean
-  checkpoint?: CheckpointRef | null
   conversation_last_seq: number
   decision?: Decision | null
-  entry_mode?: EntryMode
   interrupted: boolean
+  last_command_id?: string
   model?: SessionModel | null
-  phase?: Phase
+  phase: Phase
   recovery?: RecoveryRef | null
   run_status: RunStatus
   session_id: string
-  state: string
   version: number
 }
 
@@ -83,6 +80,9 @@ export type DifyBuilderConversationPageResponse = {
         kind: 'decision'
       } & DifyBuilderDecisionConversationItemResponse)
     | ({
+        kind: 'interaction_response'
+      } & DifyBuilderInteractionResponseConversationItemResponse)
+    | ({
         kind: 'notice'
       } & DifyBuilderNoticeConversationItemResponse)
     | ({
@@ -101,32 +101,11 @@ export type DifyBuilderConversationPageResponse = {
         kind: 'form'
       } & DifyBuilderFormConversationItemResponse)
     | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
         kind: 'resource_select'
       } & DifyBuilderResourceSelectConversationItemResponse)
     | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
         kind: 'test_result'
       } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
   >
   first_seq: number | null
   has_more: boolean
@@ -180,37 +159,37 @@ export type DifyBuilderWorkflowEventResponse = {
 }
 
 export type DifyBuilderCanvasEventResponse = {
-  data: CanvasEventData
+  data: DifyBuilderCanvasEventData
   event: 'canvas'
 }
 
 export type DifyBuilderAgentMessageEventResponse = {
-  data: AgentMessageEventData
+  data: DifyBuilderAgentMessageEventData
   event: 'agent_message'
 }
 
+export type DifyBuilderConversationItemAppendedEventResponse = {
+  data: DifyBuilderConversationItemAppendedEventData
+  event: 'conversation_item_appended'
+}
+
 export type DifyBuilderReasoningEventResponse = {
-  data: ReasoningEventData
+  data: DifyBuilderReasoningEventData
   event: 'reasoning'
 }
 
 export type DifyBuilderProgressEventResponse = {
-  data: ProgressEventData
+  data: DifyBuilderProgressEventData
   event: 'progress'
 }
 
-export type DifyBuilderCommitEventResponse = {
-  data: DifyBuilderCommitEventData
-  event: 'commit'
-}
-
-export type DifyBuilderStateEventResponse = {
-  data: DifyBuilderStateEventData
-  event: 'state'
+export type DifyBuilderCommandFinishedEventResponse = {
+  data: DifyBuilderCommandFinishedEventData
+  event: 'command_finished'
 }
 
 export type DifyBuilderErrorEventResponse = {
-  data: ErrorEventData
+  data: DifyBuilderErrorEventData
   event: 'error'
 }
 
@@ -222,91 +201,30 @@ export type BuilderErrorCode =
   | 'not_found'
   | 'session_busy'
 
-export type Action = {
-  canvas_event?: string | null
+export type DifyBuilderActionResponse = {
   id: string
   kind: ActionKind
   label: string
-  next_state?: string | null
 }
 
 export type DifyBuilderActiveInteractionResponse = {
   action_id: string
-  card:
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
+  card_seq: number
   valid_at_version: number
 }
 
-export type AppRevision = {
+export type DifyBuilderAppRevisionResponse = {
   conflicted: boolean
   current: string
-  observed: string
-}
-
-export type CheckpointRef = {
-  checkpoint_id: string
-  created_at: string
-  label: string
 }
 
 export type Decision = {
-  cancel?: Action | null
-  confirm?: Action | null
   default_option_id?: string
+  description?: string
   options?: Array<CardOption>
+  submit?: Action | null
+  title: string
 }
-
-export type EntryMode = 'build' | 'edit' | 'fix' | 'fix_checklist'
 
 export type SessionModel = {
   completion_params?: {
@@ -357,6 +275,13 @@ export type DifyBuilderDecisionConversationItemResponse = {
   seq: number
 }
 
+export type DifyBuilderInteractionResponseConversationItemResponse = {
+  at_version: number
+  kind: 'interaction_response'
+  payload: InteractionResponseItem
+  seq: number
+}
+
 export type DifyBuilderNoticeConversationItemResponse = {
   at_version: number
   kind: 'notice'
@@ -399,13 +324,6 @@ export type DifyBuilderFormConversationItemResponse = {
   seq: number
 }
 
-export type DifyBuilderChallengeConversationItemResponse = {
-  at_version: number
-  kind: 'challenge'
-  payload: ChallengeCard
-  seq: number
-}
-
 export type DifyBuilderResourceSelectConversationItemResponse = {
   at_version: number
   kind: 'resource_select'
@@ -413,52 +331,10 @@ export type DifyBuilderResourceSelectConversationItemResponse = {
   seq: number
 }
 
-export type DifyBuilderCheckpointConversationItemResponse = {
-  at_version: number
-  kind: 'checkpoint'
-  payload: CheckpointCard
-  seq: number
-}
-
-export type DifyBuilderChangeSetConversationItemResponse = {
-  at_version: number
-  kind: 'change_set'
-  payload: ChangeSetCard
-  seq: number
-}
-
 export type DifyBuilderTestResultConversationItemResponse = {
   at_version: number
   kind: 'test_result'
   payload: TestResultCard
-  seq: number
-}
-
-export type DifyBuilderErrorConversationItemResponse = {
-  at_version: number
-  kind: 'error'
-  payload: ErrorCard
-  seq: number
-}
-
-export type DifyBuilderSummaryConversationItemResponse = {
-  at_version: number
-  kind: 'summary'
-  payload: SummaryCard
-  seq: number
-}
-
-export type DifyBuilderPublishConversationItemResponse = {
-  at_version: number
-  kind: 'publish'
-  payload: PublishCard
-  seq: number
-}
-
-export type DifyBuilderBuildLearningConversationItemResponse = {
-  at_version: number
-  kind: 'build_learning'
-  payload: BuildLearningCard
   seq: number
 }
 
@@ -472,29 +348,15 @@ export type DifyBuilderChecklistErrorPayload = {
 }
 
 export type DifyBuilderCommandStartedEventData = {
-  actions?: Array<Action>
-  active_interaction?: DifyBuilderActiveInteractionResponse | null
-  app_id: string
-  app_revision?: AppRevision | null
-  canvas_read_only: boolean
-  checkpoint?: CheckpointRef | null
-  conversation_last_seq: number
-  decision?: Decision | null
-  entry_mode?: EntryMode
-  interrupted: boolean
-  kind?: 'command_started'
-  model?: SessionModel | null
-  phase?: Phase
-  recovery?: RecoveryRef | null
+  command_id: string
+  phase: Phase
   run_status: RunStatus
   session_id: string
-  state: string
   version: number
 }
 
 export type DifyBuilderWorkflowEventData = {
   at_version: number
-  kind?: 'workflow'
   operation_id: string
   payload:
     | ({
@@ -555,17 +417,8 @@ export type DifyBuilderWorkflowEventData = {
         event: 'human_input_form_timeout'
       } & WorkflowStreamEventLiteralHumanInputFormTimeoutData)
     | ({
-        event: 'tts_message' | 'tts_message_end'
-      } & WorkflowStreamAudio)
-    | ({
         event: 'message'
       } & WorkflowStreamMessage)
-    | ({
-        event: 'message_end'
-      } & WorkflowStreamMessageEnd)
-    | ({
-        event: 'message_file'
-      } & WorkflowStreamMessageFile)
     | ({
         event: 'message_replace'
       } & WorkflowStreamMessageReplace)
@@ -574,64 +427,44 @@ export type DifyBuilderWorkflowEventData = {
       } & WorkflowStreamError)
   revision: number
   session_id: string
-  stage_id: string
 }
 
-export type CanvasEventData = {
+export type DifyBuilderCanvasEventData = {
   at_version: number
-  dify_run_id?: string
-  edge?: CanvasEdge | null
   event: CanvasEvent
-  kind?: 'canvas'
   node_id?: string | null
   operation_id: string
   revision: number
   session_id: string
-  stage_id: string
 }
 
-export type AgentMessageEventData = {
-  answer: string
+export type DifyBuilderAgentMessageEventData = {
   at_version: number
-  id: string
-  kind?: 'agent_message'
+  cards?: Array<string>
+  command_id: string
+  delta: string
+  done: boolean
+  execution?: DifyBuilderExecutionProgressResponse | null
   operation_id: string
   revision: number
   seq: number
   session_id: string
-  stage_id: string
+  text_bytes: number
+  turn_id: string
 }
 
-export type ReasoningEventData = {
-  at_version: number
-  delta: string
-  kind?: 'reasoning'
-  operation_id: string
-  revision: number
-  session_id: string
-  span_id: string
-  stage_id: string
-}
-
-export type ProgressEventData = {
-  at_version: number
-  execution: ExecutionProgress
-  kind?: 'progress'
-  operation_id: string
-  revision: number
-  session_id: string
-  stage_id: string
-}
-
-export type DifyBuilderCommitEventData = {
-  at_version: number
-  items: Array<
+export type DifyBuilderConversationItemAppendedEventData = {
+  command_id: string
+  item:
     | ({
         kind: 'user'
       } & DifyBuilderUserConversationItemResponse)
     | ({
         kind: 'decision'
       } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'interaction_response'
+      } & DifyBuilderInteractionResponseConversationItemResponse)
     | ({
         kind: 'notice'
       } & DifyBuilderNoticeConversationItemResponse)
@@ -642,78 +475,60 @@ export type DifyBuilderCommitEventData = {
         kind: 'preflight_context'
       } & DifyBuilderPreflightContextConversationItemResponse)
     | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
         kind: 'plan'
       } & DifyBuilderPlanConversationItemResponse)
     | ({
         kind: 'form'
       } & DifyBuilderFormConversationItemResponse)
     | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
         kind: 'resource_select'
       } & DifyBuilderResourceSelectConversationItemResponse)
     | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
         kind: 'test_result'
       } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
-  >
-  kind?: 'commit'
-  operation_id: string
   session_id: string
-  settled: boolean
-  stage_id: string
-  state: string
-  version: number
 }
 
-export type DifyBuilderStateEventData = {
-  actions?: Array<Action>
+export type DifyBuilderReasoningEventData = {
+  at_version: number
+  delta: string
+  operation_id: string
+  revision: number
+  session_id: string
+}
+
+export type DifyBuilderProgressEventData = {
+  activity: DifyBuilderExecutionActivityResponse | null
+  at_version: number
+  operation_id: string
+  revision: number
+  session_id: string
+  status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
+export type DifyBuilderCommandFinishedEventData = {
+  actions?: Array<DifyBuilderActionResponse>
   active_interaction?: DifyBuilderActiveInteractionResponse | null
-  app_id: string
-  app_revision?: AppRevision | null
+  app_revision?: DifyBuilderAppRevisionResponse | null
   canvas_read_only: boolean
-  checkpoint?: CheckpointRef | null
+  command_id: string
   conversation_last_seq: number
   decision?: Decision | null
-  entry_mode?: EntryMode
   interrupted: boolean
-  kind?: 'state'
   model?: SessionModel | null
-  phase?: Phase
+  phase: Phase
+  post_canvas_action_id?: string | null
   recovery?: RecoveryRef | null
   run_status: RunStatus
   session_id: string
-  state: string
   version: number
 }
 
-export type ErrorEventData = {
+export type DifyBuilderErrorEventData = {
   code?: string | null
-  error: string
-  kind?: 'error'
-  message?: string | null
-  recoverable?: boolean | null
+  command_id?: string | null
+  message: string
+  session_id?: string | null
 }
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
@@ -729,6 +544,14 @@ export type CardOption = {
   tone?: string
 }
 
+export type Action = {
+  canvas_event?: string | null
+  id: string
+  kind: ActionKind
+  label: string
+  next_state?: string | null
+}
+
 export type UserItem = {
   text: string
   turn_id: string
@@ -736,6 +559,16 @@ export type UserItem = {
 
 export type DecisionItem = {
   text: string
+}
+
+export type InteractionResponseItem = {
+  answer?: string
+  fields?: Array<InteractionResponseField>
+  interaction_kind: 'choice' | 'form' | 'resource'
+  question: string
+  submitted_data?: {
+    [key: string]: unknown
+  }
 }
 
 export type NoticeItem = {
@@ -769,78 +602,30 @@ export type AssistantTurnItem = {
 
 export type PlanCard = {
   items?: Array<string>
-  subtitle?: string | null
   title: string
-  version_tag: string
 }
 
 export type FormCard = {
+  description?: string
   fields?: Array<FormField>
   frozen?: boolean
+  title?: string
   values?: {
     [key: string]: unknown
   }
   variant: string
 }
 
-export type ChallengeCard = {
-  body: string
-  title: string
-  tone?: string
-}
-
 export type ResourceSelectCard = {
+  description?: string
   recommended?: Array<ResourceOption>
-}
-
-export type CheckpointCard = {
-  checkpoint_id: string
-  created_at: string
-  label: string
-}
-
-export type ChangeSetCard = {
-  changes: Array<string>
-  count: number
-  nodes?: Array<ChangedNode>
-  scope: string
+  title?: string
 }
 
 export type TestResultCard = {
   dify_run_id?: string
-  output?: string
-  run_ids?: Array<string>
-  stats?: Array<TestStat>
-  subtitle: string
-  title: string
-  tone: string
-}
-
-export type ErrorCard = {
-  body: string
-  diagnostics?: Array<{
-    [key: string]: unknown
-  }>
-  node_id?: string | null
-  title: string
-  tone?: string
-}
-
-export type SummaryCard = {
-  items?: Array<string>
-  rows?: Array<SummaryRow>
-  title?: string | null
-  variant: string
-}
-
-export type PublishCard = {
-  badge?: string
-  version: string
-}
-
-export type BuildLearningCard = {
-  policy: string
-  state: string
+  failure_reason?: string | null
+  status: 'failed' | 'succeeded'
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
@@ -848,7 +633,6 @@ export type WorkflowStreamEventLiteralWorkflowStartedData = {
   event: 'workflow_started'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralWorkflowFinishedData = {
@@ -856,7 +640,6 @@ export type WorkflowStreamEventLiteralWorkflowFinishedData = {
   event: 'workflow_finished'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralWorkflowPausedData = {
@@ -864,7 +647,6 @@ export type WorkflowStreamEventLiteralWorkflowPausedData = {
   event: 'workflow_paused'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralNodeStartedData = {
@@ -872,7 +654,6 @@ export type WorkflowStreamEventLiteralNodeStartedData = {
   event: 'node_started'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralNodeFinishedData = {
@@ -880,7 +661,6 @@ export type WorkflowStreamEventLiteralNodeFinishedData = {
   event: 'node_finished'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralNodeRetryData = {
@@ -888,7 +668,6 @@ export type WorkflowStreamEventLiteralNodeRetryData = {
   event: 'node_retry'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralIterationStartedData = {
@@ -896,7 +675,6 @@ export type WorkflowStreamEventLiteralIterationStartedData = {
   event: 'iteration_started'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralIterationNextData = {
@@ -904,7 +682,6 @@ export type WorkflowStreamEventLiteralIterationNextData = {
   event: 'iteration_next'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralIterationCompletedData = {
@@ -912,7 +689,6 @@ export type WorkflowStreamEventLiteralIterationCompletedData = {
   event: 'iteration_completed'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralLoopStartedData = {
@@ -920,7 +696,6 @@ export type WorkflowStreamEventLiteralLoopStartedData = {
   event: 'loop_started'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralLoopNextData = {
@@ -928,7 +703,6 @@ export type WorkflowStreamEventLiteralLoopNextData = {
   event: 'loop_next'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralLoopCompletedData = {
@@ -936,7 +710,6 @@ export type WorkflowStreamEventLiteralLoopCompletedData = {
   event: 'loop_completed'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamDataEventLiteralTextChunkData = {
@@ -944,7 +717,6 @@ export type WorkflowStreamDataEventLiteralTextChunkData = {
   event: 'text_chunk'
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamDataEventLiteralTextReplaceData = {
@@ -952,7 +724,6 @@ export type WorkflowStreamDataEventLiteralTextReplaceData = {
   event: 'text_replace'
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamDataEventLiteralReasoningChunkData = {
@@ -960,7 +731,6 @@ export type WorkflowStreamDataEventLiteralReasoningChunkData = {
   event: 'reasoning_chunk'
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamDataEventLiteralAgentLogData = {
@@ -968,7 +738,6 @@ export type WorkflowStreamDataEventLiteralAgentLogData = {
   event: 'agent_log'
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralHumanInputRequiredData = {
@@ -976,7 +745,6 @@ export type WorkflowStreamEventLiteralHumanInputRequiredData = {
   event: 'human_input_required'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
@@ -984,7 +752,6 @@ export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
   event: 'human_input_form_filled'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
 }
 
 export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
@@ -992,16 +759,6 @@ export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
   event: 'human_input_form_timeout'
   task_id: string
   workflow_run_id: string
-  [key: string]: unknown
-}
-
-export type WorkflowStreamAudio = {
-  audio: string
-  audio_type?: string | null
-  event: 'tts_message' | 'tts_message_end'
-  task_id: string
-  workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamMessage = {
@@ -1011,32 +768,6 @@ export type WorkflowStreamMessage = {
   id: string
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
-}
-
-export type WorkflowStreamMessageEnd = {
-  event: 'message_end'
-  files?: Array<{
-    [key: string]: unknown
-  }>
-  id: string
-  metadata?: {
-    [key: string]: unknown
-  }
-  task_id: string
-  workflow_run_id?: string | null
-  [key: string]: unknown
-}
-
-export type WorkflowStreamMessageFile = {
-  belongs_to: string
-  event: 'message_file'
-  id: string
-  task_id: string
-  type: string
-  url: string
-  workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamMessageReplace = {
@@ -1045,7 +776,6 @@ export type WorkflowStreamMessageReplace = {
   reason: string
   task_id: string
   workflow_run_id?: string | null
-  [key: string]: unknown
 }
 
 export type WorkflowStreamError = {
@@ -1054,12 +784,6 @@ export type WorkflowStreamError = {
   message: string
   status: number
   workflow_run_id?: string | null
-  [key: string]: unknown
-}
-
-export type CanvasEdge = {
-  source: string
-  target: string
 }
 
 export type CanvasEvent =
@@ -1086,9 +810,16 @@ export type CanvasEvent =
   | 'start_retest'
   | 'start_test_run'
 
-export type ExecutionProgress = {
-  activities?: Array<ExecutionActivity>
+export type DifyBuilderExecutionProgressResponse = {
+  activities?: Array<DifyBuilderExecutionActivityResponse>
   status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
+export type DifyBuilderExecutionActivityResponse = {
+  id: string
+  label: string
+  parent_id?: string | null
+  state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
 export type OptionInput = {
@@ -1098,10 +829,25 @@ export type OptionInput = {
   required?: boolean
 }
 
-export type PreflightIssue = {
-  kind: string
+export type InteractionResponseField = {
+  display_value: string
+  key: string
   label: string
+  value: unknown
+}
+
+export type PreflightIssue = {
+  messages?: Array<string>
   node_id: string
+  node_type: string
+  plugin_missing?: boolean
+  title: string
+  unconnected?: boolean
+}
+
+export type ExecutionProgress = {
+  activities?: Array<ExecutionActivity>
+  status: 'completed' | 'error' | 'running' | 'stopped'
 }
 
 export type FormField = {
@@ -1133,21 +879,6 @@ export type ResourceOption = {
   label: string
   meta: string
   readiness: string
-}
-
-export type ChangedNode = {
-  node_id: string
-  title?: string
-}
-
-export type TestStat = {
-  label: string
-  value: string
-}
-
-export type SummaryRow = {
-  label: string
-  value: string
 }
 
 export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {

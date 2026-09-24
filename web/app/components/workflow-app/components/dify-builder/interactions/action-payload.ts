@@ -1,14 +1,8 @@
-import type { SessionView } from '../types'
-
-export const FORM_ACTION_IDS = new Set([
-  'provide_testdata',
-  'submit_edit_rules',
-  'submit_requirements',
-])
+import type { DifyBuilderActiveInteraction } from '../types'
 
 export const getDefaultActionPayload = (
   actionId: string,
-  activeInteraction: SessionView['active_interaction'],
+  activeInteraction: DifyBuilderActiveInteraction | null,
 ) => {
   const card = activeInteraction?.action_id === actionId ? activeInteraction.card : undefined
   if (actionId === 'submit_requirements' || actionId === 'submit_edit_rules') {

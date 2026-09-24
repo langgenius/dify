@@ -73,7 +73,6 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
     isEnabled: mocks.collaborative,
     isConnected: mocks.graphReady,
     onlineUsers: [],
-    cursors: {},
     startCursorTracking: () => {},
     stopCursorTracking: () => {},
   }),
@@ -83,6 +82,10 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     canPersistLocalGraph: () => mocks.graphReady,
     isConnected: () => mocks.graphReady,
     getIsLeader: () => true,
+    getNodes: mocks.getNodes,
+    createServerDraftUpdate: vi.fn(),
+    onServerDraftRequest: () => () => {},
+    onServerDraftApplied: () => () => {},
     onGraphReadyChange: (listener: (ready: boolean) => void) => {
       mocks.graphReadyListener = listener
       // Before the collaboration connection starts, graph editing is still allowed.
@@ -93,8 +96,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     },
     onVarsAndFeaturesUpdate: () => () => {},
     onWorkflowUpdate: () => () => {},
-    onServerDraftRequest: () => () => {},
-    onServerDraftApplied: () => () => {},
     onSyncRequest: () => () => {},
     onGraphReloadRequired: () => () => {},
     emitWorkflowUpdate: vi.fn(),
@@ -181,17 +182,40 @@ describe('Workflow creation with App Builder', () => {
     mocks.create.mockImplementation(
       async function* (): AsyncGenerator<DifyBuilderStreamEventResponse> {
         const view: SessionView = {
-          app_id: 'created-app',
           session_id: 'session-1',
-          state: 'build.goal_analysis',
           version: 1,
           canvas_read_only: false,
           run_status: 'waiting_input',
           interrupted: false,
+          last_command_id: 'command-1',
           conversation_last_seq: -1,
+          phase: 'clarify',
+          actions: [],
         }
-        yield { event: 'command_started', data: { kind: 'command_started', ...view } }
-        yield { event: 'state', data: { kind: 'state', ...view } }
+        yield {
+          event: 'command_started',
+          data: {
+            session_id: view.session_id,
+            command_id: 'command-1',
+            version: view.version,
+            phase: 'understand',
+            run_status: 'processing',
+          },
+        }
+        yield {
+          event: 'command_finished',
+          data: {
+            session_id: view.session_id,
+            command_id: 'command-1',
+            version: view.version,
+            canvas_read_only: view.canvas_read_only,
+            run_status: view.run_status,
+            interrupted: view.interrupted,
+            conversation_last_seq: view.conversation_last_seq,
+            phase: view.phase,
+            actions: view.actions,
+          },
+        }
       },
     )
     window.sessionStorage.clear()

@@ -37,19 +37,28 @@ const mocks = vi.hoisted(() => ({
 }))
 
 const sessionView: SessionView = {
-  actions: [{ id: 'approve_plan', label: 'Approve plan', kind: 'primary' }],
-  app_revision: { observed: 'hash-1', current: 'hash-1', conflicted: false },
-  app_id: 'app-1',
+  actions: [],
+  app_revision: { current: 'hash-1', conflicted: false },
   canvas_read_only: false,
   active_interaction: null,
   conversation_last_seq: 1,
-  entry_mode: 'fix',
   interrupted: false,
   phase: 'plan',
   run_status: 'waiting_input',
   session_id: 'session-1',
-  state: 'fix.await_approval',
   version: 1,
+}
+
+const choiceView: SessionView = {
+  ...sessionView,
+  actions: [{ id: 'approve_plan', label: 'Approve plan', kind: 'primary' }],
+  decision: {
+    title: 'Is this workflow plan ready to apply?',
+    description: 'Choose one option to continue.',
+    default_option_id: 'approve_plan',
+    options: [{ id: 'approve_plan', label: 'Approve plan', is_default: true }],
+    submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+  },
 }
 
 const sessionConversation: ConversationItem[] = [
@@ -226,30 +235,33 @@ describe('DifyBuilderPanel', () => {
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
   })
 
-  it('keeps actions below the conversation and above a text-only composer', async () => {
-    const user = userEvent.setup()
-    renderPanel()
+  it('keeps the blocking interaction below the conversation and replaces the composer', () => {
+    renderPanel(choiceView)
 
-    const action = screen.getByRole('button', { name: 'Approve plan' })
+    const option = screen.getByRole('radio', { name: 'Approve plan' })
+    const submit = screen.getByRole('button', { name: 'common.operation.submit' })
+    const dock = screen.getByRole('region', { name: 'Is this workflow plan ready to apply?' })
     const message = screen.getByText('Fix the workflow')
-    const composer = screen.getByRole('textbox', {
-      name: 'workflow.difyBuilder.messagePlaceholder',
+    const status = screen.getByRole('status', {
+      name: 'workflow.difyBuilder.status.planning · workflow.difyBuilder.status.waitingForInput',
     })
-    expect(message.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(action.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Model selector' })).toBeInTheDocument()
+    expect(message.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(status.compareDocumentPosition(option) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(option).toBeChecked()
+    expect(submit).toHaveAttribute('type', 'submit')
+    expect(submit).toHaveAttribute('form', option.closest('form')?.id)
+    expect(
+      within(dock).queryByRole('button', { name: /cancel|close|skip/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Model selector' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /attach/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /voice|microphone/i })).not.toBeInTheDocument()
-    expect(composer).toBeEnabled()
-    const sendButton = screen.getByRole('button', {
-      name: 'workflow.difyBuilder.messageSend',
-    })
-    expect(sendButton).toHaveAttribute('type', 'submit')
-    expect(sendButton.closest('form')).toBe(composer.closest('form'))
-    await user.type(composer, 'Make the repair smaller')
-    await user.click(sendButton)
-    expect(mocks.sendMessage).toHaveBeenCalledWith('Make the repair smaller')
-    await waitFor(() => expect(composer).toHaveValue(''))
+    expect(
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.messageSend' }),
+    ).not.toBeInTheDocument()
   })
 
   it('clears the composer immediately when Enter submits a pending message', async () => {
@@ -398,8 +410,8 @@ describe('DifyBuilderPanel', () => {
     renderPanel({
       ...sessionView,
       actions: [],
+      phase: 'complete',
       run_status: 'complete',
-      state: 'complete',
     })
 
     const composer = screen.getByRole('textbox', {
@@ -412,13 +424,81 @@ describe('DifyBuilderPanel', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
-  it('submits server actions from the conversation action bar', async () => {
+  it('submits a selected action through the single Submit button', async () => {
     const user = userEvent.setup()
-    renderPanel()
+    renderPanel(choiceView)
 
-    await user.click(screen.getByRole('button', { name: 'Approve plan' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
 
-    expect(mocks.runAction).toHaveBeenCalledWith('approve_plan', {})
+    expect(mocks.runAction).toHaveBeenCalledWith('confirm', { option_id: 'approve_plan' })
+  })
+
+  it('shows a selected action in the conversation before the command finishes', async () => {
+    const user = userEvent.setup()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    mocks.runAction.mockReturnValueOnce(action)
+    renderPanel(choiceView)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+
+    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    expect(
+      await within(log).findByRole('heading', {
+        name: 'Is this workflow plan ready to apply?',
+      }),
+    ).toBeInTheDocument()
+    expect(within(log).getByText('Approve plan')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Is this workflow plan ready to apply?' }),
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      finishAction(true)
+      await action
+    })
+  })
+
+  it('submits free text only for the option that requests it', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      ...choiceView,
+      actions: [
+        { id: 'approve_plan', label: 'Approve fix', kind: 'primary' },
+        { id: 'reject_repair', label: 'Reject', kind: 'destructive' },
+      ],
+      decision: {
+        title: 'How should Builder proceed with this fix?',
+        description: 'Choose one option to continue.',
+        default_option_id: 'approve_plan',
+        submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+        options: [
+          { id: 'approve_plan', label: 'Approve fix', is_default: true },
+          {
+            id: 'reject_repair',
+            label: 'Reject',
+            input: {
+              placeholder: 'Explain the rejection',
+              min_length: 10,
+              max_length: 200,
+              required: true,
+            },
+          },
+        ],
+      },
+    })
+
+    await user.click(screen.getByRole('radio', { name: 'Reject' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Explain the rejection' }),
+      'Too risky to apply',
+    )
+    await user.click(screen.getByRole('radio', { name: 'Approve fix' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+
+    expect(mocks.runAction).toHaveBeenCalledWith('confirm', { option_id: 'approve_plan' })
   })
 
   it('wraps provided test inputs in the backend testdata payload', async () => {
@@ -439,19 +519,18 @@ describe('DifyBuilderPanel', () => {
         actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
         phase: 'test',
-        state: 'build.await_testdata',
       },
       undefined,
       [card],
     )
 
     const input = screen.getByRole('textbox', { name: 'Topic' })
-    const action = screen.getByRole('button', { name: 'Provide test data' })
+    const action = screen.getByRole('button', { name: 'common.operation.submit' })
     const form = input.closest('form')
     expect(form).not.toBeNull()
     expect(action).toHaveAttribute('type', 'submit')
@@ -464,6 +543,61 @@ describe('DifyBuilderPanel', () => {
       mode: 'provide',
       inputs: { topic: 'AI agents' },
     })
+  })
+
+  it('restores a submitted form with its draft when the action is rejected', async () => {
+    const user = userEvent.setup()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    mocks.runAction.mockReturnValueOnce(action)
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        title: 'Provide test data',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: {},
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+        phase: 'test',
+      },
+      undefined,
+      [card],
+    )
+
+    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'AI agents')
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+
+    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    expect(
+      await within(log).findByRole('heading', { name: 'Provide test data' }),
+    ).toBeInTheDocument()
+    expect(within(log).getByText('AI agents')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+
+    await act(async () => {
+      finishAction(false)
+      await action
+    })
+
+    expect(await screen.findByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
+    expect(
+      within(log).queryByRole('heading', { name: 'Provide test data' }),
+    ).not.toBeInTheDocument()
   })
 
   it('preserves an active form draft when the session version advances', async () => {
@@ -483,12 +617,11 @@ describe('DifyBuilderPanel', () => {
       actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
       active_interaction: {
         action_id: 'provide_testdata',
-        card,
+        card_seq: card.seq,
         valid_at_version: 1,
       },
       conversation_last_seq: 0,
       phase: 'test',
-      state: 'build.await_testdata',
     }
     const { store } = renderPanel(view, undefined, [card])
 
@@ -499,18 +632,18 @@ describe('DifyBuilderPanel', () => {
         version: 2,
         active_interaction: {
           action_id: 'provide_testdata',
-          card: { ...card, payload: { ...card.payload } },
+          card_seq: card.seq,
           valid_at_version: 2,
         },
       })
     })
 
     expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
-    expect(screen.getByRole('button', { name: 'Provide test data' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
     act(() =>
       store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: 2 }),
     )
-    await user.click(screen.getByRole('button', { name: 'Provide test data' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
       mode: 'provide',
       inputs: { topic: 'AI agents' },
@@ -535,18 +668,17 @@ describe('DifyBuilderPanel', () => {
         actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
         phase: 'test',
-        state: 'build.await_testdata',
       },
       undefined,
       [card],
     )
     const input = screen.getByRole('textbox', { name: 'Profile' })
-    const action = screen.getByRole('button', { name: 'Provide test data' })
+    const action = screen.getByRole('button', { name: 'common.operation.submit' })
 
     await user.click(input)
     await user.paste('{"name":')
@@ -584,7 +716,7 @@ describe('DifyBuilderPanel', () => {
         ...sessionView,
         active_interaction: {
           action_id: 'submit_requirements',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
@@ -600,11 +732,16 @@ describe('DifyBuilderPanel', () => {
     renderPanel({
       ...sessionView,
       actions: [{ id: 'recheck', label: 'Re-check', kind: 'primary' }],
-      entry_mode: 'fix_checklist',
-      state: 'checklist.await_recheck',
+      decision: {
+        title: 'What should Builder do next?',
+        default_option_id: 'recheck',
+        options: [{ id: 'recheck', label: 'Re-check', is_default: true }],
+        submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+      },
     })
 
-    expect(screen.getByRole('button', { name: 'Re-check' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'Re-check' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
   })
 
   it('allows an interrupted execution to be reset while keeping the composer disabled', async () => {
@@ -615,7 +752,6 @@ describe('DifyBuilderPanel', () => {
       canvas_read_only: true,
       interrupted: true,
       run_status: 'processing',
-      state: 'build.publish',
     })
 
     expect(
@@ -653,16 +789,16 @@ describe('DifyBuilderPanel', () => {
 
   it('offers an accessible retry action after canvas refresh failure', async () => {
     const user = userEvent.setup()
-    const { store } = renderPanel(sessionView, (store) => {
+    const { store } = renderPanel(choiceView, (store) => {
       store.set(difyBuilderCanvasRefreshFailedAtom, true)
     })
 
     const retry = screen.getByRole('button', { name: 'common.operation.retry' })
     expect(retry).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Approve plan' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
     expect(
-      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-    ).toBeDisabled()
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
 
     await user.click(retry)
 

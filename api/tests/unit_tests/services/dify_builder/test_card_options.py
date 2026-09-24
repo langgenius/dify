@@ -1,12 +1,12 @@
-"""A gate's choice as card options plus one fixed button pair.
+"""A gate's choice as card options plus one fixed submit button.
 
 The action bar used to change shape per gate -- four buttons at review, one at
-plan approval. These project the same choice, identically everywhere.
+plan approval. These project the same choice into the fixed interaction dock.
 """
 
 import pytest
 
-from core.dify_builder.contract import CANCEL_ACTION_ID, CONFIRM_ACTION_ID, ActionKind
+from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind
 from core.dify_builder.state import PcState
 from services.dify_builder.service import (
     _actions_for,
@@ -17,7 +17,7 @@ from services.dify_builder.service import (
 
 
 def _decision(state: PcState):
-    return _decision_for(_actions_for(state))
+    return _decision_for(state, _actions_for(state))
 
 
 def test_a_gate_offers_its_actions_as_options_not_buttons():
@@ -29,9 +29,9 @@ def test_a_gate_offers_its_actions_as_options_not_buttons():
         "continue_adjusting",
         "revert",
     ]
-    # Whatever the gate, the buttons are the same two.
-    assert decision.confirm.id == CONFIRM_ACTION_ID
-    assert decision.cancel.id == CANCEL_ACTION_ID
+    assert decision.submit is not None
+    assert decision.submit.id == CONFIRM_ACTION_ID
+    assert decision.submit.label == "Submit"
 
 
 def test_exactly_one_option_carries_the_default_badge():
@@ -66,8 +66,23 @@ def test_a_single_action_gate_still_becomes_an_option():
 
 
 def test_a_gate_offering_nothing_has_no_decision():
-    # Nothing to choose means no card options and no buttons -- not an empty row.
-    assert _decision_for([]) is None
+    # Nothing to choose means no card options and no button -- not an empty dock.
+    assert _decision_for(PcState.BUILD_REVIEW, []) is None
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        PcState.FIX_AWAIT_TESTDATA,
+        PcState.BUILD_GOAL_ANALYSIS,
+        PcState.BUILD_RESOURCE_RECOMMENDATION,
+        PcState.BUILD_AWAIT_TESTDATA,
+        PcState.EDIT_IMPACT_ANALYSIS,
+        PcState.EDIT_AWAIT_TESTDATA,
+    ],
+)
+def test_form_and_resource_gates_do_not_also_project_a_choice(state: PcState):
+    assert _decision(state) is None
 
 
 def test_rejecting_a_repair_asks_for_a_reason():
@@ -90,10 +105,11 @@ def test_an_automatic_action_is_never_offered_as_an_option():
     from core.dify_builder.contract import Action as UiAction
 
     decision = _decision_for(
+        PcState.BUILD_REVIEW,
         [
             UiAction(id="visible", label="Visible", kind=ActionKind.PRIMARY),
             UiAction(id="auto", label="Auto", kind=ActionKind.AUTOMATIC),
-        ]
+        ],
     )
 
     assert [o.id for o in decision.options] == ["visible"]
@@ -103,10 +119,11 @@ def test_only_the_first_primary_is_the_default():
     from core.dify_builder.contract import Action as UiAction
 
     decision = _decision_for(
+        PcState.BUILD_REVIEW,
         [
             UiAction(id="first", label="First", kind=ActionKind.PRIMARY),
             UiAction(id="second", label="Second", kind=ActionKind.PRIMARY),
-        ]
+        ],
     )
 
     # Two recommendations is no recommendation.

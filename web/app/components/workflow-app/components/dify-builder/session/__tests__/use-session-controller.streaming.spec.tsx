@@ -2,9 +2,11 @@ import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { nodeStarted, workflowEvent } from '../../__tests__/workflow-fixtures'
 import {
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderExecutionProgressAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderReasoningAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
@@ -15,6 +17,7 @@ import {
 import {
   agentMessageEvent,
   commandStartedEvent,
+  conversationItemEvent,
   conversationPage,
   createControlledEventStream,
   createSessionView,
@@ -65,7 +68,126 @@ describe('useDifyBuilderSessionController streaming', () => {
     vi.unstubAllGlobals()
   })
 
-  it('coalesces assistant deltas per frame and lets authoritative events replace them', async () => {
+  it('shows a user message immediately and replaces it with the durable SSE item', async () => {
+    const waiting = createSessionView({
+      conversation_last_seq: -1,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const terminal = createSessionView({
+      ...waiting,
+      conversation_last_seq: 0,
+      version: 3,
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('  Show this immediately  ')
+    })
+
+    const localMessage = store.get(difyBuilderLocalUserMessageAtom)
+    expect(localMessage).toMatchObject({
+      afterSequence: -1,
+      localId: expect.any(String),
+      sessionId: waiting.session_id,
+      text: 'Show this immediately',
+      turnId: expect.any(String),
+    })
+    expect(store.get(difyBuilderConversationAtom)).toEqual([])
+
+    const committedMessage: ConversationItem = {
+      seq: 0,
+      at_version: 3,
+      kind: 'user',
+      payload: {
+        text: localMessage!.text,
+        turn_id: localMessage!.turnId!,
+      },
+    }
+    act(() => {
+      stream.push(commandStartedEvent(waiting))
+      stream.push(conversationItemEvent(committedMessage))
+    })
+
+    await waitFor(() => expect(store.get(difyBuilderLocalUserMessageAtom)).toBeNull())
+    expect(store.get(difyBuilderConversationAtom)).toEqual([committedMessage])
+
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await messagePromise).toBe(true)
+    })
+    expect(store.get(difyBuilderConversationAtom)).toEqual([committedMessage])
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
+  })
+
+  it('binds a local new-session prompt to the session before the durable item arrives', async () => {
+    const started = createSessionView({ conversation_last_seq: -1 })
+    const terminal = createSessionView({
+      ...started,
+      conversation_last_seq: 0,
+      run_status: 'waiting_input',
+      version: 2,
+    })
+    const localMessage = {
+      afterSequence: -1,
+      localId: 'local-start-1',
+      sessionId: null,
+      text: 'Build an expense assistant',
+    }
+    const committedMessage: ConversationItem = {
+      seq: 0,
+      at_version: 0,
+      kind: 'user',
+      payload: { text: localMessage.text, turn_id: 'server-turn-1' },
+    }
+    const stream = createControlledEventStream()
+    clientMocks.create.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderLocalUserMessageAtom, localMessage)
+    })
+
+    let startPromise!: Promise<boolean>
+    act(() => {
+      startPromise = result.current.startBuild('app-1', localMessage.text)
+    })
+    await waitFor(() => expect(clientMocks.create).toHaveBeenCalledOnce())
+    expect(store.get(difyBuilderLocalUserMessageAtom)).toEqual(localMessage)
+
+    act(() => {
+      stream.push(commandStartedEvent(started))
+    })
+    await waitFor(() =>
+      expect(store.get(difyBuilderLocalUserMessageAtom)?.sessionId).toBe(started.session_id),
+    )
+
+    act(() => {
+      stream.push(conversationItemEvent(committedMessage))
+    })
+    await waitFor(() => expect(store.get(difyBuilderLocalUserMessageAtom)).toBeNull())
+    expect(store.get(difyBuilderConversationAtom)).toEqual([committedMessage])
+
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await startPromise).toBe(true)
+    })
+  })
+
+  it('coalesces assistant deltas and promotes the streamed text without a history request', async () => {
+    const reply = 'A smaller repair with carefully limited workflow changes.'
+    const replyChunks = [
+      'A smaller repair ',
+      'with carefully ',
+      'limited workflow changes.',
+    ] as const
+    const replyBytes = new TextEncoder().encode(reply).byteLength
     const initialItem = {
       seq: 0,
       at_version: 1,
@@ -75,7 +197,6 @@ describe('useDifyBuilderSessionController streaming', () => {
     const waiting = createSessionView({
       conversation_last_seq: 0,
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     const turn: ConversationItem = {
@@ -84,23 +205,30 @@ describe('useDifyBuilderSessionController streaming', () => {
       kind: 'assistant_turn' as const,
       payload: {
         turn_id: 'turn-1',
-        stage_id: 'fix.await_approval',
         execution: { status: 'completed' },
-        reply_text: 'A smaller repair',
+        reasoning_text: undefined,
+        reply_text: reply,
+        cards: [],
       },
+    }
+    const followingItem = {
+      seq: 2,
+      at_version: 4,
+      kind: 'notice' as const,
+      payload: { text: 'The next durable item' },
     }
     const terminal = createSessionView({
       ...waiting,
       version: 4,
-      conversation_last_seq: 1,
+      conversation_last_seq: 2,
     })
     const stream = createControlledEventStream()
-    clientMocks.conversation.mockResolvedValue(conversationPage([initialItem]))
     clientMocks.message.mockResolvedValue(stream.iterable)
     const { result, store } = renderSessionHook()
     act(() => {
       store.set(difyBuilderSessionViewAtom, waiting)
       store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+      store.set(difyBuilderConversationAtom, [initialItem])
     })
 
     let messagePromise!: Promise<boolean>
@@ -111,46 +239,50 @@ describe('useDifyBuilderSessionController streaming', () => {
     act(() => {
       stream.push(commandStartedEvent({ ...waiting }))
     })
-    await waitFor(() => expect(store.get(difyBuilderSessionViewAtom)).not.toBe(waiting))
+    await waitFor(() =>
+      expect(store.get(difyBuilderActiveCommandAtom)?.command_id).toBe('command-1'),
+    )
+    expect(store.get(difyBuilderSessionViewAtom)).toBe(waiting)
     const committedViewListener = vi.fn()
     const unsubscribe = store.sub(difyBuilderSessionViewAtom, committedViewListener)
 
     act(() => {
-      stream.push(agentMessageEvent('A ', 1))
-      stream.push(agentMessageEvent('smaller ', 2))
-      stream.push(agentMessageEvent('repair', 3))
-      stream.push(agentMessageEvent('smaller ', 2))
+      stream.push(agentMessageEvent(replyChunks[0], 1, { text_bytes: 17 }))
+      stream.push(agentMessageEvent(replyChunks[1], 2, { text_bytes: 32 }))
+      stream.push(agentMessageEvent(replyChunks[2], 3, { text_bytes: replyBytes }))
+      stream.push(agentMessageEvent(replyChunks[1], 2, { text_bytes: 32 }))
     })
     await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce())
 
     expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
     expect(store.get(difyBuilderStreamingTurnAtom)).toBeNull()
     act(flushAnimationFrames)
-    expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe('A smaller repair')
+    expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe(
+      Array.from(reply).slice(0, 24).join(''),
+    )
     expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
     expect(committedViewListener).not.toHaveBeenCalled()
 
     act(() => {
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.await_approval',
-          at_version: 4,
-          version: 4,
-          state: 'fix.await_approval',
-          settled: true,
-          items: [turn],
-        },
-      })
+      stream.push(
+        agentMessageEvent('', 4, {
+          done: true,
+          execution: { status: 'completed' },
+          text_bytes: replyBytes,
+        }),
+      )
+      stream.push(conversationItemEvent(followingItem))
     })
-    await waitFor(() => expect(store.get(difyBuilderSessionViewAtom)?.version).toBe(4))
-    expect(store.get(difyBuilderStreamingTurnAtom)).toBeNull()
-    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, turn])
-    expect(committedViewListener).toHaveBeenCalledOnce()
-    unsubscribe()
+    await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2))
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
+
+    act(flushAnimationFrames)
+    expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe(reply)
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
+    act(flushAnimationFrames)
+    await waitFor(() =>
+      expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, turn, followingItem]),
+    )
 
     await act(async () => {
       stream.push(stateEvent(terminal))
@@ -158,7 +290,11 @@ describe('useDifyBuilderSessionController streaming', () => {
     })
 
     expect(store.get(difyBuilderStreamingTurnAtom)).toBeNull()
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, turn, followingItem])
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
+    expect(committedViewListener).toHaveBeenCalledOnce()
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
+    unsubscribe()
     expect(clientMocks.message).toHaveBeenCalledWith(
       {
         params: { session_id: 'session-1' },
@@ -172,11 +308,211 @@ describe('useDifyBuilderSessionController streaming', () => {
     )
   })
 
+  it('limits incremental reply publications while preserving Unicode characters', async () => {
+    const waiting = createSessionView({
+      conversation_last_seq: -1,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
+    act(() => stream.push(commandStartedEvent(waiting)))
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)).not.toBeNull())
+
+    const reply = '🧠'.repeat(400)
+    const listener = vi.fn()
+    const unsubscribe = store.sub(difyBuilderStreamingTurnAtom, listener)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await act(async () => {
+        stream.push(
+          agentMessageEvent(reply, 1, {
+            text_bytes: new TextEncoder().encode(reply).byteLength,
+          }),
+        )
+      })
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce()
+
+      act(flushAnimationFrames)
+      expect(Array.from(store.get(difyBuilderStreamingTurnAtom)?.replyText ?? '')).toHaveLength(24)
+      expect(listener).toHaveBeenCalledOnce()
+
+      act(() => vi.advanceTimersByTime(79))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce()
+      expect(listener).toHaveBeenCalledOnce()
+
+      act(() => vi.advanceTimersByTime(1))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2)
+      act(flushAnimationFrames)
+      expect(Array.from(store.get(difyBuilderStreamingTurnAtom)?.replyText ?? '')).toHaveLength(144)
+      expect(listener).toHaveBeenCalledTimes(2)
+
+      act(() => result.current.reset())
+      act(() => vi.advanceTimersByTime(80))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2)
+    } finally {
+      unsubscribe()
+      vi.useRealTimers()
+      stream.close()
+    }
+    await act(async () => {
+      expect(await messagePromise).toBe(false)
+    })
+  })
+
+  it('promotes a long streamed reply within two frames after its final marker', async () => {
+    const reply = '🧠'.repeat(4000)
+    const replyBytes = new TextEncoder().encode(reply).byteLength
+    const initialItem: ConversationItem = {
+      seq: 0,
+      at_version: 1,
+      kind: 'user',
+      payload: { text: 'Continue', turn_id: 'turn-user-1' },
+    }
+    const waiting = createSessionView({
+      conversation_last_seq: 0,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const terminal = createSessionView({ ...waiting, conversation_last_seq: 1, version: 4 })
+    const turn: ConversationItem = {
+      seq: 1,
+      at_version: 4,
+      kind: 'assistant_turn',
+      payload: {
+        turn_id: 'turn-1',
+        execution: { status: 'completed' },
+        reply_text: reply,
+        cards: [],
+      },
+    }
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+      store.set(difyBuilderConversationAtom, [initialItem])
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
+    act(() => stream.push(commandStartedEvent(waiting)))
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)).not.toBeNull())
+    act(() => {
+      stream.push(agentMessageEvent(reply, 1, { text_bytes: replyBytes }))
+      stream.push(
+        agentMessageEvent('', 2, {
+          done: true,
+          execution: { status: 'completed' },
+          text_bytes: replyBytes,
+        }),
+      )
+    })
+    await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce())
+
+    act(flushAnimationFrames)
+    expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe(reply)
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
+    act(flushAnimationFrames)
+    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, turn]))
+
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await messagePromise).toBe(true)
+    })
+  })
+
+  it('recovers the persisted reply when the final byte count exposes a missing delta', async () => {
+    const initialItem = {
+      seq: 0,
+      at_version: 1,
+      kind: 'notice' as const,
+      payload: { text: 'Initial state' },
+    }
+    const persistedReply: ConversationItem = {
+      seq: 1,
+      at_version: 4,
+      kind: 'assistant_turn',
+      payload: {
+        turn_id: 'turn-1',
+        stage_id: 'fix.await_approval',
+        execution: { status: 'completed' },
+        reply_text: 'Partial reply',
+        cards: [],
+      },
+    }
+    const waiting = createSessionView({
+      conversation_last_seq: 0,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const terminal = createSessionView({
+      ...waiting,
+      conversation_last_seq: 1,
+      version: 4,
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    clientMocks.conversation.mockResolvedValue(conversationPage([persistedReply]))
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+      store.set(difyBuilderConversationAtom, [initialItem])
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
+    act(() => {
+      stream.push(commandStartedEvent(waiting))
+      stream.push(agentMessageEvent('Partial', 1, { text_bytes: 7 }))
+      stream.push(
+        agentMessageEvent('', 2, {
+          done: true,
+          execution: { status: 'completed' },
+          text_bytes: 13,
+        }),
+      )
+    })
+
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await messagePromise).toBe(true)
+    })
+
+    expect(store.get(difyBuilderStreamingTurnAtom)).toBeNull()
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, persistedReply])
+    expect(clientMocks.conversation).toHaveBeenCalledWith(
+      {
+        params: { session_id: 'session-1' },
+        query: { after_seq: 0, limit: 100 },
+      },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+  })
+
   it('marks a failed user turn as retryable and reuses its client turn id', async () => {
     const waiting = createSessionView({
       conversation_last_seq: -1,
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     const reconciled = createSessionView({
@@ -208,30 +544,24 @@ describe('useDifyBuilderSessionController streaming', () => {
       kind: 'user',
       payload: { text: 'Retry me', turn_id: clientTurnId },
     }
+    clientMocks.conversation.mockResolvedValue(conversationPage([userItem]))
 
     act(() => {
       stream.push(commandStartedEvent(waiting))
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.await_approval',
-          at_version: 3,
-          version: 3,
-          state: 'fix.await_approval',
-          settled: false,
-          items: [userItem],
-        },
-      })
     })
-    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toEqual([userItem]))
 
     await act(async () => {
-      stream.push({ event: 'error', data: { kind: 'error', error: 'message failed' } })
+      stream.push({
+        event: 'error',
+        data: {
+          message: 'message failed',
+          session_id: 'session-1',
+          command_id: 'command-1',
+        },
+      })
       expect(await messagePromise).toBe(false)
     })
+    expect(store.get(difyBuilderConversationAtom)).toEqual([userItem])
     expect(store.get(difyBuilderRetryableMessageAtom)).toEqual({
       sessionId: 'session-1',
       text: 'Retry me',
@@ -264,7 +594,7 @@ describe('useDifyBuilderSessionController streaming', () => {
     expect(store.get(difyBuilderRetryableMessageAtom)).toBeNull()
   })
 
-  it('repairs a dropped commit through conversation JSON before merging a later commit', async () => {
+  it('repairs conversation gaps from JSON when the command finishes', async () => {
     const initialItem = {
       seq: 0,
       at_version: 1,
@@ -292,7 +622,6 @@ describe('useDifyBuilderSessionController streaming', () => {
     const waiting = createSessionView({
       conversation_last_seq: 0,
       run_status: 'waiting_input',
-      state: 'fix.await_approval',
     })
     const terminal = createSessionView({
       ...waiting,
@@ -318,25 +647,14 @@ describe('useDifyBuilderSessionController streaming', () => {
     await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
     act(() => {
       stream.push(commandStartedEvent(waiting))
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.await_approval',
-          at_version: 3,
-          version: 3,
-          state: 'fix.await_approval',
-          settled: true,
-          items: [receivedItem],
-        },
-      })
     })
+    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0])
 
-    await waitFor(() =>
-      expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1, 2]),
-    )
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await messagePromise).toBe(true)
+    })
+    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1, 2])
     expect(clientMocks.conversation).toHaveBeenCalledWith(
       {
         params: { session_id: 'session-1' },
@@ -344,18 +662,12 @@ describe('useDifyBuilderSessionController streaming', () => {
       },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
-
-    await act(async () => {
-      stream.push(stateEvent(terminal))
-      expect(await messagePromise).toBe(true)
-    })
   })
 
   it('clears stale streaming state when switching sessions', async () => {
     const restored = createSessionView({
       session_id: 'session-restored',
       run_status: 'waiting_input',
-      state: 'fix.await_approval',
     })
     clientMocks.get.mockResolvedValue(restored)
     const { result, store } = renderSessionHook()
@@ -363,7 +675,6 @@ describe('useDifyBuilderSessionController streaming', () => {
       store.set(difyBuilderExecutionProgressAtom, {
         sessionId: 'session-old',
         operationId: 'operation-old',
-        stageId: 'fix.diagnose',
         atVersion: 2,
         revision: 1,
         execution: { status: 'running', activities: [] },
@@ -371,19 +682,19 @@ describe('useDifyBuilderSessionController streaming', () => {
       store.set(difyBuilderReasoningAtom, {
         sessionId: 'session-old',
         operationId: 'operation-old',
-        stageId: 'fix.diagnose',
         atVersion: 2,
         revision: 1,
         text: 'stale reasoning',
       })
       store.set(difyBuilderStreamingTurnAtom, {
         sessionId: 'session-old',
+        commandId: 'command-old',
         operationId: 'operation-old',
         turnId: 'turn-old',
         sequence: 1,
         atVersion: 2,
         revision: 1,
-        stageId: 'fix.diagnose',
+        textBytes: 5,
         replyText: 'stale',
       })
     })
@@ -432,11 +743,10 @@ describe('useDifyBuilderSessionController streaming', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
-  it('projects authoritative progress snapshots without merging raw node events', async () => {
+  it('reduces ordered progress deltas without merging raw node events', async () => {
     const started = createSessionView()
     const terminal = createSessionView({
       version: 2,
-      state: 'fix.await_decision',
       run_status: 'waiting_input',
     })
     const stream = createControlledEventStream()
@@ -469,7 +779,6 @@ describe('useDifyBuilderSessionController streaming', () => {
           },
           {
             operation_id: 'other-operation',
-            stage_id: 'fix.verify',
             revision: 1,
           },
         ),
@@ -477,20 +786,19 @@ describe('useDifyBuilderSessionController streaming', () => {
       stream.push(
         progressEvent({
           revision: 2,
-          execution: {
-            status: 'running',
-            activities: [
-              {
-                id: 'fix-evaluate-validation',
-                label: 'Evaluate validation results',
-                state: 'active',
-              },
-            ],
+          status: 'running',
+          activity: {
+            id: 'fix-run-validation',
+            label: 'Run the repaired workflow',
+            state: 'done',
           },
         }),
       )
     })
     await waitFor(() => expect(store.get(difyBuilderExecutionProgressAtom)?.revision).toBe(2))
+    expect(store.get(difyBuilderExecutionProgressAtom)?.execution.activities).toEqual([
+      expect.objectContaining({ id: 'fix-run-validation', state: 'done' }),
+    ])
     expect(store.get(difyBuilderExecutionProgressAtom)?.execution.activities).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'node:stale-node' })]),
     )
@@ -504,7 +812,6 @@ describe('useDifyBuilderSessionController streaming', () => {
             data: { ...nodeStarted().data, node_id: 'llm-node', title: 'Generate answer' },
           },
           {
-            stage_id: 'fix.verify',
             revision: 2,
           },
         ),
@@ -519,22 +826,11 @@ describe('useDifyBuilderSessionController streaming', () => {
       stream.push(
         progressEvent({
           revision: 3,
-          execution: {
-            status: 'running',
-            activities: [
-              {
-                id: 'fix-evaluate-validation',
-                label: 'Evaluate validation results',
-                state: 'active',
-              },
-              {
-                id: 'node:llm-node',
-                label: 'Generate answer',
-                state: 'active',
-                kind: 'node',
-                parent_id: 'fix-evaluate-validation',
-              },
-            ],
+          status: 'running',
+          activity: {
+            id: 'fix-evaluate-validation',
+            label: 'Evaluate validation results',
+            state: 'active',
           },
         }),
       )
@@ -543,12 +839,30 @@ describe('useDifyBuilderSessionController streaming', () => {
       expect(
         store
           .get(difyBuilderExecutionProgressAtom)
-          ?.execution.activities?.find((activity) => activity.id === 'node:llm-node')?.state,
+          ?.execution.activities?.find((activity) => activity.id === 'fix-evaluate-validation')
+          ?.state,
       ).toBe('active'),
     )
 
+    act(() => {
+      stream.push(
+        progressEvent({
+          revision: 4,
+          status: 'running',
+          activity: {
+            id: 'node:llm-node',
+            label: 'Generate answer',
+            state: 'active',
+            parent_id: 'fix-evaluate-validation',
+          },
+        }),
+      )
+    })
+    await waitFor(() => expect(store.get(difyBuilderExecutionProgressAtom)?.revision).toBe(4))
+
     expect(store.get(difyBuilderExecutionProgressAtom)?.execution.activities).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ id: 'fix-run-validation', state: 'done' }),
         expect.objectContaining({ id: 'fix-evaluate-validation' }),
         expect.objectContaining({ id: 'node:llm-node' }),
       ]),
@@ -557,42 +871,19 @@ describe('useDifyBuilderSessionController streaming', () => {
     act(() => {
       stream.push(progressEvent())
     })
-    expect(store.get(difyBuilderExecutionProgressAtom)?.revision).toBe(3)
-
-    act(() => {
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.verify',
-          at_version: 2,
-          version: 2,
-          state: 'fix.await_decision',
-          settled: true,
-          items: [],
-        },
-      })
-    })
-    await waitFor(() => expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull())
-
-    act(() => {
-      stream.push(progressEvent())
-    })
-    await waitFor(() => expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull())
+    expect(store.get(difyBuilderExecutionProgressAtom)?.revision).toBe(4)
 
     await act(async () => {
       stream.push(stateEvent(terminal))
       expect(await startPromise).toBe(true)
     })
+    expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull()
   })
 
-  it('buffers reasoning separately and clears transient streams on commit', async () => {
+  it('buffers reasoning separately and clears transient streams on command completion', async () => {
     const started = createSessionView()
     const terminal = createSessionView({
       version: 2,
-      state: 'fix.await_decision',
       run_status: 'waiting_input',
     })
     const stream = createControlledEventStream()
@@ -623,34 +914,22 @@ describe('useDifyBuilderSessionController streaming', () => {
     act(flushAnimationFrames)
     expect(store.get(difyBuilderReasoningAtom)?.text).toBe('Inspecting the failure.')
 
-    act(() => {
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.verify',
-          at_version: 2,
-          version: 2,
-          state: 'fix.await_decision',
-          settled: true,
-          items: [],
-        },
-      })
-    })
-    await waitFor(() => expect(store.get(difyBuilderReasoningAtom)).toBeNull())
-    expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull()
-
     await act(async () => {
       stream.push(stateEvent(terminal))
       expect(await startPromise).toBe(true)
     })
+    expect(store.get(difyBuilderReasoningAtom)).toBeNull()
+    expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull()
   })
 
   it('clears execution progress and reasoning when the server terminates with an error', async () => {
     const stream = createControlledEventStream()
     clientMocks.create.mockResolvedValue(stream.iterable)
+    clientMocks.get.mockResolvedValue(
+      createSessionView({
+        run_status: 'waiting_input',
+      }),
+    )
     const { result, store } = renderSessionHook()
 
     let startPromise!: Promise<boolean>
@@ -670,7 +949,7 @@ describe('useDifyBuilderSessionController streaming', () => {
     expect(store.get(difyBuilderReasoningAtom)).not.toBeNull()
 
     await act(async () => {
-      stream.push({ event: 'error', data: { kind: 'error', error: 'step failed' } })
+      stream.push({ event: 'error', data: { message: 'step failed' } })
       expect(await startPromise).toBe(false)
     })
 
@@ -679,11 +958,10 @@ describe('useDifyBuilderSessionController streaming', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('step failed')
   })
 
-  it('recovers a transport failure when GET confirms the committed version', async () => {
+  it('recovers a transport failure when GET confirms the command id and version', async () => {
     const initial = createSessionView()
     const reconciled = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_confirmation',
     })
     const stream = createControlledEventStream()
@@ -699,20 +977,6 @@ describe('useDifyBuilderSessionController streaming', () => {
 
     act(() => {
       stream.push(commandStartedEvent(initial))
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.diagnose',
-          at_version: 2,
-          version: 2,
-          state: 'fix.await_approval',
-          settled: true,
-          items: [],
-        },
-      })
       stream.error(new Error('connection lost'))
     })
 
@@ -725,36 +989,78 @@ describe('useDifyBuilderSessionController streaming', () => {
   })
 
   it('keeps a durable failed state but reports the command as unsuccessful', async () => {
+    const contextItem = {
+      seq: 0,
+      at_version: 1,
+      kind: 'run_context' as const,
+      payload: {
+        run_id: 'run-1',
+        error_code: 'failed',
+        title: 'Failed run',
+        message: 'Run failed',
+      },
+    }
     const errorItem = {
       seq: 1,
       at_version: 2,
-      kind: 'error' as const,
+      kind: 'assistant_turn' as const,
       payload: {
-        title: 'Builder step failed',
-        body: 'Restart from the current draft to continue.',
+        turn_id: 'command-1',
+        execution: { status: 'error' as const },
+        reasoning_text: undefined,
+        reply_text:
+          'The operation could not be completed. Restart from the current draft to continue.',
+        cards: [],
       },
     }
     const failed = createSessionView({
       version: 2,
-      state: 'failed',
       run_status: 'failed',
       actions: [{ id: 'restart', label: 'Restart from current draft', kind: 'primary' }],
       conversation_last_seq: 1,
     })
-    clientMocks.conversation
-      .mockResolvedValueOnce(conversationPage())
-      .mockResolvedValueOnce(conversationPage([errorItem]))
     clientMocks.create.mockResolvedValue(
-      streamOf(commandStartedEvent(createSessionView()), stateEvent(failed)),
+      streamOf(
+        commandStartedEvent(createSessionView()),
+        conversationItemEvent(contextItem),
+        agentMessageEvent(errorItem.payload.reply_text, 1, {
+          at_version: 2,
+          seq: 1,
+          text_bytes: new TextEncoder().encode(errorItem.payload.reply_text).byteLength,
+          turn_id: 'command-1',
+        }),
+        agentMessageEvent('', 2, {
+          at_version: 2,
+          done: true,
+          execution: { status: 'error' },
+          seq: 1,
+          text_bytes: new TextEncoder().encode(errorItem.payload.reply_text).byteLength,
+          turn_id: 'command-1',
+        }),
+        stateEvent(failed),
+      ),
     )
     const { result, store } = renderSessionHook()
 
+    let startPromise!: Promise<boolean>
+    act(() => {
+      startPromise = result.current.startFix('app-1', 'run-1')
+    })
+    await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce())
+    act(() => {
+      flushAnimationFrames()
+      flushAnimationFrames()
+      flushAnimationFrames()
+      flushAnimationFrames()
+      flushAnimationFrames()
+    })
     await act(async () => {
-      expect(await result.current.startFix('app-1', 'run-1')).toBe(false)
+      expect(await startPromise).toBe(false)
     })
 
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(failed)
-    expect(store.get(difyBuilderConversationAtom)).toEqual([errorItem])
+    expect(store.get(difyBuilderConversationAtom)).toEqual([contextItem, errorItem])
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1')
     expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')

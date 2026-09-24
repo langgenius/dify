@@ -18,10 +18,23 @@ from extensions.redis_names import serialize_redis_name
 
 _KEY_FMT = "dify_builder:advance:{session_id}"
 
+# The dispatch lease covers queue delay. Once a worker starts, its lease must
+# outlive the task's hard limit so it cannot expire while that worker can still
+# mutate the session or draft.
+_HARD_LIMIT_GRACE_SECONDS = 30
+_ACTIVE_LEASE_GRACE_SECONDS = 60
+
 # Atomic compare-del: only delete the lock if the caller still holds the
 # token it was given on acquire. Prevents a slow/expired holder from
 # deleting a lock that another process has since acquired.
 _RELEASE_LUA = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
+_ACTIVATE_LUA = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('pexpire', KEYS[1], ARGV[2])
+else
+    return 0
+end
+"""
 
 
 def _key(session_id: str) -> str:
@@ -30,6 +43,11 @@ def _key(session_id: str) -> str:
 
 def _max_advance_ms() -> int:
     return dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS * 1000
+
+
+def active_advance_time_limit() -> int:
+    """Hard task limit; shorter than the worker's active lock lease."""
+    return dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HARD_LIMIT_GRACE_SECONDS
 
 
 def acquire(session_id: str) -> str | None:
@@ -41,6 +59,17 @@ def acquire(session_id: str) -> str | None:
     token = str(uuid4())
     ok = redis_client.set(_key(session_id), token, nx=True, px=_max_advance_ms())
     return token if ok else None
+
+
+def activate(session_id: str, token: str) -> bool:
+    """Claim an enqueued command at worker start and extend its lease.
+
+    A command that sat in the queue past its dispatch lease must not run after
+    another command acquired the same session. The compare-and-extend is atomic
+    so an expired worker cannot extend a newer worker's token.
+    """
+    active_ms = (dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _ACTIVE_LEASE_GRACE_SECONDS) * 1000
+    return bool(redis_client.eval(_ACTIVATE_LUA, 1, serialize_redis_name(_key(session_id)), token, active_ms))
 
 
 def release(session_id: str, token: str) -> None:
