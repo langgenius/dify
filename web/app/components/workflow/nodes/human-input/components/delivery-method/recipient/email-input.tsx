@@ -23,9 +23,10 @@ type Props = Readonly<{
   onSelect: (value: string) => void
   onAdd: (email: string) => void
   disabled?: boolean
+  inputLabel?: string
 }>
 
-const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false }: Props) => {
+const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false, inputLabel }: Props) => {
   const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
@@ -143,6 +144,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
           <Popover open={open} onOpenChange={setOpen}>
             <input
               ref={inputRef}
+              aria-label={inputLabel}
               className="h-6 min-w-41.5 appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
               placeholder={placeholder}
               onFocus={() => setIsFocus(true)}

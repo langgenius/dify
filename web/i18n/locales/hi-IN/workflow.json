@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "आउटपुट वेरिएबल",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "बाइनरी फ़ाइल चर",
+  "nodes.humanInput.errorMsg.approversRequired": "कम से कम एक अनुमोदक चुनें",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "सीमित अनुमोदन में Web App वितरण का उपयोग नहीं किया जा सकता",
   "nodes.humanInput.errorMsg.duplicateActionId": "उपयोगकर्ता कार्रवाइयों में डुप्लिकेट कार्रवाई आईडी पाई गई",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "कृपया ईमेल डिलीवरी विधि कॉन्फ़िगरेशन पूरा करें",
   "nodes.humanInput.errorMsg.emptyActionId": "कार्रवाई आईडी खाली नहीं हो सकती",

@@ -233,6 +233,7 @@ class HumanInputFormRecord:
     # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
     # defaulted so existing record constructions stay source-compatible.
     conversation_id: str | None = None
+    recipient_payload: Mapping[str, Any] | None = None
 
     @property
     def submitted(self) -> bool:
@@ -267,6 +268,7 @@ class HumanInputFormRecord:
             recipient_id=recipient_model.id if recipient_model else None,
             recipient_type=recipient_model.recipient_type if recipient_model else None,
             access_token=recipient_model.access_token if recipient_model else None,
+            recipient_payload=json.loads(recipient_model.recipient_payload) if recipient_model else None,
         )
 
 
@@ -446,6 +448,11 @@ class HumanInputFormRepositoryImpl:
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         form_config: HumanInputNodeData = params.form_config
+        if form_config.approvers is not None and any(
+            isinstance(method, InteractiveSurfaceDeliveryMethod) and method.enabled
+            for method in params.delivery_methods
+        ):
+            raise ValueError("restricted human input forms cannot use public Web App delivery")
         app_id = self._app_id
         if not app_id:
             raise ValueError("app_id is required to create a human input form")
@@ -468,6 +475,7 @@ class HumanInputFormRepositoryImpl:
                 form_content=form_config.form_content,
                 inputs=form_config.inputs,
                 user_actions=form_config.user_actions,
+                approvers=form_config.approvers,
                 rendered_content=params.rendered_content,
                 expiration_time=node_expiration,
                 default_values=dict(params.resolved_default_values),

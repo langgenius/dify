@@ -120,6 +120,8 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 
         _ensure_form_belongs_to_app(form, ctx.app)
         service.ensure_form_active(form)
+        submission_user_id = ctx.account.id if ctx.subject.caller_role is CreatorUserRole.ACCOUNT else None
+        service.ensure_approver_allowed(form, submission_user_id=submission_user_id)
         return _jsonify_form_definition(form)
 
 

@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Yalnızca seçilen üyeler, e-posta alıcıları veya çalışma alanı rolleri gönderebilir. Herkese açık Web App iletimi kullanılamaz.",
+  "nodes.humanInput.approvers.role.admin": "Yönetici",
+  "nodes.humanInput.approvers.role.dataset_operator": "Veri kümesi operatörü",
+  "nodes.humanInput.approvers.role.editor": "Düzenleyici",
+  "nodes.humanInput.approvers.role.normal": "Üye",
+  "nodes.humanInput.approvers.role.owner": "Sahip",
+  "nodes.humanInput.approvers.roles": "Çalışma alanı rolleri",
+  "nodes.humanInput.approvers.title": "Onaylayanlar",
   "nodes.humanInput.deliveryMethod.added": "Eklendi",
   "nodes.humanInput.deliveryMethod.contactTip1": "İhtiyacınız olan bir teslimat yöntemi mi eksik?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Bize <email>support@dify.ai</email> adresinden bildirin.",

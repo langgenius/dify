@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "输出变量",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Binary 文件变量",
+  "nodes.humanInput.errorMsg.approversRequired": "请至少选择一位审批人",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "受限审批不能使用 Web App 投递",
   "nodes.humanInput.errorMsg.duplicateActionId": "用户操作中存在重复的操作 ID",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "请完成 Email 提交方式配置",
   "nodes.humanInput.errorMsg.emptyActionId": "操作 ID 不能为空",

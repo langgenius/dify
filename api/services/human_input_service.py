@@ -34,6 +34,7 @@ from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
+from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
@@ -84,6 +85,10 @@ class Form:
         return self._record.recipient_type
 
     @property
+    def recipient_payload(self) -> Mapping[str, Any] | None:
+        return self._record.recipient_payload
+
+    @property
     def status(self) -> HumanInputFormStatus:
         return self._record.status
 
@@ -126,6 +131,12 @@ class InvalidFormDataError(BaseHTTPException, HumanInputError):
 
     def __init__(self, description: str):
         BaseHTTPException.__init__(self, description=description)
+
+
+class FormApproverNotAllowedError(BaseHTTPException, HumanInputError):
+    error_code = "human_input_approver_not_allowed"
+    description = "You are not an approver for this form"
+    code = 403
 
 
 class WebAppDeliveryNotEnabledError(HumanInputError, BaseException):
@@ -206,6 +217,7 @@ class HumanInputService:
             raise WebAppDeliveryNotEnabledError()
 
         self.ensure_form_active(form)
+        self.ensure_approver_allowed(form, submission_user_id=submission_user_id)
         normalized_form_data = self._validate_submission(
             form=form,
             selected_action_id=selected_action_id,
@@ -229,6 +241,45 @@ class HumanInputService:
             self.enqueue_resume(result.workflow_run_id)
         elif result.conversation_id is not None:
             self.enqueue_agent_app_resume(conversation_id=result.conversation_id, form_id=result.form_id)
+
+    def ensure_approver_allowed(self, form: Form, *, submission_user_id: str | None) -> None:
+        """Authorize restricted forms using a workspace account or a bound email token."""
+        approvers = form.get_definition().approvers
+        if approvers is None:
+            return
+
+        recipient_type = form.recipient_type
+        recipient_payload = form.recipient_payload or {}
+        account_id = submission_user_id
+        if account_id is None and recipient_type == RecipientType.EMAIL_MEMBER:
+            bound_account_id = recipient_payload.get("user_id")
+            if isinstance(bound_account_id, str):
+                account_id = bound_account_id
+
+        if account_id:
+            with self._session_factory() as session:
+                member = session.execute(
+                    select(TenantAccountJoin.role, Account.email)
+                    .join(Account, Account.id == TenantAccountJoin.account_id)
+                    .where(
+                        TenantAccountJoin.tenant_id == form.tenant_id,
+                        TenantAccountJoin.account_id == account_id,
+                        Account.status == AccountStatus.ACTIVE,
+                    )
+                ).one_or_none()
+            if member is not None:
+                role, email = member
+                if account_id in approvers.member_ids or role in approvers.roles:
+                    return
+                if email and email.casefold() in approvers.emails:
+                    return
+
+        if recipient_type == RecipientType.EMAIL_EXTERNAL and submission_user_id is None:
+            email = recipient_payload.get("email")
+            if isinstance(email, str) and email.casefold() in approvers.emails:
+                return
+
+        raise FormApproverNotAllowedError()
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:

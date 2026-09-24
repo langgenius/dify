@@ -77,7 +77,7 @@ def _workflow_run(
 
 def test_jsonify_form_definition() -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": []})
+    definition = SimpleNamespace(model_dump=lambda **_kwargs: {"fields": []})
     form = SimpleNamespace(get_definition=lambda: definition, expiration_time=expiration)
 
     response = _jsonify_form_definition(form)
@@ -96,7 +96,7 @@ def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": ["a"]})
+    definition = SimpleNamespace(model_dump=lambda **_kwargs: {"fields": ["a"]})
     form = SimpleNamespace(tenant_id="tenant-1", get_definition=lambda: definition, expiration_time=expiration)
 
     class _ServiceStub:
@@ -106,13 +106,16 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         def get_form_definition_by_token_for_console(self, _token):
             return form
 
+        def ensure_approver_allowed(self, _form, *, submission_user_id):
+            assert submission_user_id == "user-1"
+
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
 
     api = ConsoleHumanInputFormApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
-        response = handler(api, "tenant-1", form_token="token")
+        response = handler(api, "tenant-1", SimpleNamespace(id="user-1"), form_token="token")
 
     payload = json.loads(response.get_data(as_text=True))
     assert payload["fields"] == ["a"]
@@ -133,7 +136,7 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, "tenant-1", form_token="token")
+            handler(api, "tenant-1", SimpleNamespace(id="user-1"), form_token="token")
 
 
 def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "variabilă de ieșire",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Variabilă de fișier binar",
+  "nodes.humanInput.errorMsg.approversRequired": "Selectați cel puțin un aprobator",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Aprobarea restricționată nu poate folosi livrarea Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "ID acțiune duplicat găsit în acțiunile utilizatorului",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Vă rugăm să finalizați configurarea metodei de livrare prin e-mail",
   "nodes.humanInput.errorMsg.emptyActionId": "ID-ul acțiunii nu poate fi gol",

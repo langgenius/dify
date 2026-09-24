@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "선택한 구성원, 이메일 수신자 또는 작업 공간 역할만 제출할 수 있습니다. 공개 Web App 전달은 사용할 수 없습니다.",
+  "nodes.humanInput.approvers.role.admin": "관리자",
+  "nodes.humanInput.approvers.role.dataset_operator": "데이터셋 운영자",
+  "nodes.humanInput.approvers.role.editor": "편집자",
+  "nodes.humanInput.approvers.role.normal": "구성원",
+  "nodes.humanInput.approvers.role.owner": "소유자",
+  "nodes.humanInput.approvers.roles": "작업 공간 역할",
+  "nodes.humanInput.approvers.title": "승인자",
   "nodes.humanInput.deliveryMethod.added": "추가됨",
   "nodes.humanInput.deliveryMethod.contactTip1": "필요한 전달 방법이 없으신가요?",
   "nodes.humanInput.deliveryMethod.contactTip2": "<email>support@dify.ai</email>로 알려주세요.",

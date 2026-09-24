@@ -23,6 +23,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import Approvers from './components/approvers'
 import DeliveryMethod from './components/delivery-method'
 import FormContent from './components/form-content'
 import FormContentPreview from './components/form-content-preview'
@@ -50,6 +51,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
     readOnly,
     inputs,
     handleDeliveryMethodChange,
+    handleApproversChange,
     handleUserActionAdd,
     handleUserActionChange,
     handleUserActionDelete,
@@ -103,6 +105,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         availableNodes={availableNodesWithParent}
         onChange={handleDeliveryMethodChange}
         readonly={readOnly}
+      />
+      <Approvers
+        value={inputs.approvers}
+        onChange={handleApproversChange}
+        readOnly={readOnly}
       />
       <div className="px-4 py-2">
         <Separator className="my-0 bg-divider-subtle" />

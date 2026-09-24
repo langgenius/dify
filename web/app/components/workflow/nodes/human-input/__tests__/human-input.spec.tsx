@@ -457,6 +457,33 @@ describe('DSL Import with Human Input Node', () => {
       expect(result.isValid).toBe(false)
     })
 
+    it('requires an approver when approval is restricted', () => {
+      const t = withSelectorKey((key: string) => key, 'workflow')
+      const payload = {
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.Email, enabled: false },
+          { id: 'dm-2', type: DeliveryMethodType.WebApp, enabled: true }],
+        user_actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
+        approvers: { member_ids: [], emails: [], roles: [] },
+      } as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(payload, t).errorMessage)
+        .toBe('nodes.humanInput.errorMsg.approversRequired')
+    })
+
+    it('rejects public Web App delivery for restricted approval', () => {
+      const t = withSelectorKey((key: string) => key, 'workflow')
+      const payload = {
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
+        user_actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
+        approvers: { member_ids: ['member-id'], emails: [], roles: [] },
+      } as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(payload, t).errorMessage)
+        .toBe('nodes.humanInput.errorMsg.approversWebAppUnsupported')
+    })
+
     it('should validate that user action IDs are not duplicated', () => {
       const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {

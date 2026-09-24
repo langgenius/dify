@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "Çıxış dəyişəni",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "İkilik fayl dəyişəni",
+  "nodes.humanInput.errorMsg.approversRequired": "Ən azı bir təsdiqləyən seçin",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Məhdud təsdiq Web App çatdırılmasından istifadə edə bilməz",
   "nodes.humanInput.errorMsg.duplicateActionId": "İstifadəçi əməliyyatlarında təkrarlanan əməliyyat ID-si tapıldı",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "E-poçt çatdırılma üsulunun konfiqurasiyasını tamamlayın",
   "nodes.humanInput.errorMsg.emptyActionId": "Əməliyyat ID-si boş ola bilməz",

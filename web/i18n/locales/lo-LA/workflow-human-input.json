@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "ມີພຽງສະມາຊິກ ຜູ້ຮັບອີເມວ ຫຼືບົດບາດພື້ນທີ່ເຮັດວຽກທີ່ເລືອກເທົ່ານັ້ນທີ່ສົ່ງໄດ້. ບໍ່ຮອງຮັບ Web App ສາທາລະນະ.",
+  "nodes.humanInput.approvers.role.admin": "ຜູ້ດູແລ",
+  "nodes.humanInput.approvers.role.dataset_operator": "ຜູ້ດູແລຊຸດຂໍ້ມູນ",
+  "nodes.humanInput.approvers.role.editor": "ຜູ້ແກ້ໄຂ",
+  "nodes.humanInput.approvers.role.normal": "ສະມາຊິກ",
+  "nodes.humanInput.approvers.role.owner": "ເຈົ້າຂອງ",
+  "nodes.humanInput.approvers.roles": "ບົດບາດພື້ນທີ່ເຮັດວຽກ",
+  "nodes.humanInput.approvers.title": "ຜູ້ອະນຸມັດ",
   "nodes.humanInput.deliveryMethod.added": "ເພີ່ມແລ້ວ",
   "nodes.humanInput.deliveryMethod.contactTip1": "ຂາດວິທີການສົ່ງທີ່ທ່ານຕ້ອງການບໍ?",
   "nodes.humanInput.deliveryMethod.contactTip2": "ບອກພວກເຮົາໄດ້ທີ່ <email>support@dify.ai</email>.",

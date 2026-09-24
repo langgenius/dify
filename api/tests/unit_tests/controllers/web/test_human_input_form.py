@@ -193,6 +193,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, dat
         },
     }
     service_mock.get_form_by_token.assert_called_once_with("token-1")
+    service_mock.ensure_approver_allowed.assert_called_once_with(form, submission_user_id=None)
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
