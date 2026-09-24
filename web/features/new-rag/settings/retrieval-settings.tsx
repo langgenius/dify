@@ -54,7 +54,7 @@ const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 export function RetrievalSettingsSection() {
   const { t } = useTranslation(['knowledgeSpace'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
@@ -94,8 +94,10 @@ export function RetrievalSettingsSection() {
   }
   const readinessFieldLabel = (field: (typeof settings.issues)[number]['field']) => {
     if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])
-    if (field === 'reasoning') return tCommon(($) => $['modelProvider.systemReasoningModel.key'])
-    if (field === 'rerank') return tCommon(($) => $['modelProvider.rerankModel.key'])
+    if (field === 'reasoning')
+      return tCommon(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' })
+    if (field === 'rerank')
+      return tCommon(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })
     return t(($) => $['overview.attention.modelReadiness.bindingMissing'])
   }
 
@@ -115,7 +117,7 @@ export function RetrievalSettingsSection() {
             title={
               settings.configuration_state === 'validation-failed'
                 ? tCommon(($) => $['api.actionFailed'])
-                : tCommon(($) => $['modelProvider.toBeConfigured'])
+                : tCommon(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })
             }
             tone={settings.configuration_state === 'validation-failed' ? 'destructive' : 'warning'}
           />
@@ -214,7 +216,7 @@ export function RetrievalSettingsSection() {
               id={RERANK_MODEL_LABEL_ID}
               className="flex h-7 items-center system-sm-medium text-text-secondary"
             >
-              {tCommon(($) => $['modelProvider.rerankModel.key'])}
+              {tCommon(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
               <span aria-hidden className="ml-0.5 text-text-destructive">
                 *
               </span>

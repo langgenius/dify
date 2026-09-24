@@ -26,7 +26,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
   onClose,
   onRestore,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
 
   return (
     <AlertDialog
@@ -40,11 +40,11 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(
               versionInfo,
-              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
+            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>

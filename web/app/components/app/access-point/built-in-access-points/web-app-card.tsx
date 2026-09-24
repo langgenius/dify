@@ -79,7 +79,14 @@ export function WebAppAccessPointCard({
   showAccessControl,
   workflow,
 }: WebAppAccessPointCardProps) {
-  const { t } = useTranslation(['agentV2', 'app', 'appOverview', 'common', 'deployments'])
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
@@ -237,7 +244,7 @@ export function WebAppAccessPointCard({
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
+              {t(($) => $['settings.settings'], { ns: 'navigation' })}
             </Button>
           </>
         }

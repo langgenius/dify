@@ -81,7 +81,7 @@ export function KnowledgeSpaceShell({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tDataset } = useTranslation(['dataset'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
   const { t: tApp } = useTranslation(['app'])
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState(false)
@@ -223,7 +223,7 @@ export function KnowledgeSpaceShell({
                     <BreadcrumbItem className="shrink-0">
                       <BreadcrumbLink
                         render={<Link href="/" />}
-                        aria-label={tCommon(($) => $['mainNav.home'])}
+                        aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
                         className="shrink-0 rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-state-base-hover"
                       >
                         <span aria-hidden className="i-ri-arrow-left-s-line size-4" />

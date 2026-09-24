@@ -435,7 +435,7 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
     expect(mockToast.error).toHaveBeenCalledWith(
-      'workflow.versionHistory.action.deleteDeployedVersionError',
+      'workflowHistory.versionHistory.action.deleteDeployedVersionError',
     )
     expect(screen.queryByText('confirm delete')).not.toBeInTheDocument()
   })

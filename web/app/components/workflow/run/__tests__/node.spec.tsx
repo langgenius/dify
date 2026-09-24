@@ -176,7 +176,7 @@ describe('Run NodePanel', () => {
     )
 
     const trigger = await screen.findByRole('button', {
-      name: /workflow.nodes.iteration.iteration/,
+      name: /workflowLogic.nodes.iteration.iteration/,
     })
     await user.click(trigger)
 

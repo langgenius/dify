@@ -71,7 +71,7 @@ type WorkflowGeneratorErrorCode = WorkflowGenerateErrorResponse['code']
 
 const workflowGeneratorErrorSelectors: Record<
   WorkflowGeneratorErrorCode,
-  SelectorParam<'workflow'>
+  SelectorParam<'workflowGenerator'>
 > = {
   DANGLING_EDGE: ($) => $['workflowGenerator.errors.DANGLING_EDGE'],
   DUPLICATE_NODE_ID: ($) => $['workflowGenerator.errors.DUPLICATE_NODE_ID'],
@@ -90,7 +90,7 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflow']>) {
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflowGenerator']>) {
   return t(workflowGeneratorErrorSelectors[error.code])
 }
 
@@ -152,7 +152,7 @@ const RecoveryDialog = ({
 )
 
 function WorkflowGeneratorModal() {
-  const { t } = useTranslation(['workflow', 'common'])
+  const { t } = useTranslation(['workflowGenerator', 'common', 'workflow'])
   const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -296,7 +296,7 @@ function WorkflowGeneratorModal() {
   const isValid = () => {
     const trimmed = instruction.trim()
     if (!trimmed) {
-      toast.error(t(($) => $['workflowGenerator.instructionRequired']))
+      toast.error(t(($) => $['workflowGenerator.instructionRequired'], { ns: 'workflowGenerator' }))
       return false
     }
     if (!model.name) {
@@ -304,7 +304,7 @@ function WorkflowGeneratorModal() {
       // loading). Without this guard the request would fly with an empty
       // ``model_config.name`` and surface as a backend 400 — not actionable
       // for the user. Tell them to pick a model.
-      toast.error(t(($) => $['workflowGenerator.modelRequired']))
+      toast.error(t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflowGenerator' }))
       return false
     }
     return true
@@ -323,7 +323,9 @@ function WorkflowGeneratorModal() {
         setGenError([
           {
             code: 'INVALID_SCHEMA',
-            detail: res.error || t(($) => $['workflowGenerator.generateFailed']),
+            detail:
+              res.error ||
+              t(($) => $['workflowGenerator.generateFailed'], { ns: 'workflowGenerator' }),
           },
         ])
         return
@@ -354,7 +356,7 @@ function WorkflowGeneratorModal() {
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
-      toast.error(t(($) => $['workflowGenerator.errors.timeout']))
+      toast.error(t(($) => $['workflowGenerator.errors.timeout'], { ns: 'workflowGenerator' }))
       setLoadingFalse()
     }, WORKFLOW_GENERATION_TIMEOUT_MS)
 
@@ -371,7 +373,10 @@ function WorkflowGeneratorModal() {
       } catch {
         currentGraph = undefined
       }
-      if (!currentGraph) toast.warning(t(($) => $['workflowGenerator.refineDraftUnavailable']))
+      if (!currentGraph)
+        toast.warning(
+          t(($) => $['workflowGenerator.refineDraftUnavailable'], { ns: 'workflowGenerator' }),
+        )
     }
     setRefineBaseGraph(currentGraph ?? null)
 
@@ -421,7 +426,10 @@ function WorkflowGeneratorModal() {
             .catch((e: unknown) => {
               if (isAbortError(e)) return
               const message = e instanceof Error ? e.message : ''
-              toast.error(message || t(($) => $['workflowGenerator.generateFailed']))
+              toast.error(
+                message ||
+                  t(($) => $['workflowGenerator.generateFailed'], { ns: 'workflowGenerator' }),
+              )
             })
             .finally(finish)
           return
@@ -465,7 +473,7 @@ function WorkflowGeneratorModal() {
       })
       // Nudge the freshly-created Studio toward iterating with cmd+k /refine
       // instead of regenerating from scratch for a small tweak.
-      toast.success(t(($) => $['workflowGenerator.appliedRefineHint']))
+      toast.success(t(($) => $['workflowGenerator.appliedRefineHint'], { ns: 'workflowGenerator' }))
       closeGenerator()
       router.push(
         getRedirectionPath(
@@ -477,13 +485,17 @@ function WorkflowGeneratorModal() {
       if (e instanceof WorkflowApplyOrphanError) {
         // Sync failed AND we couldn't roll back. Route the user to /apps so
         // the orphan is still discoverable — they can delete it by hand.
-        toast.error(t(($) => $['workflowGenerator.errors.apply_failed_orphan']))
+        toast.error(
+          t(($) => $['workflowGenerator.errors.apply_failed_orphan'], { ns: 'workflowGenerator' }),
+        )
         closeGenerator()
         router.push('/apps')
         return
       }
       const message = e instanceof Error ? e.message : ''
-      toast.error(message || t(($) => $['workflowGenerator.applyFailed']))
+      toast.error(
+        message || t(($) => $['workflowGenerator.applyFailed'], { ns: 'workflowGenerator' }),
+      )
     } finally {
       setApplyingFalse()
     }
@@ -506,7 +518,7 @@ function WorkflowGeneratorModal() {
     setApplyingTrue()
     try {
       await applyToCurrentApp({ appId: currentAppId, graph: current.graph as GeneratedGraph })
-      toast.success(t(($) => $['workflowGenerator.applied']))
+      toast.success(t(($) => $['workflowGenerator.applied'], { ns: 'workflowGenerator' }))
       closeGenerator()
       // Hard reload the workflow page so the canvas picks up the new draft —
       // ``router.refresh()`` only revalidates server-rendered route data, and
@@ -523,7 +535,9 @@ function WorkflowGeneratorModal() {
         return
       }
       const message = e instanceof Error ? e.message : ''
-      toast.error(message || t(($) => $['workflowGenerator.applyFailed']))
+      toast.error(
+        message || t(($) => $['workflowGenerator.applyFailed'], { ns: 'workflowGenerator' }),
+      )
     } finally {
       setApplyingFalse()
     }
@@ -541,8 +555,8 @@ function WorkflowGeneratorModal() {
 
   const modeLabel =
     mode === 'workflow'
-      ? t(($) => $['workflowGenerator.modes.workflow'])
-      : t(($) => $['workflowGenerator.modes.chatflow'])
+      ? t(($) => $['workflowGenerator.modes.workflow'], { ns: 'workflowGenerator' })
+      : t(($) => $['workflowGenerator.modes.chatflow'], { ns: 'workflowGenerator' })
 
   // Refine diff — what an "apply" would change vs. the draft we started from.
   const refineDiff = useMemo(() => {
@@ -581,13 +595,19 @@ function WorkflowGeneratorModal() {
             <div className="mb-5">
               <DialogTitle className="text-lg leading-7 font-bold text-text-primary">
                 {isRefine
-                  ? t(($) => $['workflowGenerator.refineTitle'], { mode: modeLabel })
-                  : t(($) => $['workflowGenerator.title'], { mode: modeLabel })}
+                  ? t(($) => $['workflowGenerator.refineTitle'], {
+                      ns: 'workflowGenerator',
+                      mode: modeLabel,
+                    })
+                  : t(($) => $['workflowGenerator.title'], {
+                      ns: 'workflowGenerator',
+                      mode: modeLabel,
+                    })}
               </DialogTitle>
               <DialogDescription className="mt-1 text-[13px] font-normal text-text-tertiary">
                 {isRefine
-                  ? t(($) => $['workflowGenerator.refineDescription'])
-                  : t(($) => $['workflowGenerator.description'])}
+                  ? t(($) => $['workflowGenerator.refineDescription'], { ns: 'workflowGenerator' })
+                  : t(($) => $['workflowGenerator.description'], { ns: 'workflowGenerator' })}
               </DialogDescription>
             </div>
 
@@ -606,15 +626,19 @@ function WorkflowGeneratorModal() {
 
             <Field className="mt-4 gap-0" name="workflow-generator-instruction">
               <FieldLabel className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                {t(($) => $['workflowGenerator.instruction'])}
+                {t(($) => $['workflowGenerator.instruction'], { ns: 'workflowGenerator' })}
               </FieldLabel>
               <Textarea
                 ref={instructionRef}
                 className="h-40"
                 placeholder={
                   isRefine
-                    ? t(($) => $['workflowGenerator.refineInstructionPlaceholder'])
-                    : t(($) => $['workflowGenerator.instructionPlaceholder'])
+                    ? t(($) => $['workflowGenerator.refineInstructionPlaceholder'], {
+                        ns: 'workflowGenerator',
+                      })
+                    : t(($) => $['workflowGenerator.instructionPlaceholder'], {
+                        ns: 'workflowGenerator',
+                      })
                 }
                 value={instruction}
                 onValueChange={setInstruction}
@@ -634,7 +658,9 @@ function WorkflowGeneratorModal() {
               {!isRefine && <ExamplePrompts mode={mode} onSelect={setInstruction} />}
 
               <div className="mt-7 flex justify-end space-x-2">
-                <Button onClick={closeGenerator}>{t(($) => $['workflowGenerator.dismiss'])}</Button>
+                <Button onClick={closeGenerator}>
+                  {t(($) => $['workflowGenerator.dismiss'], { ns: 'workflowGenerator' })}
+                </Button>
                 {isLoading ? (
                   // Cancel surfaces the abort affordance during the 60 s
                   // window where the user might want to bail (slow
@@ -642,7 +668,7 @@ function WorkflowGeneratorModal() {
                   // the row stays focused on the primary action.
                   <Button className="flex" variant="secondary" onClick={onCancelGeneration}>
                     <span className="text-xs font-semibold">
-                      {t(($) => $['workflowGenerator.cancel'])}
+                      {t(($) => $['workflowGenerator.cancel'], { ns: 'workflowGenerator' })}
                     </span>
                   </Button>
                 ) : (
@@ -654,7 +680,7 @@ function WorkflowGeneratorModal() {
                   >
                     <span aria-hidden="true" className="i-custom-vender-other-generator size-4" />
                     <span className="text-xs font-semibold">
-                      {t(($) => $['workflowGenerator.generate'])}
+                      {t(($) => $['workflowGenerator.generate'], { ns: 'workflowGenerator' })}
                     </span>
                   </Button>
                 )}
@@ -676,6 +702,7 @@ function WorkflowGeneratorModal() {
                 {firstGenError?.node_id && (
                   <div className="mt-1 system-xs-regular text-text-tertiary">
                     {t(($) => $['workflowGenerator.errors.atNode'], {
+                      ns: 'workflowGenerator',
                       node: firstGenError.node_id,
                     })}
                   </div>
@@ -683,7 +710,7 @@ function WorkflowGeneratorModal() {
               </div>
               <div className="flex items-center gap-2">
                 <Button size="small" variant="primary" onClick={onGenerate} disabled={!model.name}>
-                  {t(($) => $['workflowGenerator.regenerate'])}
+                  {t(($) => $['workflowGenerator.regenerate'], { ns: 'workflowGenerator' })}
                 </Button>
                 {genErrorHasUnknownTool && (
                   <Link
@@ -691,7 +718,9 @@ function WorkflowGeneratorModal() {
                     className={buttonVariants({ size: 'small', variant: 'secondary' })}
                     onClick={closeGenerator}
                   >
-                    {t(($) => $['workflowGenerator.errors.installTools'])}
+                    {t(($) => $['workflowGenerator.errors.installTools'], {
+                      ns: 'workflowGenerator',
+                    })}
                   </Link>
                 )}
               </div>
@@ -731,7 +760,7 @@ function WorkflowGeneratorModal() {
                       onClick={showConfirmOverwrite}
                       disabled={isApplying}
                     >
-                      {t(($) => $['workflowGenerator.studioApply'])}
+                      {t(($) => $['workflowGenerator.studioApply'], { ns: 'workflowGenerator' })}
                     </Button>
                   ) : (
                     // cmd+k /create entry — no current-app context, so
@@ -742,7 +771,7 @@ function WorkflowGeneratorModal() {
                       onClick={handleApplyToNew}
                       disabled={isApplying}
                     >
-                      {t(($) => $['workflowGenerator.applyToNew'])}
+                      {t(($) => $['workflowGenerator.applyToNew'], { ns: 'workflowGenerator' })}
                     </Button>
                   )}
                 </div>
@@ -759,6 +788,7 @@ function WorkflowGeneratorModal() {
               {hasRefineChanges && refineDiff && (
                 <div className="mt-2 system-xs-regular text-text-tertiary">
                   {t(($) => $['workflowGenerator.diff.summary'], {
+                    ns: 'workflowGenerator',
                     added: refineDiff.added.length,
                     removed: refineDiff.removed.length,
                     changed: refineDiff.changed.length,
@@ -770,15 +800,19 @@ function WorkflowGeneratorModal() {
               )}
             </div>
           ) : (
-            renderPlaceholder(t(($) => $['workflowGenerator.placeholder']))
+            renderPlaceholder(
+              t(($) => $['workflowGenerator.placeholder'], { ns: 'workflowGenerator' }),
+            )
           )}
         </div>
 
         <RecoveryDialog
           open={isShowConfirmOverwrite}
           onOpenChange={() => hideConfirmOverwrite()}
-          title={t(($) => $['workflowGenerator.overwriteTitle'])}
-          description={t(($) => $['workflowGenerator.overwriteMessage'])}
+          title={t(($) => $['workflowGenerator.overwriteTitle'], { ns: 'workflowGenerator' })}
+          description={t(($) => $['workflowGenerator.overwriteMessage'], {
+            ns: 'workflowGenerator',
+          })}
           cancelLabel={t(($) => $['operation.cancel'], { ns: 'common' })}
           confirmLabel={t(($) => $['operation.confirm'], { ns: 'common' })}
           onConfirm={handleApplyToCurrentConfirmed}
@@ -791,10 +825,14 @@ function WorkflowGeneratorModal() {
         <RecoveryDialog
           open={isShowHashCollision}
           onOpenChange={() => hideHashCollision()}
-          title={t(($) => $['workflowGenerator.errors.hash_collision_title'])}
-          description={t(($) => $['workflowGenerator.errors.hash_collision'])}
+          title={t(($) => $['workflowGenerator.errors.hash_collision_title'], {
+            ns: 'workflowGenerator',
+          })}
+          description={t(($) => $['workflowGenerator.errors.hash_collision'], {
+            ns: 'workflowGenerator',
+          })}
           cancelLabel={t(($) => $['operation.cancel'], { ns: 'common' })}
-          confirmLabel={t(($) => $['workflowGenerator.reload'])}
+          confirmLabel={t(($) => $['workflowGenerator.reload'], { ns: 'workflowGenerator' })}
           onConfirm={() => {
             hideHashCollision()
             if (typeof window !== 'undefined') window.location.reload()

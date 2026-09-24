@@ -265,7 +265,7 @@ describe('CrawlSelectionForm', () => {
 
     expect(clientMock.asyncImport).not.toHaveBeenCalled()
     await user.click(
-      await screen.findByRole('button', { name: 'common.modelProvider.selector.configure' }),
+      await screen.findByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
     )
     expect(routerMock.push).toHaveBeenCalledWith(
       '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources%2Fnew%2Fwebsite&capability=ingest',

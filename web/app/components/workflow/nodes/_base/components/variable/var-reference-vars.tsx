@@ -356,7 +356,7 @@ const VarReferenceVars: FC<Props> = ({
   searchInputRef: externalSearchInputRef,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const internalSearchInputRef = useRef<HTMLInputElement>(null)
@@ -575,7 +575,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div className="relative mt-3.5 flex items-center space-x-1">
                     <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                     <div className="system-2xs-semibold-uppercase text-text-tertiary">
-                      {t(($) => $['debug.lastOutput'], { ns: 'workflow' })}
+                      {t(($) => $['debug.lastOutput'], { ns: 'workflowDebug' })}
                     </div>
                     <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                   </div>

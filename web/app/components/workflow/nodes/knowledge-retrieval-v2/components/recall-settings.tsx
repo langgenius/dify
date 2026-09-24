@@ -48,7 +48,7 @@ const RecallSettings: FC<Props> = ({
   scoreThreshold,
   topK,
 }) => {
-  const { t } = useTranslation(['workflow', 'dataset', 'common'])
+  const { t } = useTranslation(['workflow', 'dataset', 'common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const { currentModel, currentProvider, modelList } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
@@ -118,11 +118,11 @@ const RecallSettings: FC<Props> = ({
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <div className="system-sm-semibold text-text-secondary">
-                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
                 </div>
                 {usingSystemModel ? (
                   <span className="system-xs-medium text-text-tertiary">
-                    {t(($) => $['modelProvider.defaultConfig'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.defaultConfig'], { ns: 'modelProvider' })}
                   </span>
                 ) : (
                   <Button
@@ -146,8 +146,8 @@ const RecallSettings: FC<Props> = ({
               {usingSystemModel && (
                 <div className="mt-1 system-xs-regular text-text-tertiary">
                   {systemModel
-                    ? t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })
-                    : t(($) => $['modelProvider.noneConfigured'], { ns: 'common' })}
+                    ? t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
+                    : t(($) => $['modelProvider.noneConfigured'], { ns: 'modelProvider' })}
                 </div>
               )}
             </div>

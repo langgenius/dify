@@ -26,7 +26,7 @@ const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const SPACE_PAGE_SIZE = 50
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const {
     readOnly,
     inputs,
@@ -101,7 +101,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
           />
         </Field>
 
-        <Field title={t(($) => $['nodes.knowledgeRetrieval.queryAttachment'], { ns: 'workflow' })}>
+        <Field
+          title={t(($) => $['nodes.knowledgeRetrieval.queryAttachment'], { ns: 'workflowModels' })}
+        >
           <VarReferencePicker
             nodeId={id}
             readonly={readOnly}

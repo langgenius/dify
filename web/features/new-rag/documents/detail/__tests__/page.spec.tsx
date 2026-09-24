@@ -2750,7 +2750,7 @@ describe('DocumentDetailPage', () => {
     })
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'common.modelProvider.selector.configure',
+        name: 'modelProvider.modelProvider.selector.configure',
       }),
     )
     expect(routerMock.push).toHaveBeenCalledWith(

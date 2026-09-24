@@ -58,19 +58,21 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       ' Research Agent ',
     )
     await user.type(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
       ' Research Assistant ',
     )
     await user.type(
-      within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'),
+      within(dialog).getByPlaceholderText('agentRoster.roster.createForm.descriptionPlaceholder'),
       ' Find and summarize market materials. ',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
@@ -98,11 +100,13 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Research Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
@@ -125,17 +129,19 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
       'Research Assistant',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(
-      await within(dialog).findByText('agentV2.roster.createForm.nameRequired'),
+      await within(dialog).findByText('agentRoster.roster.createForm.nameRequired'),
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
@@ -145,15 +151,17 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    const trigger = screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ })
+    const trigger = screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ })
     await user.click(trigger)
 
-    let dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    let dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentV2.roster.createForm.nameLabel',
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     const descriptionInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.descriptionLabel/,
+      name: /agentRoster\.roster\.createForm\.descriptionLabel/,
     })
     expect(nameInput).toHaveFocus()
     expect(descriptionInput).toHaveAttribute('maxlength', '400')
@@ -163,18 +171,18 @@ describe('CreateAgentDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.createDialog.title' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.createDialog.title' }),
       ).not.toBeInTheDocument()
     })
 
     await user.click(trigger)
-    dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    dialog = await screen.findByRole('dialog', { name: 'agentRoster.roster.createDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('')
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.descriptionLabel/,
+        name: /agentRoster\.roster\.createForm\.descriptionLabel/,
       }),
     ).toHaveValue('')
   })
@@ -183,18 +191,20 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
 
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+        name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
       }),
     ).not.toBeRequired()
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+        name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
       }),
     ).not.toBeRequired()
   })
@@ -203,11 +213,13 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Research Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
@@ -233,9 +245,11 @@ describe('CreateAgentDialog', () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
     await user.click(backdrop)
 
@@ -244,7 +258,7 @@ describe('CreateAgentDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.createDialog.title' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.createDialog.title' }),
       ).not.toBeInTheDocument()
     })
   })

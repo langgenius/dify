@@ -516,8 +516,6 @@ export const imports = {
 }
 
 /**
- * Return the lightweight app cards needed by the Explore home page
- *
  * Get recently modified apps for the home Continue Work section
  */
 export const get2 = oc
@@ -527,7 +525,6 @@ export const get2 = oc
     method: 'GET',
     operationId: 'getAppsRecent',
     path: '/apps/recent',
-    summary: 'Return the lightweight app cards needed by the Explore home page',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAppsRecentQuery.optional() }))
@@ -1783,8 +1780,6 @@ export const convertToWorkflow = {
 }
 
 /**
- * Copy app
- *
  * Create a copy of an existing application
  */
 export const post22 = oc
@@ -1795,7 +1790,6 @@ export const post22 = oc
     operationId: 'postAppsByAppIdCopy',
     path: '/apps/{app_id}/copy',
     successStatus: 201,
-    summary: 'Copy app',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsByAppIdCopyBody, params: zPostAppsByAppIdCopyPath }))
@@ -1806,8 +1800,6 @@ export const copy = {
 }
 
 /**
- * Export app
- *
  * Export application configuration as DSL
  */
 export const get31 = oc
@@ -1817,7 +1809,6 @@ export const get31 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdExport',
     path: '/apps/{app_id}/export',
-    summary: 'Export app',
     tags: ['console'],
   })
   .input(
@@ -1958,16 +1949,12 @@ export const name = {
   post: post26,
 }
 
-/**
- * Publish app to Creators Platform
- */
 export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdPublishToCreatorsPlatform',
     path: '/apps/{app_id}/publish-to-creators-platform',
-    summary: 'Publish app to Creators Platform',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByAppIdPublishToCreatorsPlatformPath }))
@@ -2392,8 +2379,6 @@ export const textToAudio = {
 }
 
 /**
- * Get app trace
- *
  * Get app tracing configuration
  */
 export const get44 = oc
@@ -2403,7 +2388,6 @@ export const get44 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdTrace',
     path: '/apps/{app_id}/trace',
-    summary: 'Get app trace',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdTracePath }))
@@ -4401,8 +4385,6 @@ export const workflows3 = {
 }
 
 /**
- * Delete app
- *
  * Delete application
  */
 export const delete15 = oc
@@ -4413,15 +4395,12 @@ export const delete15 = oc
     operationId: 'deleteAppsByAppId',
     path: '/apps/{app_id}',
     successStatus: 204,
-    summary: 'Delete app',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdPath }))
   .output(zDeleteAppsByAppIdResponse)
 
 /**
- * Get app detail
- *
  * Get application details
  */
 export const get84 = oc
@@ -4431,15 +4410,12 @@ export const get84 = oc
     method: 'GET',
     operationId: 'getAppsByAppId',
     path: '/apps/{app_id}',
-    summary: 'Get app detail',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdPath }))
   .output(zGetAppsByAppIdResponse)
 
 /**
- * Update app
- *
  * Update application details
  */
 export const put6 = oc
@@ -4449,7 +4425,6 @@ export const put6 = oc
     method: 'PUT',
     operationId: 'putAppsByAppId',
     path: '/apps/{app_id}',
-    summary: 'Update app',
     tags: ['console'],
   })
   .input(z.object({ body: zPutAppsByAppIdBody, params: zPutAppsByAppIdPath }))
@@ -4559,8 +4534,6 @@ export const byResourceId = {
 }
 
 /**
- * Get app list
- *
  * Get list of applications with pagination and filtering
  */
 export const get86 = oc
@@ -4570,15 +4543,12 @@ export const get86 = oc
     method: 'GET',
     operationId: 'getApps',
     path: '/apps',
-    summary: 'Get app list',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAppsQuery.optional() }))
   .output(zGetAppsResponse)
 
 /**
- * Create app
- *
  * Create a new application
  */
 export const post64 = oc
@@ -4589,7 +4559,6 @@ export const post64 = oc
     operationId: 'postApps',
     path: '/apps',
     successStatus: 201,
-    summary: 'Create app',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsBody }))

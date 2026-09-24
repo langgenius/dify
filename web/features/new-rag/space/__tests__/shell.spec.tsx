@@ -199,10 +199,9 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
     const breadcrumb = screen.getByRole('navigation', { name: 'dataset.knowledge' })
     expect(within(breadcrumb).getAllByRole('listitem')).toHaveLength(2)
-    expect(within(breadcrumb).getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute(
-      'href',
-      '/',
-    )
+    expect(
+      within(breadcrumb).getByRole('link', { name: 'navigation.mainNav.home' }),
+    ).toHaveAttribute('href', '/')
     expect(within(breadcrumb).getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
       'href',
       '/datasets?view=agent',

@@ -61,7 +61,7 @@ const ClassList: FC<Props> = ({
   labels,
   handleSortTopic = noop,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const [collapsed, setCollapsed] = useState(false)
   const [storedRenameHintDismissed, setIsRenameHintDismissed] = useInlineLabelHintDismissed()
@@ -154,7 +154,8 @@ const ClassList: FC<Props> = ({
           <div className="pt-2">
             {shouldShowRenameHint && (
               <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
-                {labels?.renameHint ?? t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
+                {labels?.renameHint ??
+                  t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflowModels' })}
               </div>
             )}
 
@@ -224,7 +225,9 @@ const ClassList: FC<Props> = ({
               <div className="mt-2">
                 <AddButton
                   onClick={handleAddClass}
-                  text={labels?.add ?? t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
+                  text={
+                    labels?.add ?? t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflowModels' })
+                  }
                 />
               </div>
             )}

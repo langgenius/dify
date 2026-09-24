@@ -80,7 +80,7 @@ describe('RecallSettings', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
     expect(mockTopKItem).toHaveBeenLastCalledWith(expect.objectContaining({ max: 100 }))
     expect(mockModelSelector).toHaveBeenLastCalledWith(
       expect.objectContaining({

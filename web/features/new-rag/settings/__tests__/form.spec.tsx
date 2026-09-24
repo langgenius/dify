@@ -454,7 +454,7 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
   }
   for (const name of [
     'knowledgeSpace.settings.systemReasoningModelLabel',
-    'common.modelProvider.rerankModel.key',
+    'modelProvider.modelProvider.rerankModel.key',
   ]) {
     await user.click(screen.getByRole('button', { name }))
     expectNoWrites()
@@ -1394,10 +1394,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     expect(
-      screen.queryByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+      screen.queryByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
     ).not.toBeInTheDocument()
     const rerankSelector = screen.getByRole('button', {
-      name: 'common.modelProvider.rerankModel.key',
+      name: 'modelProvider.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'knowledgeSpace.settings.rerankModelRequired',
@@ -1500,9 +1500,11 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
     })
 
-    expect(screen.getByRole('status')).toHaveTextContent('common.modelProvider.toBeConfigured')
     expect(screen.getByRole('status')).toHaveTextContent(
-      'datasetSettings.form.embeddingModel · common.modelProvider.systemReasoningModel.key · common.modelProvider.rerankModel.key',
+      'modelProvider.modelProvider.toBeConfigured',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'datasetSettings.form.embeddingModel · modelProvider.modelProvider.systemReasoningModel.key · modelProvider.modelProvider.rerankModel.key',
     )
     const reasoningSelector = screen.getByRole('button', {
       name: 'knowledgeSpace.settings.systemReasoningModelLabel',
@@ -1517,7 +1519,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       'knowledgeSpace.settings.embeddingModelRequired',
     )
     const rerankSelector = screen.getByRole('button', {
-      name: 'common.modelProvider.rerankModel.key',
+      name: 'modelProvider.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'knowledgeSpace.settings.rerankModelRequired',
@@ -1897,7 +1899,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
     ).toHaveTextContent('text-embedding-3-large')
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.rerankModel.key' }),
     ).toHaveTextContent('rerank-v3')
     expect(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })).toHaveAttribute(
       'aria-checked',
@@ -1949,7 +1951,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       'datasetSettings.form.nameAndIcon',
       'knowledgeSpace.settings.systemReasoningModelLabel',
       'knowledgeSpace.settings.embeddingModelLabel',
-      'common.modelProvider.rerankModel.key',
+      'modelProvider.modelProvider.rerankModel.key',
       'common.operation.cancel',
       'common.operation.delete',
     ])

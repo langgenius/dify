@@ -75,7 +75,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           <Badge key={tag.name} text={tag.name} />
         ))}
       </div>
-      <div className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
         {canInstallPlugin && (
           <Button className="grow" variant="primary" onClick={showInstallFromMarketplace}>
             {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}

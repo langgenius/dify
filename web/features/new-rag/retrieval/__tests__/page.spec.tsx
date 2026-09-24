@@ -586,8 +586,8 @@ describe('RetrievalTestPage', () => {
         'knowledgeSpace.overview.attention.modelReadiness.profilesMissing',
       )
       expect(dialog).not.toHaveTextContent('datasetSettings.form.embeddingModel')
-      expect(dialog).not.toHaveTextContent('common.modelProvider.systemReasoningModel.key')
-      expect(dialog).not.toHaveTextContent('common.modelProvider.rerankModel.key')
+      expect(dialog).not.toHaveTextContent('modelProvider.modelProvider.systemReasoningModel.key')
+      expect(dialog).not.toHaveTextContent('modelProvider.modelProvider.rerankModel.key')
     },
   )
 

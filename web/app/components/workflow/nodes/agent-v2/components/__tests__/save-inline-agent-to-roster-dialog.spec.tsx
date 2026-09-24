@@ -133,18 +133,20 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentV2.roster.createForm.nameLabel',
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     expect(nameInput).toHaveValue('')
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Tender Analyst')
     expect(
-      within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'),
+      within(dialog).getByPlaceholderText('agentRoster.roster.createForm.descriptionPlaceholder'),
     ).toHaveValue('Drafts tender clarifications.')
 
     await user.type(nameInput, 'Roster Tender Agent')
@@ -189,9 +191,11 @@ describe('SaveInlineAgentToRosterDialog', () => {
       />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Snippet Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -223,9 +227,11 @@ describe('SaveInlineAgentToRosterDialog', () => {
       icon_type: null,
     })
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -257,16 +263,20 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.click(
-      within(dialog).getByRole('button', { name: 'agentV2.roster.saveToRosterForm.changeIcon' }),
+      within(dialog).getByRole('button', {
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
+      }),
     )
 
     expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -330,16 +340,16 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
 
     let dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Tender Analyst')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.saveToRosterForm.changeIcon',
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
       }),
     )
     expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
@@ -371,16 +381,16 @@ describe('SaveInlineAgentToRosterDialog', () => {
       />,
     )
     dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Updated source role')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.saveToRosterForm.changeIcon',
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
       }),
     )
     expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
@@ -391,10 +401,10 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const { onOpenChange, onSaved } = renderDialog()
 
     const dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))

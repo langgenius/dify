@@ -37,7 +37,7 @@ export function IntegrationPageHeader({
         )}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="title-2xl-semi-bold text-text-primary">{title}</div>
+          <h1 className="title-2xl-semi-bold text-text-primary">{title}</h1>
           {showDescription && (
             <div className={cn(descriptionClassName ?? 'system-sm-regular', 'text-text-tertiary')}>
               {description}

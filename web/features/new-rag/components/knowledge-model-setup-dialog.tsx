@@ -29,13 +29,15 @@ export function KnowledgeModelSetupDialog({
   readiness?: KnowledgeFsSettingsResponse
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
 
   const fieldLabel = (field: KnowledgeFsSettingsResponse['issues'][number]['field']) => {
     if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])
-    if (field === 'reasoning') return tCommon(($) => $['modelProvider.systemReasoningModel.key'])
-    if (field === 'rerank') return tCommon(($) => $['modelProvider.rerankModel.key'])
+    if (field === 'reasoning')
+      return tCommon(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' })
+    if (field === 'rerank')
+      return tCommon(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })
     return t(($) => $['overview.attention.modelReadiness.bindingMissing'])
   }
   const pendingValidation = readiness?.configuration_state === 'pending-validation'
@@ -76,7 +78,7 @@ export function KnowledgeModelSetupDialog({
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button variant="primary" onClick={onConfigure}>
-            {tCommon(($) => $['modelProvider.selector.configure'])}
+            {tCommon(($) => $['modelProvider.selector.configure'], { ns: 'modelProvider' })}
           </Button>
         </div>
       </DialogContent>

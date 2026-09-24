@@ -21,7 +21,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
     score_threshold: null,
     top_n: 10,
   },
-  checkValid(payload, t: TFunction<['workflow', 'common']>) {
+  checkValid(payload, t: TFunction<['workflow', 'common', 'modelProvider']>) {
     let errorMessage = ''
     // Text and image are alternative query inputs: either one is enough, but not neither.
     if (!payload.query_variable_selector?.length && !payload.query_attachment_selector?.length) {
@@ -39,7 +39,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
     ) {
       errorMessage = t(($) => $['errorMsg.fieldRequired'], {
         ns: 'workflow',
-        field: t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' }),
+        field: t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' }),
       })
     }
 

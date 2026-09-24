@@ -1219,7 +1219,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.upload).not.toHaveBeenCalled()
 
     await user.click(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.configure' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
     )
     expect(routerMock.replace).toHaveBeenCalledWith(
       `/datasets/new/${createdKnowledge.control_space_id}/settings`,

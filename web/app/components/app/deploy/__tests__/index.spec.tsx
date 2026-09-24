@@ -785,7 +785,7 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.precheck.from': 'From',
     'deployments.studio.precheck.nodeCount': '{{count}} nodes',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
-    'workflow.common.workflowAsTool': 'Workflow as Tool',
+    'navigation.common.workflowAsTool': 'Workflow as Tool',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
@@ -1038,7 +1038,7 @@ describe('AppDeploy', () => {
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=mcp')
     expect(
       builtInEnvironment.getByRole('button', {
-        name: 'common.settings.trigger · agentV2.agentDetail.access.status.outOfService',
+        name: 'navigation.settings.trigger · agentV2.agentDetail.access.status.outOfService',
       }),
     ).toBeDisabled()
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Bob')).toBeInTheDocument()
@@ -1091,7 +1091,7 @@ describe('AppDeploy', () => {
     ).toBeDisabled()
     expect(
       builtInEnvironment.getByRole('link', {
-        name: 'common.settings.trigger · agentV2.agentDetail.access.status.inService',
+        name: 'navigation.settings.trigger · agentV2.agentDetail.access.status.inService',
       }),
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=trigger')
   })

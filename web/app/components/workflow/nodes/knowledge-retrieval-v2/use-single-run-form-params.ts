@@ -25,7 +25,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const query = typeof runInputData.query === 'string' ? runInputData.query : ''
   const queryAttachment = runInputData.queryAttachment
   const setQuery = useCallback(
@@ -67,7 +67,9 @@ const useSingleRunFormParams = ({
       fields.push({
         inputs: [
           {
-            label: t(($) => $['nodes.knowledgeRetrieval.queryAttachment'], { ns: 'workflow' })!,
+            label: t(($) => $['nodes.knowledgeRetrieval.queryAttachment'], {
+              ns: 'workflowModels',
+            })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,
