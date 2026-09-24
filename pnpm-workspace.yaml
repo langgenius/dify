@@ -5,6 +5,7 @@ allowBuilds:
   canvas: false
   esbuild: false
   sharp: false
+autoDedupe: true
 autoInstallPeers: false
 blockExoticSubdeps: true
 catalogMode: strict
