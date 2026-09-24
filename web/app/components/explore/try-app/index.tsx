@@ -71,6 +71,7 @@ function TryApp({
     (isAgent &&
       !composerQuery.data &&
       (!composerQuery.isLoading || composerQuery.isFetchedAfterMount))
+  const hasAgentPreview = isAgent && !!appDetail && !!composerQuery.data && !hasLoadError
   const isInitialLoading = !hasLoadError && ((isLoading && !isFetchedAfterMount) || agentLoading)
   const keepErrorForExit =
     hasLoadError || errorUpdateCount > 0 || composerQuery.errorUpdateCount > 0
@@ -101,7 +102,7 @@ function TryApp({
     >
       <DialogContent
         initialFocus={detailTabRef}
-        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle"
+        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden border-none p-2 text-left align-middle"
       >
         <DialogTitle className="sr-only">
           {templateName ?? appDetail?.name ?? t(($) => $['apps.title'], { ns: 'explore' })}
@@ -139,14 +140,20 @@ function TryApp({
               <span aria-hidden className="i-ri-close-line size-5" />
             </IconButton>
           </div>
-          <div className="mt-2 flex h-0 grow justify-between space-x-2">
-            <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
+          <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden">
+            <TabsPanel
+              value={TypeEnum.DETAIL}
+              className={cn(
+                '@container/agent-preview min-w-0 shrink-0 lg:min-h-0 lg:flex-1',
+                hasAgentPreview ? 'h-auto' : 'h-[75dvh] lg:h-auto',
+              )}
+            >
               {isInitialLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <LoadingPlaceholder />
                 </div>
               ) : (
-                <div className="relative size-full">
+                <div className={cn('relative size-full', hasAgentPreview && 'max-lg:h-auto')}>
                   {keepErrorForExit && (
                     <div
                       aria-hidden={!hasLoadError}
@@ -183,7 +190,12 @@ function TryApp({
                     </div>
                   )}
                   {appDetail && !hasLoadError && (
-                    <div className="size-full opacity-100 transition-opacity duration-150 motion-reduce:transition-none starting:opacity-0">
+                    <div
+                      className={cn(
+                        'size-full opacity-100 transition-opacity duration-150 motion-reduce:transition-none starting:opacity-0',
+                        hasAgentPreview && 'max-lg:h-auto',
+                      )}
+                    >
                       <Suspense
                         fallback={
                           <div className="flex h-full items-center justify-center">
@@ -203,7 +215,10 @@ function TryApp({
               )}
             </TabsPanel>
             {canTrial && (
-              <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
+              <TabsPanel
+                value={TypeEnum.TRY}
+                className="h-[75dvh] min-w-0 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1"
+              >
                 {appDetail && !hasLoadError && !agentLoading && (
                   <Suspense
                     fallback={
@@ -218,9 +233,9 @@ function TryApp({
               </TabsPanel>
             )}
             {appDetail && !hasLoadError && !agentLoading && (
-              <Suspense fallback={<div className="w-90 shrink-0" />}>
+              <Suspense fallback={<div className="w-full shrink-0 lg:w-90" />}>
                 <AppInfo
-                  className="w-90 shrink-0"
+                  className="h-auto w-full shrink-0 lg:h-full lg:w-90"
                   appDetail={appDetail}
                   appId={appId}
                   canCreate={canCreate}

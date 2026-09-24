@@ -26,7 +26,7 @@ export function AgentTemplateOrchestration({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg"
+      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none"
     >
       <h2 id={headingId} className="shrink-0 px-4 py-3 title-xl-semi-bold text-text-primary">
         {t(($) => $['tryApp.agentConfiguration'])}

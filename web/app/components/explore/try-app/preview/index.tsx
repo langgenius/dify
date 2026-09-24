@@ -4,6 +4,7 @@ import type {
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import BasicAppPreview from './basic-app-preview'
 import FlowAppPreview from './flow-app-preview'
@@ -20,7 +21,7 @@ const Preview: FC<Props> = ({ appId, appDetail, agentComposer }) => {
   const isBasicApp = ['agent-chat', 'chat', 'completion'].includes(appDetail.mode)
 
   return (
-    <div className="size-full">
+    <div className={cn('size-full', appDetail.mode === 'agent' && 'max-lg:h-auto')}>
       {appDetail.mode === 'agent' && agentComposer ? (
         <AgentAppPreview appDetail={appDetail} composer={agentComposer} />
       ) : isBasicApp ? (
