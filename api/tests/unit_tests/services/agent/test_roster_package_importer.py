@@ -135,6 +135,7 @@ def _package(
     name: str = "Imported Agent",
     binary_dependency: bool = False,
     missing_knowledge: bool = False,
+    include_dependency: bool = True,
 ) -> bytes:
     config_skill = _skill_archive("config-skill")
     workspace_skill = _skill_archive("workspace-skill")
@@ -205,7 +206,7 @@ def _package(
                 ],
             )
         },
-        dependencies=[dependency],
+        dependencies=[dependency] if include_dependency else [],
     )
     app_bytes = yaml.safe_dump(app.model_dump(mode="json")).encode()
     manifest = RosterAgentPackageManifest(
@@ -610,20 +611,22 @@ def test_import_clears_source_credentials(
         assert "source-id" not in json.dumps(data)
 
 
-def test_missing_plugins_do_not_block_import(
+@pytest.mark.parametrize("include_dependency", [False, True])
+def test_plugin_dependencies_do_not_block_import(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    include_dependency: bool,
 ) -> None:
     monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **kwargs: kwargs["dependencies"])
     storage = _MemoryStorage()
     result = RosterAgentPackageImporter(storage_backend=storage).import_package(
-        source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
+        source=io.BytesIO(_package(include_dependency=include_dependency)), tenant_id="tenant-1", account=_account()
     )
     assert storage.save_count > 0
     with sqlite_session_factory() as session:
         assert session.get(App, result.app_id) is not None
     missing = AppDslService.check_app_dependencies(tenant_id="tenant-1", app_id=result.app_id)
-    assert len(missing.leaked_dependencies) == 1
+    assert len(missing.leaked_dependencies) == int(include_dependency)
 
 
 def test_dependency_cache_failure_does_not_fail_committed_import(
