@@ -57,6 +57,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
+from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
@@ -187,6 +188,8 @@ from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.installed_app_message_adapters import InstalledAppMessageRuntime, emit_installed_app_feedback
+from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
@@ -390,6 +393,7 @@ class ApplicationServices:
     installed_app_access: InstalledAppAccessService
     installed_app_conversations: InstalledAppConversationService
     installed_app_generation: InstalledAppGenerationService
+    installed_app_messages: InstalledAppMessageService
     installed_apps: InstalledAppService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
@@ -592,6 +596,7 @@ def build_application_services(
         get_user_permissions=webapp_access.batch_get_user_permissions,
     )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
+    installed_app_message_runtime = InstalledAppMessageRuntime(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
@@ -829,6 +834,12 @@ def build_application_services(
         installed_app_generation=InstalledAppGenerationService(
             usage=installed_apps,
             runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
+        ),
+        installed_app_messages=InstalledAppMessageService(
+            messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
+            get_extra_contents=installed_app_message_runtime.get_extra_contents,
+            suggested_questions=installed_app_message_runtime.get_suggested_questions,
+            emit_feedback=emit_installed_app_feedback,
         ),
         installed_apps=InstalledAppService(
             installed_apps=installed_apps,
