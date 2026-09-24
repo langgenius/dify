@@ -851,7 +851,7 @@ export const zDslImportWarning = z.object({
  */
 export const zImport = z.object({
   app_id: z.string().nullish(),
-  app_mode: z.string().nullish(),
+  app_mode: zAppMode.nullish(),
   current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   id: z.string(),
@@ -866,7 +866,7 @@ export const zImport = z.object({
  */
 export const zAppImportResponse = z.object({
   app_id: z.string().nullish(),
-  app_mode: z.string().nullish(),
+  app_mode: zAppMode.nullish(),
   current_dsl_version: z.string(),
   error: z.string().optional().default(''),
   id: z.string(),
@@ -2062,61 +2062,6 @@ export const zWorkflowDraftVariableListResponse = z.object({
 })
 
 /**
- * ModelConfigPartial
- */
-export const zModelConfigPartial = z.object({
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  model: z.unknown().nullish(),
-  pre_prompt: z.string().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-})
-
-/**
- * AppPartial
- */
-export const zAppPartial = z.object({
-  access_mode: z.string().nullish(),
-  app_id: z.string().nullish(),
-  author_name: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
-  create_user_name: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  description: z.string().nullish(),
-  has_draft_trigger: z.boolean().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  is_starred: z.boolean().optional().default(false),
-  maintainer: z.string().nullish(),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfigPartial.nullish(),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  tags: z.array(zTag).optional(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
-})
-
-/**
- * AppPagination
- */
-export const zAppPagination = z.object({
-  data: z.array(zAppPartial),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * AppAnnotationReplyDisabledResponse
  */
 export const zAppAnnotationReplyDisabledResponse = z.object({
@@ -2960,9 +2905,64 @@ export const zAppDisabledExternalDataToolResponse = z.object({
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue2).optional(),
-  mode: z.string().optional(),
+  mode: z.union([zLlmMode, z.literal('')]).optional(),
   name: z.string().optional(),
   provider: z.string().optional(),
+})
+
+/**
+ * ModelConfigPartial
+ */
+export const zModelConfigPartial = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  model: zAppModelSelectionResponse.nullish(),
+  pre_prompt: z.string().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * AppPartial
+ */
+export const zAppPartial = z.object({
+  access_mode: zWebAppAccessMode.nullish(),
+  app_id: z.string().nullish(),
+  author_name: z.string().nullish(),
+  bound_agent_id: z.string().nullish(),
+  create_user_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  has_draft_trigger: z.boolean().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
+  max_active_requests: z.int().nullish(),
+  mode: zAppMode,
+  model_config: zModelConfigPartial.nullish(),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  tags: z.array(zTag).optional(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AppPagination
+ */
+export const zAppPagination = z.object({
+  data: z.array(zAppPartial),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -3041,13 +3041,28 @@ export const zAppLegacyCurrentDatetimeToolResponse = z.object({
 })
 
 /**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
  * AppImageUploadResponse
  */
 export const zAppImageUploadResponse = z.object({
-  detail: z.string().optional(),
+  detail: z.enum(['high', 'low']).nullish(),
   enabled: z.boolean().optional(),
   number_limits: z.int().optional(),
-  transfer_methods: z.array(z.string()).optional(),
+  transfer_methods: z.array(zFileTransferMethod).optional(),
 })
 
 /**
@@ -3055,8 +3070,8 @@ export const zAppImageUploadResponse = z.object({
  */
 export const zAppFileUploadResponse = z.object({
   allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(z.string()).optional(),
-  allowed_file_upload_methods: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   enabled: z.boolean().optional(),
   image: zAppImageUploadResponse.optional(),
   number_limits: z.int().optional(),
@@ -3067,8 +3082,8 @@ export const zAppFileUploadResponse = z.object({
  */
 export const zAppUserInputFormConfigResponse = z.object({
   allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(z.string()).optional(),
-  allowed_file_upload_methods: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   config: z.record(z.string(), zJsonValue2).optional(),
   default: zJsonValue2.optional(),
   description: z.string().optional(),
@@ -3625,7 +3640,26 @@ export const zAppDatasetListResponse = z.object({
  * AppMetadataConditionResponse
  */
 export const zAppMetadataConditionResponse = z.object({
-  comparison_operator: z.string(),
+  comparison_operator: z.enum([
+    '<',
+    '=',
+    '>',
+    'after',
+    'before',
+    'contains',
+    'empty',
+    'end with',
+    'in',
+    'is',
+    'is not',
+    'not contains',
+    'not empty',
+    'not in',
+    'start with',
+    '≠',
+    '≤',
+    '≥',
+  ]),
   name: z.string(),
   value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
 })
@@ -3808,21 +3842,6 @@ export const zUserActionConfig = z.object({
     .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
-
-/**
- * FileType
- */
-export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
-
-/**
- * FileTransferMethod
- */
-export const zFileTransferMethod = z.enum([
-  'datasource_file',
-  'local_file',
-  'remote_url',
-  'tool_file',
-])
 
 /**
  * FileInputConfig
@@ -4491,7 +4510,7 @@ export const zGeneratedAppResponseWritable = zJsonValue
  * AppPartial
  */
 export const zAppPartialWritable = z.object({
-  access_mode: z.string().nullish(),
+  access_mode: zWebAppAccessMode.nullish(),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -4502,12 +4521,12 @@ export const zAppPartialWritable = z.object({
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  icon_type: zIconType.nullish(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
   maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
-  mode: z.string(),
+  mode: zAppMode,
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),

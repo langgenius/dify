@@ -3,7 +3,10 @@ from typing import Literal, NotRequired, TypedDict
 
 from pydantic import AliasChoices, Field, JsonValue, field_validator
 
+from core.rag.entities.metadata_entities import SupportedComparisonOperator
 from fields.base import ResponseModel
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode
 from libs.helper import to_timestamp
 from models.enums import PromptType
 
@@ -15,7 +18,7 @@ class AppEnabledConfigResponse(TypedDict):
 class AppModelSelectionResponse(TypedDict, total=False):
     provider: str
     name: str
-    mode: str
+    mode: LLMMode | Literal[""]
     completion_params: dict[str, JsonValue]
 
 
@@ -84,9 +87,9 @@ class AppUserInputFormConfigResponse(TypedDict):
     default: NotRequired[JsonValue]
     type: NotRequired[str]
     hide: NotRequired[bool]
-    allowed_file_types: NotRequired[list[str]]
+    allowed_file_types: NotRequired[list[FileType]]
     allowed_file_extensions: NotRequired[list[str]]
-    allowed_file_upload_methods: NotRequired[list[str]]
+    allowed_file_upload_methods: NotRequired[list[FileTransferMethod]]
     json_schema: NotRequired[str | dict[str, JsonValue] | None]
     config: NotRequired[dict[str, JsonValue]]
 
@@ -268,7 +271,7 @@ class AppWeightsResponse(TypedDict):
 
 class AppMetadataConditionResponse(TypedDict):
     name: str
-    comparison_operator: str
+    comparison_operator: SupportedComparisonOperator
     value: NotRequired[str | list[str] | int | float | None]
 
 
@@ -295,16 +298,16 @@ class AppDatasetConfigsResponse(TypedDict):
 class AppImageUploadResponse(TypedDict, total=False):
     enabled: bool
     number_limits: int
-    detail: str
-    transfer_methods: list[str]
+    detail: Literal["low", "high"] | None
+    transfer_methods: list[FileTransferMethod]
 
 
 class AppFileUploadResponse(TypedDict, total=False):
     image: AppImageUploadResponse
     enabled: bool
-    allowed_file_types: list[str]
+    allowed_file_types: list[FileType]
     allowed_file_extensions: list[str]
-    allowed_file_upload_methods: list[str]
+    allowed_file_upload_methods: list[FileTransferMethod]
     number_limits: int
 
 

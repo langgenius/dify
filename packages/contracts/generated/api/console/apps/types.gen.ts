@@ -66,7 +66,7 @@ export type AppImportPayload = {
 
 export type Import = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version?: string
   error?: string
   id: string
@@ -488,7 +488,7 @@ export type CopyAppPayload = {
 
 export type AppImportResponse = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version: string
   error?: string
   id: string
@@ -1199,7 +1199,7 @@ export type ApiKeyItem = {
 }
 
 export type AppPartial = {
-  access_mode?: string | null
+  access_mode?: WebAppAccessMode | null
   app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
@@ -1210,13 +1210,13 @@ export type AppPartial = {
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: IconType | null
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: ModelConfigPartial | null
   name: string
   permission_keys?: Array<string>
@@ -2112,7 +2112,7 @@ export type WorkflowDraftVariableFullContentResponse = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: unknown | null
+  model?: AppModelSelectionResponse | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -2195,8 +2195,8 @@ export type AppDisabledExternalDataToolResponse = {
 
 export type AppFileUploadResponse = {
   allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<string>
-  allowed_file_upload_methods?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
   enabled?: boolean
   image?: AppImageUploadResponse
   number_limits?: number
@@ -2206,7 +2206,7 @@ export type AppModelSelectionResponse = {
   completion_params?: {
     [key: string]: JsonValue2
   }
-  mode?: string
+  mode?: LlmMode | ''
   name?: string
   provider?: string
 }
@@ -2761,17 +2761,21 @@ export type AppWeightsResponse = {
 
 export type JsonValue2 = unknown
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
 export type AppImageUploadResponse = {
-  detail?: string
+  detail?: 'high' | 'low' | null
   enabled?: boolean
   number_limits?: number
-  transfer_methods?: Array<string>
+  transfer_methods?: Array<FileTransferMethod>
 }
 
 export type AppUserInputFormConfigResponse = {
   allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<string>
-  allowed_file_upload_methods?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
   config?: {
     [key: string]: JsonValue2
   }
@@ -3065,7 +3069,25 @@ export type AppDatasetItemResponse = {
 }
 
 export type AppMetadataConditionResponse = {
-  comparison_operator: string
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
   name: string
   value?: string | Array<string> | number | number | null
 }
@@ -3110,10 +3132,6 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: 'file-list'
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentFileUploadImageFeatureConfig = {
   enabled?: boolean
@@ -3334,7 +3352,7 @@ export type WorkflowCommentDetailWritable = {
 }
 
 export type AppPartialWritable = {
-  access_mode?: string | null
+  access_mode?: WebAppAccessMode | null
   app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
@@ -3345,12 +3363,12 @@ export type AppPartialWritable = {
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: IconType | null
   id: string
   is_starred?: boolean
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: ModelConfigPartial | null
   name: string
   permission_keys?: Array<string>

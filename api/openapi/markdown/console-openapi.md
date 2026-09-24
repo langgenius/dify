@@ -13752,7 +13752,7 @@ default (the config form sends the full desired feature state on save).
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | No |
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
@@ -13767,13 +13767,13 @@ default (the config form sends the full desired feature state on save).
 | hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | Yes |
@@ -16025,8 +16025,8 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allowed_file_extensions | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| allowed_file_upload_methods | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 | enabled | boolean |  | No |
 | image | [AppImageUploadResponse](#appimageuploadresponse) |  | No |
 | number_limits | integer |  | No |
@@ -16043,10 +16043,10 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| detail | string |  | No |
+| detail | string, <br>**Available values:** "high", "low" |  | No |
 | enabled | boolean |  | No |
 | number_limits | integer |  | No |
-| transfer_methods | [ string ] |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 
 #### AppImportPayload
 
@@ -16067,7 +16067,7 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string |  | Yes |
 | error | string |  | No |
 | id | string |  | Yes |
@@ -16169,7 +16169,7 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string |  | Yes |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>integer<br>number |  | No |
 
@@ -16220,7 +16220,7 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completion_params | object |  | No |
-| mode | string |  | No |
+| mode | [LLMMode](#llmmode)<br>string |  | No |
 | name | string |  | No |
 | provider | string |  | No |
 
@@ -16256,7 +16256,7 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
@@ -16267,13 +16267,13 @@ AppMCPServer Status Enum
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
@@ -16417,8 +16417,8 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allowed_file_extensions | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| allowed_file_upload_methods | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 | config | object |  | No |
 | default | [JsonValue](#jsonvalue) |  | No |
 | description | string |  | No |
@@ -19428,7 +19428,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
@@ -20085,7 +20085,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model |  |  | No |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
