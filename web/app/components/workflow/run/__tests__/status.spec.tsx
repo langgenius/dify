@@ -62,6 +62,10 @@ vi.mock('@/service/use-log', () => ({
     mockUseWorkflowPausedDetails(params),
 }))
 
+vi.mock('@/utils/var', () => ({
+  basePath: '/dify',
+}))
+
 const createPausedDetails = (
   overrides: Partial<WorkflowPausedDetailsResponse> = {},
 ): WorkflowPausedDetailsResponse => ({
@@ -208,5 +212,35 @@ describe('Status', () => {
       'href',
       'https://example.com/b',
     )
+  })
+
+  it.each([
+    ['https://webapp.example.com/form/console-token', '/dify/human-input/console-token'],
+    [
+      'https://webapp.example.com/dify/form/approval%2Btoken/',
+      '/dify/human-input/approval%2Btoken',
+    ],
+    ['/form/console-token', '/dify/human-input/console-token'],
+    ['https://webapp.example.com/form-v2/v2-token', 'https://webapp.example.com/form-v2/v2-token'],
+  ])('opens the appropriate approval surface for %s', (backstageURL, destination) => {
+    mockUseWorkflowPausedDetails.mockReturnValue({
+      data: createPausedDetails({
+        paused_nodes: [
+          {
+            node_id: 'review-node',
+            node_title: 'Need review',
+            pause_type: {
+              type: 'human_input',
+              form_id: 'review-form',
+              backstage_input_url: backstageURL,
+            },
+          },
+        ],
+      }),
+    })
+
+    render(<Status status="paused" workflowRunId="paused-run" />)
+
+    expect(screen.getByRole('link', { name: destination })).toHaveAttribute('href', destination)
   })
 })
