@@ -44,10 +44,6 @@ vi.mock('../card/base/download-count', () => ({
   ),
 }))
 
-vi.mock('../card/base/title', () => ({
-  default: ({ title }: { title: string }) => <div data-testid="title">{title}</div>,
-}))
-
 const deploymentState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
@@ -97,7 +93,8 @@ describe('ProviderCard', () => {
   it('renders provider information, tags, and detail link', () => {
     renderProviderCard()
 
-    expect(screen.getByTestId('title')).toHaveTextContent('Provider One')
+    expect(screen.getByRole('article', { name: 'Provider One' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Provider One' })).toBeInTheDocument()
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByTestId('download-count')).toHaveTextContent('123')
     expect(screen.getByTestId('description')).toHaveTextContent('Provider description')

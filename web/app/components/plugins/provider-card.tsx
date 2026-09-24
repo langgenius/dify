@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
@@ -18,7 +18,6 @@ import Badge from '../base/badge'
 import Icon from './card/base/card-icon'
 import Description from './card/base/description'
 import DownloadCount from './card/base/download-count'
-import Title from './card/base/title'
 
 type Props = Readonly<{
   className?: string
@@ -36,6 +35,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
   const pluginLabel = getValueFromI18nObject(label)
+  const titleId = useId()
   const locale = useLocale()
   const navigation = useMarketplaceDetailNavigation()
 
@@ -43,7 +43,8 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
 
   return (
-    <div
+    <article
+      aria-labelledby={titleId}
       className={cn(
         'group relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg',
         className,
@@ -54,7 +55,13 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
         <Icon src={payload.icon} />
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">
-            <Title title={pluginLabel} />
+            <h2
+              id={titleId}
+              className="truncate system-md-semibold text-text-secondary"
+              title={pluginLabel}
+            >
+              {pluginLabel}
+            </h2>
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className="mb-1 flex h-4 items-center justify-between">
@@ -104,7 +111,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           onSuccess={hideInstallFromMarketplace}
         />
       )}
-    </div>
+    </article>
   )
 }
 
