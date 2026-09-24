@@ -90,11 +90,16 @@ const CredentialItem = ({
           onClick={() => onItemClick?.(credential)}
         >
           {content}
+          {credential.from_enterprise && (
+            <span className="badge badge-m shrink-0 px-1.25 py-0.5 system-2xs-medium">
+              Enterprise
+            </span>
+          )}
         </button>
       ) : (
         <div className="flex min-w-0 grow items-center">{content}</div>
       )}
-      {credential.from_enterprise && <Badge className="shrink-0">Enterprise</Badge>}
+      {!canSelect && credential.from_enterprise && <Badge className="shrink-0">Enterprise</Badge>}
       {showAction && !credential.from_enterprise && !isUnavailable && (
         <div className="ml-2 flex shrink-0 items-center opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
           {!disableEdit && (

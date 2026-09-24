@@ -32,6 +32,18 @@ describe('CredentialItem', () => {
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 
+  it('selects an enterprise credential when its badge is clicked', async () => {
+    const user = userEvent.setup()
+    const onItemClick = vi.fn()
+    const enterpriseCredential = { ...credential, from_enterprise: true }
+
+    render(<CredentialItem credential={enterpriseCredential} onItemClick={onItemClick} />)
+
+    await user.click(screen.getByText('Enterprise'))
+
+    expect(onItemClick).toHaveBeenCalledWith(enterpriseCredential)
+  })
+
   it('should call onItemClick when list item is clicked', () => {
     const onItemClick = vi.fn()
 
