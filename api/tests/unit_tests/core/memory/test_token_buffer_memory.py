@@ -782,9 +782,18 @@ class TestGetHistoryPromptMessages:
 
         assert len(result) == expected_length
 
-    def test_token_pruning_removes_complete_oldest_turn(self, database: Database) -> None:
+    @pytest.mark.parametrize(
+        ("token_values", "expected_contents"),
+        [
+            ([3000, 1500], ["new query", "new answer"]),
+            ([3000, 2500], []),
+        ],
+    )
+    def test_token_pruning_removes_complete_oldest_turn(
+        self, database: Database, token_values: list[int], expected_contents: list[str]
+    ) -> None:
         mem = self._make_memory(database)
-        mem.model_instance.get_llm_num_tokens.side_effect = [3000, 1500]
+        mem.model_instance.get_llm_num_tokens.side_effect = token_values
         base_time = datetime.now(UTC).replace(tzinfo=None)
         oldest = _persist_message(
             database, mem.conversation.id, query="old query", answer="old answer", created_at=base_time
@@ -800,7 +809,7 @@ class TestGetHistoryPromptMessages:
         with patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[newest, oldest]):
             result = mem.get_history_prompt_messages(max_token_limit=2000)
 
-        assert [prompt.content for prompt in result] == ["new query", "new answer"]
+        assert [prompt.content for prompt in result] == expected_contents
 
 
 # ===========================================================================
