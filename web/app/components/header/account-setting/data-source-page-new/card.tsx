@@ -137,7 +137,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             )}
           </div>
         </div>
-        <div className="ml-auto shrink-0">
+        <div className="shrink-0">
           <Configure
             pluginPayload={pluginPayload}
             item={item}
