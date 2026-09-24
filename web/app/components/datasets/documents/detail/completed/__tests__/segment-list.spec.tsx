@@ -5,7 +5,7 @@ import { ChunkingMode } from '@/models/datasets'
 import SegmentList from '../segment-list'
 
 // Mock document context
-let mockDocForm = ChunkingMode.text
+let mockDocForm: ChunkingMode = ChunkingMode.text
 let mockParentMode = 'paragraph'
 vi.mock('../../context', () => ({
   useDocumentContext: (

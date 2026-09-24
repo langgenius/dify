@@ -9,12 +9,14 @@ export type TenantListResponse = {
 }
 
 export type AgentProviderResponse = {
-  [key: string]: unknown
+  declaration: AgentProviderEntityWithPlugin
+  meta: Meta
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
 }
 
-export type AgentProviderListResponse = Array<{
-  [key: string]: unknown
-}>
+export type AgentProviderListResponse = Array<AgentProviderResponse>
 
 export type AgentSkillBindingsResponse = {
   agent_id: string
@@ -129,8 +131,8 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type SuccessResponse = {
-  success: boolean
+export type EndpointMutationResponse = {
+  success: true
 }
 
 export type EndpointIdPayload = {
@@ -385,6 +387,10 @@ export type PluginAutoUpgradeChangeResponse = {
 export type ParserExcludePlugin = {
   category: TenantPluginAutoUpgradeCategory
   plugin_id: string
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type PluginAutoUpgradeFetchResponse = {
@@ -1248,6 +1254,17 @@ export type TenantListItemResponse = {
   status?: string | null
 }
 
+export type AgentProviderEntityWithPlugin = {
+  identity: AgentStrategyProviderIdentity
+  plugin_id?: string | null
+  strategies?: Array<AgentStrategyEntity>
+}
+
+export type Meta = {
+  minimum_dify_version?: string | null
+  version?: string | null
+}
+
 export type AgentSkillBindingItemResponse = {
   description: string
   display_name: string
@@ -2031,6 +2048,27 @@ export type TenantInfoResponse = {
   trial_end_reason?: string | null
 }
 
+export type AgentStrategyProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type AgentStrategyEntity = {
+  description: I18nObject
+  features?: Array<AgentFeature> | null
+  identity: AgentStrategyIdentity
+  meta_version?: string | null
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<AgentStrategyParameter>
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2219,11 +2257,6 @@ export type CoreToolsEntitiesCommonEntitiesI18nObject = {
 export type EndpointProviderDeclaration = {
   endpoints?: Array<EndpointDeclaration> | null
   settings?: Array<ProviderConfig>
-}
-
-export type Meta = {
-  minimum_dify_version?: string | null
-  version?: string | null
 }
 
 export type ProviderEntity = {
@@ -2460,6 +2493,61 @@ export type OAuthSchema = {
   credentials_schema?: Array<ProviderConfig>
 }
 
+export type ToolLabelEnum =
+  | 'business'
+  | 'design'
+  | 'education'
+  | 'entertainment'
+  | 'finance'
+  | 'image'
+  | 'medical'
+  | 'news'
+  | 'other'
+  | 'productivity'
+  | 'rag'
+  | 'search'
+  | 'social'
+  | 'travel'
+  | 'utilities'
+  | 'videos'
+  | 'weather'
+
+export type AgentFeature = 'history-messages'
+
+export type AgentStrategyIdentity = {
+  author: string
+  icon?: string | null
+  label: I18nObject
+  name: string
+  provider: string
+}
+
+export type AgentStrategyParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  help?: I18nObject | null
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: AgentStrategyParameterType
+}
+
 export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
@@ -2537,16 +2625,6 @@ export type QuotaConfiguration = {
   quota_unit: QuotaUnit
   quota_used: number
   restrict_models?: Array<RestrictModel>
-}
-
-export type AgentStrategyProviderIdentity = {
-  author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  icon: string
-  icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
-  name: string
-  tags?: Array<ToolLabelEnum> | null
 }
 
 export type DatasourceProviderIdentity = {
@@ -2681,6 +2759,20 @@ export type EventParameterType =
   | 'select'
   | 'string'
 
+export type AgentStrategyParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
+
 export type PriceConfigResponse = {
   currency: string
   input: string
@@ -2735,25 +2827,6 @@ export type RestrictModel = {
   model: string
   model_type: ModelType
 }
-
-export type ToolLabelEnum =
-  | 'business'
-  | 'design'
-  | 'education'
-  | 'entertainment'
-  | 'finance'
-  | 'image'
-  | 'medical'
-  | 'news'
-  | 'other'
-  | 'productivity'
-  | 'rag'
-  | 'search'
-  | 'social'
-  | 'travel'
-  | 'utilities'
-  | 'videos'
-  | 'weather'
 
 export type PriceConfig = {
   currency: string
@@ -3143,7 +3216,7 @@ export type PostWorkspacesCurrentEndpointsErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse =
@@ -3161,7 +3234,7 @@ export type PostWorkspacesCurrentEndpointsCreateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse =
@@ -3179,7 +3252,7 @@ export type PostWorkspacesCurrentEndpointsDeleteErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse =
@@ -3197,7 +3270,7 @@ export type PostWorkspacesCurrentEndpointsDisableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse =
@@ -3215,7 +3288,7 @@ export type PostWorkspacesCurrentEndpointsEnableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse =
@@ -3268,7 +3341,7 @@ export type PostWorkspacesCurrentEndpointsUpdateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse =
@@ -3288,7 +3361,7 @@ export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse =
@@ -3308,7 +3381,7 @@ export type PatchWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =

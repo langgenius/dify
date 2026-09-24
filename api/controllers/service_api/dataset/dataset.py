@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
@@ -34,12 +35,18 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from fields.dataset_fields import (
+    DatasetDetailPrefetch,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
-from fields.dataset_fields import dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import clamp_pagination
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -61,7 +68,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -98,9 +104,11 @@ _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
-def _dump_service_dataset_detail(dataset: Any, *, session: Session) -> dict[str, Any]:
+def _dump_service_dataset_detail(
+    dataset: Any, *, session: Session, prefetch: DatasetDetailPrefetch | None = None
+) -> dict[str, Any]:
     return DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session), from_attributes=True
+        dataset_detail_response_source(dataset, session=session, prefetch=prefetch), from_attributes=True
     ).model_dump(
         mode="json",
         exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
@@ -411,20 +419,20 @@ class DatasetListApi(DatasetApiResource):
         description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
         tags=["Knowledge Bases"],
         responses={
-            200: "List of knowledge bases.",
+            HTTPStatus.OK: "List of knowledge bases.",
         },
     )
     @service_api_ns.doc("list_datasets")
     @service_api_ns.doc(description="List all datasets")
     @service_api_ns.doc(
         responses={
-            200: "Datasets retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Datasets retrieved successfully",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.doc(params=query_params_from_model(DatasetListQuery))
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
@@ -436,10 +444,10 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
-        effective_limit = min(query.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
-            query.page,
+            effective_page,
             effective_limit,
             session,
             tenant_id,
@@ -447,6 +455,7 @@ class DatasetListApi(DatasetApiResource):
             query.keyword,
             query.tag_ids,
             query.include_all,
+            tags=application_services().tags,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -461,7 +470,8 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [_dump_service_dataset_detail(dataset, session=session) for dataset in datasets]
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
+        data = [_dump_service_dataset_detail(dataset, session=session, prefetch=prefetch) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -474,12 +484,12 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": query.page * effective_limit < total,
+            "has_more": effective_page * effective_limit < total,
             "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
-        return _dump_service_dataset_list(response), 200
+        return _dump_service_dataset_list(response), HTTPStatus.OK
 
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
@@ -558,9 +568,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 

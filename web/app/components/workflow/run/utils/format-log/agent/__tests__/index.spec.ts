@@ -2,7 +2,10 @@ import type { AgentLogItem, NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import format from '..'
 
-const createTrace = (agentLog: AgentLogItem[], nodeType = BlockEnum.Agent): NodeTracing =>
+const createTrace = (
+  agentLog: AgentLogItem[],
+  nodeType: BlockEnum = BlockEnum.Agent,
+): NodeTracing =>
   ({
     node_id: 'agent-node',
     node_type: nodeType,

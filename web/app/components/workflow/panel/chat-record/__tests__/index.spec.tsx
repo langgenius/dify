@@ -1,5 +1,5 @@
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -24,7 +24,7 @@ describe('ChatRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
+      appDetail: { id: 'app-1' } as App,
     })
   })
 

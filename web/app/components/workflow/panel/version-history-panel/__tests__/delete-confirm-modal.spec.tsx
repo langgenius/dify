@@ -67,7 +67,7 @@ describe('DeleteConfirmModal', () => {
     )
 
     expect(
-      screen.getByText('common.operation.delete workflow.versionHistory.defaultName'),
+      screen.getByText('common.operation.delete workflowHistory.versionHistory.defaultName'),
     ).toBeInTheDocument()
   })
 })

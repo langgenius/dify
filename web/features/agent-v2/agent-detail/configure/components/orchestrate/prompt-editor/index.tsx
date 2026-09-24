@@ -16,8 +16,8 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -35,10 +35,10 @@ import {
 } from 'lexical'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -421,7 +421,7 @@ function AgentPromptSelectionBridge({
 }
 
 export function AgentPromptEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -450,7 +450,7 @@ export function AgentPromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
+
   const promptPlaceholder = (
     <AgentPromptPlaceholder
       text={t(($) => $['agentDetail.configure.prompt.placeholder'])}
@@ -849,7 +849,7 @@ export function AgentPromptEditor() {
     [configuredReferenceIds, t, tools],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen) return
 
     const rootElement = positioningRootRef.current
@@ -1087,8 +1087,11 @@ export function AgentPromptEditor() {
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
-          <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+          <Infotip>
+            <InfotipTrigger aria-labelledby="agent-configure-prompt-label" />
+            <InfotipContent aria-labelledby="agent-configure-prompt-label" className="max-w-64">
+              <AgentConfigureTipContent type="prompt" />
+            </InfotipContent>
           </Infotip>
         </div>
         <Tooltip>

@@ -6,7 +6,7 @@ import { DifyLogo } from '../../base/logo/dify-logo'
 import styles from './header.module.css'
 
 const Header = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <div className="flex min-h-26.25 w-full justify-center px-10">

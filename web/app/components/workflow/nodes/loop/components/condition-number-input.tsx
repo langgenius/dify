@@ -14,18 +14,17 @@ import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
 import VariableTag from '../../_base/components/variable-tag'
-import { VarType as NumberVarType } from '../../tool/types'
 
-const options = [NumberVarType.variable, NumberVarType.constant]
+const options = [VarKindType.variable, VarKindType.constant]
 
 type ConditionNumberInputProps = {
-  numberVarType?: NumberVarType
-  onNumberVarTypeChange: (v: NumberVarType) => void
+  numberVarType?: VarKindType
+  onNumberVarTypeChange: (v: VarKindType) => void
   value: string
   onValueChange: (v: string) => void
   variables: NodeOutPutVar[]
@@ -33,7 +32,7 @@ type ConditionNumberInputProps = {
   unit?: string
 }
 const ConditionNumberInput = ({
-  numberVarType = NumberVarType.constant,
+  numberVarType = VarKindType.constant,
   onNumberVarTypeChange,
   value,
   onValueChange,
@@ -42,8 +41,7 @@ const ConditionNumberInput = ({
   unit,
 }: ConditionNumberInputProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
-  const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
+  const { t } = useTranslation(['workflowLogic'])
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean()
 
@@ -57,7 +55,7 @@ const ConditionNumberInput = ({
 
   return (
     <div className="flex cursor-pointer items-center">
-      <DropdownMenu open={numberVarTypeVisible} onOpenChange={setNumberVarTypeVisible}>
+      <DropdownMenu>
         <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
           <RiArrowDownSLine className="size-3.5" />
@@ -87,7 +85,7 @@ const ConditionNumberInput = ({
       </DropdownMenu>
       <div className="mx-1 h-4 w-px bg-divider-regular"></div>
       <div className="ml-0.5 w-0 grow">
-        {numberVarType === NumberVarType.variable && (
+        {numberVarType === VarKindType.variable && (
           <Popover open={variableSelectorVisible} onOpenChange={setVariableSelectorVisible}>
             <PopoverTrigger nativeButton={false} render={<div className="w-full" />}>
               {value && (
@@ -99,9 +97,12 @@ const ConditionNumberInput = ({
               )}
               {!value && (
                 <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 size-4 shrink-0" />
+                  <span
+                    aria-hidden
+                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
+                  />
                   <div className="w-0 grow truncate">
-                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflowLogic' })}
                   </div>
                 </div>
               )}
@@ -127,7 +128,7 @@ const ConditionNumberInput = ({
             </PopoverContent>
           </Popover>
         )}
-        {numberVarType === NumberVarType.constant && (
+        {numberVarType === VarKindType.constant && (
           <div className="relative">
             <input
               className={cn(
@@ -137,7 +138,7 @@ const ConditionNumberInput = ({
               type="number"
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
+              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
               onFocus={setFocus}
               onBlur={setBlur}
             />

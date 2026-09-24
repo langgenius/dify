@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 }
 
 export function GotoAnything() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
@@ -446,7 +446,7 @@ export function GotoAnything() {
 
   function getCommandOptionDescription(option: CommandOption) {
     if (option.shortcut === '/models')
-      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })
+      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
 
     const descriptionKey = isSlashMode
       ? slashCommandDescriptionKeys[option.shortcut as keyof typeof slashCommandDescriptionKeys]
@@ -459,7 +459,7 @@ export function GotoAnything() {
 
   function getGroupLabel(type: string) {
     if (type === 'skill') return t(($) => $['skillManagement.title'], { ns: 'skill' })
-    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentV2' })
+    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentRoster' })
 
     return t(($) => $[groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`], {
       ns: 'app',

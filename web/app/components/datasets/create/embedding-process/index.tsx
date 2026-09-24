@@ -3,12 +3,12 @@ import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
@@ -35,13 +35,17 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
   isEmbedding,
   isCompleted,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
-    <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
+    <div
+      role="status"
+      aria-atomic="true"
+      className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary"
+    >
       {isEmbedding && (
         <>
-          <RiLoader2Fill className="size-4 animate-spin" />
+          <RiLoader2Fill aria-hidden="true" className="size-4 animate-spin" />
           <span>{t(($) => $['embedding.processing'], { ns: 'datasetDocuments' })}</span>
         </>
       )}
@@ -56,10 +60,10 @@ const ActionButtons: FC<{
   documentsHref: string
   onNavigateToDocuments: () => void
 }> = ({ apiReferenceUrl, documentsHref, onNavigateToDocuments }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
-    <div className="mt-6 flex items-center gap-x-2 py-2">
+    <div className="mt-6 flex flex-wrap items-center gap-2 py-2">
       <Link
         href={apiReferenceUrl}
         target="_blank"
@@ -149,7 +153,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
           ))}
         </div>
 
-        <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
 
         <RuleDetail
           sourceData={ruleDetail}

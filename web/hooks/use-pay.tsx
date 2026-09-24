@@ -19,7 +19,7 @@ type ConfirmType = {
 }
 
 const useAnthropicCheckPay = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
   const providerName = searchParams.get('provider_name')
@@ -44,7 +44,7 @@ const useAnthropicCheckPay = () => {
 }
 
 const useBillingPay = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
   const paymentType = searchParams.get('payment_type')
@@ -99,7 +99,7 @@ const useCheckNotion = () => {
 
 export const CheckModal = () => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [showPayStatusModal, setShowPayStatusModal] = useState(true)
   const anthropicConfirmInfo = useAnthropicCheckPay()
   const notionConfirmInfo = useCheckNotion()

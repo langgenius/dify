@@ -98,10 +98,12 @@ const Item: FC<ItemProps> = ({
   isSelected,
   onActivate,
 }) => {
+  const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
+
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isObj =
-    [VarType.object, VarType.file].includes(itemData.type) &&
+    nestedVariableTypes.includes(itemData.type) &&
     itemData.children &&
     (itemData.children as Var[]).length > 0
   const isEnv = itemData.variable.startsWith('env.')
@@ -354,7 +356,7 @@ const VarReferenceVars: FC<Props> = ({
   searchInputRef: externalSearchInputRef,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const internalSearchInputRef = useRef<HTMLInputElement>(null)
@@ -573,7 +575,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div className="relative mt-3.5 flex items-center space-x-1">
                     <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                     <div className="system-2xs-semibold-uppercase text-text-tertiary">
-                      {t(($) => $['debug.lastOutput'], { ns: 'workflow' })}
+                      {t(($) => $['debug.lastOutput'], { ns: 'workflowDebug' })}
                     </div>
                     <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                   </div>

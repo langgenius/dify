@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import {
@@ -27,7 +28,6 @@ import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
-import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
@@ -98,7 +98,7 @@ const ProviderCardActions: FC<Props> = (props) => {
 type SummaryProps = Extract<Props, { summary: ModelProviderPluginSummary }>
 
 function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: SummaryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'plugin'])
   const queryClient = useQueryClient()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const [detail, setDetail] = useState<PluginDetail>()
@@ -292,7 +292,7 @@ function LoadedProviderCardActions({
   onInitialActionHandled,
   onUpdate,
 }: LoadedProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()

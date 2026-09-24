@@ -118,10 +118,10 @@ describe('usePluginPageTabs', () => {
     const { result } = renderHook(() => usePluginPageTabs())
 
     expect(result.current).toHaveLength(2)
-    expect(result.current[0]).toEqual({ value: 'plugins', text: 'common.menus.plugins' })
+    expect(result.current[0]).toEqual({ value: 'plugins', text: 'navigation.menus.plugins' })
     expect(result.current[1]).toEqual({
       value: 'discover',
-      text: 'common.menus.exploreMarketplace',
+      text: 'navigation.menus.exploreMarketplace',
     })
   })
 

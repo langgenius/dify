@@ -3,12 +3,12 @@ import type { CalendarItemProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import dayjs from '../utils/dayjs'
 
 const Item: FC<CalendarItemProps> = ({ day, selectedDate, onClick, isDisabled }) => {
   const locale = useLocale()
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const selectedDescriptionId = React.useId()
   const { date, isCurrentMonth } = day
   const isSelected = selectedDate?.isSame(date, 'date')

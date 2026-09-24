@@ -8,9 +8,9 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 
@@ -30,7 +30,7 @@ type ApiBasedExtensionModalProps = {
 
 export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   const { open, mode, onOpenChange, onSaved } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docLink = useDocLink()
   const createApiBasedExtensionMutation = useMutation(
     consoleQuery.apiBasedExtension.post.mutationOptions(),

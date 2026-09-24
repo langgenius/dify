@@ -20,7 +20,8 @@ const HomeCatalogTabs = ({
   labels,
   language,
 }: HomeCatalogTabsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['navigation'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const catalogParams = language ? { language } : undefined
   const getRelativeCatalogHref = (path: string) => {
     const searchParams = new URLSearchParams(catalogParams)
@@ -33,13 +34,14 @@ const HomeCatalogTabs = ({
   const templatesHref = getRelativeCatalogHref('/templates')
   const isPluginsActive = activeTab === 'plugins'
   const isTemplatesActive = activeTab === 'templates'
-  const pluginsLabel = labels?.plugins ?? t(($) => $['marketplace.home.plugins'], { ns: 'plugin' })
+  const pluginsLabel =
+    labels?.plugins ?? tPlugin(($) => $['marketplace.home.plugins'], { ns: 'plugin' })
   const templatesLabel =
-    labels?.templates ?? t(($) => $['marketplace.home.templates'], { ns: 'plugin' })
+    labels?.templates ?? tPlugin(($) => $['marketplace.home.templates'], { ns: 'plugin' })
 
   return (
     <nav
-      aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+      aria-label={t(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
       className={cn('flex h-8 items-center gap-1', className)}
     >
       <Link

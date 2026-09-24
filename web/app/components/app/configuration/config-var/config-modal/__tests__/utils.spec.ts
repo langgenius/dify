@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -14,7 +15,7 @@ import {
   validateConfigModalPayload,
 } from '../utils'
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,

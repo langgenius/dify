@@ -35,7 +35,7 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
 }
 
 const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -8,15 +8,15 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { timezones } from '@/utils/timezone'
@@ -49,14 +49,17 @@ export default function PreferencePage() {
   })
   const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings'])
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter((item) => item.supported)
   const themeOptions: SelectOption[] = [
-    { value: 'system', name: t(($) => $['account.appearanceFollowSystem'], { ns: 'common' }) },
-    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'common' }) },
-    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'common' }) },
+    {
+      value: 'system',
+      name: t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' }),
+    },
+    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'accountSettings' }) },
+    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'accountSettings' }) },
   ]
   const selectedLanguage = languageOptions.find(
     (item) => item.value === (locale || userProfile.interface_language),
@@ -94,7 +97,7 @@ export default function PreferencePage() {
     <>
       <div className="mb-6">
         <div className={titleClassName}>
-          {t(($) => $['account.appearanceLabel'], { ns: 'common' })}
+          {t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         </div>
         <Select
           value={selectedTheme?.value ?? 'system'}
@@ -105,7 +108,8 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedTheme?.name ?? t(($) => $['account.appearanceFollowSystem'], { ns: 'common' })}
+            {selectedTheme?.name ??
+              t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' })}
           </SelectTrigger>
           <SelectContent>
             {themeOptions.map((item) => (

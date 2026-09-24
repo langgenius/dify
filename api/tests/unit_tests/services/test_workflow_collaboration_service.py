@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account, Tenant
 from models.base import TypeBase
-from models.model import App, AppMode, IconType
+from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_app
 
 
 @pytest.fixture
@@ -27,25 +28,15 @@ def db_session(sqlite_engine: Engine) -> Iterator[Session]:
 
 
 def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Workflow app",
-        description="",
         mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
-        icon="robot",
         icon_background="#ffffff",
         enable_site=False,
         enable_api=False,
-        api_rpm=0,
-        api_rph=0,
-        is_demo=False,
-        is_public=False,
-        is_universal=False,
-        max_active_requests=None,
         maintainer=maintainer,
-        use_icon_as_answer_icon=False,
     )
 
 

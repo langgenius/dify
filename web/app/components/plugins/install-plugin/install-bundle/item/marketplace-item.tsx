@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Plugin } from '../../../types'
-import type { VersionProps } from '@/app/components/plugins/types'
+import type { Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
 import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'

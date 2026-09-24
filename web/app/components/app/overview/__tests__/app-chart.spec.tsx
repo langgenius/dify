@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: { option: unknown; opts?: unknown }) => {
     reactEChartsMock(props)
     return <div role="img" aria-label="Chart" />

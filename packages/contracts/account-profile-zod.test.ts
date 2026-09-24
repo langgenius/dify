@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   zAccountPasswordPayload,
   zAccountProfilePatchPayload,
-} from './generated/api/console/account/zod.gen'
+} from './generated/api/console/account/zod.gen.ts'
 
 describe('generated account profile schema', () => {
   it('matches the server rules for partial updates', () => {

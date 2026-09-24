@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppToastHost } from '@/app/notifications/host'
 import AgentLogModal from '.'
 
 const MOCK_RESPONSE: AgentLogDetailResponse = {
@@ -104,7 +104,7 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
 
   return (
     <>
-      <ToastHost />
+      <AppToastHost />
       <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
           currentLogItem={MOCK_CHAT_ITEM}

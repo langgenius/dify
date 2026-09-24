@@ -142,7 +142,7 @@ describe('EmbeddedChatbot index', () => {
 
       render(<EmbeddedChatbot />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByText('chat area')).not.toBeInTheDocument()
     })
 

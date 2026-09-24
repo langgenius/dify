@@ -436,7 +436,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['web/i18n/**/*.json'],
+    files: ['web/i18n/locales/**/*.json'],
     plugins: {
       dify,
     },

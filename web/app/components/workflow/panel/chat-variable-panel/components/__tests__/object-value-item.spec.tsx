@@ -4,7 +4,7 @@ import ObjectValueItem, { DEFAULT_OBJECT_VALUE } from '../object-value-item'
 
 const toastError = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),
   },

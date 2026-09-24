@@ -42,8 +42,17 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ children, nameClassName }: { children: React.ReactNode; nameClassName?: string }) => (
+  default: ({
+    children,
+    nameClassName,
+    nameId,
+  }: {
+    children: React.ReactNode
+    nameClassName?: string
+    nameId?: string
+  }) => (
     <div data-testid="model-name" className={nameClassName}>
+      <span id={nameId}>gpt-4</span>
       {children}
     </div>
   ),
@@ -92,6 +101,7 @@ describe('ModelListItem', () => {
     })
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
     expect(screen.getByTestId('model-name')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'gpt-4' })).toBeInTheDocument()
   })
 
   it('should disable an active model when switch is clicked', async () => {

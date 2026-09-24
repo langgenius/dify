@@ -15,7 +15,7 @@ export function HomeIntroSkeleton() {
 }
 
 export function HomeIntro() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

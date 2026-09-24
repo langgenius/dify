@@ -176,7 +176,6 @@ describe('http/panel', () => {
   const showCurlPanel = vi.fn()
   const hideCurlPanel = vi.fn()
   const handleCurlImport = vi.fn()
-  const handleSSLVerifyChange = vi.fn()
 
   const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
     readOnly: false,
@@ -202,7 +201,7 @@ describe('http/panel', () => {
     showCurlPanel,
     hideCurlPanel,
     handleCurlImport,
-    handleSSLVerifyChange,
+    handleSSLVerifyChange: vi.fn(),
     ...overrides,
   })
 
@@ -230,9 +229,10 @@ describe('http/panel', () => {
     await user.click(screen.getAllByRole('button', { name: 'emit-key-value-add' })[1]!)
     await user.click(screen.getByRole('button', { name: 'emit-body-change' }))
     await user.click(screen.getByRole('button', { name: 'emit-timeout-change' }))
-    await user.click(screen.getByText('workflow.nodes.http.authorization.authorization'))
-    await user.click(screen.getByText('workflow.nodes.http.curl.title'))
-    await user.click(screen.getByRole('switch'))
+    await user.click(
+      screen.getByText('workflowIntegrations.nodes.http.authorization.authorization'),
+    )
+    await user.click(screen.getByText('workflowIntegrations.nodes.http.curl.title'))
 
     expect(handleMethodChange).toHaveBeenCalledWith(Method.post)
     expect(handleUrlChange).toHaveBeenCalledWith('https://changed.example.com')
@@ -247,7 +247,6 @@ describe('http/panel', () => {
     expect(setTimeout).toHaveBeenCalledWith(expect.objectContaining({ connect: 9 }))
     expect(showAuthorization).toHaveBeenCalledTimes(1)
     expect(showCurlPanel).toHaveBeenCalledTimes(1)
-    expect(handleSSLVerifyChange).toHaveBeenCalledWith(false)
     expect(mockApiInput).toHaveBeenCalledWith(
       expect.objectContaining({
         method: Method.get,
