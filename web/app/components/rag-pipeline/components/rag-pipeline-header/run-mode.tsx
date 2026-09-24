@@ -18,7 +18,7 @@ type RunModeProps = {
 }
 
 export function RunMode({ text }: RunModeProps) {
-  const { t } = useTranslation(['common', 'pipeline', 'workflow'])
+  const { t } = useTranslation(['common', 'pipeline', 'workflowDebug'])
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
@@ -103,7 +103,7 @@ export function RunMode({ text }: RunModeProps) {
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
-          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           onClick={handleStop}
         >
           <span

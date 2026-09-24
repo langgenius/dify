@@ -179,7 +179,7 @@ export function FileTree({
 }) {
   const { t } = useTranslation(['skill', 'common'])
   const { t: tApp } = useTranslation(['app'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()
@@ -1214,7 +1214,10 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+            <Breadcrumb
+              aria-label={tCommon(($) => $['mainNav.skills'], { ns: 'navigation' })}
+              className="flex-1"
+            >
               <BreadcrumbList className="gap-px">
                 <BreadcrumbItem className="shrink-0">
                   <BreadcrumbLink

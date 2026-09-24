@@ -40,25 +40,28 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
 }
 
 function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
   return (
     <SegmentedControl
-      aria-label={t(($) => $['roster.filters.label'])}
+      aria-label={t(($) => $['roster.filters.label'], { ns: 'agentRoster' })}
       className="shrink-0"
       value={filter}
       onValueChange={(value) => void setFilter(value)}
     >
-      <RosterFilterItem value="all" label={t(($) => $['roster.filters.all'])} />
+      <RosterFilterItem
+        value="all"
+        label={t(($) => $['roster.filters.all'], { ns: 'agentRoster' })}
+      />
       <RosterFilterItem
         value="published"
-        label={t(($) => $['roster.filters.published'])}
+        label={t(($) => $['roster.filters.published'], { ns: 'agentRoster' })}
         count={publicationCounts.published}
       />
       <RosterFilterItem
         value="drafts"
-        label={t(($) => $['roster.filters.drafts'])}
+        label={t(($) => $['roster.filters.drafts'], { ns: 'agentRoster' })}
         count={publicationCounts.drafts}
       />
     </SegmentedControl>
@@ -66,7 +69,7 @@ function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
 }
 
 function RosterSearchFilter() {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const [keyword, setKeyword] = useQueryState(
     rosterQueryParamNames.keyword,
     rosterKeywordQueryParser,
@@ -74,9 +77,9 @@ function RosterSearchFilter() {
 
   return (
     <SearchInput
-      aria-label={t(($) => $['roster.searchLabel'])}
+      aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
       className="h-8 w-50 min-w-0 shrink"
-      placeholder={t(($) => $['roster.searchPlaceholder'])}
+      placeholder={t(($) => $['roster.searchPlaceholder'], { ns: 'agentRoster' })}
       value={keyword}
       onValueChange={(value) => {
         void setKeyword(value)
@@ -86,7 +89,7 @@ function RosterSearchFilter() {
 }
 
 function RosterCreatedByMeFilter() {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const [createdByMe, setCreatedByMe] = useQueryState(
     rosterQueryParamNames.createdByMe,
     rosterCreatedByMeQueryParser,
@@ -101,7 +104,7 @@ function RosterCreatedByMeFilter() {
         }}
       />
       <span className="p-1 system-sm-regular text-text-tertiary">
-        {t(($) => $['roster.filters.createdByMe'])}
+        {t(($) => $['roster.filters.createdByMe'], { ns: 'agentRoster' })}
       </span>
     </label>
   )

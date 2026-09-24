@@ -29,7 +29,7 @@ const AddCustomModel = ({
   open: controlledOpen,
   onOpenChange,
 }: AddCustomModelProps) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const setOpen = (nextOpen: boolean) => {
@@ -74,7 +74,7 @@ const AddCustomModel = ({
           )}
         >
           <span className="i-ri-add-circle-fill size-3.5" />
-          {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
         </Button>
       )
       if ((notAllowCustomCredential && !!noModels) || disabled) {
@@ -159,7 +159,7 @@ const AddCustomModel = ({
               }}
             >
               <span className="mr-1 i-ri-add-line size-4" />
-              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'common' })}
+              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'modelProvider' })}
             </div>
           )}
         </div>

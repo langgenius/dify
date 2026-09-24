@@ -42,7 +42,7 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
@@ -136,7 +136,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
       ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/app/${appId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',

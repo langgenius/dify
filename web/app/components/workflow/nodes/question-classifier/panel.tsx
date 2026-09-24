@@ -17,7 +17,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.questionClassifiers'
 
 const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
 
   const {
     readOnly,
@@ -92,7 +92,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
         />
         <Split />
       </div>
-      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflow' })}>
+      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <AdvancedSetting
           hideMemorySetting={!isChatMode}
           instruction={inputs.instruction}
@@ -114,17 +114,21 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             <VarItem
               name="class_name"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.className`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.className`], {
+                ns: 'workflowModels',
+              })}
             />
             <VarItem
               name="class_label"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.classLabel`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.classLabel`], {
+                ns: 'workflowModels',
+              })}
             />
             <VarItem
               name="usage"
               type="object"
-              description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflowModels' })}
             />
           </>
         </OutputVars>

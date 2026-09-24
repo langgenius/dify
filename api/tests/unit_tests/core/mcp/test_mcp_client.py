@@ -214,6 +214,43 @@ class TestMCPClient:
         # Verify session was created with MCP
         assert client._session == mock_session
 
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_closes_partial_sse_connection(
+        self, mock_client_session, mock_streamable_client, mock_sse_client
+    ):
+        """A failed SSE handshake is closed before streamable HTTP fallback starts."""
+        events: list[str] = []
+
+        sse_context = MagicMock()
+        sse_context.__enter__.return_value = (Mock(), Mock())
+        sse_context.__exit__.side_effect = lambda *_args: events.append("sse_closed")
+        mock_sse_client.return_value = sse_context
+
+        mcp_context = MagicMock()
+        mcp_context.__enter__.side_effect = lambda *_args: events.append("mcp_opened") or (Mock(), Mock(), Mock())
+        mock_streamable_client.return_value = mcp_context
+
+        failed_session_context = MagicMock()
+        failed_session = Mock()
+        failed_session.initialize.side_effect = MCPConnectionError("SSE handshake failed")
+        failed_session_context.__enter__.return_value = failed_session
+        failed_session_context.__exit__.side_effect = lambda *_args: events.append("session_closed")
+
+        live_session_context = MagicMock()
+        live_session = Mock()
+        live_session_context.__enter__.return_value = live_session
+        mock_client_session.side_effect = [failed_session_context, live_session_context]
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        assert events[:3] == ["session_closed", "sse_closed", "mcp_opened"]
+        failed_session_context.__exit__.assert_called_once()
+        sse_context.__exit__.assert_called_once()
+        assert client._session is live_session
+
     @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
     @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")

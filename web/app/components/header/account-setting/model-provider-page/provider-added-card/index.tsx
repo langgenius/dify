@@ -45,7 +45,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   pluginSummary,
 }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const {
     data: { deploymentEdition, rbacEnabled },
   } = useSuspenseQuery({
@@ -194,13 +194,16 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <button
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               <span className="truncate">
                 {hasModelList
-                  ? t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
-                  : t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+                  ? t(($) => $['modelProvider.modelsNum'], {
+                      ns: 'modelProvider',
+                      num: modelList.length,
+                    })
+                  : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               </span>
               {!loading && (
                 <span aria-hidden className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />
@@ -217,7 +220,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
               />
               <span className="truncate system-xs-medium text-text-secondary">
-                {t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
+                {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
               </span>
             </div>
           )}
@@ -278,12 +281,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <button
               type="button"
               className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               {hasModelList
-                ? t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
-                : t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+                ? t(($) => $['modelProvider.modelsNum'], {
+                    ns: 'modelProvider',
+                    num: modelList.length,
+                  })
+                : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               {!loading && <div className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
               {loading && <div className="ml-0.5 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
@@ -292,7 +298,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <div className="flex h-6 items-center pr-1.5 pl-1">
               <div className="mr-1 i-ri-information-2-fill size-4 text-text-accent" />
               <span className="system-xs-medium text-text-secondary">
-                {t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
+                {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
               </span>
             </div>
           )}

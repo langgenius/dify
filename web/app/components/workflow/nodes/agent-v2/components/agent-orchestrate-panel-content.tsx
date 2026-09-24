@@ -815,7 +815,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation(['common', 'agentV2'])
+  const { t } = useTranslation(['common', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null
@@ -839,7 +839,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

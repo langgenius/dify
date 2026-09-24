@@ -849,7 +849,7 @@ export function AgentPromptEditor() {
     [configuredReferenceIds, t, tools],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen) return
 
     const rootElement = positioningRootRef.current

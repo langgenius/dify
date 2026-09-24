@@ -23,7 +23,7 @@ const SKELETON_ROWS = ['s1', 's2', 's3', 's4'] as const
 // about to arrive, using the shared Skeleton primitives. The pane fills in
 // place instead of jerking from a centred spinner to a left-aligned list.
 const PlanningSkeleton = memo(() => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowGenerator'])
   return (
     <div
       aria-busy="true"
@@ -52,7 +52,7 @@ const PlanningSkeleton = memo(() => {
         role="status"
       >
         <span aria-hidden="true" className="i-ri-loader-4-line size-4 animate-spin" />
-        <span>{t(($) => $['workflowGenerator.phases.planning'])}</span>
+        <span>{t(($) => $['workflowGenerator.phases.planning'], { ns: 'workflowGenerator' })}</span>
       </div>
     </div>
   )
@@ -69,7 +69,7 @@ PlanningSkeleton.displayName = 'PlanningSkeleton'
  * canvas — while the builder fills in the graph.
  */
 const GenerationPlan = ({ plan }: Props) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowGenerator'])
 
   if (!plan) return <PlanningSkeleton />
 
@@ -128,7 +128,7 @@ const GenerationPlan = ({ plan }: Props) => {
         role="status"
       >
         <span aria-hidden="true" className="i-ri-loader-4-line size-4 animate-spin" />
-        <span>{t(($) => $['workflowGenerator.phases.building'])}</span>
+        <span>{t(($) => $['workflowGenerator.phases.building'], { ns: 'workflowGenerator' })}</span>
       </div>
     </div>
   )

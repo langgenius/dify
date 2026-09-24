@@ -35,7 +35,7 @@ const Result: FC<Props> = ({
   onApply,
   generatorType,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['common', 'appGeneration'])
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
@@ -43,7 +43,7 @@ const Result: FC<Props> = ({
       <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-y-3">
         <div>
           <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">
-            {t(($) => $['generate.resTitle'], { ns: 'appDebug' })}
+            {t(($) => $['generate.resTitle'], { ns: 'appGeneration' })}
           </div>
           <VersionSelector
             versionLen={versions.length}
@@ -64,7 +64,7 @@ const Result: FC<Props> = ({
             <span aria-hidden="true" className="i-ri-clipboard-line size-4 text-text-secondary" />
           </IconButton>
           <Button variant="primary" onClick={onApply}>
-            {t(($) => $['generate.apply'], { ns: 'appDebug' })}
+            {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
           </Button>
         </div>
       </div>

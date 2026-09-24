@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "When embedding model supports multi-modal, please select a multi-modal rerank model for better performance.",
   "form.retrievalSetting.title": "Retrieval Setting",
   "form.save": "Save",
-  "form.searchModel": "Search model",
   "form.summaryAutoGen": "Summary Auto-Gen",
   "form.summaryAutoGenEnableTip": "Once enabled, summaries will be generated automatically for newly added documents. Existing documents can still be summarized manually.",
   "form.summaryAutoGenTip": "Summaries are automatically generated for newly added documents. Existing documents can still be summarized manually.",

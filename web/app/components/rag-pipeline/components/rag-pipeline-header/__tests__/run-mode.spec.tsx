@@ -167,7 +167,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       expect(
-        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
       ).toBeInTheDocument()
     })
 
@@ -182,7 +182,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
       )
 
       expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')

@@ -65,6 +65,11 @@ class _Runtime:
             raise self.error
         return self.response
 
+    def generate_more_like_this(
+        self, *, app_id: str, account_id: str, message_id: str, streaming: bool
+    ) -> GenerationResponse:
+        pytest.fail(f"Unexpected more-like-this call: {app_id=}, {account_id=}, {message_id=}, {streaming=}")
+
     def assert_usage_unchanged(self) -> None:
         with self.session_factory() as session:
             installation = session.get(InstalledApp, self.installed_app_id)

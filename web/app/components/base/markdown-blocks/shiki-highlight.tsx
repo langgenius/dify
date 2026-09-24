@@ -1,14 +1,28 @@
 import type { JSX } from 'react'
-import type { BundledTheme } from 'shiki/bundle/web'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment } from 'react'
 import { jsx, jsxs } from 'react/jsx-runtime'
-import { bundledLanguages, getSingletonHighlighter } from 'shiki/bundle/web'
+import { createBundledHighlighter, createSingletonShorthands } from 'shiki/core'
+import { createOnigurumaEngine } from 'shiki/engine/oniguruma'
+import { codeLanguages } from './shiki-languages'
+
+const createHighlighter = createBundledHighlighter({
+  langs: codeLanguages,
+  themes: {
+    'github-dark': () => import('shiki/themes/github-dark.mjs'),
+    'github-light': () => import('shiki/themes/github-light.mjs'),
+  },
+  engine: () => createOnigurumaEngine(import('shiki/wasm')),
+})
+
+const { getSingletonHighlighter } = createSingletonShorthands(createHighlighter)
+
+export type CodeTheme = 'github-dark' | 'github-light'
 
 type HighlightCodeOptions = {
   code: string
   language: string
-  theme: BundledTheme
+  theme: CodeTheme
 }
 
 export const highlightCode = async ({
@@ -18,7 +32,7 @@ export const highlightCode = async ({
 }: HighlightCodeOptions): Promise<JSX.Element> => {
   const normalizedLanguage = language.trim().toLowerCase()
   const lang =
-    normalizedLanguage === 'dotenv' || Object.hasOwn(bundledLanguages, normalizedLanguage)
+    normalizedLanguage === 'dotenv' || Object.hasOwn(codeLanguages, normalizedLanguage)
       ? normalizedLanguage
       : 'text'
   // README fences may name languages outside the web bundle. Load dotenv on
