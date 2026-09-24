@@ -139,7 +139,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             )}
           </div>
         </div>
-        <div onClick={(e) => e.stopPropagation()}>
+        <div>
           <Configure
             pluginPayload={pluginPayload}
             item={item}
@@ -153,7 +153,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
         <div className="ml-3 h-px grow bg-divider-subtle"></div>
       </div>
       {!!credentials_list.length && (
-        <div className="space-y-1 p-3 pt-2" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-1 p-3 pt-2">
           {credentials_list.map((credentialItem) => (
             <Item
               key={credentialItem.id}
