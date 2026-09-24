@@ -850,7 +850,7 @@ class AppModelConfig(TypeBase):
         if self.dataset_configs:
             dataset_configs = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
-                return {"retrieval_model": "single"}
+                return {**dataset_configs, "retrieval_model": "single"}
             else:
                 return cast(DatasetConfigs, dataset_configs)
         return {

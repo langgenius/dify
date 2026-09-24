@@ -427,6 +427,18 @@ class TestAppModelValidation:
 class TestAppModelConfig:
     """Test suite for AppModelConfig model."""
 
+    def test_legacy_dataset_configs_default_retrieval_model_without_dropping_settings(self):
+        config = AppModelConfig(
+            app_id=str(uuid4()),
+            dataset_configs=json.dumps({"reranking_enable": True, "top_k": 8}),
+        )
+
+        assert config.dataset_configs_dict == {
+            "retrieval_model": "single",
+            "reranking_enable": True,
+            "top_k": 8,
+        }
+
     def test_app_model_config_creation(self):
         """Test creating an AppModelConfig."""
         # Arrange
