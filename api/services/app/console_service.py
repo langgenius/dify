@@ -210,7 +210,7 @@ class ConsoleAppService:
             if (
                 params.template_id is None
                 or params.version_id is None
-                or params.app_id is not None
+                or params.app_id
                 or any(value is not None for value in (params.package_url, params.yaml_content, params.yaml_url))
             ):
                 raise InvalidRosterAgentPackageError(
@@ -221,13 +221,13 @@ class ConsoleAppService:
         if params.mode == "ifpkg-url":
             if (
                 not params.package_url
-                or params.app_id is not None
+                or params.app_id
                 or params.yaml_content is not None
                 or params.yaml_url is not None
-                or params.template_id is not None
-                or params.version_id is not None
             ):
-                raise InvalidRosterAgentPackageError("ifpkg-url requires package_url without other sources or app_id")
+                raise InvalidRosterAgentPackageError(
+                    "ifpkg-url requires package_url and does not accept YAML or app_id"
+                )
             self._access.require_import(context, "agent")
             return self._import_agent_result(self._transfers.import_agent_package_url(context, params))
         if params.mode == "yaml-url" and params.yaml_url:

@@ -355,6 +355,7 @@ def test_template_import_resolves_catalog_source_and_preserves_overrides(
             "template_id": str(template_id),
             "version_id": str(version_id),
             "name": "My Agent",
+            "app_id": "",
         },
     )
 
@@ -414,6 +415,32 @@ def test_package_url_import_preserves_overrides(
     assert import_url.call_args.kwargs["name"] == "My Agent"
 
 
+def test_package_url_retains_legacy_optional_selectors(
+    app: Flask, imports: Imports, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    import_url = Mock(return_value=RosterAgentPackageImportResult("new-app", "new-agent", []))
+    monkeypatch.setattr(transfers._agent_importer, "import_package_url", import_url)
+
+    data, status = _post(
+        app,
+        imports,
+        json={
+            "mode": "ifpkg-url",
+            "package_url": "https://example.com/agent.ifpkg",
+            "app_id": "",
+            "template_id": "11111111-1111-4111-8111-111111111111",
+            "version_id": "22222222-2222-4222-8222-222222222222",
+        },
+    )
+
+    assert status == 200
+    assert data["app_id"] == "new-app"
+    import_url.assert_called_once()
+    assert import_url.call_args.kwargs["url"] == "https://example.com/agent.ifpkg"
+
+
 @pytest.mark.parametrize("mode", ["template", "ifpkg-url"])
 def test_template_import_checks_permissions_before_accessing_source(
     app: Flask,
@@ -450,7 +477,6 @@ def test_template_import_checks_permissions_before_accessing_source(
     [
         {"app_id": "existing"},
         {"yaml_content": "app: {}"},
-        {"template_id": "11111111-1111-4111-8111-111111111111"},
     ],
 )
 def test_package_url_rejects_ambiguous_sources(app: Flask, imports: Imports, extra: dict[str, str]) -> None:
