@@ -98,9 +98,7 @@ Builder renders only its interaction cards: plan, form, resource selection,
 failed-run context, checklist preflight context, and test result. Change,
 error, summary, and publish details arrive as assistant text. The preflight
 card and its styles live in `conversation/`; they intentionally do not import
-or share the workflow header checklist component. The phase/run-status strip
-is also owned by Builder: active and waiting states use the strip, while
-`complete` and `failed` render as compact terminal states.
+or share the workflow header checklist component.
 
 ## External Modules
 

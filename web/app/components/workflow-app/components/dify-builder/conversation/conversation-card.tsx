@@ -56,22 +56,31 @@ export const ConversationCard = memo(
 
     if (item.kind === 'interaction_response') {
       const fields = item.payload.fields ?? []
+      const hasFields = fields.length > 0
       return (
-        <article className="rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 py-3 shadow-xs">
-          <h3 className="system-sm-regular text-text-tertiary">{item.payload.question}</h3>
-          {item.payload.answer && (
-            <p className="mt-1 system-sm-regular whitespace-pre-wrap text-text-primary">
-              {item.payload.answer}
-            </p>
-          )}
-          {fields.length > 0 && (
-            <dl className="mt-2 flex flex-col gap-2 border-t border-divider-subtle pt-2">
+        <article className="w-full rounded-xl border border-components-panel-border px-1 py-[3px]">
+          <div className={hasFields ? 'px-2 pt-1.5 pb-0.5' : 'rounded-lg px-2 py-1.5'}>
+            <h3
+              className={
+                hasFields
+                  ? 'system-sm-medium wrap-break-word text-text-secondary'
+                  : 'system-sm-regular wrap-break-word text-text-tertiary'
+              }
+            >
+              {item.payload.question}
+            </h3>
+            {item.payload.answer && (
+              <p className="mt-0.5 system-md-regular wrap-break-word whitespace-pre-wrap text-text-primary">
+                {item.payload.answer}
+              </p>
+            )}
+          </div>
+          {hasFields && (
+            <dl className="m-0">
               {fields.map((field) => (
-                <div key={field.key} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
-                  <dt className="system-xs-regular wrap-break-word text-text-tertiary">
-                    {field.label}
-                  </dt>
-                  <dd className="m-0 system-xs-medium wrap-break-word whitespace-pre-wrap text-text-primary">
+                <div key={field.key} className="rounded-lg px-2 py-1.5 wrap-break-word">
+                  <dt className="system-sm-regular text-text-tertiary">{field.label}</dt>
+                  <dd className="m-0 mt-0.5 system-md-regular whitespace-pre-wrap text-text-primary">
                     {field.display_value}
                   </dd>
                 </div>

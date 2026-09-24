@@ -242,11 +242,8 @@ describe('DifyBuilderPanel', () => {
     const submit = screen.getByRole('button', { name: 'common.operation.submit' })
     const dock = screen.getByRole('region', { name: 'Is this workflow plan ready to apply?' })
     const message = screen.getByText('Fix the workflow')
-    const status = screen.getByRole('status', {
-      name: 'workflow.difyBuilder.status.planning · workflow.difyBuilder.status.waitingForInput',
-    })
-    expect(message.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(status.compareDocumentPosition(option) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(message.compareDocumentPosition(option) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(option).toBeChecked()
     expect(submit).toHaveAttribute('type', 'submit')
     expect(submit).toHaveAttribute('form', option.closest('form')?.id)
@@ -542,6 +539,62 @@ describe('DifyBuilderPanel', () => {
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
       mode: 'provide',
       inputs: { topic: 'AI agents' },
+    })
+  })
+
+  it('hides untouched required field errors until a submit attempt', async () => {
+    const user = userEvent.setup()
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [
+          { key: 'input_text', label: 'Input Text', type: 'text-input', required: true },
+          { key: 'model_name', label: 'Model Name', type: 'text-input', required: true },
+        ],
+        values: {},
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+        phase: 'test',
+      },
+      undefined,
+      [card],
+    )
+
+    const inputText = screen.getByRole('textbox', { name: 'Input Text' })
+    const modelName = screen.getByRole('textbox', { name: 'Model Name' })
+    const submit = screen.getByRole('button', { name: 'common.operation.submit' })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(inputText).not.toHaveAttribute('aria-invalid')
+    expect(modelName).not.toHaveAttribute('aria-invalid')
+
+    await user.click(submit)
+
+    expect(mocks.runAction).not.toHaveBeenCalled()
+    expect(await screen.findAllByRole('alert')).toHaveLength(2)
+    expect(inputText).toHaveFocus()
+    expect(inputText).toHaveAttribute('aria-invalid', 'true')
+    expect(modelName).toHaveAttribute('aria-invalid', 'true')
+
+    await user.type(inputText, 'Hello')
+    await user.type(modelName, 'GPT')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(submit)
+    expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
+      mode: 'provide',
+      inputs: { input_text: 'Hello', model_name: 'GPT' },
     })
   })
 
