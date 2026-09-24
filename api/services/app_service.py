@@ -155,6 +155,18 @@ class AppResponseView:
         return self._app.mode_compatible_with_agent_with_session(session=self._session)
 
     @property
+    def access_mode(self) -> str | None:
+        return getattr(self._app, "access_mode", None)
+
+    @property
+    def permission_keys(self) -> list[str]:
+        return getattr(self._app, "permission_keys", [])
+
+    @property
+    def app_id(self) -> str | None:
+        return getattr(self._app, "app_id", None)
+
+    @property
     def deleted_tools(self) -> list[Any]:
         return self._app.deleted_tools_with_session(session=self._session)
 

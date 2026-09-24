@@ -274,6 +274,7 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     permission_keys: list[str]
+    bound_agent_id: str | None = None
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False

@@ -276,64 +276,48 @@ export const zDeletedTool = z.object({
 })
 
 /**
- * AppModelConfigResponse
+ * AppMode
  */
-export const zAppModelConfigResponse = z.object({
-  agent_mode: z.unknown().nullish(),
-  annotation_reply: z.unknown().nullish(),
-  chat_prompt_config: z.unknown().nullish(),
-  completion_prompt_config: z.unknown().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  dataset_configs: z.unknown().nullish(),
-  dataset_query_variable: z.string().nullish(),
-  external_data_tools: z.unknown().nullish(),
-  file_upload: z.unknown().nullish(),
-  model: z.unknown().nullish(),
-  more_like_this: z.unknown().nullish(),
-  opening_statement: z.string().nullish(),
-  pre_prompt: z.string().nullish(),
-  prompt_type: z.string().nullish(),
-  retriever_resource: z.unknown().nullish(),
-  sensitive_word_avoidance: z.unknown().nullish(),
-  speech_to_text: z.unknown().nullish(),
-  suggested_questions: z.unknown().nullish(),
-  suggested_questions_after_answer: z.unknown().nullish(),
-  text_to_speech: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  user_input_form: z.unknown().nullish(),
-})
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
 
 /**
  * AppDetailSiteResponse
  */
 export const zAppDetailSiteResponse = z.object({
-  access_token: z.string().nullish(),
-  app_base_url: z.string().nullish(),
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  code: z.string().nullish(),
-  copyright: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  customize_domain: z.string().nullish(),
-  customize_token_strategy: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.union([z.string(), zIconType]).nullish(),
+  access_token: z.string().nullable(),
+  app_base_url: z.string(),
+  chat_color_theme: z.string().nullable(),
+  chat_color_theme_inverted: z.boolean(),
+  code: z.string().nullable(),
+  copyright: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  custom_disclaimer: z.string(),
+  customize_domain: z.string().nullable(),
+  customize_token_strategy: z.string(),
+  default_language: z.string(),
+  description: z.string().nullable(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
   icon_url: z.string().nullable(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  input_placeholder: z.string().nullable(),
+  privacy_policy: z.string().nullable(),
+  prompt_public: z.boolean(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
@@ -354,47 +338,6 @@ export const zWorkflowPartial = z.object({
   id: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
-})
-
-/**
- * AgentAppDetailWithSite
- */
-export const zAgentAppDetailWithSite = z.object({
-  access_mode: z.string().nullish(),
-  access_ready: z.boolean().optional().default(false),
-  api_base_url: z.string().nullish(),
-  app_id: z.string().nullish(),
-  backing_app_id: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  debug_conversation_has_messages: z.boolean().optional().default(false),
-  debug_conversation_id: z.string().nullish(),
-  debug_conversation_message_count: z.int().optional().default(0),
-  deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
-  enable_api: z.boolean(),
-  enable_site: z.boolean(),
-  hidden_app_backed: z.boolean().optional().default(false),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  maintainer: z.string().nullish(),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zAppModelConfigResponse.nullish(),
-  name: z.string(),
-  permission_keys: z.array(z.string()),
-  role: z.string().nullish(),
-  site: zAppDetailSiteResponse.nullish(),
-  tags: z.array(zTag).optional(),
-  tracing: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
 })
 
 /**
@@ -909,6 +852,79 @@ export const zAgentAppPagination = z.object({
   total: z.int(),
 })
 
+export const zJsonValue2 = z.unknown()
+
+/**
+ * AppModelConfigResponse
+ */
+export const zAppModelConfigResponse = z.object({
+  agent_mode: z.record(z.string(), zJsonValue2),
+  annotation_reply: z.record(z.string(), zJsonValue2),
+  chat_prompt_config: z.record(z.string(), zJsonValue2),
+  completion_prompt_config: z.record(z.string(), zJsonValue2),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  dataset_configs: z.record(z.string(), zJsonValue2),
+  dataset_query_variable: z.string().nullable(),
+  external_data_tools: z.array(z.record(z.string(), zJsonValue2)),
+  file_upload: z.record(z.string(), zJsonValue2),
+  model: z.record(z.string(), zJsonValue2),
+  more_like_this: z.record(z.string(), zJsonValue2),
+  opening_statement: z.string().nullable(),
+  pre_prompt: z.string().nullable(),
+  prompt_type: z.string(),
+  retriever_resource: z.record(z.string(), zJsonValue2),
+  sensitive_word_avoidance: z.record(z.string(), zJsonValue2),
+  speech_to_text: z.record(z.string(), zJsonValue2),
+  suggested_questions: z.array(z.string()),
+  suggested_questions_after_answer: z.record(z.string(), zJsonValue2),
+  text_to_speech: z.record(z.string(), zJsonValue2),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  user_input_form: z.array(z.record(z.string(), zJsonValue2)),
+})
+
+/**
+ * AgentAppDetailWithSite
+ */
+export const zAgentAppDetailWithSite = z.object({
+  access_mode: z.string().nullable(),
+  access_ready: z.boolean().optional().default(false),
+  api_base_url: z.string(),
+  app_id: z.string().nullish(),
+  backing_app_id: z.string().nullish(),
+  bound_agent_id: z.string().nullish(),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
+  debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
+  deleted_tools: z.array(zDeletedTool),
+  description: z.string(),
+  enable_api: z.boolean(),
+  enable_site: z.boolean(),
+  hidden_app_backed: z.boolean().optional().default(false),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  maintainer: z.string().nullable(),
+  max_active_requests: z.int().nullable(),
+  mode: zAppMode,
+  model_config: zAppModelConfigResponse.nullable(),
+  name: z.string(),
+  permission_keys: z.array(z.string()),
+  role: z.string().nullish(),
+  site: zAppDetailSiteResponse.nullable(),
+  tags: z.array(zTag),
+  tracing: z.string().nullable(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  use_icon_as_answer_icon: z.boolean().nullable(),
+  workflow: zWorkflowPartial.nullable(),
+})
+
 /**
  * AgentKind
  *
@@ -1283,6 +1299,18 @@ export const zFeedback = z.object({
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   rating: z.string(),
+})
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
@@ -1788,20 +1816,6 @@ export const zAgentAppFeaturesPayload = z.object({
   suggested_questions: z.array(z.string()).nullish(),
   suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
   text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
-})
-
-export const zJsonValue2 = z.unknown()
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
@@ -2559,70 +2573,70 @@ export const zAgentAppPaginationWritable = z.object({
  * AppDetailSiteResponse
  */
 export const zAppDetailSiteResponseWritable = z.object({
-  access_token: z.string().nullish(),
-  app_base_url: z.string().nullish(),
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  code: z.string().nullish(),
-  copyright: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  customize_domain: z.string().nullish(),
-  customize_token_strategy: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.union([z.string(), zIconType]).nullish(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  access_token: z.string().nullable(),
+  app_base_url: z.string(),
+  chat_color_theme: z.string().nullable(),
+  chat_color_theme_inverted: z.boolean(),
+  code: z.string().nullable(),
+  copyright: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  custom_disclaimer: z.string(),
+  customize_domain: z.string().nullable(),
+  customize_token_strategy: z.string(),
+  default_language: z.string(),
+  description: z.string().nullable(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  input_placeholder: z.string().nullable(),
+  privacy_policy: z.string().nullable(),
+  prompt_public: z.boolean(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
  * AgentAppDetailWithSite
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
-  access_mode: z.string().nullish(),
+  access_mode: z.string().nullable(),
   access_ready: z.boolean().optional().default(false),
-  api_base_url: z.string().nullish(),
+  api_base_url: z.string(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
   debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
   debug_conversation_message_count: z.int().optional().default(0),
-  deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
+  deleted_tools: z.array(zDeletedTool),
+  description: z.string(),
   enable_api: z.boolean(),
   enable_site: z.boolean(),
   hidden_app_backed: z.boolean().optional().default(false),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
   id: z.string(),
-  maintainer: z.string().nullish(),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zAppModelConfigResponse.nullish(),
+  maintainer: z.string().nullable(),
+  max_active_requests: z.int().nullable(),
+  mode: zAppMode,
+  model_config: zAppModelConfigResponse.nullable(),
   name: z.string(),
   permission_keys: z.array(z.string()),
   role: z.string().nullish(),
-  site: zAppDetailSiteResponseWritable.nullish(),
-  tags: z.array(zTag).optional(),
-  tracing: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
+  site: zAppDetailSiteResponseWritable.nullable(),
+  tags: z.array(zTag),
+  tracing: z.string().nullable(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  use_icon_as_answer_icon: z.boolean().nullable(),
+  workflow: zWorkflowPartial.nullable(),
 })
 
 export const zGetAgentQuery = z.object({

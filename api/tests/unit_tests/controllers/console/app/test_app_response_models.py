@@ -345,6 +345,38 @@ def test_app_detail_with_site_includes_nested_serialization(
     assert "role" not in serialized
 
 
+def test_app_detail_schema_requires_present_fields_and_valid_shapes(
+    app: Flask,
+    app_models,
+    sqlite_session: Session,
+):
+    app_obj = _persist_response_graph(sqlite_session)
+
+    with app.test_request_context("/"):
+        detail = app_models.AppDetailWithSite.model_validate(
+            app_obj,
+            from_attributes=True,
+            context={"session": sqlite_session},
+        ).model_dump(mode="json")
+
+    for field in ("mode", "permission_keys", "site", "model_config"):
+        without_field = {key: value for key, value in detail.items() if key != field}
+        with pytest.raises(ValidationError):
+            app_models.AppDetailWithSite.model_validate(without_field)
+
+    with pytest.raises(ValidationError):
+        app_models.AppDetailWithSite.model_validate({**detail, "mode": "unknown"})
+
+    with pytest.raises(ValidationError):
+        app_models.AppDetailWithSite.model_validate(
+            {**detail, "model_config": {**detail["model_config"], "suggested_questions": "wrong"}}
+        )
+
+    nullable_detail = app_models.AppDetailWithSite.model_validate({**detail, "site": None, "model_config": None})
+    assert nullable_detail.site is None
+    assert nullable_detail.model_config_ is None
+
+
 def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):

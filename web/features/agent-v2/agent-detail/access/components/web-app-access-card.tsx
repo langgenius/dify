@@ -117,8 +117,8 @@ export function WebAppAccessCard({
               ...agentDetail,
               site: {
                 ...agentDetail.site,
-                ...site,
-                access_token: site.code,
+                code: site.code ?? agentDetail.site.code,
+                access_token: site.code ?? agentDetail.site.access_token,
               },
             }
           },
@@ -201,7 +201,7 @@ export function WebAppAccessCard({
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
         agentDetailQueryKey,
         (agentDetail) =>
-          agentDetail
+          agentDetail?.site
             ? {
                 ...agentDetail,
                 site: {
@@ -210,15 +210,15 @@ export function WebAppAccessCard({
                   ...sitePayload,
                   access_token:
                     updatedSite.code ??
-                    agentDetail.site?.access_token ??
-                    agentDetail.site?.code ??
+                    agentDetail.site.access_token ??
+                    agentDetail.site.code ??
                     null,
                   code:
                     updatedSite.code ??
-                    agentDetail.site?.code ??
-                    agentDetail.site?.access_token ??
+                    agentDetail.site.code ??
+                    agentDetail.site.access_token ??
                     null,
-                  app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
+                  app_base_url: agentDetail.site.app_base_url,
                   icon_url: null,
                 },
               }

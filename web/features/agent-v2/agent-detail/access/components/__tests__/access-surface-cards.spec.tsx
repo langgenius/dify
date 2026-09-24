@@ -15,6 +15,8 @@ import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -230,7 +232,7 @@ vi.mock('@/service/console', () => ({
 }))
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
-  return {
+  return createAgentFixture({
     permission_keys: Object.values(AgentPermission),
     access_ready: true,
     enable_api: true,
@@ -243,32 +245,23 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
-    site: {
-      access_token: 'site-token',
+    site: createAppSiteFixture({
       app_base_url: 'https://chat.example.test',
-      chat_color_theme_inverted: false,
-      default_language: 'en-US',
-      icon_url: null,
-      show_workflow_steps: false,
       title: 'Support Agent',
-      use_icon_as_answer_icon: false,
-    } as NonNullable<AgentAppDetailWithSite['site']> & {
-      access_token: string
-      app_base_url: string
-    },
+    }),
     ...overrides,
-  }
+  })
 }
 
 function createAppDetailResponse(overrides: Partial<AppDetail> = {}): AppDetail {
-  return {
+  return createAppDetailFixture({
     enable_api: true,
     enable_site: true,
     id: 'app-1',
     mode: 'agent',
     name: 'Support Agent',
     ...overrides,
-  }
+  })
 }
 
 function createAgentApiAccessResponse(
@@ -918,10 +911,10 @@ describe('Agent access surface cards', () => {
       ).toBeDisabled()
     })
 
-    it('should keep customize disabled until the generated contract provides the required fields', () => {
+    it('should keep customize disabled when the app base URL is empty', () => {
       renderWithQueryClient(
         <WebAppAccessCard
-          agent={createAgent({ api_base_url: null })}
+          agent={createAgent({ api_base_url: '' })}
           agentId="agent-1"
           isLoading={false}
         />,

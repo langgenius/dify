@@ -68,7 +68,7 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
     icon_background: app.icon_background,
     icon_type: app.icon_type,
     icon_url: app.icon_url,
-    max_active_requests: app.max_active_requests,
+    max_active_requests: app.max_active_requests ?? cachedApp.max_active_requests,
     name: app.name,
     updated_at: app.updated_at,
     use_icon_as_answer_icon: app.use_icon_as_answer_icon,

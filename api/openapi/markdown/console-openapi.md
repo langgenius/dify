@@ -13670,41 +13670,41 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | string |  | Yes |
 | access_ready | boolean |  | No |
-| api_base_url | string |  | No |
+| api_base_url | string |  | Yes |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
 | debug_conversation_has_messages | boolean |  | No |
 | debug_conversation_id | string |  | No |
 | debug_conversation_message_count | integer |  | No |
-| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
 | hidden_app_backed | boolean |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| max_active_requests | integer |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| max_active_requests | integer |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | Yes |
 | role | string |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
 #### AgentAppFeaturesPayload
 
@@ -15752,89 +15752,89 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
+| access_mode | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
-| icon | string |  | No |
-| icon_background | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| permission_keys | [ string ] |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
 #### AppDetailSiteResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_token | string |  | No |
-| app_base_url | string |  | No |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
-| copyright | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string<br>[IconType](#icontype) |  | No |
+| access_token | string |  | Yes |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | Yes |
+| chat_color_theme_inverted | boolean |  | Yes |
+| code | string |  | Yes |
+| copyright | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| custom_disclaimer | string |  | Yes |
+| customize_domain | string |  | Yes |
+| customize_token_strategy | string |  | Yes |
+| default_language | string |  | Yes |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
-| input_placeholder | string |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| input_placeholder | string |  | Yes |
+| privacy_policy | string |  | Yes |
+| prompt_public | boolean |  | Yes |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### AppDetailWithSite
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
-| api_base_url | string |  | No |
-| app_id | string |  | No |
-| bound_agent_id | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| access_mode | string |  | Yes |
+| api_base_url | string |  | Yes |
+| app_id | string |  | Yes |
+| bound_agent_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| max_active_requests | integer |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| max_active_requests | integer |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| permission_keys | [ string ] |  | Yes |
+| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
 #### AppDslVersionResponse
 
@@ -15936,30 +15936,30 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_mode |  |  | No |
-| annotation_reply |  |  | No |
-| chat_prompt_config |  |  | No |
-| completion_prompt_config |  |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| dataset_configs |  |  | No |
-| dataset_query_variable | string |  | No |
-| external_data_tools |  |  | No |
-| file_upload |  |  | No |
-| model |  |  | No |
-| more_like_this |  |  | No |
-| opening_statement | string |  | No |
-| pre_prompt | string |  | No |
-| prompt_type | string |  | No |
-| retriever_resource |  |  | No |
-| sensitive_word_avoidance |  |  | No |
-| speech_to_text |  |  | No |
-| suggested_questions |  |  | No |
-| suggested_questions_after_answer |  |  | No |
-| text_to_speech |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| user_input_form |  |  | No |
+| agent_mode | object |  | Yes |
+| annotation_reply | object |  | Yes |
+| chat_prompt_config | object |  | Yes |
+| completion_prompt_config | object |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| dataset_configs | object |  | Yes |
+| dataset_query_variable | string |  | Yes |
+| external_data_tools | [ object ] |  | Yes |
+| file_upload | object |  | Yes |
+| model | object |  | Yes |
+| more_like_this | object |  | Yes |
+| opening_statement | string |  | Yes |
+| pre_prompt | string |  | Yes |
+| prompt_type | string |  | Yes |
+| retriever_resource | object |  | Yes |
+| sensitive_word_avoidance | object |  | Yes |
+| speech_to_text | object |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | object |  | Yes |
+| text_to_speech | object |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### AppNamePayload
 
