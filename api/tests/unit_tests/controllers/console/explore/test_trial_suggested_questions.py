@@ -95,8 +95,13 @@ class _Provider:
 
 
 @dataclass(frozen=True)
+class _TrialAppServices:
+    access: TrialAppAccessService
+
+
+@dataclass(frozen=True)
 class _ApplicationServices:
-    trial_app_access: TrialAppAccessService
+    trial_apps: _TrialAppServices
     recommended_app_queries: _Features
     message_suggested_questions: MessageSuggestedQuestionsRuntime
 
@@ -193,7 +198,9 @@ def harness(
 
     provider = _Provider(read_sessions)
     services = _ApplicationServices(
-        trial_app_access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory)),
+        trial_apps=_TrialAppServices(
+            access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory))
+        ),
         recommended_app_queries=features,
         message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=read_factory),
     )

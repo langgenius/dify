@@ -511,7 +511,7 @@ class TrialAppWorkflowRunApi(Resource):
         Run workflow
         """
         try:
-            response = application_services().trial_app_generation.generate_workflow(
+            response = application_services().trial_apps.generation.generate_workflow(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),
@@ -580,7 +580,7 @@ class TrialChatApi(Resource):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
         try:
-            response = application_services().trial_app_generation.generate_chat(
+            response = application_services().trial_apps.generation.generate_chat(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=args,
@@ -712,7 +712,7 @@ class TrialChatAudioApi(Resource):
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
             audio=audio,
         )
-        application_services().trial_app_usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
+        application_services().trial_apps.usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
         return dump_response(AudioTranscriptResponse, transcript)
 
 
@@ -741,7 +741,7 @@ class TrialChatTextApi(Resource):
         try:
             # Preserve usage after MIME inspection, including a missing message's
             # null response. Early provider/MIME failures do not consume a trial.
-            application_services().trial_app_usage.record(
+            application_services().trial_apps.usage.record(
                 app_id=trial_app.app_id, account_id=request_context.account_id
             )
         except BaseException:
@@ -764,7 +764,7 @@ class TrialCompletionApi(Resource):
     @model_validate(CompletionRequest)
     def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         try:
-            response = application_services().trial_app_generation.generate_completion(
+            response = application_services().trial_apps.generation.generate_completion(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),

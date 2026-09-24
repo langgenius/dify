@@ -32,8 +32,13 @@ _WORKSPACE_ID = "22222222-2222-4222-8222-222222222222"
 
 
 @dataclass(frozen=True)
+class _InstalledAppServiceMocks:
+    access: MagicMock
+
+
+@dataclass(frozen=True)
 class _ApplicationServiceMocks:
-    installed_app_access: MagicMock
+    installed_apps: _InstalledAppServiceMocks
     saved_messages: MagicMock
 
 
@@ -129,10 +134,10 @@ def _expected_record() -> dict[str, object]:
 @pytest.fixture
 def services() -> Generator[_ApplicationServiceMocks]:
     service_mocks = _ApplicationServiceMocks(
-        installed_app_access=MagicMock(),
+        installed_apps=_InstalledAppServiceMocks(access=MagicMock()),
         saved_messages=MagicMock(),
     )
-    service_mocks.installed_app_access.get_access.return_value = _installed_app()
+    service_mocks.installed_apps.access.get_access.return_value = _installed_app()
     with patch.object(
         module,
         "application_services",
@@ -212,7 +217,7 @@ class TestSavedMessageListApi:
             response = http_app.test_client().get(f"/saved-messages/{installed_app.id}", query_string=query_string)
 
         assert response.status_code == 422
-        services.installed_app_access.get_access.assert_called_once_with(
+        services.installed_apps.access.get_access.assert_called_once_with(
             installed_app_id=installed_app.id,
             tenant_id=_WORKSPACE_ID,
             account_id=_ACCOUNT_ID,

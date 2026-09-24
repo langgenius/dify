@@ -355,6 +355,22 @@ class AppScopedEndUserServices:
 
 
 @dataclass(frozen=True, slots=True)
+class InstalledAppServices:
+    access: InstalledAppAccessService
+    management: InstalledAppService
+    generation: InstalledAppGenerationService
+    conversations: InstalledAppConversationService
+    messages: InstalledAppMessageService
+
+
+@dataclass(frozen=True, slots=True)
+class TrialAppServices:
+    access: TrialAppAccessService
+    generation: TrialAppGenerationService
+    usage: TrialAppUsageRecorder
+
+
+@dataclass(frozen=True, slots=True)
 class ApplicationServices:
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -390,11 +406,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
-    installed_app_access: InstalledAppAccessService
-    installed_app_conversations: InstalledAppConversationService
-    installed_app_generation: InstalledAppGenerationService
-    installed_app_messages: InstalledAppMessageService
-    installed_apps: InstalledAppService
+    installed_apps: InstalledAppServices
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -402,10 +414,8 @@ class ApplicationServices:
     remote_files: RemoteFileService
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
-    trial_app_access: TrialAppAccessService
     app_audio: AppAudio
-    trial_app_generation: TrialAppGenerationService
-    trial_app_usage: TrialAppUsageRecorder
+    trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
@@ -825,26 +835,28 @@ def build_application_services(
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
         webapp_access=webapp_access,
-        installed_app_access=installed_app_access,
-        installed_app_conversations=InstalledAppConversationService(
-            conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
-            generate_name=_generate_installed_app_conversation_name,
-            enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
-        ),
-        installed_app_generation=InstalledAppGenerationService(
-            usage=installed_apps,
-            runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
-        ),
-        installed_app_messages=InstalledAppMessageService(
-            messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
-            get_extra_contents=installed_app_message_runtime.get_extra_contents,
-            suggested_questions=installed_app_message_runtime.get_suggested_questions,
-            emit_feedback=emit_installed_app_feedback,
-        ),
-        installed_apps=InstalledAppService(
-            installed_apps=installed_apps,
-            get_workspace_role=workspace_query_repository.get_account_role,
-            get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
+        installed_apps=InstalledAppServices(
+            access=installed_app_access,
+            conversations=InstalledAppConversationService(
+                conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
+                generate_name=_generate_installed_app_conversation_name,
+                enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+            ),
+            generation=InstalledAppGenerationService(
+                usage=installed_apps,
+                runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
+            ),
+            messages=InstalledAppMessageService(
+                messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
+                get_extra_contents=installed_app_message_runtime.get_extra_contents,
+                suggested_questions=installed_app_message_runtime.get_suggested_questions,
+                emit_feedback=emit_installed_app_feedback,
+            ),
+            management=InstalledAppService(
+                installed_apps=installed_apps,
+                get_workspace_role=workspace_query_repository.get_account_role,
+                get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
+            ),
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -922,12 +934,14 @@ def build_application_services(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
-        trial_app_access=TrialAppAccessService(apps=trial_apps),
         app_audio=AppAudioRuntime(session_factory=database_client),
-        trial_app_generation=TrialAppGenerationService(
-            runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
+        trial_apps=TrialAppServices(
+            access=TrialAppAccessService(apps=trial_apps),
+            generation=TrialAppGenerationService(
+                runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
+            ),
+            usage=trial_apps,
         ),
-        trial_app_usage=trial_apps,
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
