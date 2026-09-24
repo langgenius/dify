@@ -151,9 +151,8 @@ def _bind_sqlite_database(
     sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
-    """Bind controller- and model-owned database access to the test engine."""
+    """Bind model-owned database access to the test engine."""
     database = SimpleNamespace(engine=sqlite_engine, session=sqlite_session)
-    monkeypatch.setattr(sys.modules["controllers.service_api.app.workflow"], "db", database)
     monkeypatch.setattr(sys.modules["models.workflow"], "db", database)
 
 

@@ -73,7 +73,7 @@ class _DummyRateLimit:
         return generator
 
 
-def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):
+def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
@@ -81,7 +81,6 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )
-    monkeypatch.setattr(workflow_events_module, "db", SimpleNamespace(engine=sqlite_engine))
     return workflow_events_module
 
 
@@ -328,14 +327,12 @@ class TestHitlServiceApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
     ) -> None:
         workflow_run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
         workflow_run.created_by = "end-user-1"
         workflow_events_module = _mock_repo_for_run(
             monkeypatch,
             workflow_run=workflow_run,
-            sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
         msg_generator.retrieve_events.return_value = ["raw-event"]
@@ -371,7 +368,6 @@ class TestHitlServiceApi:
         workflow_events_module = _mock_repo_for_run(
             monkeypatch,
             workflow_run=workflow_run,
-            sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
         workflow_generator = Mock()

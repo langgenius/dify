@@ -8,7 +8,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from configs import dify_config
@@ -41,6 +41,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -49,7 +50,6 @@ from core.errors.error import (
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
@@ -271,7 +271,7 @@ class WorkflowRunDetailApi(Resource):
             raise NotWorkflowAppError()
 
         # Use repository to get workflow run
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_maker = session_factory.get_session_maker()
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
         workflow_run = workflow_run_repo.get_workflow_run_by_id(

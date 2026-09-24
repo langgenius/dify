@@ -11,7 +11,7 @@ from flask import Response, jsonify, request
 from flask_restx import Resource
 from pydantic import RootModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
@@ -30,6 +30,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.login import login_required
@@ -169,7 +170,7 @@ class ConsoleWorkflowEventsApi(Resource):
 
         Returns Server-Sent Events stream.
         """
-        session_maker = sessionmaker(db.engine)
+        session_maker = session_factory.get_session_maker()
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=tenant_id,
