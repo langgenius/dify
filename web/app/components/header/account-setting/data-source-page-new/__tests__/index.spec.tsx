@@ -2,6 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useTheme } from 'next-themes'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -330,6 +331,28 @@ describe('DataSourcePage Component', () => {
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
       expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith(mockProviders, 'partner')
+    })
+
+    it('announces the filtered installed data source count while searching', async () => {
+      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+        data: { result: mockProviders },
+        isLoading: false,
+      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      const user = userEvent.setup()
+      renderWithConsoleQuery(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      await user.type(screen.getByRole('searchbox'), 'partner')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'plugin.category.datasources: plugin.marketplace.pluginsResult:{"num":1}',
+      )
+      await user.clear(screen.getByRole('searchbox'))
+      await user.type(screen.getByRole('searchbox'), 'missing')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'plugin.category.datasources: plugin.marketplace.pluginsResult:{"num":0}',
+      )
     })
   })
 
