@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import type { DifyBuilderActiveInteraction, DifyBuilderDecision } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,6 +100,7 @@ const ChoiceInteraction = ({
       }
     >
       <form
+        className="-mx-1"
         id={formId}
         onSubmit={(event) => {
           event.preventDefault()
@@ -109,7 +109,7 @@ const ChoiceInteraction = ({
       >
         <RadioGroup
           aria-label={decision.title}
-          className="flex-col items-stretch gap-2"
+          className="flex-col items-stretch gap-1"
           value={selectedId}
           disabled={busy || pending}
           onValueChange={setSelectedId}
@@ -120,18 +120,10 @@ const ChoiceInteraction = ({
               value={option.id}
               nativeButton
               render={<button type="button" />}
-              className={(state) =>
-                cn(
-                  'flex min-h-9 w-full items-center gap-2 rounded-[10px] border-[0.5px] px-3 py-2 text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                  state.checked
-                    ? 'border-state-accent-solid bg-state-accent-hover'
-                    : 'border-components-option-card-option-border bg-background-section hover:bg-state-base-hover',
-                )
-              }
+              className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-left system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
-              <RadioControl />
-              <span className="min-w-0 flex-1">
-                <span className="block system-sm-medium text-text-primary">{option.label}</span>
+              <span className="min-w-0">
+                <span className="block">{option.label}</span>
                 {option.description && (
                   <span className="mt-0.5 block system-xs-regular text-text-tertiary">
                     {option.description}
@@ -203,7 +195,9 @@ const FormInteraction = ({
           loading={pending}
           disabled={pending ? false : busy}
         >
-          {t(($) => $['operation.submit'], { ns: 'common' })}
+          {actionId === 'provide_testdata'
+            ? t(($) => $['difyBuilder.runTest'], { ns: 'workflow' })
+            : t(($) => $['operation.submit'], { ns: 'common' })}
         </Button>
       }
     >
