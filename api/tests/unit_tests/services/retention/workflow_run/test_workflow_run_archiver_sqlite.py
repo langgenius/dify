@@ -4,6 +4,7 @@ import datetime
 import json
 import uuid
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, patch
 
 import pyarrow as pa
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
+from libs.archive_storage import ArchiveStorage
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowRunArchiveBundle, WorkflowType
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
@@ -27,20 +29,24 @@ from services.retention.workflow_run.archive_paid_plan_workflow_run import (
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 
-class FakeArchiveStorage:
-    def __init__(self, objects: dict[str, bytes] | None = None):
-        self.objects = objects or {}
+class FakeArchiveStorage(ArchiveStorage):
+    def __init__(self, objects: dict[str, bytes] | None = None) -> None:
+        self.objects = {} if objects is None else objects
 
+    @override
     def object_exists(self, key: str) -> bool:
         return key in self.objects
 
+    @override
     def get_object(self, key: str) -> bytes:
         return self.objects[key]
 
+    @override
     def put_object(self, key: str, data: bytes) -> str:
         self.objects[key] = data
         return "checksum"
 
+    @override
     def list_objects(self, prefix: str) -> list[str]:
         return sorted(key for key in self.objects if key.startswith(prefix))
 
@@ -80,47 +86,47 @@ def _run(run_id: str = "run-1") -> WorkflowRun:
 
 
 class TestWorkflowRunArchiverInit:
-    def test_start_from_without_end_before_raises(self):
+    def test_start_from_without_end_before_raises(self) -> None:
         with pytest.raises(ValueError, match="start_from and end_before must be provided together"):
             WorkflowRunArchiver(start_from=datetime.datetime(2025, 1, 1))
 
-    def test_end_before_without_start_from_raises(self):
+    def test_end_before_without_start_from_raises(self) -> None:
         with pytest.raises(ValueError, match="start_from and end_before must be provided together"):
             WorkflowRunArchiver(end_before=datetime.datetime(2025, 1, 1))
 
-    def test_start_equals_end_raises(self):
+    def test_start_equals_end_raises(self) -> None:
         ts = datetime.datetime(2025, 1, 1)
         with pytest.raises(ValueError, match="start_from must be earlier than end_before"):
             WorkflowRunArchiver(start_from=ts, end_before=ts)
 
-    def test_start_after_end_raises(self):
+    def test_start_after_end_raises(self) -> None:
         with pytest.raises(ValueError, match="start_from must be earlier than end_before"):
             WorkflowRunArchiver(
                 start_from=datetime.datetime(2025, 6, 1),
                 end_before=datetime.datetime(2025, 1, 1),
             )
 
-    def test_workers_zero_raises(self):
+    def test_workers_zero_raises(self) -> None:
         with pytest.raises(ValueError, match="workers must be at least 1"):
             WorkflowRunArchiver(workers=0)
 
-    def test_run_shard_index_without_total_raises(self):
+    def test_run_shard_index_without_total_raises(self) -> None:
         with pytest.raises(ValueError, match="run_shard_index and run_shard_total must be provided together"):
             WorkflowRunArchiver(run_shard_index=0)
 
-    def test_run_shard_total_without_index_raises(self):
+    def test_run_shard_total_without_index_raises(self) -> None:
         with pytest.raises(ValueError, match="run_shard_index and run_shard_total must be provided together"):
             WorkflowRunArchiver(run_shard_total=4)
 
-    def test_run_shard_total_above_supported_range_raises(self):
+    def test_run_shard_total_above_supported_range_raises(self) -> None:
         with pytest.raises(ValueError, match="run_shard_total must be between 1 and 16"):
             WorkflowRunArchiver(run_shard_index=0, run_shard_total=17)
 
-    def test_run_shard_index_must_be_less_than_total(self):
+    def test_run_shard_index_must_be_less_than_total(self) -> None:
         with pytest.raises(ValueError, match="run_shard_index must be between 0 and run_shard_total - 1"):
             WorkflowRunArchiver(run_shard_index=4, run_shard_total=4)
 
-    def test_valid_init_defaults(self):
+    def test_valid_init_defaults(self) -> None:
         archiver = WorkflowRunArchiver(days=30, batch_size=50)
         assert archiver.days == 30
         assert archiver.batch_size == 50
@@ -128,7 +134,7 @@ class TestWorkflowRunArchiverInit:
         assert archiver.delete_after_archive is False
         assert archiver.start_from is None
 
-    def test_valid_init_with_time_range(self):
+    def test_valid_init_with_time_range(self) -> None:
         start = datetime.datetime(2025, 1, 1)
         end = datetime.datetime(2025, 6, 1)
         archiver = WorkflowRunArchiver(start_from=start, end_before=end, workers=2)
@@ -136,13 +142,14 @@ class TestWorkflowRunArchiverInit:
         assert archiver.end_before is not None
         assert archiver.workers == 2
 
-    def test_delete_after_archive_is_not_supported_for_bundle_archive(self):
+    def test_delete_after_archive_is_not_supported_for_bundle_archive(self) -> None:
         with pytest.raises(ValueError, match="delete_after_archive is not supported by bundle archive"):
             WorkflowRunArchiver(delete_after_archive=True)
 
-    def test_get_runs_batch_passes_shard_options(self):
+    def test_get_runs_batch_passes_shard_options(self) -> None:
         repo = MagicMock()
-        repo.get_runs_batch_by_time_range.return_value = []
+        empty_runs: list[WorkflowRun] = []
+        repo.get_runs_batch_by_time_range.return_value = empty_runs
         archiver = WorkflowRunArchiver(
             tenant_prefixes=["0", "a"],
             run_shard_index=1,
@@ -157,9 +164,10 @@ class TestWorkflowRunArchiverInit:
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["run_shard_index"] == 1
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["run_shard_total"] == 4
 
-    def test_get_runs_batch_prefers_planned_tenant_ids_over_prefix_filter(self):
+    def test_get_runs_batch_prefers_planned_tenant_ids_over_prefix_filter(self) -> None:
         repo = MagicMock()
-        repo.get_runs_batch_by_time_range.return_value = []
+        empty_runs: list[WorkflowRun] = []
+        repo.get_runs_batch_by_time_range.return_value = empty_runs
         archiver = WorkflowRunArchiver(
             tenant_ids=["0tenant"],
             tenant_prefixes=["0"],
@@ -173,9 +181,10 @@ class TestWorkflowRunArchiverInit:
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_ids"] == ["0tenant"]
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_prefixes"] is None
 
-    def test_get_runs_batch_uses_current_tenant_scan_scope(self):
+    def test_get_runs_batch_uses_current_tenant_scan_scope(self) -> None:
         repo = MagicMock()
-        repo.get_runs_batch_by_time_range.return_value = []
+        empty_runs: list[WorkflowRun] = []
+        repo.get_runs_batch_by_time_range.return_value = empty_runs
         archiver = WorkflowRunArchiver(
             tenant_ids=["tenant-a", "tenant-b"],
             workflow_run_repo=repo,
@@ -186,9 +195,10 @@ class TestWorkflowRunArchiverInit:
         repo.get_runs_batch_by_time_range.assert_called_once()
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_ids"] == ["tenant-b"]
 
-    def test_get_runs_batch_retries_retryable_db_disconnect(self):
+    def test_get_runs_batch_retries_retryable_db_disconnect(self) -> None:
         repo = MagicMock()
-        repo.get_runs_batch_by_time_range.side_effect = [_db_disconnect_error(), []]
+        empty_runs: list[WorkflowRun] = []
+        repo.get_runs_batch_by_time_range.side_effect = [_db_disconnect_error(), empty_runs]
         archiver = WorkflowRunArchiver(workflow_run_repo=repo)
 
         with patch("services.retention.workflow_run.db_retry.time.sleep") as sleep:
@@ -198,7 +208,7 @@ class TestWorkflowRunArchiverInit:
         assert repo.get_runs_batch_by_time_range.call_count == 2
         sleep.assert_called_once_with(1.0)
 
-    def test_get_runs_batch_does_not_retry_non_db_broken_pipe_error(self):
+    def test_get_runs_batch_does_not_retry_non_db_broken_pipe_error(self) -> None:
         repo = MagicMock()
         repo.get_runs_batch_by_time_range.side_effect = RuntimeError("broken pipe")
         archiver = WorkflowRunArchiver(workflow_run_repo=repo)
@@ -212,7 +222,7 @@ class TestWorkflowRunArchiverInit:
         repo.get_runs_batch_by_time_range.assert_called_once()
         sleep.assert_not_called()
 
-    def test_start_message_includes_shard(self):
+    def test_start_message_includes_shard(self) -> None:
         archiver = WorkflowRunArchiver(tenant_prefixes=["0"], run_shard_index=1, run_shard_total=4)
 
         message = archiver._build_start_message()
@@ -220,7 +230,7 @@ class TestWorkflowRunArchiverInit:
         assert "tenant_prefixes=0" in message
         assert "run_shard=1/4" in message
 
-    def test_start_message_summarizes_large_planned_tenant_list(self):
+    def test_start_message_summarizes_large_planned_tenant_list(self) -> None:
         tenant_ids = [f"tenant-{index}" for index in range(11)]
         archiver = WorkflowRunArchiver(tenant_ids=tenant_ids, tenant_prefixes=["0"])
 
@@ -231,7 +241,7 @@ class TestWorkflowRunArchiverInit:
 
 
 class TestBuildArchiveBundle:
-    def test_bundle_contains_manifest_and_all_table_objects(self):
+    def test_bundle_contains_manifest_and_all_table_objects(self) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run(str(uuid.uuid4()))
         run.tenant_id = str(uuid.uuid4())
@@ -250,7 +260,7 @@ class TestBuildArchiveBundle:
 
 
 class TestGenerateManifest:
-    def test_manifest_structure(self):
+    def test_manifest_structure(self) -> None:
         start = datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC)
         end = datetime.datetime(2025, 4, 1, tzinfo=datetime.UTC)
         archiver = WorkflowRunArchiver(start_from=start, end_before=end, run_shard_index=1, run_shard_total=4)
@@ -295,7 +305,7 @@ class TestGenerateManifest:
 
 
 class TestFilterPaidTenants:
-    def test_all_tenants_paid_in_community_edition(self):
+    def test_all_tenants_paid_in_community_edition(self) -> None:
         archiver = WorkflowRunArchiver(days=90)
         tenant_ids = {"t1", "t2", "t3"}
 
@@ -305,7 +315,7 @@ class TestFilterPaidTenants:
 
         assert result == tenant_ids
 
-    def test_empty_tenants_returns_empty(self):
+    def test_empty_tenants_returns_empty(self) -> None:
         archiver = WorkflowRunArchiver(days=90)
 
         with patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg:
@@ -314,7 +324,7 @@ class TestFilterPaidTenants:
 
         assert result == set()
 
-    def test_only_paid_plans_returned(self):
+    def test_only_paid_plans_returned(self) -> None:
         archiver = WorkflowRunArchiver(days=90)
 
         mock_bulk = {
@@ -335,7 +345,7 @@ class TestFilterPaidTenants:
         assert "t3" in result
         assert "t2" not in result
 
-    def test_billing_api_failure_returns_empty(self):
+    def test_billing_api_failure_returns_empty(self) -> None:
         archiver = WorkflowRunArchiver(days=90)
 
         with (
@@ -348,7 +358,7 @@ class TestFilterPaidTenants:
 
         assert result == set()
 
-    def test_planned_paid_tenants_skip_billing_lookup(self):
+    def test_planned_paid_tenants_skip_billing_lookup(self) -> None:
         archiver = WorkflowRunArchiver(days=90, paid_tenant_ids=["t1", "t3"])
 
         with (
@@ -364,7 +374,7 @@ class TestFilterPaidTenants:
 
 class TestDryRunArchive:
     @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage")
-    def test_dry_run_does_not_call_storage(self, mock_get_storage, sqlite_engine: Engine):
+    def test_dry_run_does_not_call_storage(self, mock_get_storage: MagicMock, sqlite_engine: Engine) -> None:
         archiver = WorkflowRunArchiver(days=90, dry_run=True)
 
         with (
@@ -380,7 +390,7 @@ class TestDryRunArchive:
         assert isinstance(summary, ArchiveSummary)
         assert summary.runs_failed == 0
 
-    def test_dry_run_estimates_table_and_object_sizes(self, sqlite_session: Session):
+    def test_dry_run_estimates_table_and_object_sizes(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90, dry_run=True)
         run = _run()
         table_data = {
@@ -401,7 +411,7 @@ class TestDryRunArchive:
         assert stats_by_table["workflow_node_executions"].row_count == 0
         assert stats_by_table["workflow_node_executions"].size_bytes > 0
 
-    def test_summary_merges_dry_run_estimates(self):
+    def test_summary_merges_dry_run_estimates(self) -> None:
         summary = ArchiveSummary()
         result = ArchiveResult(
             bundle_id="bundle-1",
@@ -426,7 +436,9 @@ class TestDryRunArchive:
 
 
 class TestArchiveDbRetry:
-    def test_archive_bundle_groups_retries_with_fresh_session(self, sqlite_session_factory: sessionmaker[Session]):
+    def test_archive_bundle_groups_retries_with_fresh_session(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         session_maker = MagicMock(wraps=sqlite_session_factory)
@@ -451,7 +463,7 @@ class TestArchiveDbRetry:
 
     def test_archive_bundle_groups_returns_failed_result_after_retry_exhaustion(
         self, sqlite_session_factory: sessionmaker[Session]
-    ):
+    ) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         session_maker = MagicMock(wraps=sqlite_session_factory)
@@ -469,7 +481,7 @@ class TestArchiveDbRetry:
         assert session_maker.call_count == archiver.DB_RETRY_ATTEMPTS
         assert sleep.call_count == archiver.DB_RETRY_ATTEMPTS - 1
 
-    def test_archive_bundle_uses_safe_rollback_when_failure_rolls_back_badly(self, sqlite_session: Session):
+    def test_archive_bundle_uses_safe_rollback_when_failure_rolls_back_badly(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90, dry_run=True)
 
         with (
@@ -484,7 +496,7 @@ class TestArchiveDbRetry:
 
 
 class TestArchiveRunIdempotency:
-    def _index_payload(self, archiver: WorkflowRunArchiver, run_ids: list[str], run) -> tuple[str, bytes]:
+    def _index_payload(self, archiver: WorkflowRunArchiver, run_ids: list[str], run: WorkflowRun) -> tuple[str, bytes]:
         identity = archiver._build_bundle_identity([run])
         index_key = archiver._get_index_object_key(identity)
         payload = json.dumps(
@@ -499,7 +511,7 @@ class TestArchiveRunIdempotency:
         ).encode()
         return index_key, payload
 
-    def test_locked_bundle_is_skipped(self, sqlite_session: Session):
+    def test_locked_bundle_is_skipped(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
 
@@ -514,7 +526,7 @@ class TestArchiveRunIdempotency:
         assert result.skipped is True
         assert result.error == "one or more runs locked or deleted by another archiver"
 
-    def test_already_archived_bundle_is_skipped(self, sqlite_session: Session):
+    def test_already_archived_bundle_is_skipped(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         storage = MagicMock()
@@ -528,7 +540,7 @@ class TestArchiveRunIdempotency:
         assert result.error == "bundle already archived"
         sync_existing_bundle_index.assert_called_once()
 
-    def test_existing_bundle_catalog_publication_failure_is_not_success(self, sqlite_session: Session):
+    def test_existing_bundle_catalog_publication_failure_is_not_success(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         storage = MagicMock()
@@ -544,7 +556,7 @@ class TestArchiveRunIdempotency:
         assert result.error == "catalog unavailable"
         rollback.assert_called_once()
 
-    def test_retry_repairs_index_after_catalog_commit_then_index_write_failure(self, sqlite_session: Session):
+    def test_retry_repairs_index_after_catalog_commit_then_index_write_failure(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         identity = archiver._build_bundle_identity([run])
@@ -585,7 +597,7 @@ class TestArchiveRunIdempotency:
         assert json.loads(storage.objects[index_key])["run_ids"] == [run.id]
         storage.list_objects.assert_not_called()
 
-    def test_existing_manifest_with_missing_index_fails_without_partial_rebuild(self, sqlite_session: Session):
+    def test_existing_manifest_with_missing_index_fails_without_partial_rebuild(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         identity = archiver._build_bundle_identity([run])
@@ -606,7 +618,7 @@ class TestArchiveRunIdempotency:
         assert index_key not in storage.objects
         storage.list_objects.assert_not_called()
 
-    def test_successful_bundle_persists_archive_index(self, sqlite_session: Session):
+    def test_successful_bundle_persists_archive_index(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run(str(uuid.uuid4()))
         run.tenant_id = str(uuid.uuid4())
@@ -634,13 +646,14 @@ class TestArchiveRunIdempotency:
         assert archived_bundle.workflow_run_count == 1
         assert archived_bundle.row_count == 2
 
-    def test_new_bundle_catalog_commit_failure_is_not_success(self, sqlite_session: Session):
+    def test_new_bundle_catalog_commit_failure_is_not_success(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run(str(uuid.uuid4()))
         run.tenant_id = str(uuid.uuid4())
         storage = MagicMock()
         storage.object_exists.return_value = False
-        storage.list_objects.return_value = []
+        empty_keys: list[str] = []
+        storage.list_objects.return_value = empty_keys
         table_data = {"workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}]}
 
         with (
@@ -655,7 +668,7 @@ class TestArchiveRunIdempotency:
         assert result.error == "catalog commit failed"
         rollback.assert_called_once()
 
-    def test_index_skips_all_already_archived_runs(self, sqlite_session: Session):
+    def test_index_skips_all_already_archived_runs(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         run = _run()
         index_key, index_payload = self._index_payload(archiver, ["run-1"], run)
@@ -669,7 +682,7 @@ class TestArchiveRunIdempotency:
         assert result.skipped_run_count == 1
         assert result.error == "all runs already archived in shard index"
 
-    def test_index_filters_duplicate_runs_before_archive(self, sqlite_session: Session):
+    def test_index_filters_duplicate_runs_before_archive(self, sqlite_session: Session) -> None:
         archiver = WorkflowRunArchiver(days=90)
         archived_run = _run()
         new_run = _run("run-2")
