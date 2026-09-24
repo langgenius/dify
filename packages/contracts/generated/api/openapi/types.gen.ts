@@ -81,7 +81,7 @@ export type AppDslImportPayload = {
 
 export type AppDslImportResponse = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version?: string
   error?: string
   hints?: Array<Hint>
@@ -305,7 +305,7 @@ export type HumanInputFormDefinitionResponse = {
 
 export type Import = {
   app_id?: string | null
-  app_mode?: string | null
+  app_mode?: AppMode | null
   current_dsl_version?: string
   error?: string
   id: string
