@@ -109,12 +109,12 @@ describe('Workflow tool tracing', () => {
     renderWithConsoleQuery(<TracingPanel list={[outer, inner, tool]} />)
 
     await user.click(
-      screen.getByRole('button', { name: new RegExp(`workflow.nodes.${outerType}`) }),
+      screen.getByRole('button', { name: new RegExp(`workflowLogic.nodes.${outerType}`) }),
     )
     await user.click(screen.getByText(`workflow.singleRun.${outerType} 1`))
     await user.click(screen.getByText('inner'))
     await user.click(
-      screen.getByRole('button', { name: new RegExp(`workflow.nodes.${innerType}`) }),
+      screen.getByRole('button', { name: new RegExp(`workflowLogic.nodes.${innerType}`) }),
     )
     await user.click(screen.getByText(`workflow.singleRun.${innerType} 1`))
     await user.click(screen.getByText('nested-tool'))
@@ -210,7 +210,9 @@ describe('Workflow tool tracing', () => {
 
     await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
     await user.click(await screen.findByText('Approval batch'))
-    await user.click(screen.getByRole('button', { name: /workflow.nodes.iteration.iteration/ }))
+    await user.click(
+      screen.getByRole('button', { name: /workflowLogic.nodes.iteration.iteration/ }),
+    )
     await user.click(screen.getByText('workflow.singleRun.iteration 1'))
     await user.click(screen.getByText('Nested approval tool'))
     await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
@@ -277,11 +279,13 @@ describe('Workflow tool tracing', () => {
       await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
       await user.click(await screen.findByText('Approval batch'))
       await user.click(
-        screen.getByRole('button', { name: new RegExp(`workflow.nodes.${containerType}`) }),
+        screen.getByRole('button', { name: new RegExp(`workflowLogic.nodes.${containerType}`) }),
       )
       await user.click(screen.getByText(`workflow.singleRun.${containerType} 1`))
       await user.click(screen.getByText('Human approval'))
-      expect(screen.getByText('workflow.nodes.humanInput.log.reasonContent')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
+      ).toBeInTheDocument()
 
       mockRequest.mockImplementation(() =>
         Promise.resolve(
@@ -323,7 +327,7 @@ describe('Workflow tool tracing', () => {
       if (containerType === BlockEnum.Loop)
         expect(screen.getByText(/Updated loop variables/)).toBeInTheDocument()
       expect(
-        screen.queryByText('workflow.nodes.humanInput.log.reasonContent'),
+        screen.queryByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
       ).not.toBeInTheDocument()
       expect(screen.getByText(`workflow.singleRun.${containerType} 1`)).toBeInTheDocument()
     },
