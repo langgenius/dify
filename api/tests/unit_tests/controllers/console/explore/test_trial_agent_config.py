@@ -246,7 +246,9 @@ def test_published_template_files_are_readable_without_workspace_membership(harn
         app = session.get(App, harness.source.id)
         assert app is not None
         app.is_public = False
+    reads_before = list(harness.reads)
     assert harness.app.test_client().get(url).status_code == 404
+    assert harness.reads == reads_before
 
 
 @pytest.mark.parametrize(
@@ -298,7 +300,6 @@ def test_draft_only_files_and_writes_are_unavailable(harness: Harness) -> None:
 @pytest.mark.parametrize(
     ("state", "status"),
     [
-        ("private", 404),
         ("unlisted", 404),
         ("unpublished", 400),
         ("foreign_snapshot", 400),
@@ -306,11 +307,7 @@ def test_draft_only_files_and_writes_are_unavailable(harness: Harness) -> None:
 )
 def test_unavailable_template_never_reads_storage(harness: Harness, state: str, status: int) -> None:
     with harness.factory.begin() as session:
-        if state == "private":
-            app = session.get(App, harness.source.id)
-            assert app is not None
-            app.is_public = False
-        elif state == "unlisted":
+        if state == "unlisted":
             listing = session.scalar(select(RecommendedApp).where(RecommendedApp.app_id == harness.source.id))
             assert listing is not None
             listing.is_listed = False

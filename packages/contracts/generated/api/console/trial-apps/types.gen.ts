@@ -131,6 +131,10 @@ export type TrialDatasetListResponse = {
   total: number
 }
 
+export type AppExportResponse = {
+  data: string
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -1572,6 +1576,29 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
 export type GetTrialAppsByAppIdDatasetsResponse =
   GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
 
+export type GetTrialAppsByAppIdExportData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    format?: 'ifpkg' | 'yaml'
+    version_id: string
+  }
+  url: '/trial-apps/{app_id}/export'
+}
+
+export type GetTrialAppsByAppIdExportErrors = {
+  404: unknown
+}
+
+export type GetTrialAppsByAppIdExportResponses = {
+  200: AppExportResponse | Blob | File
+}
+
+export type GetTrialAppsByAppIdExportResponse =
+  GetTrialAppsByAppIdExportResponses[keyof GetTrialAppsByAppIdExportResponses]
+
 export type PostTrialAppsByAppIdFilesUploadData = {
   body: {
     file: Blob | File
@@ -1607,28 +1634,6 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = 
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
   GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
-
-export type GetTrialAppsByAppIdPackageData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query: {
-    version_id: string
-  }
-  url: '/trial-apps/{app_id}/package'
-}
-
-export type GetTrialAppsByAppIdPackageErrors = {
-  404: unknown
-}
-
-export type GetTrialAppsByAppIdPackageResponses = {
-  200: Blob | File
-}
-
-export type GetTrialAppsByAppIdPackageResponse =
-  GetTrialAppsByAppIdPackageResponses[keyof GetTrialAppsByAppIdPackageResponses]
 
 export type GetTrialAppsByAppIdParametersData = {
   body?: never

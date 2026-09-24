@@ -1213,10 +1213,16 @@ def test_export_uses_current_workspace_skill_bindings(
     assert dsl.package.soul.prompt.system_prompt == ""
     assert len(dsl.package.workspace_skills) == 1
     assert dsl.package.workspace_skills[0].priority == 0
+    exported_yaml = exporter.export_yaml(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version_id=historical_version_id,
+    )
+    assert AgentAppDsl.model_validate(yaml.safe_load(exported_yaml)) == dsl
 
 
 @pytest.mark.parametrize("source", ["missing", "other_tenant", "other_agent", "internal_snapshot"])
-@pytest.mark.parametrize("export_format", ["ifpkg", "yaml"])
+@pytest.mark.parametrize("export_format", ["ifpkg", "yaml", "template-yaml"])
 def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, source: str, export_format: str) -> None:
     app_model = _app("44444444-4444-4444-8444-444444444444")
     agent = Agent(
@@ -1266,6 +1272,11 @@ def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, sour
     if export_format == "ifpkg":
         with pytest.raises(AgentVersionNotFoundError):
             RosterAgentPackageExporter().export(tenant_id=agent.tenant_id, agent_id=agent.id, version_id=version_id)
+    elif export_format == "template-yaml":
+        with pytest.raises(AgentVersionNotFoundError):
+            RosterAgentPackageExporter().export_yaml(
+                tenant_id=agent.tenant_id, agent_id=agent.id, version_id=version_id
+            )
     else:
         with pytest.raises(AgentVersionNotFoundError):
             AppDslService.export_dsl(app_model, session=sqlite_session, version_id=version_id)

@@ -49,6 +49,7 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from fields.app_export_fields import AppExportResponse
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
@@ -522,10 +523,6 @@ class AppPagination(ResponseModel):
     total: int
     has_more: bool = Field(validation_alias=AliasChoices("has_next", "has_more"))
     data: list[AppPartial] = Field(validation_alias=AliasChoices("items", "data"))
-
-
-class AppExportResponse(ResponseModel):
-    data: str
 
 
 class AppImportResponse(ResponseModel):

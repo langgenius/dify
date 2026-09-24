@@ -69,6 +69,13 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * AppExportResponse
+ */
+export const zAppExportResponse = z.object({
+  data: z.string(),
+})
+
+/**
  * FileResponse
  */
 export const zFileResponse = z.object({
@@ -1888,6 +1895,23 @@ export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
  */
 export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetListResponse
 
+export const zGetTrialAppsByAppIdExportPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdExportQuery = z.object({
+  format: z.enum(['ifpkg', 'yaml']).optional().default('ifpkg'),
+  version_id: z.uuid(),
+})
+
+/**
+ * Published Agent template export
+ */
+export const zGetTrialAppsByAppIdExportResponse = z.union([
+  zAppExportResponse,
+  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+])
+
 export const zPostTrialAppsByAppIdFilesUploadBody = z.object({
   file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   source: z.enum(['datasets']).optional(),
@@ -1912,21 +1936,6 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
  */
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
   zSuggestedQuestionsResponse
-
-export const zGetTrialAppsByAppIdPackagePath = z.object({
-  app_id: z.uuid(),
-})
-
-export const zGetTrialAppsByAppIdPackageQuery = z.object({
-  version_id: z.uuid(),
-})
-
-/**
- * Published Agent template package
- */
-export const zGetTrialAppsByAppIdPackageResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),

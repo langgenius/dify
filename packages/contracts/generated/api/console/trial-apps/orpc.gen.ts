@@ -35,11 +35,11 @@ import {
   zGetTrialAppsByAppIdDatasetsPath,
   zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
+  zGetTrialAppsByAppIdExportPath,
+  zGetTrialAppsByAppIdExportQuery,
+  zGetTrialAppsByAppIdExportResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
-  zGetTrialAppsByAppIdPackagePath,
-  zGetTrialAppsByAppIdPackageQuery,
-  zGetTrialAppsByAppIdPackageResponse,
   zGetTrialAppsByAppIdParametersPath,
   zGetTrialAppsByAppIdParametersResponse,
   zGetTrialAppsByAppIdPath,
@@ -392,6 +392,23 @@ export const datasets = {
   get: get11,
 }
 
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdExport',
+    path: '/trial-apps/{app_id}/export',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
+  )
+  .output(zGetTrialAppsByAppIdExportResponse)
+
+export const export_ = {
+  get: get12,
+}
+
 /**
  * Upload a file into the tenant that owns the trial app
  */
@@ -421,7 +438,7 @@ export const files3 = {
   upload,
 }
 
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -433,7 +450,7 @@ export const get12 = oc
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
-  get: get12,
+  get: get13,
 }
 
 export const byMessageId = {
@@ -442,23 +459,6 @@ export const byMessageId = {
 
 export const messages = {
   byMessageId,
-}
-
-export const get13 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getTrialAppsByAppIdPackage',
-    path: '/trial-apps/{app_id}/package',
-    tags: ['console'],
-  })
-  .input(
-    z.object({ params: zGetTrialAppsByAppIdPackagePath, query: zGetTrialAppsByAppIdPackageQuery }),
-  )
-  .output(zGetTrialAppsByAppIdPackageResponse)
-
-export const package_ = {
-  get: get13,
 }
 
 /**
@@ -647,9 +647,9 @@ export const byAppId = {
   chatMessages,
   completionMessages,
   datasets,
+  export: export_,
   files: files3,
   messages,
-  package: package_,
   parameters,
   remoteFiles,
   site,

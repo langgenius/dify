@@ -26,32 +26,65 @@ from services.recommended_app_query_service import (
 )
 
 
-def test_package_download_works_without_browser_credentials(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("format", [None, "ifpkg", "yaml"])
+def test_template_export_works_without_browser_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    format: str | None,
+) -> None:
+    app = Flask(__name__)
     app_id, version_id = uuid4(), uuid4()
     artifact = RosterAgentPackageExport(archive=BytesIO(b"package-bytes"), filename="sample.ifpkg", size=13)
     sources, exporter = MagicMock(), MagicMock()
     sources.get_package_source.return_value = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
     exporter.export.return_value = artifact
+    exporter.export_yaml.return_value = "kind: app\n"
     packages = RecommendedAppPackageService(sources=sources, exporter=exporter)
     monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=packages))
-    ExternalApi(app).add_resource(module.RecommendedAgentPackageApi, "/public-package/<uuid:app_id>")
-    response = app.test_client().get(f"/public-package/{app_id}?version_id={version_id}")
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    query = {"version_id": str(version_id)}
+    if format is not None:
+        query["format"] = format
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
     assert response.status_code == 200
-    assert response.data == b"package-bytes"
-    assert response.mimetype == "application/zip"
+    if format == "yaml":
+        assert response.json == {"data": "kind: app\n"}
+        assert response.mimetype == "application/json"
+        exporter.export.assert_not_called()
+        exporter.export_yaml.assert_called_once_with(
+            tenant_id="source-tenant",
+            agent_id="source-agent",
+            version_id=version_id,
+        )
+    else:
+        assert response.data == b"package-bytes"
+        assert response.mimetype == "application/zip"
+        exporter.export_yaml.assert_not_called()
+        exporter.export.assert_called_once_with(
+            tenant_id="source-tenant", agent_id="source-agent", version_id=version_id
+        )
     assert response.headers["Cache-Control"] == "no-store"
     sources.get_package_source.assert_called_once_with(str(app_id), version_id)
-    exporter.export.assert_called_once_with(tenant_id="source-tenant", agent_id="source-agent", version_id=version_id)
     response.close()
-    assert artifact.archive.closed
+    if format != "yaml":
+        assert artifact.archive.closed
+    else:
+        artifact.close()
 
     exporter.reset_mock()
     sources.get_package_source.return_value = None
-    response = app.test_client().get(f"/public-package/{app_id}?version_id={version_id}")
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
     assert response.status_code == 404
     assert response.json is not None
     assert response.json["code"] == "recommended_app_not_found"
     exporter.export.assert_not_called()
+    exporter.export_yaml.assert_not_called()
+    assert app.test_client().get(f"/trial-apps/{app_id}/package", query_string=query).status_code == 404
+
+
+@pytest.mark.parametrize("option", [{"format": "json"}, {"include_secret": "true"}, {"workflow_id": "draft"}])
+def test_template_export_rejects_unsupported_options(option: dict[str, str]) -> None:
+    with pytest.raises(ValidationError):
+        module.RecommendedAgentExportQuery.model_validate({"version_id": str(uuid4()), **option})
 
 
 def _request_context() -> RequestContext:

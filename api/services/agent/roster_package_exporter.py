@@ -1,4 +1,4 @@
-"""Export active Roster Agents as portable ``.ifpkg`` archives."""
+"""Export active Roster Agents as portable YAML definitions or ``.ifpkg`` archives."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from uuid import UUID
 
 import yaml
 from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -49,6 +50,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageManifest,
 )
 from services.agent.roster_service import AgentRosterService
+from services.app_dsl_service import AppDslService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
@@ -68,34 +70,44 @@ class RosterAgentPackageExporter:
         app, resources, audit = self.collect(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
         return self._build_archive(app=app, audit=audit, resources=resources)
 
+    def export_yaml(self, *, tenant_id: str, agent_id: str, version_id: UUID) -> str:
+        """Reuse the standard YAML export semantics, including omitted asset references."""
+        with session_factory.create_session() as session:
+            _, app_model = self._load_source(session=session, tenant_id=tenant_id, agent_id=agent_id)
+            return AppDslService.export_dsl(app_model=app_model, session=session, version_id=version_id)
+
+    @staticmethod
+    def _load_source(*, session: Session, tenant_id: str, agent_id: str) -> tuple[Agent, App]:
+        row = session.execute(
+            select(Agent, App)
+            .join(
+                App,
+                (App.id == Agent.app_id) & (App.tenant_id == Agent.tenant_id),
+            )
+            .where(
+                Agent.id == agent_id,
+                Agent.tenant_id == tenant_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+                Agent.app_id.is_not(None),
+                or_(Agent.backing_app_id == Agent.app_id, Agent.backing_app_id.is_(None)),
+                App.mode == AppMode.AGENT,
+                App.status == AppStatus.NORMAL,
+            )
+            .limit(1)
+        ).one_or_none()
+        if row is None:
+            raise AgentNotFoundError()
+        return row[0], row[1]
+
     def collect(
         self, *, tenant_id: str, agent_id: str, version_id: UUID | None
     ) -> tuple[AgentAppDsl, AgentPackageResourceExporter, RosterAgentPackageAudit]:
         """Collect configuration and resource references without serializing a package."""
         resources = AgentPackageResourceExporter(storage_backend=self._storage)
         with session_factory.create_session() as session:
-            row = session.execute(
-                select(Agent, App)
-                .join(
-                    App,
-                    (App.id == Agent.app_id) & (App.tenant_id == Agent.tenant_id),
-                )
-                .where(
-                    Agent.id == agent_id,
-                    Agent.tenant_id == tenant_id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                    Agent.status == AgentStatus.ACTIVE,
-                    Agent.app_id.is_not(None),
-                    or_(Agent.backing_app_id == Agent.app_id, Agent.backing_app_id.is_(None)),
-                    App.mode == AppMode.AGENT,
-                    App.status == AppStatus.NORMAL,
-                )
-                .limit(1)
-            ).one_or_none()
-            if row is None:
-                raise AgentNotFoundError()
-            agent, app_model = row
+            agent, app_model = self._load_source(session=session, tenant_id=tenant_id, agent_id=agent_id)
 
             draft = None
             snapshot_id = agent.active_config_snapshot_id

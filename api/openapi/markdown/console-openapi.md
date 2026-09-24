@@ -9569,6 +9569,22 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
 
+### [GET] /trial-apps/{app_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| format | query | Export format; defaults to ifpkg | No | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg |
+| version_id | query | Current published template snapshot ID | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
+| 404 | Published template unavailable |  |
+
 ### [POST] /trial-apps/{app_id}/files/upload
 **Upload a file into the tenant that owns the trial app**
 
@@ -9603,21 +9619,6 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-
-### [GET] /trial-apps/{app_id}/package
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| version_id | query | Published snapshot from the template download link | Yes | string (uuid) |
-| app_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Published Agent template package | **application/zip**: binary<br> |
-| 404 | Published template unavailable |  |
 
 ### [GET] /trial-apps/{app_id}/parameters
 **Retrieve app parameters**
@@ -21836,11 +21837,12 @@ Resource types understood by access policies.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
-#### RecommendedAgentPackageQuery
+#### RecommendedAgentExportQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| version_id | string (uuid) | Published snapshot from the template download link | Yes |
+| format | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg | Export format; defaults to ifpkg<br>*Enum:* `"ifpkg"`, `"yaml"` | No |
+| version_id | string (uuid) | Current published template snapshot ID | Yes |
 
 #### RecommendedAppDetailResponse
 
