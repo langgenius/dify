@@ -35,7 +35,7 @@ const ConfigParamModal: FC<Props> = ({
   isInit,
   annotationConfig: oldAnnotationConfig,
 }) => {
-  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common'])
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common', 'modelProvider'])
   const {
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
@@ -65,7 +65,7 @@ const ConfigParamModal: FC<Props> = ({
       !embeddingModel.modelName ||
       (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)
     ) {
-      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'modelProvider' }))
       return
     }
     setLoading(true)
@@ -110,7 +110,7 @@ const ConfigParamModal: FC<Props> = ({
           </Item>
 
           <Item
-            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
             tooltip={t(($) => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}
           >
             <div className="pt-1">

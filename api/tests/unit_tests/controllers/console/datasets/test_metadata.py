@@ -168,7 +168,7 @@ class TestDatasetMetadataGetApi:
         check_permission.assert_not_called()
         get_metadata.assert_not_called()
 
-    def test_get_metadata_relies_on_rbac_in_rbac_mode(
+    def test_get_metadata_delegates_permission_check_in_rbac_mode(
         self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session
     ):
         api = DatasetMetadataCreateApi()
@@ -187,7 +187,7 @@ class TestDatasetMetadataGetApi:
             _, status = method(api, sqlite_session, "tenant-1", current_user, dataset_id)
 
         assert status == 200
-        check_permission.assert_not_called()
+        check_permission.assert_called_once_with(dataset, current_user, sqlite_session)
 
     def test_get_metadata_rejects_inaccessible_dataset(
         self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session

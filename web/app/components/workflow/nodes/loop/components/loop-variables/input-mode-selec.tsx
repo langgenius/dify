@@ -13,7 +13,7 @@ type InputModeSelectProps = {
   onChange: (value: string) => void
 }
 const InputModeSelect = ({ value, onChange }: InputModeSelectProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const options = [
     {
       label: 'Variable',
@@ -32,7 +32,7 @@ const InputModeSelect = ({ value, onChange }: InputModeSelectProps) => {
       onValueChange={(nextValue) => nextValue && onChange(nextValue)}
     >
       <SelectTrigger className="w-full">
-        {selectedOption?.label ?? t(($) => $['nodes.loop.inputMode'], { ns: 'workflow' })}
+        {selectedOption?.label ?? t(($) => $['nodes.loop.inputMode'], { ns: 'workflowLogic' })}
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (

@@ -23,7 +23,7 @@ type FeedbackFormValues = {
 }
 
 export default function FeedBack(props: DeleteAccountProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'accountSettings'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -37,7 +37,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      toast.info(t(($) => $['account.deleteSuccessTip'], { ns: 'common' }))
+      toast.info(t(($) => $['account.deleteSuccessTip'], { ns: 'accountSettings' }))
     } catch (error) {
       console.error(error)
     }
@@ -72,7 +72,7 @@ export default function FeedBack(props: DeleteAccountProps) {
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['account.feedbackTitle'], { ns: 'common' })}
+          {t(($) => $['account.feedbackTitle'], { ns: 'accountSettings' })}
         </DialogTitle>
         <Form<FeedbackFormValues>
           onFormSubmit={({ feedback }) => {
@@ -81,11 +81,13 @@ export default function FeedBack(props: DeleteAccountProps) {
         >
           <Field name="feedback" className="mt-3 gap-0">
             <FieldLabel className="system-sm-semibold">
-              {t(($) => $['account.feedbackLabel'], { ns: 'common' })}
+              {t(($) => $['account.feedbackLabel'], { ns: 'accountSettings' })}
             </FieldLabel>
             <Textarea
               rows={6}
-              placeholder={t(($) => $['account.feedbackPlaceholder'], { ns: 'common' }) as string}
+              placeholder={
+                t(($) => $['account.feedbackPlaceholder'], { ns: 'accountSettings' }) as string
+              }
             />
           </Field>
           <div className="mt-3 flex w-full flex-col gap-2">

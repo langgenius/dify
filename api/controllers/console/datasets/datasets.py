@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from http import HTTPStatus
 from typing import Any
 from uuid import UUID
 
@@ -55,10 +56,9 @@ from libs.login import login_required
 from libs.pagination import clamp_pagination
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
-from models import Account, App, Dataset, Document, UploadFile
+from models import Account, Dataset, Document, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.provider_ids import ModelProviderID
-from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -76,11 +76,10 @@ def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Acco
     dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), tenant_id, session=session)
     if dataset is None:
         raise NotFound("Dataset not found.")
-    if not dify_config.RBAC_ENABLED:
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+    try:
+        DatasetService.check_dataset_permission(dataset, current_user, session)
+    except services.errors.account.NoPermissionError as e:
+        raise Forbidden(str(e))
     return dataset
 
 
@@ -269,21 +268,6 @@ class RelatedAppResponse(ResponseModel):
         return self
 
 
-@dataclass(frozen=True)
-class _RelatedAppResponseSource:
-    """Expose the compatible app mode through the request's database session."""
-
-    app: App
-    session: Session
-
-    @property
-    def mode_compatible_with_agent(self) -> str:
-        return self.app.mode_compatible_with_agent_with_session(session=self.session)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.app, name)  # guard-ignore: no-new-getattr -- delegates model fields
-
-
 class RelatedAppListResponse(ResponseModel):
     data: list[RelatedAppResponse]
     total: int
@@ -452,7 +436,9 @@ class DatasetListApi(Resource):
     @console_ns.doc("get_datasets")
     @console_ns.doc(description="Get list of datasets")
     @console_ns.doc(params=query_params_from_model(ConsoleDatasetListQuery))
-    @console_ns.response(200, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -527,6 +513,7 @@ class DatasetListApi(Resource):
                 query.keyword,
                 query.tag_ids,
                 query.include_all,
+                tags=application_services().tags,
                 accessible_dataset_ids=accessible_dataset_ids,
                 include_own_datasets=include_own_datasets,
             )
@@ -591,7 +578,7 @@ class DatasetListApi(Resource):
             "total": total,
             "page": effective_page,
         }
-        return dump_response(DatasetListResponse, response), 200
+        return dump_response(DatasetListResponse, response), HTTPStatus.OK
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
@@ -680,11 +667,10 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,
@@ -1030,7 +1016,7 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Related apps retrieved successfully",
         console_ns.models[RelatedAppListResponse.__name__],
     )
@@ -1053,13 +1039,11 @@ class DatasetRelatedAppListApi(Resource):
 
         app_dataset_joins = DatasetService.get_related_apps(dataset.id, session)
 
-        related_apps = []
-        for app_dataset_join in app_dataset_joins:
-            app_model = AppService.get_app_by_id(app_dataset_join.app_id, session)
-            if app_model:
-                related_apps.append(_RelatedAppResponseSource(app=app_model, session=session))
+        related_apps = application_services().apps.queries.related_apps(
+            dataset.tenant_id, [join.app_id for join in app_dataset_joins]
+        )
 
-        return dump_response(RelatedAppListResponse, {"data": related_apps, "total": len(related_apps)}), 200
+        return dump_response(RelatedAppListResponse, {"data": related_apps, "total": len(related_apps)}), HTTPStatus.OK
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
