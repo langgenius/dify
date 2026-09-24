@@ -425,6 +425,14 @@ class TestBuildDatasetToolImageContents:
 # ==============================
 
 
+def _message_end_answer(runner: FunctionCallAgentRunner) -> str:
+    for call in runner.queue_manager.publish.call_args_list:
+        event = call.args[0] if call.args else None
+        if event is not None and event.__class__.__name__ == "QueueMessageEndEvent":
+            return event.llm_result.message.content
+    raise AssertionError("QueueMessageEndEvent was not published")
+
+
 class TestRunMethod:
     def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
         message = _make_message()
@@ -612,3 +620,45 @@ class TestRunMethod:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(runner.session, message, "query"))
+
+    def test_run_persists_only_terminal_answer_when_tool_iteration_emits_text(
+        self, runner: FunctionCallAgentRunner, mocker: MockerFixture
+    ):
+        """Intermediate tool-call iteration text must not land in Message.answer."""
+        message = _make_message()
+
+        tool_call = MagicMock()
+        tool_call.id = "1"
+        tool_call.function.name = "tool"
+        tool_call.function.arguments = json.dumps({"a": 1})
+
+        tool_turn = DummyResult(
+            message=DummyMessage(content="Intermediate iteration text", tool_calls=[tool_call]),
+            usage=build_usage(),
+        )
+        final_turn = DummyResult(
+            message=DummyMessage(content="Final user-facing answer", tool_calls=[]),
+            usage=build_usage(),
+        )
+        runner.model_instance.invoke_llm.side_effect = [tool_turn, final_turn]
+
+        tool_instance = MagicMock()
+        prompt_tool = MagicMock()
+        prompt_tool.name = "tool"
+        runner._init_prompt_tools.return_value = ({"tool": tool_instance}, [prompt_tool])
+
+        tool_invoke_meta = MagicMock()
+        tool_invoke_meta.to_dict.return_value = {"ok": True}
+        mocker.patch(
+            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
+            return_value=("tool-result", [], tool_invoke_meta),
+        )
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert _message_end_answer(runner) == "Final user-facing answer"
+
+        thought_answers = [
+            call.kwargs.get("answer") for call in runner.save_agent_thought.call_args_list if call.kwargs.get("answer")
+        ]
+        assert thought_answers == ["Intermediate iteration text", "Final user-facing answer"]

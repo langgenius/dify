@@ -304,7 +304,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
             )
 
-            final_answer += response + "\n"
+            # Persist only the terminal user-facing turn on Message.answer.
+            # Intermediate tool-call iteration text stays in agent_thoughts.
+            if not tool_calls:
+                final_answer = response
 
             # Check if max iteration is reached and model still wants to call tools
             if iteration_step == max_iteration_steps and tool_calls:
