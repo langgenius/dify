@@ -203,9 +203,7 @@ class RosterAgentPackageImporter:
             raise InvalidRosterAgentPackageError("Invalid Agent metadata overrides") from exc
 
         # Resolve billing before uploading package members or opening the write transaction.
-        allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(
-            tenant_id
-        )
+        allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(tenant_id)
         check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
         try:
             materialized_icons = self._resources.materialize_icon_resources(
