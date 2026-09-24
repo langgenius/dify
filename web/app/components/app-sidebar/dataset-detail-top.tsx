@@ -12,7 +12,6 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -24,7 +23,7 @@ type DatasetDetailTopProps = {
 }
 
 export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'navigation'])
 
   if (!expand) {
     return (
@@ -33,7 +32,9 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
           <DetailSidebarToggleButton
             expand={expand}
             onToggle={onToggle}
-            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
           />
         )}
       </div>
@@ -42,12 +43,15 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
-      <Breadcrumb aria-label={t(($) => $['menus.datasets'], { ns: 'common' })} className="flex-1">
+      <Breadcrumb
+        aria-label={t(($) => $['menus.datasets'], { ns: 'navigation' })}
+        className="flex-1"
+      >
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -62,7 +66,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
                   render={<Link href="/datasets" />}
                   className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
                 >
-                  {t(($) => $['menus.datasets'], { ns: 'common' })}
+                  {t(($) => $['menus.datasets'], { ns: 'navigation' })}
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </>
@@ -87,10 +91,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
               />
             }
           />
-          <TooltipContent
-            placement="bottom"
-            className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-          >
+          <TooltipContent placement="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
@@ -104,7 +105,9 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
         <DetailSidebarToggleButton
           expand={expand}
           onToggle={onToggle}
-          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
         />
       )}
     </div>

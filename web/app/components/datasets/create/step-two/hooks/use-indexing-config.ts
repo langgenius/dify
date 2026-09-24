@@ -11,10 +11,12 @@ import {
 import { consoleQuery } from '@/service/console'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export enum IndexingType {
-  QUALIFIED = 'high_quality',
-  ECONOMICAL = 'economy',
-}
+export const IndexingType = {
+  QUALIFIED: 'high_quality',
+  ECONOMICAL: 'economy',
+} as const
+
+export type IndexingType = (typeof IndexingType)[keyof typeof IndexingType]
 
 const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,

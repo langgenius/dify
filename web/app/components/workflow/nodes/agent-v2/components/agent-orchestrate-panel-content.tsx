@@ -168,7 +168,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onPublish={() => undefined}
       onOpenVersions={() => undefined}
     />
   )
@@ -292,8 +291,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation('common')
-  const { t: tAgent } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
@@ -709,9 +708,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           }
           className="min-w-90"
           onSelectModel={setConfigureModel}
-          onPublish={() => {
-            void saveDraft()
-          }}
           onOpenVersions={() => undefined}
         />
       }
@@ -819,7 +815,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null
@@ -843,7 +839,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

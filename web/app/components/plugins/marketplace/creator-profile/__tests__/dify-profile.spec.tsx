@@ -4,9 +4,18 @@ import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -111,6 +120,7 @@ const loadedProfile: LoadedCreatorProfile = {
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       t: withSelectorKey((key: string) => key),
     }),
@@ -161,19 +171,25 @@ vi.mock('../header', () => ({
   }: {
     onSuggestionSelect: (selection: MarketplaceSearchSelection) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onSuggestionSelect({ kind: 'plugin', plugin: searchPlugin })
-      }}
-    >
-      Select search plugin
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          onSuggestionSelect({ kind: 'plugin', plugin: searchPlugin })
+        }}
+      >
+        Select search plugin
+      </button>
+      <button type="button" onClick={() => onSuggestionSelect({ kind: 'template', template })}>
+        Select search template
+      </button>
+    </>
   ),
 }))
 
 describe('DifyCreatorProfile', () => {
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
@@ -210,4 +226,44 @@ describe('DifyCreatorProfile', () => {
     expect(dialog).toHaveTextContent('search_result')
     expect(dialog).toHaveTextContent('not installed')
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'links %s creator inventory to official details',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
+      for (const name of ['Deep Research', 'Research Template']) {
+        const link = screen.getByRole('link', { name })
+        const url = new URL(link.getAttribute('href')!)
+        expect(url.origin).toBe('https://marketplace.dify.ai')
+        expect(url.searchParams.get('source')).toBe(window.location.origin)
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      }
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'opens %s creator search results externally',
+    async (edition) => {
+      deploymentState.deploymentEdition = edition
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      const user = userEvent.setup()
+      const { onUrlUpdate } = renderWithNuqs(
+        <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />,
+      )
+      await user.click(screen.getByRole('button', { name: 'Select search plugin' }))
+      expect(open).toHaveBeenCalledTimes(1)
+      expect(new URL(String(open.mock.calls[0]![0])).pathname).toBe('/plugin/dify/search_result')
+      await user.click(screen.getByRole('button', { name: 'Select search template' }))
+      expect(open).toHaveBeenCalledTimes(2)
+      expect(new URL(String(open.mock.calls[1]![0])).pathname).toBe('/template/dify/template-one')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+    },
+  )
 })

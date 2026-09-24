@@ -51,7 +51,7 @@ type SnippetMainContentProps = {
   onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
 }
 
-const unsupportedSnippetBlockTypes = new Set([
+const unsupportedSnippetBlockTypes = new Set<BlockEnum>([
   BlockEnum.HumanInput,
   BlockEnum.End,
   BlockEnum.KnowledgeRetrieval,
@@ -81,7 +81,7 @@ const SnippetMainContent = ({
   onBeforePublish,
   onSaved,
 }: SnippetMainContentProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const { handlePublish, isPublishing } = useSnippetPublish({
     snippetId,
   })

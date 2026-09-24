@@ -28,7 +28,7 @@ const EmbeddingModel = ({
   warningDot = false,
   readonly = false,
 }: EmbeddingModelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const { data: embeddingModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textEmbedding } },

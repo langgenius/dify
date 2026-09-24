@@ -20,7 +20,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
   isOpen = false,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
 
   const statusConfig = useMemo(() => {

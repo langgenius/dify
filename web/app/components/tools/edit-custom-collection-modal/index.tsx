@@ -13,6 +13,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useDebounce, useGetState } from 'ahooks'
@@ -25,7 +26,6 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -53,7 +53,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const providerNameInputId = React.useId()
   const privacyPolicyInputId = React.useId()
   const customDisclaimerInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const isAdd = !payload
   const isEdit = !!payload
 
@@ -250,15 +250,20 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <span className="ml-1 text-red-500">*</span>
                         </label>
                         <div className="flex items-center justify-between gap-3">
-                          <AppIcon
-                            size="large"
+                          <IconButton
+                            aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                            className="size-10 rounded-[10px] p-0"
                             onClick={() => {
                               setShowEmojiPicker(true)
                             }}
-                            className="cursor-pointer"
-                            icon={emoji.content}
-                            background={emoji.background}
-                          />
+                          >
+                            <AppIcon
+                              decorative
+                              size="large"
+                              icon={emoji.content}
+                              background={emoji.background}
+                            />
+                          </IconButton>
                           <Input
                             id={providerNameInputId}
                             className="h-10 grow"
@@ -294,7 +299,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                               <div className="text-xs font-normal">
                                 {t(($) => $['createTool.viewSchemaSpec'], { ns: 'tools' })}
                               </div>
-                              <LinkExternal02 className="size-3" />
+                              <span
+                                aria-hidden
+                                className="i-custom-vender-line-general-link-external-02 size-3"
+                              />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />

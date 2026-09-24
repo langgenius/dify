@@ -71,7 +71,7 @@ const CreateAppModal = ({
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
   const [appIcon, setAppIcon] = useState(() =>

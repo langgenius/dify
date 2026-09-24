@@ -36,7 +36,10 @@ def test_round_trip_retains_exact_dsl_and_defers_version_handling(mode: str, ver
     service = AppPackageService()
     with service.export(dsl=dsl, name="Example App") as package:
         assert package.filename == "example-app.ifpkg"
-        assert service.read_dsl(package.archive) == dsl
+        prepared = service.read_package(package.archive)
+        assert prepared is not None
+        with prepared:
+            assert prepared.dsl == dsl
         assert package.archive.tell() == 0
     assert package.archive.closed
 
@@ -44,7 +47,7 @@ def test_round_trip_retains_exact_dsl_and_defers_version_handling(mode: str, ver
 @pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 2}, {"apps": []}, {"files": []}])
 def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
     with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
-        AppPackageService().read_dsl(_archive("kind: app\napp: {mode: workflow}\n", **overrides))
+        AppPackageService().read_package(_archive("kind: app\napp: {mode: workflow}\n", **overrides))
 
 
 @pytest.mark.parametrize(
@@ -58,14 +61,14 @@ def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
 )
 def test_rejects_invalid_or_agent_dsl_in_ordinary_container(dsl: str) -> None:
     with pytest.raises(InvalidRosterAgentPackageError):
-        AppPackageService().read_dsl(_archive(dsl))
+        AppPackageService().read_package(_archive(dsl))
 
 
 def test_rejects_checksum_mismatch() -> None:
     dsl = "kind: app\napp: {mode: workflow}\n"
     source = _archive(dsl, apps=[{"path": "app.yaml", "size": len(dsl), "sha256": "0" * 64}])
     with pytest.raises(InvalidRosterAgentPackageError, match="integrity"):
-        AppPackageService().read_dsl(source)
+        AppPackageService().read_package(source)
 
 
 @pytest.mark.parametrize("path", ["extra.txt", "../escape", "APP.YAML"])
@@ -75,14 +78,14 @@ def test_rejects_unlisted_unsafe_and_duplicate_members(path: str) -> None:
         archive.writestr(path, "unexpected")
     source.seek(0)
     with pytest.raises(InvalidRosterAgentPackageError):
-        AppPackageService().read_dsl(source)
+        AppPackageService().read_package(source)
 
 
 def test_rejects_oversized_container(config_overrides: Callable[..., None]) -> None:
     source = _archive("kind: app\napp: {mode: workflow}\n")
     config_overrides(AGENT_PACKAGE_MAX_BYTES=10)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        AppPackageService().read_dsl(source)
+        AppPackageService().read_package(source)
 
 
 def _dsl_with_size(size: int) -> str:
@@ -96,7 +99,10 @@ def test_package_round_trip_accepts_large_dsl_within_legacy_limit(size: int) -> 
     dsl = _dsl_with_size(size)
     service = AppPackageService()
     with service.export(dsl=dsl, name="Large Workflow") as package:
-        assert service.read_dsl(package.archive) == dsl
+        prepared = service.read_package(package.archive)
+        assert prepared is not None
+        with prepared:
+            assert prepared.dsl == dsl
 
 
 def test_export_rejects_dsl_exceeding_legacy_byte_limit() -> None:
@@ -109,4 +115,4 @@ def test_import_rejects_compressed_dsl_exceeding_legacy_byte_limit() -> None:
     dsl = _dsl_with_size(DSL_MAX_SIZE + 1)
     source = _archive(dsl)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        AppPackageService().read_dsl(source)
+        AppPackageService().read_package(source)

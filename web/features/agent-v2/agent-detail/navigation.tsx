@@ -1,9 +1,7 @@
 'use client'
 
 import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComponentProps } from 'react'
 import type { AgentDetailSectionKey } from './section'
-import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,13 +12,12 @@ import {
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -43,63 +40,46 @@ type AgentDetailSectionProps = {
 type AgentDetailNavItem = {
   labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
   href: string
-  icon: NavIcon
-  activeIcon: NavIcon
+  icon: string
+  activeIcon: string
 }
-
-const createAgentNavIcon = (iconClassName: string) => {
-  function AgentNavIcon({ className }: ComponentProps<'svg'>) {
-    return <span aria-hidden className={cn(iconClassName, className)} />
-  }
-
-  return AgentNavIcon
-}
-
-const configureIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure')
-const configureActiveIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure-active')
-const accessPointIcon = createAgentNavIcon('i-custom-vender-agent-v2-access-point')
-const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
-const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
-const dashboardLineIcon = createAgentNavIcon('i-ri-dashboard-2-line')
-const dashboardFillIcon = createAgentNavIcon('i-ri-dashboard-2-fill')
-const accessConfigIcon = createAgentNavIcon('i-ri-shield-user-line')
 
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
-    icon: configureIcon,
-    activeIcon: configureActiveIcon,
+    icon: 'i-custom-vender-agent-v2-configure',
+    activeIcon: 'i-custom-vender-agent-v2-configure-active',
   },
   {
     labelKey: 'agentDetail.sections.access',
     href: getAgentDetailPath(agentId, 'access'),
-    icon: accessPointIcon,
-    activeIcon: accessPointIcon,
+    icon: 'i-custom-vender-agent-v2-access-point',
+    activeIcon: 'i-custom-vender-agent-v2-access-point',
   },
   {
     labelKey: 'agentDetail.sections.logs',
     href: getAgentDetailPath(agentId, 'logs'),
-    icon: fileListLineIcon,
-    activeIcon: fileListFillIcon,
+    icon: 'i-ri-file-list-3-line',
+    activeIcon: 'i-ri-file-list-3-fill',
   },
   {
     labelKey: 'agentDetail.sections.monitoring',
     href: getAgentDetailPath(agentId, 'monitoring'),
-    icon: dashboardLineIcon,
-    activeIcon: dashboardFillIcon,
+    icon: 'i-ri-dashboard-2-line',
+    activeIcon: 'i-ri-dashboard-2-fill',
   },
   {
     labelKey: 'agentDetail.sections.access-config',
     href: getAgentDetailPath(agentId, 'access-config'),
-    icon: accessConfigIcon,
-    activeIcon: accessConfigIcon,
+    icon: 'i-ri-shield-user-line',
+    activeIcon: 'i-ri-shield-user-line',
   },
 ]
 
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['navigation', 'agentRoster'])
 
   if (!expand) {
     return (
@@ -108,7 +88,9 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
           <DetailSidebarToggleButton
             expand={expand}
             onToggle={onToggle}
-            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
           />
         )}
       </div>
@@ -118,14 +100,14 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <Breadcrumb
-        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentV2' })}
+        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentRoster' })}
         className="flex-1"
       >
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={tCommon(($) => $['mainNav.home'])}
+              aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -160,10 +142,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             />
           }
         />
-        <TooltipContent
-          placement="bottom"
-          className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-        >
+        <TooltipContent placement="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
             {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
@@ -176,7 +155,9 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         <DetailSidebarToggleButton
           expand={expand}
           onToggle={onToggle}
-          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
         />
       )}
     </div>
@@ -184,7 +165,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 }
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
@@ -205,10 +186,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
       {!expand && (
         <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-          <Divider
-            type="horizontal"
-            bgStyle="solid"
-            className="my-0 h-px w-6.75 bg-divider-subtle"
+          <Separator
+            decorative
+            orientation="horizontal"
+            variant="solid"
+            className="my-0 w-6.75 bg-divider-subtle"
           />
         </div>
       )}
@@ -252,15 +234,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
         </div>
       </div>
       <div className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
-        <Divider
-          type="horizontal"
-          bgStyle={expand ? 'gradient' : 'solid'}
-          className={cn(
-            'my-0 h-px',
-            expand
-              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
-              : 'bg-divider-subtle',
-          )}
+        <Separator
+          decorative
+          orientation="horizontal"
+          variant={expand ? 'gradient' : 'solid'}
+          className={cn('my-0', expand ? 'from-divider-subtle' : 'bg-divider-subtle')}
         />
       </div>
       <nav

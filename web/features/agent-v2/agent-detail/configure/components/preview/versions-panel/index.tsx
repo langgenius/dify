@@ -15,10 +15,9 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { AgentVersionRestore } from '../../version-restore'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
-import { AgentVersionRestoreDialogs } from './restore-dialogs'
-import { useAgentVersionRestore } from './use-agent-version-restore'
 import { VersionFilterEmpty } from './version-filter-empty'
 import { VersionItem } from './version-item'
 
@@ -41,18 +40,9 @@ export function AgentPreviewVersionsPanel({
   onBeforeRestore,
   restoreDisabled,
 }: AgentPreviewVersionsPanelProps) {
-  const restore = useAgentVersionRestore({
-    agentId,
-    onBeforeRestore,
-    disabled: restoreDisabled,
-    onRestored: async () => {
-      await onVersionRestored?.()
-      onSelectVersion(null)
-    },
-  })
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -110,7 +100,7 @@ export function AgentPreviewVersionsPanel({
     <aside className="flex h-full w-67 shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
         <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
-          {tWorkflow(($) => $['versionHistory.title'])}
+          {tWorkflow(($) => $['versionHistory.title'], { ns: 'workflowHistory' })}
         </h2>
         <VersionFilter filterValue={filterValue} onFilterChange={setFilterValue} />
         <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
@@ -124,58 +114,60 @@ export function AgentPreviewVersionsPanel({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-        {versionsQuery.isPending && (
-          <div className="space-y-1">
-            <div className="h-10 animate-pulse rounded-lg bg-state-base-hover" />
-            <div className="h-18 animate-pulse rounded-lg bg-state-base-hover" />
-            <div className="h-10 animate-pulse rounded-lg bg-state-base-hover" />
-          </div>
-        )}
-        {!versionsQuery.isPending && versions.length === 0 && (
-          <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['agentDetail.versionHistory.empty'])}
-          </div>
-        )}
-        {!versionsQuery.isPending && versions.length > 0 && (
-          <div className="flex flex-col gap-px">
-            <CurrentDraftItem
-              isActive={!activeVersionId}
-              isLast={filteredVersions.length === 0}
-              onSelect={() => onSelectVersion(null)}
-            />
-            {filteredVersions.length === 0 && isFiltering && (
-              <VersionFilterEmpty onReset={handleResetFilter} />
+      <AgentVersionRestore
+        agentId={agentId}
+        onBeforeRestore={onBeforeRestore}
+        disabled={restoreDisabled}
+        onRestored={async () => {
+          await onVersionRestored?.()
+          onSelectVersion(null)
+        }}
+      >
+        {(restore) => (
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+            {versionsQuery.isPending && (
+              <div className="space-y-1">
+                <div className="h-10 animate-pulse rounded-lg bg-state-base-hover" />
+                <div className="h-18 animate-pulse rounded-lg bg-state-base-hover" />
+                <div className="h-10 animate-pulse rounded-lg bg-state-base-hover" />
+              </div>
             )}
-            {filteredVersions.map((version, index) => (
-              <VersionItem
-                key={version.id}
-                version={version}
-                activeVersionId={activeVersionId}
-                isLatest={version.id === latestVersionId}
-                isFirst={false}
-                isLast={index === filteredVersions.length - 1}
-                onSelect={onSelectVersion}
-                onExport={canImportExportDSL ? handleExport : undefined}
-                onRestore={restore.canRestore ? restore.requestRestore : undefined}
-                restoreDisabled={restore.disabled}
-                exportDisabled={exportDisabled}
-                showUpgrade={shouldShowUpgrade}
-              />
-            ))}
+            {!versionsQuery.isPending && versions.length === 0 && (
+              <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['agentDetail.versionHistory.empty'])}
+              </div>
+            )}
+            {!versionsQuery.isPending && versions.length > 0 && (
+              <div className="flex flex-col gap-px">
+                <CurrentDraftItem
+                  isActive={!activeVersionId}
+                  isLast={filteredVersions.length === 0}
+                  onSelect={() => onSelectVersion(null)}
+                />
+                {filteredVersions.length === 0 && isFiltering && (
+                  <VersionFilterEmpty onReset={handleResetFilter} />
+                )}
+                {filteredVersions.map((version, index) => (
+                  <VersionItem
+                    key={version.id}
+                    version={version}
+                    activeVersionId={activeVersionId}
+                    isLatest={version.id === latestVersionId}
+                    isFirst={false}
+                    isLast={index === filteredVersions.length - 1}
+                    onSelect={onSelectVersion}
+                    onExport={canImportExportDSL ? handleExport : undefined}
+                    onRestore={restore.canRestore ? restore.requestRestore : undefined}
+                    restoreDisabled={restore.disabled}
+                    exportDisabled={exportDisabled}
+                    showUpgrade={shouldShowUpgrade}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
-      </div>
-      <AgentVersionRestoreDialogs
-        version={restore.version}
-        isUpgradeOpen={restore.isUpgradeOpen}
-        onUpgradeClose={restore.closeUpgrade}
-        isConfirmOpen={restore.isConfirmOpen}
-        onConfirmOpenChange={restore.onConfirmOpenChange}
-        isPending={restore.isPending}
-        disabled={restore.disabled}
-        onConfirm={restore.confirmRestore}
-      />
+      </AgentVersionRestore>
     </aside>
   )
 }

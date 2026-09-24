@@ -1,8 +1,8 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { AppTrigger } from '@/service/use-tools'
+import type { App } from '@/types/app'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation } from '@tanstack/react-query'
@@ -63,7 +63,7 @@ function TriggerAccessPointItem({
   trigger: AppTrigger
   triggerPlugins: TriggerWithProvider[]
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
   const invalidateTriggers = useInvalidateAppTriggers()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
@@ -131,7 +131,7 @@ function TriggerAccessPointItem({
 }
 
 type TriggerAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
   highlighted?: boolean
@@ -143,7 +143,7 @@ export function TriggerAccessPointCard({
   canManageAccessPoint,
   highlighted,
 }: TriggerAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'deployments', 'navigation'])
   const docLink = useDocLink()
   const { data: response, isLoading } = useAppTriggers(appInfo.id)
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
@@ -171,7 +171,7 @@ export function TriggerAccessPointCard({
 
   return (
     <AccessPointCard
-      title={t(($) => $['settings.trigger'], { ns: 'common' })}
+      title={t(($) => $['settings.trigger'], { ns: 'navigation' })}
       description={t(($) => $['studio.accessPoint.triggerDescription'], {
         ns: 'deployments',
       })}

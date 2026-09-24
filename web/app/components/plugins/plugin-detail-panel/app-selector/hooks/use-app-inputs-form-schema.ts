@@ -1,6 +1,7 @@
 'use client'
 import type {
   AppDetailWithSite,
+  AppPartial,
   WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -26,7 +27,10 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
+const WORKFLOW_FILE_VAR_TYPES = new Set<InputVarType>([
+  InputVarType.multiFiles,
+  InputVarType.singleFile,
+])
 
 type InputSchemaItem = {
   label?: string
@@ -159,7 +163,7 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {

@@ -302,11 +302,10 @@ class DocumentResource(Resource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
@@ -544,7 +543,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -595,7 +594,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.response(204, "Documents deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
     def delete(
         self,
@@ -612,11 +611,10 @@ class DatasetDocumentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         check_knowledge_rate_limit()
         try:
@@ -703,6 +701,12 @@ class DatasetInitApi(Resource):
                 current_user.id,
                 dataset.id,
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+            )
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_tenant_id,
+                current_user.id,
+                enterprise_rbac_service.RBACResourceType.DATASET,
+                dataset.id,
             )
 
         return dump_response(
@@ -1125,7 +1129,7 @@ class DocumentApi(DocumentResource):
     @console_ns.response(204, "Document deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
     def delete(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1185,7 +1189,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()))
     @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
@@ -1499,11 +1503,10 @@ class DocumentRetryApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         documents = DocumentService.get_documents_by_ids(
             DatasetRefService.create_dataset_ref(dataset), req_data.document_ids, session

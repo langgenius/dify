@@ -264,13 +264,13 @@ describe('MembersPage', () => {
 
     const table = screen.getByRole('table')
     expect(
-      within(table).getByRole('columnheader', { name: 'common.members.name' }),
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.name' }),
     ).toBeInTheDocument()
     expect(
-      within(table).getByRole('columnheader', { name: 'common.members.lastActive' }),
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.lastActive' }),
     ).toBeInTheDocument()
     expect(
-      within(table).getByRole('columnheader', { name: 'common.members.role' }),
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.role' }),
     ).toBeInTheDocument()
     const row = within(table).getByRole('row', { name: /owner@example.com/ })
     expect(within(row).getByRole('cell', { name: 'just now' })).toBeInTheDocument()
@@ -290,9 +290,13 @@ describe('MembersPage', () => {
       },
     })
 
-    expect(screen.getByRole('columnheader', { name: 'common.members.roles' })).toBeInTheDocument()
     expect(
-      screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' }),
+      screen.getByRole('columnheader', { name: 'workspaceMembers.members.roles' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('workspaceMembers.members.role', {
+        selector: '.system-xs-medium-uppercase',
+      }),
     ).not.toBeInTheDocument()
   })
 

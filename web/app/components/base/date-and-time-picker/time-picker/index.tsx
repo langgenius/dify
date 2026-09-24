@@ -18,6 +18,7 @@ const to24Hour = (hour12: string, period: Period) => {
 }
 
 const TimePicker = ({
+  id,
   value,
   timezone,
   placeholder,
@@ -30,7 +31,7 @@ const TimePicker = ({
   triggerFullWidth = false,
   showTimezone = false,
 }: TimePickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const [isOpen, setIsOpen] = useState(false)
   const isInitialRef = useRef(true)
 
@@ -200,6 +201,7 @@ const TimePicker = ({
 
     return (
       <input
+        id={id}
         className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden select-none placeholder:text-components-input-text-placeholder"
         readOnly
         value={open ? '' : displayValue}

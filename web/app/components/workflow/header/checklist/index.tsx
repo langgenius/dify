@@ -28,7 +28,7 @@ type WorkflowChecklistProps = {
 }
 
 const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()

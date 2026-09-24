@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
+import { getTranslationSourceKey } from '../../../scripts/check-i18n-plurals.ts'
 
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
     type: 'problem',
     docs: {
-      description: "Ensure non-English JSON files don't have extra keys not present in en-US",
+      description: 'Reject unrelated translation keys while allowing locale-specific plural forms',
     },
     fixable: 'code',
   },
@@ -23,7 +24,7 @@ export default {
         const lang = parts.at(-2)
 
         // Skip English files
-        if (lang === 'en-US') return
+        if (!lang || lang === 'en-US') return
 
         let currentJson = {}
         let englishJson = {}
@@ -42,8 +43,9 @@ export default {
           return
         }
 
+        const sourceKeys = new Set(Object.keys(englishJson))
         const extraKeys = Object.keys(currentJson).filter(
-          (key) => !Object.prototype.hasOwnProperty.call(englishJson, key),
+          (key) => !getTranslationSourceKey(sourceKeys, key, lang),
         )
 
         for (const key of extraKeys) {

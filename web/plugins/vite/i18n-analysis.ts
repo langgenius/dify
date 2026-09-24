@@ -1,51 +1,119 @@
+import type { PluginApi } from '@vitejs/plugin-rsc'
 import type { Logger, Plugin } from 'vite'
-import type { ModuleDependencies } from './i18n-analysis/routes'
+import type { TranslationAdapter } from './i18n-analysis/api'
+import type { createImportBindingReader, ModuleResolutions } from './i18n-analysis/compiler'
+import type { AnalysisEvidence } from './i18n-analysis/graph'
+import type {
+  EnvironmentUsage,
+  ModuleDependencies,
+  ModuleLocation,
+  RouteNamespaceReport,
+} from './i18n-analysis/routes'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
-import { analyzeRouteNamespaces } from './i18n-analysis/routes'
+import { analyzeEnvironmentRoutes, validateRouteNamespaces } from './i18n-analysis/routes'
+import { analyzeGraphInWorker } from './i18n-analysis/worker'
 
 const SOURCE_META = 'dify:i18n-source'
 
+export type AnalysisReport = {
+  version: 3
+  routes: RouteNamespaceReport[]
+  modules: ModuleLocation[]
+  paths: [module: number, parent: number | null][]
+  evidence: (AnalysisEvidence & { environment: string })[]
+  metrics: {
+    totalMs: number
+    setupMs: number
+    routesMs: number
+    environments: {
+      environment: string
+      modules: number
+      resolveCalls: number
+      resolutionMs: number
+      programMs: number
+      analysisMs: number
+    }[]
+  }
+}
+
 // Vite shares these instances across client, SSR, and RSC environments. Each
 // completed graph replaces its preceding scan build; only buildApp finalizes it.
-export function i18nAnalysisPlugin(): Plugin[] {
+export function i18nAnalysisPlugin(
+  options: {
+    adapters?: readonly TranslationAdapter[]
+    onAnalysis?: (report: AnalysisReport) => void
+    strictNamespaces?: boolean
+    getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
+  } = {},
+): Plugin[] {
   let root: string
   let logger: Logger
   let reportPath: string | undefined
   let buildingApp = false
-  const graphs = new Map<string, Map<string, string>>()
-  const edges = new Map<string, Map<string, ModuleDependencies>>()
-  const moduleId = (id: string) => normalizePath(id.split('?')[0]!)
+  let rscApi: PluginApi | undefined
+  let readBindings: ReturnType<typeof createImportBindingReader> | undefined
+  const graphs = new Map<
+    string,
+    {
+      modules: Map<string, string>
+      dependencies: Map<string, ModuleDependencies>
+      resolutions: ModuleResolutions
+      clientReferences: Set<string>
+      resolveCalls: number
+      resolutionMs: number
+    }
+  >()
+  const moduleId = normalizePath
+  const checks = new Map<string, Promise<void>>()
+  const snapshots = new Map<string, string>()
+  const environmentOrder = new Set<string>()
 
   const check = async () => {
-    const { checkTranslationGraph } = await import('./i18n-analysis/graph')
-    const usage = new Map<string, Set<string>>()
-    const dependencies = new Map<string, ModuleDependencies>()
-    for (const graph of edges.values()) {
-      for (const [id, imports] of graph) {
-        const merged = dependencies.get(id) ?? {
-          static: new Set<string>(),
-          dynamic: new Set<string>(),
-        }
-        for (const dependency of imports.static) merged.static.add(dependency)
-        for (const dependency of imports.dynamic) merged.dynamic.add(dependency)
-        dependencies.set(id, merged)
-      }
+    // Import collection is complete; do not retain source strings and binding
+    // arrays while the TypeScript programs allocate their type state.
+    readBindings = undefined
+    const started = performance.now()
+    const environments = new Map<string, EnvironmentUsage>()
+    const evidence: AnalysisReport['evidence'] = []
+    const metrics: AnalysisReport['metrics'] = {
+      totalMs: 0,
+      setupMs: 0,
+      routesMs: 0,
+      environments: [],
     }
     let unused: Record<string, string[]> | undefined
     const protectedNamespaces = new Set<string>()
-    for (const graph of graphs.values()) {
-      // Keep original paths in a separate compiler program per environment so
-      // imports resolve against that environment's source, not the first build.
-      const modules = new Map<string, string>()
-      for (const [id, code] of graph) modules.set(normalizePath(id.split('?')[0]!), code)
-      const result = checkTranslationGraph(root, modules)
-      for (const [id, namespaces] of result.moduleNamespaces) {
-        const merged = usage.get(id) ?? new Set<string>()
-        for (const namespace of namespaces) merged.add(namespace)
-        usage.set(id, merged)
-      }
+    for (const environment of environmentOrder) {
+      const graph = graphs.get(environment)
+      if (!graph) continue
+      const result = await analyzeGraphInWorker({
+        root,
+        modules: graph.modules,
+        resolutions: graph.resolutions,
+        adapters: options.adapters ?? [],
+      })
+      metrics.setupMs += result.setupMs
+      environments.set(environment, {
+        dependencies: graph.dependencies,
+        usage: result.moduleNamespaces,
+        clientReferences: graph.clientReferences,
+        unknownNamespaces: new Set(
+          result.evidence
+            .filter((item) => item.kind === 'unknown-namespace')
+            .map((item) => item.moduleId),
+        ),
+      })
+      evidence.push(...result.evidence.map((item) => ({ ...item, environment })))
+      metrics.environments.push({
+        environment,
+        modules: graph.modules.size,
+        resolveCalls: graph.resolveCalls,
+        resolutionMs: graph.resolutionMs,
+        ...result.timings,
+      })
       for (const namespace of result.protectedNamespaces) protectedNamespaces.add(namespace)
       // Intersect unused sets: usage (or protection) in any environment keeps a key.
       unused =
@@ -58,27 +126,46 @@ export function i18nAnalysisPlugin(): Plugin[] {
               }),
             )
     }
-    const routes = analyzeRouteNamespaces(normalizePath(root), dependencies, usage)
-    if (routes.length) {
-      logger.info(
-        [
-          '[i18n] Route namespace analysis (static build graph; may overestimate or miss runtime usage):',
-          'Includes ancestor boundaries, dynamic imports and all built parallel-slot branches. Interception segments remain in route labels.',
-          ...routes.flatMap(({ route, page, namespaces, groups }) => [
-            `  ${route} (${page}): ${namespaces.join(', ') || '(none detected)'}`,
-            ...Object.entries(groups).map(
-              ([name, entries]) =>
-                `    ${name}: ${entries.map((entry) => entry.namespace).join(', ') || '(none detected)'}`,
-            ),
-          ]),
-        ].join('\n'),
+    const routesStarted = performance.now()
+    const { routes, modules, paths } = analyzeEnvironmentRoutes(normalizePath(root), environments)
+    metrics.routesMs = performance.now() - routesStarted
+    metrics.totalMs =
+      performance.now() -
+      started +
+      metrics.environments.reduce((sum, item) => sum + item.resolutionMs, 0)
+    const report: AnalysisReport = { version: 3, routes, modules, paths, evidence, metrics }
+    options.onAnalysis?.(report)
+    logger.info(
+      `[i18n] Analysis: ${metrics.totalMs.toFixed(0)}ms; ${metrics.environments.reduce((sum, item) => sum + item.modules, 0)} environment modules; ${metrics.environments.reduce((sum, item) => sum + item.resolveCalls, 0)} resolver calls.`,
+    )
+    const unresolved = evidence.filter((item) => item.kind === 'unresolved-import')
+    if (unresolved.length) {
+      const categories = new Map<string, number>()
+      for (const item of unresolved) {
+        const category = item.import?.kind ?? 'source'
+        categories.set(category, (categories.get(category) ?? 0) + 1)
+      }
+      logger.warn(
+        `[i18n] ${unresolved.length} runtime imports could not be traced (${[...categories].map(([kind, count]) => `${kind}: ${count}`).join(', ')}); inspect the report before trusting unused-key findings.`,
       )
     }
-    if (routes.length && reportPath) {
+    const incomplete = routes.filter((route) => route.unknownNamespaceSources?.length)
+    if (incomplete.length)
+      logger.warn(
+        `[i18n] Namespace analysis is incomplete for ${incomplete.length} routes; inspect unknownNamespaceSources before treating validation as complete.`,
+      )
+    const unknown = evidence.filter((item) => item.kind === 'unknown-namespace').length
+    const dynamic = evidence.filter((item) => item.kind === 'dynamic-key').length
+    logger.info(
+      `[i18n] Routes: ${routes.length}; unknown namespace records: ${unknown}; dynamic key records: ${dynamic}; protected namespaces: ${[...protectedNamespaces].sort().join(', ') || '(none)'}.`,
+    )
+    if (reportPath) {
       await fs.mkdir(path.dirname(reportPath), { recursive: true })
-      await fs.writeFile(reportPath, `${JSON.stringify({ version: 1, routes }, null, 2)}\n`)
+      await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
       logger.info(`[i18n] Full namespace sources: ${reportPath}`)
     }
+    if (options.getDeclaredNamespaces)
+      validateRouteNamespaces(routes, options.getDeclaredNamespaces, options.strictNamespaces)
     const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
     )
@@ -106,7 +193,9 @@ export function i18nAnalysisPlugin(): Plugin[] {
       apply: 'build',
       enforce: 'pre',
       sharedDuringBuild: true,
-      configResolved(config) {
+      async configResolved(config) {
+        const { getPluginApi } = await import('@vitejs/plugin-rsc')
+        rscApi = getPluginApi(config)
         root = config.root
         logger = config.logger
         reportPath = config.build.write
@@ -114,31 +203,43 @@ export function i18nAnalysisPlugin(): Plugin[] {
           : undefined
       },
       async buildApp() {
+        readBindings = undefined
         graphs.clear()
-        edges.clear()
+        environmentOrder.clear()
+        checks.clear()
+        snapshots.clear()
         buildingApp = true
       },
       buildStart() {
-        if (!buildingApp) {
-          graphs.clear()
-          edges.clear()
+        if (this.meta.watchMode) {
+          readBindings = undefined
+          checks.delete(this.environment.name)
+          snapshots.delete(this.environment.name)
         }
+        if (!buildingApp && !snapshots.has(this.environment.name)) {
+          graphs.clear()
+          environmentOrder.clear()
+        }
+        environmentOrder.add(this.environment.name)
       },
-      transform(code, id) {
-        const file = normalizePath(id.split('?')[0]!)
-        if (
-          id.startsWith('\0') ||
-          !path.isAbsolute(file) ||
-          file.includes('/node_modules/') ||
-          !/\.[cm]?[jt]sx?$/.test(file)
-        )
-          return
-        // Persist the original source in module metadata, including cached modules
-        // on rebuilds, before JSX/TypeScript and RSC transforms discard selectors.
-        return { code, map: null, meta: { [SOURCE_META]: code } }
+      transform: {
+        filter: {
+          id: { include: /\.[cm]?[jt]sx?(?:\?.*)?$/, exclude: /(?:^\0|\/node_modules\/)/ },
+        },
+        handler(code, id) {
+          if (!path.isAbsolute(id.split('?')[0]!)) return
+          // Keep original source in cached metadata before TS/JSX/RSC transforms.
+          return { code, map: null, meta: { [SOURCE_META]: code } }
+        },
       },
-      async generateBundle() {
+      async buildEnd(error) {
+        if (error) return
+        // RSC explicitly marks its reference scans; write:false alone also
+        // describes ordinary in-memory builds whose usage must be checked.
+        if (buildingApp && rscApi?.manager.isScanBuild) return
+        const resolutionStarted = performance.now()
         const graph = new Map<string, string>()
+        const compiledModules = new Map<string, string>()
         const dependencies = new Map<string, ModuleDependencies>()
         for (const id of this.getModuleIds()) {
           const info = this.getModuleInfo(id)
@@ -152,12 +253,81 @@ export function i18nAnalysisPlugin(): Plugin[] {
               imports.dynamic.add(moduleId(dependency))
             dependencies.set(moduleId(id), imports)
           }
+          // Analyze the actual JSON module produced by Vite, never the raw disk file.
+          if (id.endsWith('.json') && info?.code) {
+            graph.set(moduleId(id), info.code)
+            compiledModules.set(moduleId(id), info.code)
+          }
           const source: unknown = info?.meta[SOURCE_META]
-          if (typeof source === 'string') graph.set(id, source)
+          if (typeof source === 'string') {
+            graph.set(moduleId(id), source)
+            compiledModules.set(moduleId(id), info?.code ?? '')
+          }
         }
-        graphs.set(this.environment.name, graph)
-        edges.set(this.environment.name, dependencies)
-        if (!buildingApp) await check()
+        // Rolldown may rebuild for another output format. Reuse only within
+        // this open bundle and only when source, transforms and edges agree.
+        const hash = createHash('sha256')
+        for (const [id, imports] of [...dependencies].sort(([a], [b]) => a.localeCompare(b))) {
+          hash.update(
+            JSON.stringify([
+              id,
+              graph.get(id),
+              compiledModules.get(id),
+              [...imports.static].sort(),
+              [...imports.dynamic].sort(),
+            ]),
+          )
+        }
+        const snapshot = hash.digest('hex')
+        if (snapshots.get(this.environment.name) === snapshot) return
+        checks.delete(this.environment.name)
+        snapshots.set(this.environment.name, snapshot)
+        const { createImportBindingReader, hasClientDirective, resolveTranslationImports } =
+          await import('./i18n-analysis/compiler')
+        readBindings ??= createImportBindingReader()
+        const clientReferences = new Set<string>()
+        if (this.environment.name === 'rsc') {
+          for (const [id, code] of graph) {
+            if (!hasClientDirective(code)) continue
+            clientReferences.add(id)
+            graph.set(id, compiledModules.get(id) ?? '')
+          }
+        }
+        const { resolutions, resolveCalls } = await resolveTranslationImports(
+          graph,
+          compiledModules,
+          async (specifier, importer) => {
+            const resolved = await this.resolve(specifier, importer)
+            return resolved
+              ? { id: moduleId(resolved.id), external: !!resolved.external }
+              : undefined
+          },
+          (specifier) =>
+            !specifier.includes('?') && this.environment.config.assetsInclude(specifier),
+          readBindings,
+        )
+        graphs.set(this.environment.name, {
+          modules: graph,
+          dependencies,
+          resolutions,
+          resolveCalls,
+          resolutionMs: performance.now() - resolutionStarted,
+          clientReferences,
+        })
+      },
+      closeBundle() {
+        if (!buildingApp) readBindings = undefined
+        snapshots.delete(this.environment.name)
+        checks.delete(this.environment.name)
+      },
+      async generateBundle() {
+        if (buildingApp) return
+        let pending = checks.get(this.environment.name)
+        if (!pending) {
+          pending = check()
+          checks.set(this.environment.name, pending)
+        }
+        await pending
       },
     },
     {
@@ -177,8 +347,8 @@ export function i18nAnalysisPlugin(): Plugin[] {
             await check()
           } finally {
             buildingApp = false
+            readBindings = undefined
             graphs.clear()
-            edges.clear()
           }
         },
       },

@@ -102,7 +102,7 @@ export function WorkflowDependencyPreview({
   paths: WorkflowPath[]
   subjectName: string
 }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const validPaths = uniqueWorkflowPaths(paths)
   const firstLeafWorkflow = validPaths[0]?.workflows.at(-1)
 
@@ -111,7 +111,7 @@ export function WorkflowDependencyPreview({
   const sourceLabel =
     validPaths.length === 1
       ? firstLeafWorkflow.name
-      : t(($) => $['studio.precheck.nodeCount_other'], { count: validPaths.length })
+      : t(($) => $['studio.precheck.nodeCount'], { count: validPaths.length })
 
   return (
     <Popover>

@@ -1,6 +1,9 @@
 'use client'
 
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentPublishResponse,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
@@ -33,6 +36,12 @@ import {
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 
+export type AgentConfigurePublishResult = {
+  kind: AgentPublishResponse['publication_kind']
+  // Keep the submitted draft's identity so the bar can detect edits made during publication.
+  draft: AgentSoulConfigFormState
+}
+
 export function useAgentConfigureSync({
   agentId,
   agentName,
@@ -46,8 +55,8 @@ export function useAgentConfigureSync({
   enabled: boolean
   publishEnabled: boolean
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
   const toolProviderCatalog = useAgentToolProviderCatalog()
@@ -188,7 +197,7 @@ export function useAgentConfigureSync({
       if (publish) {
         if (!publishEnabledRef.current || !getCurrentPermissions().canReleaseAndVersion)
           return false
-        await publishAgent({
+        const result = await publishAgent({
           params: {
             agent_id: agentId,
           },
@@ -209,6 +218,7 @@ export function useAgentConfigureSync({
             }),
           }),
         ])
+        return result
       }
 
       return true
@@ -405,13 +415,13 @@ export function useAgentConfigureSync({
     }
   }, [saveDirtyDraftOnPageClose])
 
-  const publishDraft = useCallback(async () => {
+  const publishDraft = useCallback(async (): Promise<AgentConfigurePublishResult | false> => {
     if (
       !publishEnabledRef.current ||
       !getCurrentPermissions().canReleaseAndVersion ||
       publishInFlightRef.current
     )
-      return
+      return false
 
     const draft = store.get(agentComposerDraftAtom)
     const configSnapshot = formStateToAgentSoulConfig({
@@ -420,8 +430,8 @@ export function useAgentConfigureSync({
       currentModel: draft.model,
     })
     if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
-      toast.error(tCommon(($) => $['modelProvider.selectModel']))
-      return
+      toast.error(tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }))
+      return false
     }
 
     const toolPublishIssue = getAgentToolPublishIssue(draft.tools, toolProviderCatalog)
@@ -431,10 +441,16 @@ export function useAgentConfigureSync({
         toolPublishIssue.tool.name
       toast.error(
         toolPublishIssue.type === 'uninstalled'
-          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], { tool: toolName })
-          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { tool: toolName }),
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            }),
       )
-      return
+      return false
     }
 
     const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
@@ -443,7 +459,7 @@ export function useAgentConfigureSync({
         getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ??
           tCommon(($) => $['api.actionFailed']),
       )
-      return
+      return false
     }
 
     publishInFlightRef.current = true
@@ -453,14 +469,14 @@ export function useAgentConfigureSync({
         configSnapshot,
         draftBaseline: draft,
       })
-      if (!published) return
+      if (!published || published === true) return false
       trackEvent('app_published_time', {
         action_mode: 'app',
         app_id: agentId,
         app_name: agentName,
         app_mode: 'agent-v2',
       })
-      toast.success(tCommon(($) => $['api.actionSuccess']))
+      return { kind: published.publication_kind, draft }
     } catch (error) {
       let errorData: unknown = error
       if (error instanceof Response) {

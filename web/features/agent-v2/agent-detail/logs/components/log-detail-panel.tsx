@@ -24,8 +24,8 @@ export function AgentLogDetailPanel({
   log?: AgentLogConversationItemResponse
   onClose: () => void
 }) {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appLog', 'common'])
+  const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
@@ -56,7 +56,7 @@ export function AgentLogDetailPanel({
         formatLogTime: (value) =>
           formatTime(
             value,
-            tAgentV2(($) => $['roster.dateTimeFormat']),
+            tAgentV2(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
           ),
         messages: messagesQuery.data?.data ?? [],
       })

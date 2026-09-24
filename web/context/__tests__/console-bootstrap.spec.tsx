@@ -2,6 +2,7 @@ import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/syst
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -12,6 +13,8 @@ import { flushRegistrationSuccess } from '@/app/components/base/amplitude/regist
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { consoleQuery } from '@/service/console'
+import { useLogout } from '@/service/use-common'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
@@ -29,6 +32,7 @@ import {
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
+const mockPostRequest = vi.hoisted(() => vi.fn())
 const mockGetPermissionKeys = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
   datasetPermissionKeys: ['dataset.acl.edit'],
@@ -151,6 +155,7 @@ vi.mock('@/service/console', () => ({
         rbac: {
           myPermissions: {
             get: {
+              key: () => ['current-permissions'],
               queryOptions: () => ({
                 queryKey: ['current-permissions'],
                 queryFn: mockGetPermissionKeys,
@@ -181,7 +186,7 @@ vi.mock('@/service/console', () => ({
 
 vi.mock('@/service/base', () => ({
   get: mockGetRequest,
-  post: vi.fn(),
+  post: mockPostRequest,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -260,6 +265,15 @@ function ConsoleBootstrapProbe() {
         refresh permissions after denial
       </button>
     </>
+  )
+}
+
+function LogoutButton() {
+  const { isSuccess, mutateAsync: logout } = useLogout()
+  return (
+    <button type="button" onClick={() => void logout()}>
+      {isSuccess ? 'Logged out' : 'Log out'}
+    </button>
   )
 }
 
@@ -365,6 +379,52 @@ describe('Console bootstrap', () => {
   })
 
   describe('Bootstrap atoms', () => {
+    it('replaces account-scoped atom results after logout and the next account hydration', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
+      })
+      const permissionQueryKey = consoleQuery.workspaces.current.rbac.myPermissions.get.key()
+      const workspaceQueryKey = consoleQuery.workspaces.current.summary.get.key()
+      queryClient.setQueryData(permissionQueryKey, {
+        workspace: { permission_keys: ['agent.create'] },
+      })
+      queryClient.setQueryData(workspaceQueryKey, mockCurrentWorkspaceResponse)
+      mockPostRequest.mockResolvedValueOnce({ result: 'success' })
+      const tree = (showConsole: boolean) => (
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                {showConsole && <ConsoleBootstrapProbe />}
+                <LogoutButton />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>
+      )
+      const view = render(tree(true))
+      expect(await screen.findByText('keys:agent.create')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      await screen.findByRole('button', { name: 'Logged out' })
+      view.rerender(tree(false))
+      mockPermissionKeysState.permissionKeys = []
+      act(() => {
+        queryClient.setQueryData(permissionQueryKey, {
+          workspace: { permission_keys: [] },
+        })
+        queryClient.setQueryData(workspaceQueryKey, {
+          ...mockCurrentWorkspaceResponse,
+          name: 'Next Workspace',
+        })
+      })
+      view.rerender(tree(true))
+
+      expect(await screen.findByText('keys:')).toBeInTheDocument()
+      expect(await screen.findByText('workspace:Next Workspace')).toBeInTheDocument()
+    })
+
     it('should provide workspace, permissions, and loading state', async () => {
       renderConsoleBootstrap()
 

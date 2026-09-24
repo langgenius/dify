@@ -5,7 +5,9 @@ from io import BytesIO
 
 from flask import Flask
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import FileStorage
 
+from controllers.openapi._models import FileUploadPayload
 from controllers.openapi.files import AppFileUploadApi
 from models import Account, App
 from services.app_service import AppService, CreateAppParams
@@ -40,17 +42,15 @@ class TestAppFileUpload:
         content = b"hello integration world"
 
         api = AppFileUploadApi()
-        data = {"file": (BytesIO(content), "note.txt", "text/plain")}
-        with app.test_request_context(
-            f"/openapi/v1/apps/{app_model.id}/files",
-            method="POST",
-            data=data,
-            content_type="multipart/form-data",
-        ):
+        body = FileUploadPayload(
+            file=FileStorage(stream=BytesIO(content), filename="note.txt", content_type="text/plain")
+        )
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/files", method="POST"):
             result = api.post.__handler__(
                 api,
                 context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
                 app_model.id,
+                body=body,
             )
 
         assert result.id

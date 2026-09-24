@@ -25,7 +25,7 @@ const Field: FC<Props> = ({
   errorId,
   children,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const Label = htmlFor ? 'label' : 'div'
   return (
     <div className={cn(className)}>

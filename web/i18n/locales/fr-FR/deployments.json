@@ -73,6 +73,8 @@
   "studio.noCredentialsYetDescription": "Ajoutez des identifiants dans Intégrations ou dans les paramètres du nœud",
   "studio.precheck.description": "Elle contient des types de nœuds qui ne sont pas encore pris en charge :",
   "studio.precheck.from": "De",
+  "studio.precheck.nodeCount_many": "{{count}} nœuds",
+  "studio.precheck.nodeCount_one": "{{count}} nœud",
   "studio.precheck.nodeCount_other": "{{count}} nœuds",
   "studio.precheck.supportMessage": "La prise en charge de ces types de nœuds sera disponible dans une prochaine version.",
   "studio.precheck.title": "Cette version ne peut pas être déployée dans cet environnement",
@@ -84,6 +86,7 @@
   "studio.undeployConfirmTitle": "Annuler le déploiement de {{versionName}} dans {{envName}}",
   "studio.updatedAtBy": "Mis à jour le {{time}} par {{name}}",
   "studio.versionValue": "Valeur de la version",
+  "studio.versionsBehind_many": "{{count}} versions de retard",
   "studio.versionsBehind_one": "{{count}} version de retard",
   "studio.versionsBehind_other": "{{count}} versions de retard",
   "versions.deployTo": "Déployer dans {{name}}"

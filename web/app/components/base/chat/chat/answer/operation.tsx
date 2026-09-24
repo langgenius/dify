@@ -90,7 +90,7 @@ function Operation({
   hasWorkflowProcess,
   noChatInput,
 }: OperationProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const {
     config,
     onAnnotationAdded,
@@ -145,7 +145,10 @@ function Operation({
   const copyLabel = t(($) => $['operation.copy'], { ns: 'common' }) || 'Copy'
   const regenerateLabel = t(($) => $['operation.regenerate'], { ns: 'common' }) || 'Regenerate'
 
-  const buildFeedbackTooltip = (feedbackData?: Feedback | null, label = userFeedbackLabel) => {
+  const buildFeedbackTooltip = (
+    feedbackData?: Feedback | null,
+    label: string = userFeedbackLabel,
+  ) => {
     if (!feedbackData?.rating) return label
 
     const ratingLabel =

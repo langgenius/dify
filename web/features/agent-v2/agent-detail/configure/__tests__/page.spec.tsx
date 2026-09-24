@@ -2376,7 +2376,7 @@ describe('AgentConfigurePage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
-        expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+        expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')

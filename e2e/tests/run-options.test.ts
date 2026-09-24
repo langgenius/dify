@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { parseRunOptions, shouldStartManagedAgentBackend } from '../scripts/run-options'
+import { parseRunOptions, shouldStartManagedAgentBackend } from '../scripts/run-options.ts'
 
 describe('E2E run options', () => {
   it('forwards Cucumber arguments without requesting seed data', () => {

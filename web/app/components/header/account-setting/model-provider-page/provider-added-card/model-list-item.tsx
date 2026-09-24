@@ -6,10 +6,9 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
@@ -40,7 +39,8 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
+  const modelNameId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -51,6 +51,7 @@ const ModelListItem = ({
     }),
   )
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
@@ -119,6 +120,7 @@ const ModelListItem = ({
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameId={modelNameId}
         nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
@@ -132,7 +134,10 @@ const ModelListItem = ({
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
             <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
-              <Balance className="size-3 text-text-accent-secondary" />
+              <span
+                aria-hidden
+                className="i-custom-vender-line-financeAndECommerce-balance size-3 text-text-accent-secondary"
+              />
             </Badge>
           )}
         {canConfigureModels &&
@@ -140,7 +145,7 @@ const ModelListItem = ({
             features?.model_load_balancing_enabled ||
             features?.plan === 'sandbox') &&
           !model.deprecated &&
-          [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
+          configurableStatuses.includes(model.status) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loading={isLoadingLoadBalancing}
@@ -157,20 +162,21 @@ const ModelListItem = ({
               openOnHover
               render={
                 <span>
-                  <Switch checked={false} disabled size="md" />
+                  <Switch aria-labelledby={modelNameId} checked={false} disabled size="md" />
                 </span>
               }
             />
             <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
-              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
+              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'modelProvider' })}
             </PopoverContent>
           </Popover>
         ) : (
           canConfigureModels && (
             <Switch
+              aria-labelledby={modelNameId}
               className="ml-2"
               checked={model?.status === ModelStatusEnum.active}
-              disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+              disabled={!configurableStatuses.includes(model.status)}
               size="md"
               onCheckedChange={onEnablingStateChange}
             />

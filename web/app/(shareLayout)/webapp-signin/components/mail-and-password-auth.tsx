@@ -29,7 +29,7 @@ type MailAndPasswordAuthProps = {
 }
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)

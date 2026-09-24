@@ -40,7 +40,6 @@ describe('DeployedEnvironmentAccessPoints', () => {
           appId="app-1"
           environmentId="staging"
           canManageAccessPoint
-          canReleaseAndVersion
           highlightedAccessPoint={highlightedAccessPoint}
         />,
       )
@@ -60,7 +59,6 @@ describe('DeployedEnvironmentAccessPoints', () => {
         appId="app-1"
         environmentId="staging"
         canManageAccessPoint
-        canReleaseAndVersion
       />,
     )
 
@@ -82,20 +80,18 @@ describe('DeployedEnvironmentAccessPoints', () => {
     }
   })
 
-  it('passes the Built-in permission split to deployed environment cards', () => {
+  it('passes Access Point management to deployed environment cards', () => {
     render(
       <DeployedEnvironmentAccessPoints
         appId="app-1"
         environmentId="staging"
         canManageAccessPoint
-        canReleaseAndVersion={false}
       />,
     )
 
     expect(mocks.webAppCard).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: true,
-        canReleaseAndVersion: false,
       }),
     )
     expect(mocks.serviceApiCard).toHaveBeenCalledWith(
