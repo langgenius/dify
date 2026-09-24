@@ -6,7 +6,7 @@ import type {
   SelectFormInput,
 } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -184,7 +184,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
       appDetail: {
         id: 'app-1',
         name: 'Workflow App',
-      } as App & Partial<AppSSO>,
+      } as App,
     })
   })
 

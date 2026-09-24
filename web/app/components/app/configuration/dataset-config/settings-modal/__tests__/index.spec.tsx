@@ -646,11 +646,11 @@ describe('SettingsModal', () => {
     it('should disable save button while saving', async () => {
       // Arrange
       const user = userEvent.setup()
-      let finishSave: () => void = () => {}
+      let finishSave!: (dataset: DataSet) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {
-            finishSave = () => resolve(createDataset())
+            finishSave = resolve
           }),
       )
 
@@ -662,7 +662,8 @@ describe('SettingsModal', () => {
 
       // Assert
       expect(saveButton).toBeDisabled()
-      finishSave()
+
+      finishSave(createDataset())
       await waitFor(() => expect(saveButton).toBeEnabled())
     })
 

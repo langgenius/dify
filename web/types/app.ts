@@ -445,10 +445,6 @@ export type App = {
   permission_keys?: string[]
 }
 
-export type AppSSO = {
-  enable_sso: boolean
-}
-
 export type Resolution = 'low' | 'high'
 export const Resolution = {
   low: 'low' as Resolution,

@@ -44,7 +44,8 @@ const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayo
   const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const useResponsiveNavigation = pathname === '/datasets/create'
+  const useResponsiveNavigation =
+    pathname === '/datasets/create' || pathname.startsWith('/integrations/')
   const hideMainNavigation = shouldHideMainNavigation(pathname)
   const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
@@ -70,7 +71,10 @@ const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayo
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}
-        className="flex min-h-0 min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden"
+        className={cn(
+          'flex min-h-0 min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+          pathname.startsWith('/integrations/') && 'max-md:overflow-y-auto',
+        )}
       >
         {children}
       </main>

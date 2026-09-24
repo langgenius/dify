@@ -1047,6 +1047,21 @@ class TestDatasetPermissions:
         with pytest.raises(NoPermissionError):
             DatasetService.check_dataset_permission(dataset, foreign_user, sqlite_session)
 
+    def test_check_dataset_permission_skips_legacy_acl_in_rbac_mode(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
+        dataset = _dataset(permission=DatasetPermissionEnum.ONLY_ME, maintainer="owner")
+        non_member = _account(account_id="non-member", role=TenantAccountRole.NORMAL)
+        foreign_user = _account(account_id="foreign", tenant_id="tenant-2", role=TenantAccountRole.NORMAL)
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        config_overrides(RBAC_ENABLED=True)
+
+        DatasetService.check_dataset_permission(dataset, non_member, sqlite_session)
+        with pytest.raises(NoPermissionError):
+            DatasetService.check_dataset_permission(dataset, foreign_user, sqlite_session)
+
     def test_dataset_operator_cannot_change_permission_or_member_list(self, sqlite_session: Session) -> None:
         dataset = _dataset(permission=DatasetPermissionEnum.PARTIAL_TEAM)
         operator = _account(role=TenantAccountRole.DATASET_OPERATOR)

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
@@ -86,22 +87,23 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
-  permission_keys: Object.values(AgentPermission),
-  app_id: 'app-1',
-  description: 'Find and summarize market materials.',
-  enable_api: true,
-  enable_site: true,
-  icon: '🧪',
-  icon_background: '#E0F2FE',
-  icon_type: 'emoji',
-  id: 'agent-1',
-  icon_url: null,
-  mode: 'agent',
-  name: 'Research Agent',
-  role: 'Research Assistant',
-  ...overrides,
-})
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite =>
+  createAgentFixture({
+    permission_keys: Object.values(AgentPermission),
+    app_id: 'app-1',
+    description: 'Find and summarize market materials.',
+    enable_api: true,
+    enable_site: true,
+    icon: '🧪',
+    icon_background: '#E0F2FE',
+    icon_type: 'emoji',
+    id: 'agent-1',
+    icon_url: null,
+    mode: 'agent',
+    name: 'Research Agent',
+    role: 'Research Assistant',
+    ...overrides,
+  })
 
 function renderAgentDetailSection(expand = true) {
   const queryClient = new QueryClient()

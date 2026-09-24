@@ -1,8 +1,8 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { AppTrigger } from '@/service/use-tools'
+import type { App } from '@/types/app'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation } from '@tanstack/react-query'
@@ -131,7 +131,7 @@ function TriggerAccessPointItem({
 }
 
 type TriggerAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
   highlighted?: boolean
