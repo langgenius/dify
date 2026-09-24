@@ -1,6 +1,6 @@
 import type { Operation } from './app-operations'
 import type { AppInfoModalType } from './use-app-info-actions'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -15,7 +15,7 @@ import { getAppModeLabel } from './app-mode-labels'
 import AppOperations from './app-operations'
 
 type AppInfoTriggerProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: App
   expand: boolean
   openModal: (modal: Exclude<AppInfoModalType, null>) => void
   isExporting: boolean
