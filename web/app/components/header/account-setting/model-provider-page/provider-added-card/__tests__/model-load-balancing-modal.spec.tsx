@@ -616,7 +616,7 @@ describe('ModelLoadBalancingModal', () => {
     expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
 
     const modeButton = screen.getByRole('button', {
-      name: 'common.modelProvider.auth.providerManaged',
+      name: 'modelProvider.modelProvider.auth.providerManaged',
     })
     modeButton.focus()
     await user.keyboard('{Enter}')

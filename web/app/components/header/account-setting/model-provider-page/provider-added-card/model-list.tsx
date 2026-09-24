@@ -18,13 +18,13 @@ import ModelListItem from './model-list-item'
 const ModelLoadBalancingLoadingDialog = ({
   onClose,
 }: Pick<ModelLoadBalancingModalProps, 'onClose'>) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
       <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['modelProvider.auth.configModel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
         </DialogTitle>
         <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
           <span
@@ -65,7 +65,7 @@ const loadModelLoadBalancingModal = () => {
 }
 
 const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const configurativeMethods = provider.configurate_methods.filter(
     (method) => method !== ConfigurationMethodEnum.fetchFromRemote,
   )
@@ -129,7 +129,10 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
           <div className="flex items-center pr-0.75 pl-1">
             <span className="group mr-2 flex shrink-0 items-center">
               <span className="inline-flex h-6 items-center pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:hidden">
-                {t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: models.length })}
+                {t(($) => $['modelProvider.modelsNum'], {
+                  ns: 'modelProvider',
+                  num: models.length,
+                })}
                 <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
               </span>
               <button
@@ -137,7 +140,10 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
                 className="hidden h-6 cursor-pointer items-center rounded-lg border-none bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary outline-hidden group-hover:inline-flex focus-visible:inline-flex focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => onCollapse()}
               >
-                {t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: models.length })}
+                {t(($) => $['modelProvider.modelsNum'], {
+                  ns: 'modelProvider',
+                  num: models.length,
+                })}
                 <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
               </button>
             </span>

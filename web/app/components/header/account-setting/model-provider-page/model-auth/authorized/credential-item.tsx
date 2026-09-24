@@ -35,7 +35,7 @@ const CredentialItem = ({
   showSelectedIcon,
   selectedCredentialId,
 }: CredentialItemProps) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete)
   }, [disableRename, disableEdit, disableDelete])
@@ -65,7 +65,7 @@ const CredentialItem = ({
       </span>
       {isUnavailable && (
         <span className="ml-2 shrink-0 pr-1 system-xs-medium text-text-destructive">
-          {t(($) => $['modelProvider.card.unavailable'], { ns: 'common' })}
+          {t(($) => $['modelProvider.card.unavailable'], { ns: 'modelProvider' })}
         </span>
       )}
     </>

@@ -29,7 +29,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     outputSchema,
     handleMemoryChange,
   } = useConfig(props.id, props.data)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const isMCPVersionSupported = isSupportMCP(inputs.meta?.version ?? undefined)
 
   const resetEditor = useStore((s) => s.setControlPromptEditorRerenderKey)
@@ -37,9 +37,9 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     <div className="my-2">
       <Field
         required
-        title={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+        title={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
         className="px-4 py-2"
-        tooltip={t(($) => $['nodes.agent.strategy.tooltip'], { ns: 'workflow' })}
+        tooltip={t(($) => $['nodes.agent.strategy.tooltip'], { ns: 'workflowAgent' })}
       >
         <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
           <AgentStrategy
@@ -100,17 +100,19 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           <VarItem
             name="usage"
             type="object"
-            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflowAgent' })}
           />
           <VarItem
             name="files"
             type="Array[File]"
-            description={t(($) => $[`${i18nPrefix}.outputVars.files.title`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.files.title`], {
+              ns: 'workflowAgent',
+            })}
           />
           <VarItem
             name="json"
             type="Array[Object]"
-            description={t(($) => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflowAgent' })}
           />
           {outputSchema.map(({ name, type, description }) => (
             <VarItem key={name} name={name} type={type} description={description} />

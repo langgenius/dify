@@ -51,7 +51,7 @@ const ModelLoadBalancingModal = ({
   onClose,
   onSave,
 }: ModelLoadBalancingModalProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const modelCredentialLabelId = useId()
   const { doingAction, deleteModel, openConfirmDelete, closeConfirmDelete, handleConfirmDelete } =
     useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
@@ -255,8 +255,8 @@ const ModelLoadBalancingModal = ({
             <div className="pb-3 font-semibold">
               <div className="h-7.5">
                 {draftConfig?.enabled
-                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })
-                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'common' })}
+                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
+                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
               </div>
               {Boolean(model) && (
                 <div className="flex h-5 items-center">
@@ -311,16 +311,20 @@ const ModelLoadBalancingModal = ({
                     <div className="grow">
                       <div id={modelCredentialLabelId} className="text-sm text-text-secondary">
                         {providerFormSchemaPredefined
-                          ? t(($) => $['modelProvider.auth.providerManaged'], { ns: 'common' })
+                          ? t(($) => $['modelProvider.auth.providerManaged'], {
+                              ns: 'modelProvider',
+                            })
                           : t(($) => $['modelProvider.auth.specifyModelCredential'], {
-                              ns: 'common',
+                              ns: 'modelProvider',
                             })}
                       </div>
                       <div className="text-xs text-text-tertiary">
                         {providerFormSchemaPredefined
-                          ? t(($) => $['modelProvider.auth.providerManagedTip'], { ns: 'common' })
+                          ? t(($) => $['modelProvider.auth.providerManagedTip'], {
+                              ns: 'modelProvider',
+                            })
                           : t(($) => $['modelProvider.auth.specifyModelCredentialTip'], {
-                              ns: 'common',
+                              ns: 'modelProvider',
                             })}
                       </div>
                     </div>
@@ -377,7 +381,7 @@ const ModelLoadBalancingModal = ({
                       }
                       className="text-components-button-destructive-secondary-text"
                     >
-                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
                     </Button>
                   )}
                 </div>
@@ -406,7 +410,7 @@ const ModelLoadBalancingModal = ({
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
                 </AlertDialogTitle>
               </div>
               <AlertDialogActions>

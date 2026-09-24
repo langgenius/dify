@@ -121,7 +121,7 @@ function AppCardOperationsMenuItems({
   onDelete,
   onAccessConfig,
 }: AppCardOperationsMenuItemsProps) {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'common', 'navigation'])
   const openAsyncWindow = useAsyncWindowOpen()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
@@ -231,7 +231,7 @@ function AppCardOperationsMenuItems({
           onClick={(event) => handleMenuAction(event, onAccessConfig)}
         >
           <span className="text-sm/5 text-text-secondary">
-            {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+            {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
           </span>
         </MenuItem>
       )}

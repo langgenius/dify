@@ -138,7 +138,11 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
             yield _Harness(
                 runtime=InstalledAppMessageRuntime(session_factory=cast(sessionmaker[Session], factory)),
                 installation=InstalledAppRef(
-                    id=installed.id, tenant_id=installed.tenant_id, app_id=app.id, app_mode="chat"
+                    id=installed.id,
+                    tenant_id=installed.tenant_id,
+                    app_id=app.id,
+                    app_owner_tenant_id=app.tenant_id,
+                    app_mode="chat",
                 ),
                 account_id=account.id,
                 message_id=message.id,

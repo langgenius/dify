@@ -37,7 +37,7 @@ function DropdownContent({
   onChangePriority,
   onClose,
 }: DropdownContentProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { available_credentials } = provider.custom_configuration
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
@@ -122,7 +122,7 @@ function DropdownContent({
         <AlertDialogContent>
           <div className="p-6 pb-0">
             <AlertDialogTitle className="system-xl-semibold text-text-primary">
-              {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
           </div>

@@ -38,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflowDebug'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -139,7 +139,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <IconButton
-            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
             className="shrink-0"
             onClick={handleOpenMenu}
           >
@@ -227,7 +227,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     render={
                       <a
                         aria-label={t(($) => $['debug.variableInspect.exportToolTip'], {
-                          ns: 'workflow',
+                          ns: 'workflowDebug',
                         })}
                         href={fullContent?.download_url}
                         target="_blank"
@@ -239,14 +239,16 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflow' })}
+                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflowDebug' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
-                  <span>{t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}</span>
+                  <span>
+                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflowDebug' })}
+                  </span>
                 </Badge>
               )}
               {!isTruncated &&
@@ -257,7 +259,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       render={
                         <IconButton
                           aria-label={t(($) => $['debug.variableInspect.reset'], {
-                            ns: 'workflow',
+                            ns: 'workflowDebug',
                           })}
                           onClick={resetValue}
                         >
@@ -266,7 +268,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflow' })}
+                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflowDebug' })}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -278,7 +280,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       render={
                         <IconButton
                           aria-label={t(($) => $['debug.variableInspect.resetConversationVar'], {
-                            ns: 'workflow',
+                            ns: 'workflowDebug',
                           })}
                           onClick={handleClear}
                         >
@@ -288,7 +290,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     />
                     <TooltipContent>
                       {t(($) => $['debug.variableInspect.resetConversationVar'], {
-                        ns: 'workflow',
+                        ns: 'workflowDebug',
                       })}
                     </TooltipContent>
                   </Tooltip>

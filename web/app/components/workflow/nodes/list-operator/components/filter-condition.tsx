@@ -59,14 +59,14 @@ const getSelectOptions = (
 
   if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
     return FILE_TYPE_OPTIONS.map((item) => ({
-      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
 
   if (condition.key === 'transfer_method') {
     return TRANSFER_METHOD.map((item) => ({
-      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
@@ -179,7 +179,9 @@ const ValueInput = ({
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
         placeholder={
-          !readOnly ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })! : ''
+          !readOnly
+            ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflowIntegrations' })!
+            : ''
         }
         placeholderClassName="leading-[21px]!"
       />
@@ -211,7 +213,7 @@ const FilterCondition: FC<Props> = ({
     ComparisonOperator.allOf,
   ]
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic', 'workflowIntegrations'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType

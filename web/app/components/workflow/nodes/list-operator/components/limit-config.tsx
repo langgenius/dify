@@ -28,7 +28,7 @@ const LIMIT_DEFAULT: Limit = {
 }
 
 const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, onChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const payload = config
 
   const handleLimitEnabledChange = useCallback(
@@ -54,7 +54,7 @@ const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, o
   return (
     <div className={cn(className)}>
       <Field
-        title={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
+        title={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflowLogic' })}
         operations={
           <Switch
             checked={payload.enabled}
@@ -66,7 +66,7 @@ const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, o
       >
         {payload?.enabled ? (
           <InputNumberWithSlider
-            label={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
+            label={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflowLogic' })}
             value={payload?.size || LIMIT_SIZE_DEFAULT}
             min={LIMIT_SIZE_MIN}
             max={LIMIT_SIZE_MAX}

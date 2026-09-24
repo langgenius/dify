@@ -69,7 +69,7 @@ const WorkspaceRoleCheckboxList = ({
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
-  const { t } = useTranslation(['common', 'permission'])
+  const { t } = useTranslation(['permission', 'workspaceMembers'])
   const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -189,7 +189,7 @@ const WorkspaceRoleCheckboxList = ({
 
     if (legacyRoleDescriptionKey)
       return t(($) => $[LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey]], {
-        ns: 'common',
+        ns: 'workspaceMembers',
       })
 
     return t(($) => $['role.noDescription'], { ns: 'permission' })
