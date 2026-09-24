@@ -61,6 +61,14 @@ from services.enterprise import rbac_service as enterprise_rbac_service
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
+def test_dataset_queries_requires_retrieval_recall_permission():
+    checks = rbac_checks(DatasetQueryApi.get)
+
+    assert len(checks) == 1
+    assert checks[0].scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert checks[0].locator.default_param == "dataset_id"
+
+
 @pytest.fixture(autouse=True)
 def dataset_model_property_defaults():
     getter_values: dict[str, object] = {
