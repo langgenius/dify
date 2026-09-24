@@ -18,6 +18,7 @@ from werkzeug.test import TestResponse
 
 from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app import preview_admission
+from controllers.console.explore import trial
 from extensions.ext_storage import StorageType
 from libs.external_api import ExternalApi
 from models.agent import (
@@ -183,9 +184,11 @@ def harness(
     )
     monkeypatch.setattr(preview_admission, "application_services", lambda: services)
     monkeypatch.setattr(inspector, "application_services", lambda: services)
+    monkeypatch.setattr(trial, "application_services", lambda: services)
     monkeypatch.setattr(inspector, "_service", lambda: AgentConfigService(session_factory=sqlite_session_factory))
     app = Flask(__name__)
     api = ExternalApi(app)
+    api.add_resource(trial.TrialAgentComposerApi, "/console/api/trial-apps/<uuid:app_id>/agent-composer")
     routes = [
         (inspector.TrialAgentConfigSkillsApi, "skills"),
         (inspector.TrialAgentConfigFilesApi, "files"),
@@ -207,7 +210,15 @@ def harness(
     return Harness(app, sqlite_session_factory, source, agent, snapshot, upload.id, skill_id, reads)
 
 
-def test_published_template_files_are_readable_without_workspace_membership(harness: Harness) -> None:
+def test_published_template_configuration_is_readable_without_workspace_membership(harness: Harness) -> None:
+    composer_url = f"/console/api/trial-apps/{harness.source.id}/agent-composer"
+    composer = harness.app.test_client().get(composer_url)
+    assert composer.status_code == 200
+    assert composer.json is not None
+    assert composer.json["agent_soul"]["config_files"][0]["name"] == "guide.txt"
+    assert composer.json["active_config_snapshot"]["id"] == harness.snapshot.id
+    assert composer.json["draft"] is None
+    assert composer.json["save_options"] == []
     for kind, name in [("skills", "research"), ("files", "guide.txt")]:
         response = harness.get(kind)
         assert response.status_code == 200
@@ -248,6 +259,7 @@ def test_published_template_files_are_readable_without_workspace_membership(harn
         app.is_public = False
     reads_before = list(harness.reads)
     assert harness.app.test_client().get(url).status_code == 404
+    assert harness.app.test_client().get(composer_url).status_code == 404
     assert harness.reads == reads_before
 
 
@@ -322,4 +334,9 @@ def test_unavailable_template_never_reads_storage(harness: Harness, state: str, 
             assert snapshot is not None
             snapshot.tenant_id = str(uuid4())
     assert harness.get("files/guide.txt/preview").status_code == status
+    composer = harness.app.test_client().get(f"/console/api/trial-apps/{harness.source.id}/agent-composer")
+    assert composer.status_code == status
+    if status == 400:
+        assert composer.json is not None
+        assert composer.json["code"] == "app_unavailable"
     assert harness.reads == []
