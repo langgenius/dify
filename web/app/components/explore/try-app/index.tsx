@@ -45,24 +45,33 @@ function TryApp({
     data: appDetail,
     isLoading,
     isFetching,
-    isFetched,
+    isFetchedAfterMount,
     errorUpdateCount,
     refetch,
   } = useQuery(
-    consoleQuery.trialApps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+    consoleQuery.trialApps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
   )
   const isAgent = templateMode === 'agent' || appDetail?.mode === 'agent'
   const composerQuery = useQuery(
     consoleQuery.trialApps.byAppId.agentComposer.get.queryOptions({
       input: { params: { app_id: appId } },
       enabled: isAgent,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     }),
   )
-  const agentLoading = isAgent && composerQuery.isLoading && !composerQuery.isFetched
+  const agentLoading = isAgent && composerQuery.isLoading && !composerQuery.isFetchedAfterMount
+  // On reopen, the cache can hold an old error; show loading during this observer's first fetch.
   const hasLoadError =
-    (!appDetail && (!isLoading || isFetched)) ||
-    (isAgent && !composerQuery.data && (!composerQuery.isLoading || composerQuery.isFetched))
-  const isInitialLoading = !hasLoadError && ((isLoading && !isFetched) || agentLoading)
+    (!appDetail && (!isLoading || isFetchedAfterMount)) ||
+    (isAgent &&
+      !composerQuery.data &&
+      (!composerQuery.isLoading || composerQuery.isFetchedAfterMount))
+  const isInitialLoading = !hasLoadError && ((isLoading && !isFetchedAfterMount) || agentLoading)
   const keepErrorForExit =
     hasLoadError || errorUpdateCount > 0 || composerQuery.errorUpdateCount > 0
   const isRetrying = isFetching || composerQuery.isFetching

@@ -205,6 +205,30 @@ describe('TryApp (main index.tsx)', () => {
       expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
     })
 
+    it('starts a new dialog session with loading when a cached failure is retried', () => {
+      let result = {
+        data: null,
+        isLoading: true,
+        isFetching: true,
+        isFetched: true,
+        isFetchedAfterMount: false,
+        errorUpdateCount: 1,
+        refetch: vi.fn(),
+      }
+      mockDetailQueryResult.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.retry' }),
+      ).not.toBeInTheDocument()
+
+      result = { ...result, isLoading: false, isFetching: false, isFetchedAfterMount: true }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+    })
+
     it('keeps the dialog visible while preview content suspends', async () => {
       let resolvePreview: () => void = () => {}
       mockPreviewSuspension.promise = new Promise<void>((resolve) => {
@@ -263,6 +287,7 @@ describe('TryApp (main index.tsx)', () => {
         data: null as TrialAppDetailResponse | null,
         isLoading: false,
         isFetched: true,
+        isFetchedAfterMount: true,
         isError: true,
         isFetching: false,
         errorUpdateCount: 1,
@@ -310,6 +335,7 @@ describe('TryApp (main index.tsx)', () => {
         data: null,
         isLoading: false,
         isFetched: true,
+        isFetchedAfterMount: true,
         isError: true,
         isFetching: false,
         refetch,
