@@ -8,6 +8,7 @@ Redis-backed ``session_lock`` module or Celery -- those are wired in by the
 caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 """
 
+import json
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
 from enum import StrEnum
@@ -16,7 +17,6 @@ from uuid import uuid4
 
 from core.dify_builder import recovery
 from core.dify_builder.contract import (
-    CANCEL_ACTION_ID,
     CONFIRM_ACTION_ID,
     ActionKind,
     ActiveInteraction,
@@ -25,9 +25,13 @@ from core.dify_builder.contract import (
     CheckpointRef,
     ConversationPage,
     Decision,
+    InteractionResponseField,
+    InteractionResponseItem,
     NoticeItem,
     OptionInput,
     Phase,
+    PreflightContextCard,
+    PreflightIssue,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -40,6 +44,7 @@ from core.dify_builder.models import (
     Action,
     Actor,
     ChecklistError,
+    ConversationItem,
     DifyBuilderContext,
     EntryMode,
     Run,
@@ -48,7 +53,6 @@ from core.dify_builder.models import (
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from services.dify_builder.agent.model_resolver import validate_model_config
-from services.feature_service import FeatureService
 
 __all__ = [
     "AppAccess",
@@ -121,8 +125,6 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.BUILD_AWAIT_REPAIR: Phase.TEST,
     PcState.BUILD_REVIEW: Phase.REVIEW,
     PcState.BUILD_PUBLISH: Phase.PUBLISH,
-    PcState.BUILD_GOVERNANCE_FEEDBACK: Phase.COMPLETE,
-    PcState.BUILD_AWAIT_LEARNING: Phase.COMPLETE,
     PcState.BUILD_COMPLETE: Phase.COMPLETE,
     PcState.BUILD_REVERTED: Phase.PLAN,
     # Edit.
@@ -172,15 +174,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY),
     ],
     # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
-    PcState.BUILD_CAPABILITY_CHECK: [
-        UiAction(
-            id="send_goal",
-            label="Send goal",
-            kind=ActionKind.PRIMARY,
-            next_state="build.goal_analysis",
-            canvas_event="reset_build_canvas",
-        ),
-    ],
     PcState.BUILD_GOAL_ANALYSIS: [
         UiAction(
             id="submit_requirements",
@@ -271,10 +264,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     PcState.BUILD_REVERTED: [
         UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="build.initial_plan"),
-    ],
-    PcState.BUILD_AWAIT_LEARNING: [
-        UiAction(id="accept_learning", label="Add to skills", kind=ActionKind.PRIMARY),
-        UiAction(id="skip_learning", label="Skip", kind=ActionKind.SECONDARY),
     ],
     # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
     PcState.EDIT_CAPABILITY_CHECK: [
@@ -414,13 +403,6 @@ def _actions_for(
     if app_revision_conflicted:
         return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
 
-    # Build creation already persists the user's opening goal and dispatches
-    # send_goal internally. Projecting the same action back to the client asks
-    # the user to submit an intent they have just supplied. Keep the action only
-    # for the intentionally supported goal-less/create-from-blank state.
-    if state == PcState.BUILD_CAPABILITY_CHECK and fc is not None and fc.goal_text:
-        return []
-
     return list(_ACTIONS_FOR.get(state, []))
 
 
@@ -449,16 +431,29 @@ _OPTION_INPUTS: dict[str, OptionInput] = {
 }
 
 
-def _decision_for(actions: list[UiAction]) -> Decision | None:
-    """Project a gate's actions as card options plus the fixed buttons.
+_DECISION_COPY_FOR: dict[PcState, tuple[str, str]] = {
+    PcState.FIX_AWAIT_APPROVAL: ("How should Builder proceed with this fix?", "Choose one option to continue."),
+    PcState.FIX_AWAIT_VERIFY: ("What should Builder do with the applied fix?", "Choose one option to continue."),
+    PcState.FIX_AWAIT_DECISION: ("What should happen to this fix?", "Choose one option to continue."),
+    PcState.CHECKLIST_AWAIT_RECHECK: ("What should Builder do next?", "Choose one option to continue."),
+    PcState.BUILD_PLAN_APPROVAL: ("Is this workflow plan ready to apply?", "Choose one option to continue."),
+    PcState.BUILD_EXECUTION: ("What should Builder do with the built workflow?", "Choose one option to continue."),
+    PcState.BUILD_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
+    PcState.BUILD_REVIEW: ("What should happen to this workflow?", "Choose one option to continue."),
+    PcState.BUILD_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
+    PcState.EDIT_PLAN_APPROVAL: ("Is this change plan ready to apply?", "Choose one option to continue."),
+    PcState.EDIT_APPLY_CHANGES: ("What should Builder do with the updated workflow?", "Choose one option to continue."),
+    PcState.EDIT_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
+    PcState.EDIT_REVIEW: ("What should happen to these changes?", "Choose one option to continue."),
+    PcState.EDIT_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
+    PcState.FAILED: ("How should Builder recover?", "Choose one option to continue."),
+}
 
-    Same choice, different shape: a button row that changed per state becomes
-    options with one confirm and one cancel under them. Option ids are the old
-    action ids untouched, which keeps ``resolve_action_kind`` and the per-state
-    legality check working unchanged.
-    """
+
+def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
+    """Project a non-form gate as one blocking choice interaction."""
     renderable = [a for a in actions if a.kind != ActionKind.AUTOMATIC]
-    if not renderable:
+    if not renderable or any(action.id in _ACTIVE_INTERACTION_CARD_FOR_ACTION for action in renderable):
         return None
     # Only the first primary is badged: two recommendations is no recommendation.
     default_index = next((i for i, a in enumerate(renderable) if a.kind == ActionKind.PRIMARY), -1)
@@ -474,10 +469,15 @@ def _decision_for(actions: list[UiAction]) -> Decision | None:
         )
         for i, a in enumerate(renderable)
     ]
+    title, description = _DECISION_COPY_FOR.get(
+        state,
+        ("How should Builder continue?", "Choose one option to continue."),
+    )
     return Decision(
+        title=title,
+        description=description,
         options=options,
-        confirm=UiAction(id=CONFIRM_ACTION_ID, label="Confirm", kind=ActionKind.PRIMARY),
-        cancel=UiAction(id=CANCEL_ACTION_ID, label="Cancel", kind=ActionKind.SECONDARY),
+        submit=UiAction(id=CONFIRM_ACTION_ID, label="Submit", kind=ActionKind.PRIMARY),
         default_option_id=options[default_index].id if default_index >= 0 else "",
     )
 
@@ -489,6 +489,137 @@ _ACTIVE_INTERACTION_CARD_FOR_ACTION: dict[str, tuple[str, str | None]] = {
     "confirm_resources": ("resource_select", None),
 }
 
+_FORM_COPY_FOR_VARIANT: dict[str, tuple[str, str]] = {
+    "build_requirements": (
+        "Review the requirements",
+        "Adjust any values before Builder continues.",
+    ),
+    "edit_rules": (
+        "Review the change rules",
+        "Adjust any values before Builder applies the change plan.",
+    ),
+    "testdata": (
+        "Provide test data",
+        "Review the inputs Builder will use for this run.",
+    ),
+}
+
+
+def _display_interaction_value(value: object) -> str:
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, list):
+        return ", ".join(_display_interaction_value(item) for item in value) or "—"
+    if isinstance(value, dict):
+        name = value.get("name") or value.get("filename")
+        if isinstance(name, str) and name:
+            return name
+        return json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"))
+    return str(value)
+
+
+def _selected_ui_action(actions: list[UiAction], action: Action) -> UiAction | None:
+    option_id = action.payload.get("option_id")
+    if isinstance(option_id, str) and option_id:
+        selected = next((candidate for candidate in actions if candidate.id == option_id), None)
+        if selected is not None:
+            return selected
+    matching = [candidate for candidate in actions if resolve_action_kind(candidate.id) == action.kind]
+    return matching[0] if len(matching) == 1 else None
+
+
+def _interaction_response_for(
+    repo: Repository,
+    session: Session,
+    action: Action,
+    visible_actions: list[UiAction],
+) -> InteractionResponseItem | None:
+    selected_action = _selected_ui_action(visible_actions, action)
+    if selected_action is None:
+        return None
+
+    card_contract = _ACTIVE_INTERACTION_CARD_FOR_ACTION.get(selected_action.id)
+    if card_contract is None:
+        free_text = action.payload.get("free_text")
+        option_input = _OPTION_INPUTS.get(selected_action.id)
+        submitted_data: dict[str, object] = {"option_id": selected_action.id}
+        answer = selected_action.label
+        if option_input is not None and isinstance(free_text, str) and free_text.strip():
+            normalized_free_text = free_text.strip()
+            submitted_data["free_text"] = normalized_free_text
+            answer = f"{answer} — {normalized_free_text}"
+        title, _description = _DECISION_COPY_FOR.get(
+            session.current_state,
+            ("How should Builder continue?", ""),
+        )
+        return InteractionResponseItem(
+            interaction_kind="choice",
+            question=title,
+            answer=answer,
+            submitted_data=submitted_data,
+        )
+
+    card_kind, expected_variant = card_contract
+    card = repo.get_latest_conversation_item(session.id, frozenset({card_kind}))
+    if card is None:
+        return None
+
+    if card_kind == "resource_select":
+        raw_ids = action.payload.get("resource_ids")
+        selected_ids = [value for value in raw_ids if isinstance(value, str)] if isinstance(raw_ids, list) else []
+        resources = card.payload.get("recommended")
+        resource_options = resources if isinstance(resources, list) else []
+        selected_labels = [
+            str(resource.get("label") or resource.get("id") or "")
+            for resource in resource_options
+            if isinstance(resource, dict) and resource.get("id") in selected_ids
+        ]
+        return InteractionResponseItem(
+            interaction_kind="resource",
+            question=str(card.payload.get("title") or "Which resources should Builder use?"),
+            answer=", ".join(label for label in selected_labels if label) or "No resources selected",
+            submitted_data={"resource_ids": selected_ids},
+        )
+
+    variant = str(card.payload.get("variant") or "")
+    if expected_variant is not None and variant != expected_variant:
+        return None
+    raw_values = action.payload.get("inputs") if selected_action.id == "provide_testdata" else action.payload
+    submitted_values = raw_values if isinstance(raw_values, dict) else {}
+    raw_fields = card.payload.get("fields")
+    fields = raw_fields if isinstance(raw_fields, list) else []
+    response_fields: list[InteractionResponseField] = []
+    normalized_values: dict[str, object] = {}
+    for raw_field in fields:
+        if not isinstance(raw_field, dict):
+            continue
+        key = raw_field.get("key")
+        if not isinstance(key, str) or not key:
+            continue
+        value = submitted_values.get(key)
+        normalized_values[key] = value
+        response_fields.append(
+            InteractionResponseField(
+                key=key,
+                label=str(raw_field.get("label") or key),
+                value=value,
+                display_value=_display_interaction_value(value),
+            )
+        )
+    fallback_title, _fallback_description = _FORM_COPY_FOR_VARIANT.get(
+        variant,
+        ("Submitted form", ""),
+    )
+    return InteractionResponseItem(
+        interaction_kind="form",
+        question=str(card.payload.get("title") or fallback_title),
+        fields=response_fields,
+        submitted_data=normalized_values,
+    )
+
+
 # Handler-facing kinds accepted at each state. This is deliberately explicit:
 # several handlers historically treated every unknown kind as a default branch
 # (notably fix.await_decision -> keep_draft), so dispatch must never be the
@@ -499,7 +630,6 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.FIX_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.FIX_AWAIT_DECISION: frozenset({"publish", "keep_draft", "re_fix", "undo"}),
     PcState.CHECKLIST_AWAIT_RECHECK: frozenset({"recheck", "undo"}),
-    PcState.BUILD_CAPABILITY_CHECK: frozenset({"send_goal"}),
     PcState.BUILD_GOAL_ANALYSIS: frozenset({"submit_requirements"}),
     # BUILD_INITIAL_PLAN is a working/pass-through state now (state.py) -- it
     # no longer gates on any action, so it has no entry here, matching every
@@ -510,7 +640,6 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.BUILD_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.BUILD_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),
     PcState.BUILD_REVIEW: frozenset({"publish_workflow", "keep_draft", "re_fix", "undo"}),
-    PcState.BUILD_AWAIT_LEARNING: frozenset({"accept_learning", "skip_learning"}),
     PcState.BUILD_REVERTED: frozenset({"re_fix"}),
     PcState.EDIT_CAPABILITY_CHECK: frozenset({"send_edit_goal"}),
     PcState.EDIT_IMPACT_ANALYSIS: frozenset({"submit_edit_rules"}),
@@ -606,11 +735,10 @@ def resolve_action_kind(raw: str) -> str:
 def resolve_submitted_action(action_id: str, payload: dict | None) -> str:
     """Map what the client posted to the engine handler kind.
 
-    The card-options client posts ``confirm`` and names its choice in
-    ``payload["option_id"]``; an action-bar client posts that id directly. Both
-    reach the same kind because an option id IS the action id it replaced, which
-    is what lets the two contracts run side by side. A ``confirm`` naming no
-    option resolves to "", which the per-state legality check then rejects.
+    The interaction dock posts ``confirm`` and names its choice in
+    ``payload["option_id"]``. Handler-facing callers may already use the
+    resolved action id. A ``confirm`` naming no option resolves to "", which
+    the per-state legality check then rejects.
     """
     if action_id == CONFIRM_ACTION_ID:
         action_id = str(payload.get("option_id") or "") if isinstance(payload, dict) else ""
@@ -620,7 +748,6 @@ def resolve_submitted_action(action_id: str, payload: dict | None) -> str:
 _WAITING_INPUT_STATES = frozenset(
     {
         PcState.FIX_AWAIT_TESTDATA,
-        PcState.BUILD_CAPABILITY_CHECK,
         PcState.BUILD_GOAL_ANALYSIS,
         PcState.BUILD_AWAIT_TESTDATA,
         PcState.EDIT_CAPABILITY_CHECK,
@@ -833,8 +960,32 @@ class DifyBuilderService:
             entry_mode=entry_mode,
             current_state=state,
         )
-        run_context = RunContextCard(run_id=failed_run_id or "", title="", error_code="", message="", trace_ref="")
-        items = [run_context.to_item(seq=0, at_version=0)]
+        if checklist_errors:
+            issues = [
+                PreflightIssue(
+                    node_id=issue.node_id,
+                    node_type=issue.node_type,
+                    title=issue.title,
+                    messages=list(issue.messages),
+                    unconnected=issue.unconnected,
+                    plugin_missing=issue.plugin_missing,
+                )
+                for issue in checklist_errors
+            ]
+            context_card = PreflightContextCard(
+                node_count=len({issue.node_id for issue in checklist_errors if issue.node_id}),
+                issue_count=len(checklist_errors),
+                issues=issues,
+            )
+        else:
+            context_card = RunContextCard(
+                run_id=failed_run_id or "",
+                title="",
+                error_code="",
+                message="",
+                trace_ref="",
+            )
+        items = [context_card.to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         if failed_run is not None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
@@ -871,15 +1022,22 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def _prepare_build_session(
         self,
@@ -891,16 +1049,14 @@ class DifyBuilderService:
     ) -> tuple[str, Action]:
         """Shared setup for ``create_build_session``/``create_build_session_stream``:
         everything through persisting the session up to -- but not including --
-        the ``send_goal`` dispatch."""
+        the internal ``start_build`` dispatch."""
         if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
             raise BadRequestError("goal_text is required")
         app_id = self._authorize_app(app_id, actor)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
-        policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
         fc = DifyBuilderContext(
             goal_text=goal_text,
-            skill_learning_policy=policy,
             model_config=model_config,
             last_snapshot_hash=app_revision,
             app_name=self._get_app_name(app_id, actor),
@@ -916,8 +1072,7 @@ class DifyBuilderService:
         items = [UserItem(text=goal_text, turn_id=str(uuid4())).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         return s.id, Action(
-            kind="send_goal",
-            payload={"text": goal_text},
+            kind="start_build",
             base_version=1,
             base_app_revision=app_revision,
         )
@@ -931,7 +1086,7 @@ class DifyBuilderService:
         derive_app_name: bool = False,
     ) -> SessionView:
         """Start a Build session at build.capability_check and dispatch the
-        initial ``send_goal`` (parallels ``create_fix_session``). The goal is
+        initial ``start_build`` command (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
         session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
@@ -948,19 +1103,26 @@ class DifyBuilderService:
         derive_app_name: bool = False,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_build_session``: subscribes BEFORE
-        dispatching the initial ``send_goal`` advance."""
+        dispatching the initial ``start_build`` advance."""
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def _prepare_edit_session(
         self,
@@ -1030,15 +1192,22 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Return the bounded session projection; history has its own API."""
@@ -1124,7 +1293,7 @@ class DifyBuilderService:
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
             actions=actions,
-            decision=_decision_for(actions),
+            decision=_decision_for(st, actions),
             active_interaction=self._active_interaction_for(s.id, s.version, actions),
             checkpoint=checkpoint,
             recovery=recovery_ref,
@@ -1143,14 +1312,19 @@ class DifyBuilderService:
                 current=current_app_revision,
                 conflicted=app_revision_conflicted,
             ),
+            last_command_id=fc.last_command_id,
         )
 
-    def _prepare_action(self, session_id: str, actor: Actor, action: Action) -> tuple[SessionView, bool]:
+    def _prepare_action(
+        self, session_id: str, actor: Actor, action: Action
+    ) -> tuple[SessionView, bool, list[ConversationItem]]:
         """Shared synchronous validation + settle for ``submit_action`` and the
-        streaming submit methods. Returns ``(view, expect_advance)``:
+        streaming submit methods. Returns ``(view, expect_advance, items)``:
         ``expect_advance`` is ``True`` only when the caller must still call
-        ``dispatch`` (this method never dispatches itself, so a streaming
-        caller can subscribe before the advance is enqueued)."""
+        ``dispatch``; ``items`` contains rows committed synchronously before a
+        worker is needed. This method never dispatches itself, so a streaming
+        caller can subscribe before the advance is enqueued."""
+        action.command_id = action.command_id or str(uuid4())
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
             raise BadRequestError("action kind is required")
@@ -1177,7 +1351,7 @@ class DifyBuilderService:
             client_turn_id = action.payload["client_turn_id"]
             turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
             if "assistant_turn" in turn_kinds:
-                return self._build_session_view(s, fc), False
+                return self._build_session_view(s, fc), False, []
             if "user" in turn_kinds:
                 action.base_version = s.version
         lifecycle_limited = bool(
@@ -1218,6 +1392,14 @@ class DifyBuilderService:
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
+        visible_actions = _actions_for(
+            s.current_state,
+            fc,
+            interrupted=is_working(s.current_state) and not self._session_lock.exists(session_id),
+            app_revision_conflicted=app_revision_conflicted,
+        )
+        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions)
+        action.interaction_response = asdict(interaction_response) if interaction_response is not None else None
         if action.kind == "update_model":
             if is_working(s.current_state) or self._session_lock.exists(session_id):
                 raise BusyError(f"session {session_id} is busy")
@@ -1230,6 +1412,7 @@ class DifyBuilderService:
                 at_version=s.version + 1,
             )
             fc.next_seq += 1
+            fc.last_command_id = action.command_id
             items = [item]
             # This notice is committed directly (not via Runner._commit), so the
             # engine's reply-language localization hook never sees it. Localize it
@@ -1242,12 +1425,12 @@ class DifyBuilderService:
                 localizer = Localizer(LlmBuilderAgent(actor.tenant_id, fc.model_config).model_or_none)
                 items = localizer.localize_items(items, fc.reply_language)
             self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, items)
-            return self.get_session_view(session_id, actor), False
-        return self._build_session_view(s, fc), True
+            return self.get_session_view(session_id, actor), False, items
+        return self._build_session_view(s, fc), True, []
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Port of Go ``SubmitAction``."""
-        view, expect_advance = self._prepare_action(session_id, actor, action)
+        view, expect_advance, _settled_items = self._prepare_action(session_id, actor, action)
         if expect_advance:
             self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
@@ -1277,31 +1460,34 @@ class DifyBuilderService:
         """Streaming counterpart of ``submit_action``: performs the same eager
         validation via ``_prepare_action`` (raising before any streaming begins),
         then -- for the dispatch case -- subscribes BEFORE enqueuing the advance
-        so no progress frames are lost, and returns the frame generator."""
+        so no progress frames are lost. Synchronously committed items are sent
+        individually before the terminal projection."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        view, expect_advance = self._prepare_action(session_id, actor, action)
+        view, expect_advance, settled_items = self._prepare_action(session_id, actor, action)
         if not expect_advance:
             # ``message`` (replay of a settled turn) and ``update_model`` both
             # settle synchronously while changing the version, so they must emit
-            # a terminal ``state`` frame carrying the new version -- else a FE
-            # tracking its held version off ``state`` frames stays stale and its
-            # next action 409s.
+            # a terminal ``command_finished`` frame carrying the new version --
+            # otherwise a client keeps a stale held version and its next action
+            # conflicts.
             return stream_advance_frames(
                 asdict(view),
                 None,
                 expect_advance=False,
-                emit_state_when_settled=action.kind in {"message", "update_model"},
+                emit_command_finished_when_settled=action.kind in {"message", "update_model"},
+                command_id=action.command_id,
+                initial_items=settled_items,
             )
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(view)
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(view_dict, subscription, expect_advance=True, command_id=command_id)
 
     def submit_message_stream(
         self,
@@ -1323,9 +1509,10 @@ class DifyBuilderService:
             ),
         )
 
-    def dispatch(self, session_id: str, action: Action, actor: Actor) -> None:
+    def dispatch(self, session_id: str, action: Action, actor: Actor) -> str:
         """Port of Go ``dispatch``: acquire-or-busy + enqueue, release on
         enqueue failure."""
+        action.command_id = action.command_id or str(uuid4())
         token = self._session_lock.acquire(session_id)
         if token is None:
             raise BusyError(f"session {session_id} is busy")
@@ -1334,3 +1521,4 @@ class DifyBuilderService:
         except Exception:
             self._session_lock.release(session_id, token)
             raise
+        return action.command_id

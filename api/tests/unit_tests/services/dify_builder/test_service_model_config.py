@@ -49,11 +49,6 @@ def _service(repo):
 
 def test_build_session_stamps_model_config(monkeypatch, actor):
     monkeypatch.setattr(service_mod, "validate_model_config", lambda tenant_id, mc: mc)  # noqa: ARG005
-    monkeypatch.setattr(
-        service_mod.FeatureService,
-        "get_features",
-        staticmethod(lambda tenant_id: type("F", (), {"skill_learning_policy": "ask"})()),  # noqa: ARG005
-    )
     # get_session_view is called after dispatch; stub it to return the created fc's owner view path.
     repo = _FakeRepo()
     svc = _service(repo)
@@ -65,11 +60,6 @@ def test_build_session_stamps_model_config(monkeypatch, actor):
 def test_build_session_freezes_default_model_config(monkeypatch, actor):
     validate = Mock(return_value=MC)
     monkeypatch.setattr(service_mod, "validate_model_config", validate)
-    monkeypatch.setattr(
-        service_mod.FeatureService,
-        "get_features",
-        staticmethod(lambda tenant_id: type("F", (), {"skill_learning_policy": "ask"})()),  # noqa: ARG005
-    )
     repo = _FakeRepo()
     svc = _service(repo)
     monkeypatch.setattr(svc, "get_session_view", lambda sid, a: "VIEW")  # noqa: ARG005

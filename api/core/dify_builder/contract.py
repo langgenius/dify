@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
-from core.dify_builder.models import ChangedNode, ConversationItem, EntryMode
+from core.dify_builder.models import ConversationItem, EntryMode
 
 
 class Phase(StrEnum):
@@ -67,21 +67,15 @@ class CardKind(StrEnum):
 
     USER = "user"
     DECISION = "decision"
+    INTERACTION_RESPONSE = "interaction_response"
     NOTICE = "notice"
     RUN_CONTEXT = "run_context"
     PREFLIGHT_CONTEXT = "preflight_context"
     ASSISTANT_TURN = "assistant_turn"
     PLAN = "plan"
     FORM = "form"
-    CHALLENGE = "challenge"
     RESOURCE_SELECT = "resource_select"
-    CHECKPOINT = "checkpoint"
-    CHANGE_SET = "change_set"
     TEST_RESULT = "test_result"
-    ERROR = "error"
-    SUMMARY = "summary"
-    PUBLISH = "publish"
-    BUILD_LEARNING = "build_learning"
 
 
 class CanvasEvent(StrEnum):
@@ -152,6 +146,17 @@ class BuilderErrorCode(StrEnum):
     MODEL_UNAVAILABLE = "model_unavailable"
 
 
+def post_canvas_action_id(state: object, action_kind: object) -> str | None:
+    """Return the browser follow-up needed after a repair graph refresh."""
+    if action_kind not in {"approve_plan", "approve_repair"}:
+        return None
+    if state == "build.await_repair":
+        return "run_test"
+    if state == "edit.await_repair":
+        return "run_affected_tests"
+    return None
+
+
 @dataclass
 class Action:
     """A UI action the FE renders (spec §5).
@@ -168,10 +173,9 @@ class Action:
     canvas_event: str | None = None
 
 
-# The only two buttons an interactive card shows; every real choice is an option
-# inside it. One interaction shape at every gate, not one per state.
+# Every real choice is an option inside one interaction card. The single
+# visible submit button posts this stable action id with the chosen option.
 CONFIRM_ACTION_ID = "confirm"
-CANCEL_ACTION_ID = "cancel"
 
 
 @dataclass
@@ -212,22 +216,12 @@ class CardOption:
 
 @dataclass
 class Decision:
-    """What the current gate asks: card options plus the fixed button pair.
+    """The one blocking choice shown in the fixed conversation footer."""
 
-    Replaces the per-state action bar. The client renders ``options`` in the
-    active card, shows only ``confirm`` and ``cancel``, and on confirm posts
-    ``confirm`` with ``{"option_id": ..., "free_text": ...}``. ``cancel`` is
-    presentational -- it dismisses without posting and the gate stays open.
-
-    While ``SessionView.actions`` is still populated, the server accepts the old
-    per-action ids too and does not enforce ``OptionInput`` bounds, so a client
-    posting a bare action id keeps working. Enforcement moves server-side when
-    ``actions`` goes.
-    """
-
+    title: str
+    description: str = ""
     options: list[CardOption] = field(default_factory=list)
-    confirm: Action | None = None
-    cancel: Action | None = None
+    submit: Action | None = None
     default_option_id: str = ""
 
 
@@ -392,18 +386,27 @@ class SessionView:
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None
     app_revision: AppRevision | None = None
+    # The last command whose durable transition is reflected by this view.
+    # Used by reconnecting clients to correlate a terminal projection without
+    # replaying the command's conversation payload in SSE.
+    last_command_id: str = ""
 
 
 @dataclass
 class PreflightIssue:
     """One checklist finding in a ``preflight_context`` card.
 
-    ``kind`` in connection|variable|required_config|availability.
+    Carries the workflow checklist fields needed by Dify Builder's own
+    preflight component. The Builder presentation remains independently
+    maintained from the editor checklist.
     """
 
     node_id: str
-    label: str
-    kind: str
+    node_type: str
+    title: str
+    messages: list[str] = field(default_factory=list)
+    unconnected: bool = False
+    plugin_missing: bool = False
 
 
 ExecutionActivityState = Literal["active", "done", "failed", "stopped"]
@@ -432,26 +435,6 @@ class ExecutionProgress:
 
     status: ExecutionProgressStatus
     activities: list[ExecutionActivity] = field(default_factory=list)
-
-
-@dataclass
-class TestStat:
-    """One stat tile in a ``test_result`` card."""
-
-    # Not a pytest test class; ``__test__`` (unannotated, so not a dataclass
-    # field) tells pytest's Test*-name collector to skip it.
-    __test__ = False
-
-    value: str
-    label: str
-
-
-@dataclass
-class SummaryRow:
-    """One row of a ``completion``-variant ``summary`` card."""
-
-    label: str
-    value: str
 
 
 # ---------------------------------------------------------------------------
@@ -488,6 +471,29 @@ class DecisionItem(_Card):
     kind: ClassVar[CardKind] = CardKind.DECISION
 
     text: str
+
+
+@dataclass
+class InteractionResponseField:
+    """One immutable, human-readable row in a submitted form receipt."""
+
+    key: str
+    label: str
+    value: Any
+    display_value: str
+
+
+@dataclass
+class InteractionResponseItem(_Card):
+    """Durable snapshot of a submitted choice, form, or resource selection."""
+
+    kind: ClassVar[CardKind] = CardKind.INTERACTION_RESPONSE
+
+    interaction_kind: Literal["choice", "form", "resource"]
+    question: str
+    answer: str = ""
+    fields: list[InteractionResponseField] = field(default_factory=list)
+    submitted_data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -544,16 +550,12 @@ class AssistantTurnItem(_Card):
 
 @dataclass
 class PlanCard(_Card):
-    """Versioned plan (spec §4.3). ``items`` are ordered, human-readable
-    steps. Build emits v1/v2/v2.x; Edit emits a single change plan.
-    """
+    """Final approval plan. ``items`` are ordered, human-readable steps."""
 
     kind: ClassVar[CardKind] = CardKind.PLAN
 
     title: str
-    version_tag: str
     items: list[str] = field(default_factory=list)
-    subtitle: str | None = None
 
 
 @dataclass
@@ -565,20 +567,11 @@ class FormCard(_Card):
     kind: ClassVar[CardKind] = CardKind.FORM
 
     variant: str
+    title: str = ""
+    description: str = ""
     fields: list[FormField] = field(default_factory=list)
     values: dict = field(default_factory=dict)
     frozen: bool = False
-
-
-@dataclass
-class ChallengeCard(_Card):
-    """High-impact-rule confirmation, distinct from a plain question."""
-
-    kind: ClassVar[CardKind] = CardKind.CHALLENGE
-
-    title: str
-    body: str
-    tone: str = "warning"
 
 
 @dataclass
@@ -587,37 +580,14 @@ class ResourceSelectCard(_Card):
 
     kind: ClassVar[CardKind] = CardKind.RESOURCE_SELECT
 
+    title: str = ""
+    description: str = ""
     recommended: list[ResourceOption] = field(default_factory=list)
 
 
 @dataclass
-class CheckpointCard(_Card):
-    """Restore point, backed by create-checkpoint/revert-checkpoint canvas
-    events. Restoring invalidates prior approvals.
-    """
-
-    kind: ClassVar[CardKind] = CardKind.CHECKPOINT
-
-    checkpoint_id: str
-    label: str
-    created_at: str
-
-
-@dataclass
-class ChangeSetCard(_Card):
-    """Read-only change summary. ``scope`` in annotation|configuration|structure."""
-
-    kind: ClassVar[CardKind] = CardKind.CHANGE_SET
-
-    count: int
-    changes: list[str]
-    scope: str
-    nodes: list[ChangedNode] = field(default_factory=list)
-
-
-@dataclass
 class TestResultCard(_Card):
-    """Structured test/verify result. ``tone`` in success|error."""
+    """Minimal test/verify result shown after a run completes."""
 
     # Not a pytest test class; ``__test__`` (unannotated, so not a dataclass
     # field) tells pytest's Test*-name collector to skip it.
@@ -625,76 +595,12 @@ class TestResultCard(_Card):
 
     kind: ClassVar[CardKind] = CardKind.TEST_RESULT
 
-    title: str
-    subtitle: str
-    tone: str
-    stats: list[TestStat] = field(default_factory=list)
-    run_ids: list[str] = field(default_factory=list)
+    status: Literal["succeeded", "failed"]
+    failure_reason: str | None = None
     # The Dify workflow run these results came from, so a client can reopen
-    # the run on the canvas later. ``run_ids`` holds Builder run ids, which
-    # resolve to nothing outside the engine; the canvas needs THIS one. It is
-    # persisted with the card because the SSE frames that also carry it do
-    # not survive a page reload. "" when no run backs the card.
+    # the run on the canvas later. Persisted because SSE does not survive a
+    # page reload. "" when no run backs the card.
     dify_run_id: str = ""
-    # The terminal node's outputs, pretty-printed. "" when the run produced
-    # none. A passing test that shows no result is not evidence of anything.
-    output: str = ""
-
-
-@dataclass
-class ErrorCard(_Card):
-    """A found/fixed problem."""
-
-    kind: ClassVar[CardKind] = CardKind.ERROR
-
-    title: str
-    body: str
-    tone: str = "danger"
-    node_id: str | None = None
-    # Machine-readable failure breadcrumbs (server timestamp + generator codes /
-    # node ids). Not rendered: it rides along in the item payload so the exported
-    # debug log retains what would otherwise only exist in a pod log.
-    diagnostics: list[dict[str, Any]] = field(default_factory=list)
-
-
-@dataclass
-class SummaryCard(_Card):
-    """Polymorphic by phase. ``variant`` in context|review|completion --
-    ``items`` is used for context/review, ``rows`` for completion.
-    """
-
-    kind: ClassVar[CardKind] = CardKind.SUMMARY
-
-    variant: str
-    title: str | None = None
-    items: list[str] = field(default_factory=list)
-    rows: list[SummaryRow] = field(default_factory=list)
-
-
-@dataclass
-class PublishCard(_Card):
-    """Publish confirmation. Build -> v1.0, Edit -> v2.4-style bump, Fix ->
-    patch bump.
-    """
-
-    kind: ClassVar[CardKind] = CardKind.PUBLISH
-
-    version: str
-    badge: str = "live"
-
-
-@dataclass
-class BuildLearningCard(_Card):
-    """Post-build "sink this experience into System Skills?" card.
-
-    Deferred -- contract-only for now. ``policy`` is a
-    ``SkillLearningPolicy`` value; ``state`` in pending|accepted|skipped.
-    """
-
-    kind: ClassVar[CardKind] = CardKind.BUILD_LEARNING
-
-    policy: str
-    state: str
 
 
 # ---------------------------------------------------------------------------
@@ -789,6 +695,7 @@ class CommandStartedEventData(SessionView, _SseEventData):
 
     sse_event: ClassVar[str] = "command_started"
 
+    command_id: str = ""
     kind: Literal["command_started"] = "command_started"
 
 
@@ -831,23 +738,49 @@ class CanvasEventData(_SseEventData):
 class AgentMessageEventData(_SseEventData):
     """One incremental assistant-text chunk for an in-flight chat turn.
 
-    ``answer`` follows the existing Dify ``agent_message`` convention: it is
-    a delta, not the accumulated answer. ``seq``/``at_version`` identify the
-    durable assistant item that replaces the transient stream item when the
-    turn commits.
+    ``delta`` is never an accumulated answer. Every frame for one assistant
+    message carries the same preallocated ``seq``/``turn_id``. The final frame
+    has ``done=true`` and an empty ``delta``; it is emitted after the assistant
+    turn commits and promotes the accumulated text into the live conversation.
+    ``command_finished`` later confirms the command's complete bounded state.
     """
 
     sse_event: ClassVar[str] = "agent_message"
 
     session_id: str
+    command_id: str
     operation_id: str
-    id: str
-    answer: str
+    turn_id: str
+    delta: str
     seq: int
     at_version: int
     revision: int
     stage_id: str
+    done: bool
+    # Cumulative UTF-8 byte length after applying this delta. The final marker
+    # lets clients detect a missing chunk without replaying the full reply.
+    text_bytes: int
+    execution: ExecutionProgress | None = None
+    cards: list[str] = field(default_factory=list)
     kind: Literal["agent_message"] = "agent_message"
+
+
+@dataclass
+class ConversationItemAppendedEventData(_SseEventData):
+    """One durable non-assistant conversation item appended by a command.
+
+    Assistant text is intentionally excluded: its preallocated sequence and
+    content already arrive through ``agent_message``. The persisted
+    ``assistant_turn`` remains available from the history endpoint for reload
+    and recovery only.
+    """
+
+    sse_event: ClassVar[str] = "conversation_item_appended"
+
+    session_id: str
+    command_id: str
+    item: ConversationItem
+    kind: Literal["conversation_item_appended"] = "conversation_item_appended"
 
 
 @dataclass
@@ -873,13 +806,15 @@ class ReasoningEventData(_SseEventData):
 
 @dataclass
 class ProgressEventData(_SseEventData):
-    """A replaceable execution snapshot for an in-flight operation.
+    """One ordered execution-activity delta for an in-flight operation.
 
     ``revision`` is monotonic within ``operation_id``. ``at_version`` points
-    at the next durable transition that supersedes this snapshot, allowing a
-    client to discard delayed progress after it has already applied a commit.
-    The payload contains observable actions only. Model-provided reasoning is
-    delivered separately through ``ReasoningEventData``.
+    at the next durable transition that supersedes these deltas, allowing a
+    client to discard delayed progress after it has reconciled the terminal command.
+    ``activity`` is null only when the operation status changes without an
+    activity mutation. Model-provided reasoning is delivered separately through
+    ``ReasoningEventData``. The terminal assistant item still carries the full
+    ``ExecutionProgress`` snapshot for durable history.
     """
 
     sse_event: ClassVar[str] = "progress"
@@ -889,32 +824,24 @@ class ProgressEventData(_SseEventData):
     stage_id: str
     at_version: int
     revision: int
-    execution: ExecutionProgress
+    status: ExecutionProgressStatus
+    activity: ExecutionActivity | None
     kind: Literal["progress"] = "progress"
 
 
 @dataclass
-class CommitEventData(_SseEventData):
-    """One CAS-backed conversation increment emitted before terminal state."""
+class CommandFinishedEventData(SessionView, _SseEventData):
+    """Terminal session projection for one command.
 
-    sse_event: ClassVar[str] = "commit"
+    Conversation content is intentionally absent. ``conversation_last_seq``
+    is a persistence watermark: clients only query history when the item
+    events they observed do not cover the completed command's sequence range.
+    """
 
-    session_id: str
-    operation_id: str
-    stage_id: str
-    at_version: int
-    version: int
-    state: str
-    settled: bool
-    items: list[ConversationItem]
-    kind: Literal["commit"] = "commit"
+    sse_event: ClassVar[str] = "command_finished"
 
-
-@dataclass
-class StateEventData(SessionView, _SseEventData):
-    sse_event: ClassVar[str] = "state"
-
-    kind: Literal["state"] = "state"
+    command_id: str = ""
+    kind: Literal["command_finished"] = "command_finished"
 
 
 @dataclass
@@ -926,3 +853,5 @@ class ErrorEventData(_SseEventData):
     code: str | None = None
     message: str | None = None
     recoverable: bool | None = None
+    session_id: str | None = None
+    command_id: str | None = None

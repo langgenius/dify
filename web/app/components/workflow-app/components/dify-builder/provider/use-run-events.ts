@@ -239,7 +239,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
       setRestoreError('')
       const input = { params: { app_id: appId, run_id: run.runId } }
       // These queries serve reopen/recovery only. A complete live stream never
-      // reaches this branch, even when commit/state repeats its result card.
+      // reaches this branch, even when command reconciliation repeats its result card.
       void Promise.all([
         queryClient.query(
           consoleQuery.apps.byAppId.workflowRuns.byRunId.get.queryOptions({ input, staleTime: 0 }),

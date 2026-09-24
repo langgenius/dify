@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
-import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
+import type { OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
@@ -134,7 +134,6 @@ export type WorkflowProps = {
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
   isCollaborationEnabled?: boolean
-  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
@@ -148,7 +147,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     children,
     onWorkflowDataUpdate,
     isCollaborationEnabled = false,
-    cursors,
     myUserId,
     onlineUsers,
   }) => {
@@ -655,9 +653,9 @@ export const Workflow: FC<WorkflowProps> = memo(
               className="bg-workflow-canvas-workflow-bg"
               color="var(--color-workflow-canvas-workflow-dot-color)"
             />
-            {showUserCursors && cursors && (
+            {isCollaborationEnabled && (
               <UserCursors
-                cursors={cursors}
+                visible={showUserCursors}
                 myUserId={myUserId || null}
                 onlineUsers={onlineUsers || []}
               />
@@ -672,15 +670,14 @@ export const Workflow: FC<WorkflowProps> = memo(
 
 type WorkflowWithInnerContextProps = WorkflowProps & {
   hooksStore?: Partial<HooksStoreShape>
-  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
 export const WorkflowWithInnerContext = memo(
-  ({ hooksStore, cursors, myUserId, onlineUsers, ...restProps }: WorkflowWithInnerContextProps) => {
+  ({ hooksStore, myUserId, onlineUsers, ...restProps }: WorkflowWithInnerContextProps) => {
     return (
       <HooksStoreContextProvider {...hooksStore}>
-        <Workflow {...restProps} cursors={cursors} myUserId={myUserId} onlineUsers={onlineUsers} />
+        <Workflow {...restProps} myUserId={myUserId} onlineUsers={onlineUsers} />
       </HooksStoreContextProvider>
     )
   },

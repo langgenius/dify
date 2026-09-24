@@ -31,17 +31,12 @@ import uuid
 from typing import Any
 
 from core.dify_builder import credentials, urls
-from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import (
-    AssistantTurnItem,
-    ChangeSetCard,
     DecisionItem,
-    ErrorCard,
     ExecutionProgress,
     FormCard,
     FormField,
     NoticeItem,
-    SummaryCard,
     TestResultCard,
 )
 from core.dify_builder.errors import DraftWouldNotStartError
@@ -79,6 +74,7 @@ __all__ = [
     "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
+    "append_assistant",
     "append_card",
     "append_item",
     "build_change_set",
@@ -113,6 +109,7 @@ __all__ = [
     "repair_is_repeating",
     "run_finished_without_output",
     "start_schema",
+    "test_failure_reason",
     "testdata_form_fields",
     "upload_variable_names",
     "without_endpoint_values",
@@ -307,6 +304,37 @@ def append_card(fc: DifyBuilderContext, card) -> list[ConversationItem]:
     return [item]
 
 
+def append_assistant(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    reply_text: str,
+    *,
+    execution: ExecutionProgress | None = None,
+    cards: list[str] | None = None,
+    turn_id: str | None = None,
+) -> list[ConversationItem]:
+    """Emit static handler copy as agent_message and persist the same text."""
+    return env.append_assistant_turn(
+        s,
+        fc,
+        reply_text=reply_text,
+        execution=execution or ExecutionProgress(status="completed"),
+        cards=cards,
+        turn_id=turn_id,
+    )
+
+
+def test_failure_reason(run: Run) -> str:
+    """Return the most specific user-facing reason available for a failed run."""
+    for output in run.per_node:
+        if output.status == "failed" and output.error:
+            return output.error
+    if run.error:
+        return run.error
+    return "The workflow run failed without a detailed error."
+
+
 _FORM_FIELD_TYPES = {"bool", "json", "json_object", "number", "select", "text", "textarea"}
 
 
@@ -415,15 +443,15 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 
 
 def drop_unapplied_repair(
-    fc: DifyBuilderContext, progress: ProgressReporter, *, title: str, body: str
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, *, title: str, body: str
 ) -> list[ConversationItem]:
     """The staged repair was refused before anything was written: drop it
     (so the empty-repair guard stops a re-approve of the same intents), close
-    the progress, and say why in an error card. Shared by every repair-apply
+    the progress, and say why in the assistant reply. Shared by every repair-apply
     gate (Fix's apply, Build's and Edit's await_repair)."""
     fc.staged_repair = []
-    progress.finish()
-    return append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
+    execution = progress.finish(status="error")
+    return append_assistant(env, s, fc, f"{title}. {body}", execution=execution, turn_id=progress.operation_id)
 
 
 def first_failed_node(nodes: list[NodeOutput]) -> str:
@@ -760,19 +788,17 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.last_snapshot_hash = graph_hash
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
-    items = append_card(
+    execution = progress.finish()
+    items = append_assistant(
+        env,
+        s,
         fc,
-        SummaryCard(
-            variant="context",
-            title="Diagnosis",
-            items=[
-                f"Root cause: {diagnosis.root_cause}",
-                f"Culprit node: {diagnosis.culprit_node_id}",
-                f"Severity: {diagnosis.severity}",
-            ],
-        ),
+        "Diagnosis complete.\n"
+        f"- Root cause: {diagnosis.root_cause}\n"
+        f"- Culprit node: {diagnosis.culprit_node_id}\n"
+        f"- Severity: {diagnosis.severity}",
+        execution=execution,
     )
-    progress.finish()
     return StepResult(
         next=PcState.FIX_PROPOSE,
         context=fc,
@@ -808,33 +834,25 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     if risk.level == "high" or risk.has_external_side_effect:
         next_state = PcState.FIX_AWAIT_APPROVAL
 
-    reply_text = (
-        f"Proposed repair (risk: {risk.level}, {len(intents)} change(s))"
-        if intents
-        else "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
-    )
-    # Nothing staged: the agent's ``Risk.reason`` is the only record of WHY, and
-    # until now it was stored on the context and shown to nobody. It carries the
-    # semantic guards' engine-grounded text when they are what stopped the
-    # repair -- an aggregator a new branch would not feed, an array element the
-    # rewrite dropped -- which is exactly what the human at this gate needs in
-    # order to fix it by hand. The reply line stays generic; the card carries the
-    # detail, the same division Edit's refusal uses.
-    error_items: list = []
-    if not intents and risk.reason:
-        error_items = append_card(fc, ErrorCard(title="No safe automatic fix", body=risk.reason, tone="warning"))
+    if intents:
+        proposed_changes = "\n".join(f"- `{intent.op}`" for intent in intents)
+        reply_text = f"Proposed repair (risk: {risk.level}, {len(intents)} change(s)).\n{proposed_changes}" + (
+            f"\nRisk note: {risk.reason}" if risk.reason else ""
+        )
+    else:
+        reply_text = "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
+        if risk.reason:
+            reply_text += f"\nReason: {risk.reason}"
     execution = progress.finish()
-    items = append_card(
+    items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text=reply_text,
-            cards=["error"] if error_items else [],
-        ),
+        reply_text,
+        execution=execution,
+        turn_id=progress.operation_id,
     )
-    return StepResult(next=next_state, context=fc, items=[*error_items, *items])
+    return StepResult(next=next_state, context=fc, items=items)
 
 
 def handle_await_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -888,6 +906,8 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
         )
         items = drop_unapplied_repair(
+            env,
+            s,
             fc,
             progress,
             title="The workflow can't start",
@@ -900,6 +920,8 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         # not kill the session (ESQ1-271).
         logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
         items = drop_unapplied_repair(
+            env,
+            s,
             fc,
             progress,
             title="Couldn't apply the fix",
@@ -910,20 +932,19 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     fc.last_structure_fingerprint = result.structure_fingerprint
     progress.activate("fix-summarize-changes")
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
-    items = append_card(
+    execution = progress.finish()
+    change_lines = "\n".join(f"- {change}" for change in changes) or "- Configuration updated"
+    items = append_assistant(
+        env,
+        s,
         fc,
-        ChangeSetCard(
-            count=len(changes),
-            changes=changes,
-            scope=scope,
-            nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
-        ),
+        f"Applied {len(changes)} change(s) ({scope}).\n{change_lines}",
+        execution=execution,
     )
 
     next_state = PcState.FIX_AWAIT_VERIFY
     if fc.source == "checklist":
         next_state = PcState.CHECKLIST_AWAIT_RECHECK
-    progress.finish()
     return StepResult(next=next_state, context=fc, items=items)
 
 
@@ -941,20 +962,19 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             fc,
             FormCard(
                 variant="testdata",
+                title="Provide test data",
+                description="Review the inputs Builder will use for this run.",
                 fields=testdata_form_fields(start_schema(graph)),
                 values={},
                 frozen=False,
             ),
         )
-        turn_items = append_card(
+        turn_items = append_assistant(
+            env,
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id=str(s.current_state),
-                execution=ExecutionProgress(status="completed"),
-                reply_text="Provide test inputs (or use mock data) to run validation.",
-                cards=["form"],
-            ),
+            "Provide test inputs (or use mock data) to run validation.",
+            cards=["form"],
         )
         return StepResult(
             next=PcState.FIX_AWAIT_TESTDATA,
@@ -1061,10 +1081,10 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         # re-run loop at the decision gate instead.
         fc.verify_run_id = run.id
         if note_unknown_outcome(fc):
-            items = append_card(
-                fc, ErrorCard(title="Test outcome unknown", body=UNKNOWN_OUTCOME_STUCK_BODY, tone="danger")
+            execution = progress.finish()
+            items = append_assistant(
+                env, s, fc, UNKNOWN_OUTCOME_STUCK_BODY, execution=execution, turn_id=progress.operation_id
             )
-            progress.finish()
             return StepResult(
                 next=PcState.FIX_AWAIT_DECISION,
                 context=fc,
@@ -1095,18 +1115,15 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         items = append_card(
             fc,
             TestResultCard(
-                title="Validation",
-                subtitle="Finished without output",
-                tone="error",
-                stats=[],
-                run_ids=[run.id],
+                status="failed",
+                failure_reason=NO_OUTPUT_BODY,
                 dify_run_id=run.dify_run_id,
             ),
         )
-        items += append_card(
-            fc, ErrorCard(title="No output produced", body=NO_OUTPUT_BODY, tone="danger", node_id=run.culprit_node_id)
+        execution = progress.finish()
+        items += append_assistant(
+            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
         )
-        progress.finish()
         return StepResult(
             next=PcState.FIX_AWAIT_DECISION,
             context=fc,
@@ -1117,11 +1134,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     items = append_card(
         fc,
         TestResultCard(
-            title="Validation",
-            subtitle="",
-            tone=("success" if result.status == "succeeded" else "error"),
-            stats=[],
-            run_ids=[run.id],
+            status=("succeeded" if result.status == "succeeded" else "failed"),
+            failure_reason=None if result.status == "succeeded" else test_failure_reason(run),
             dify_run_id=run.dify_run_id,
         ),
     )
@@ -1169,9 +1183,15 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         steps=[("fix-publish-workflow", "Publish the repaired workflow")],
     )
     progress.activate("fix-publish-workflow")
-    env.dify.publish(s.app_id, turn.actor)
-    items = append_card(fc, DecisionItem(text="Published the fix"))
-    progress.finish()
+    published = env.dify.publish(s.app_id, turn.actor)
+    execution = progress.finish()
+    items = append_assistant(
+        env,
+        s,
+        fc,
+        f"Published workflow version {published.version_name} ({published.status}).",
+        execution=execution,
+    )
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -1202,19 +1222,16 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
     fc.last_snapshot_hash = graph_hash
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
-    items = append_card(
+    execution = progress.finish()
+    items = append_assistant(
+        env,
+        s,
         fc,
-        SummaryCard(
-            variant="context",
-            title="Diagnosis",
-            items=[
-                f"Root cause: {diagnosis.root_cause}",
-                f"Culprit node: {diagnosis.culprit_node_id}",
-                "Source: checklist",
-            ],
-        ),
+        "Checklist diagnosis complete.\n"
+        f"- Root cause: {diagnosis.root_cause}\n"
+        f"- Culprit node: {diagnosis.culprit_node_id}",
+        execution=execution,
     )
-    progress.finish()
     return StepResult(
         next=PcState.CHECKLIST_PROPOSE,
         context=fc,
@@ -1246,9 +1263,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         if isinstance(value, bool):
             passed = value
     if passed:
-        items = append_card(
-            fc, TestResultCard(title="Validation", subtitle="checklist", tone="success", stats=[], run_ids=[])
-        )
+        items = append_card(fc, TestResultCard(status="succeeded"))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
 
     # residual checklist errors: reload them and loop back to re-diagnose.

@@ -7,7 +7,6 @@ export type TraceEntry = {
   kind: string
   payload: unknown
   version?: number
-  state?: string
 }
 
 export type TraceInput = Omit<TraceEntry, 'seq' | 'ts'>
@@ -54,10 +53,4 @@ export const readTraceVersion = (data: unknown): number | undefined => {
   const record = data as Record<string, unknown>
   const value = record.version ?? record.at_version
   return typeof value === 'number' ? value : undefined
-}
-
-export const readTraceState = (data: unknown): string | undefined => {
-  if (typeof data !== 'object' || data === null) return undefined
-  const value = (data as Record<string, unknown>).state
-  return typeof value === 'string' ? value : undefined
 }
