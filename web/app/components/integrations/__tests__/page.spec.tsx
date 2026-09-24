@@ -849,6 +849,9 @@ describe('IntegrationsPage', () => {
   it('aligns model provider headers to the unified content frame', () => {
     renderIntegrationsPage({ section: 'provider' })
 
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'navigation.settings.provider' }),
+    ).toBeInTheDocument()
     const description = screen.getByText('modelProvider.modelProvider.pageDesc')
     expect(description.closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
     expect(

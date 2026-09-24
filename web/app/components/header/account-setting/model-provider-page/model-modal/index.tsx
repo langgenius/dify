@@ -15,7 +15,13 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -206,15 +212,15 @@ const ModelModal: FC<ModelModalProps> = ({
       else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })
     }
 
-    return <div className="title-2xl-semi-bold text-text-primary">{label}</div>
+    return <DialogTitle className="title-2xl-semi-bold text-text-primary">{label}</DialogTitle>
   }, [t, mode, credential])
 
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <div className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
           {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
-        </div>
+        </DialogDescription>
       )
     }
 

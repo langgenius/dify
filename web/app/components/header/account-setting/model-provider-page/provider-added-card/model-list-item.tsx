@@ -6,7 +6,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -40,6 +40,7 @@ const ModelListItem = ({
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
   const { t } = useTranslation(['modelProvider'])
+  const modelNameId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -119,6 +120,7 @@ const ModelListItem = ({
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameId={modelNameId}
         nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
@@ -160,7 +162,7 @@ const ModelListItem = ({
               openOnHover
               render={
                 <span>
-                  <Switch checked={false} disabled size="md" />
+                  <Switch aria-labelledby={modelNameId} checked={false} disabled size="md" />
                 </span>
               }
             />
@@ -171,6 +173,7 @@ const ModelListItem = ({
         ) : (
           canConfigureModels && (
             <Switch
+              aria-labelledby={modelNameId}
               className="ml-2"
               checked={model?.status === ModelStatusEnum.active}
               disabled={!configurableStatuses.includes(model.status)}

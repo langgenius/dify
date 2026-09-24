@@ -13,7 +13,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { VersionTimelineDot } from './version-timeline-dot'
 
 function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryResponse }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { formatTime } = useTimestamp()
 
   if (version.created_at == null && !version.created_by) return null
@@ -23,7 +23,7 @@ function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryRespo
       {version.created_at != null &&
         formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )}
       {version.created_at != null && version.created_by && ' · '}
       {version.created_by}
@@ -56,7 +56,7 @@ export function VersionItem({
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
-  const { t } = useTranslation(['agentV2', 'app', 'billing'])
+  const { t } = useTranslation(['agentV2', 'app', 'billing', 'agentRoster'])
   const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const isActive = version.id === activeVersionId
   const label =
@@ -105,7 +105,7 @@ export function VersionItem({
           <DropdownMenuTrigger
             render={
               <IconButton
-                aria-label={t(($) => $['roster.moreActions'], { name: label })}
+                aria-label={t(($) => $['roster.moreActions'], { ns: 'agentRoster', name: label })}
                 size="sm"
                 className="absolute top-1 right-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
               >

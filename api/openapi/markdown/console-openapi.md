@@ -1497,8 +1497,6 @@ Get advanced prompt templates based on app mode and model configuration
 | 400 | Invalid request parameters |  |
 
 ### [GET] /apps
-**Get app list**
-
 Get list of applications with pagination and filtering
 
 #### Parameters
@@ -1521,8 +1519,6 @@ Get list of applications with pagination and filtering
 | 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
 
 ### [POST] /apps
-**Create app**
-
 Create a new application
 
 #### Request Body
@@ -1585,8 +1581,6 @@ Create a new application
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
 
 ### [GET] /apps/recent
-**Return the lightweight app cards needed by the Explore home page**
-
 Get recently modified apps for the home Continue Work section
 
 #### Parameters
@@ -1639,8 +1633,6 @@ Get workflow online users
 | 200 | Workflow online users retrieved successfully | **application/json**: [WorkflowOnlineUsersResponse](#workflowonlineusersresponse)<br> |
 
 ### [DELETE] /apps/{app_id}
-**Delete app**
-
 Delete application
 
 #### Parameters
@@ -1657,8 +1649,6 @@ Delete application
 | 403 | Insufficient permissions |
 
 ### [GET] /apps/{app_id}
-**Get app detail**
-
 Get application details
 
 #### Parameters
@@ -1674,8 +1664,6 @@ Get application details
 | 200 | Success | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
 ### [PUT] /apps/{app_id}
-**Update app**
-
 Update application details
 
 #### Parameters
@@ -2681,8 +2669,6 @@ Convert Completion App to Workflow App
 | 403 | Permission denied |  |
 
 ### [POST] /apps/{app_id}/copy
-**Copy app**
-
 Create a copy of an existing application
 
 #### Parameters
@@ -2706,8 +2692,6 @@ Create a copy of an existing application
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/export
-**Export app**
-
 Export application configuration as DSL
 
 #### Parameters
@@ -2859,8 +2843,6 @@ Check if app name is available
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
-**Publish app to Creators Platform**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -3220,8 +3202,6 @@ Get available TTS voices for a specific language
 | 400 | Invalid language parameter |  |
 
 ### [GET] /apps/{app_id}/trace
-**Get app trace**
-
 Get app tracing configuration
 
 #### Parameters
@@ -16073,9 +16053,9 @@ This class is used to store the schema information of an api based tool.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string | Import mode: yaml-content, yaml-url, ifpkg-url, or template | Yes |
+| mode | string | Import mode | Yes |
 | name | string |  | No |
-| package_url | string | New Agent template .ifpkg download URL for ifpkg-url mode | No |
+| package_url | string |  | No |
 | template_id | string |  | No |
 | version_id | string |  | No |
 | yaml_content | string |  | No |
