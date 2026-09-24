@@ -12,6 +12,7 @@ from models.agent import Agent
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App
 from services.entities.dsl_entities import make_app_dsl
+from services.entities.site_dsl import SiteDsl
 
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
@@ -76,6 +77,7 @@ class AgentAppDsl(BaseModel):
     version: str = Field(min_length=1)
     kind: Literal["app"]
     app: dict[str, Any]
+    site: SiteDsl | None = None
     agent: AgentAppReference
     agent_packages: dict[str, AgentPackage]
     dependencies: list[PluginDependency] = Field(default_factory=list)

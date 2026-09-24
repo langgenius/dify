@@ -40,6 +40,7 @@ from services import app_dsl_service
 from services.account_service import AccountService, TenantService
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
 from services.agent.dsl_service import AgentDslService
+from services.app_creation_records import create_site_record
 from services.app_dsl_service import (
     CHECK_DEPENDENCIES_REDIS_KEY_PREFIX,
     CURRENT_DSL_VERSION,
@@ -104,6 +105,7 @@ def _app_stub(**overrides: Any) -> App:
     app = MagicMock(spec=App)
     for key, value in (defaults | overrides).items():
         object.__setattr__(app, key, value)
+    app.site_with_session.return_value = None
     return app
 
 
@@ -1185,6 +1187,9 @@ class TestAppDslService:
         assert "source-skill-file-id" not in yaml_content
         assert "source-config-file-id" not in yaml_content
 
+        mock_external_service_dependencies["app_was_created"].send.side_effect = (
+            lambda app, *, account, session, **_kwargs: create_site_record(app=app, account=account, session=session)
+        )
         result = AppDslService(db_session_with_containers).import_app(
             account=account,
             import_mode=ImportMode.YAML_CONTENT,
@@ -1212,6 +1217,9 @@ class TestAppDslService:
         assert imported_app is not None
         assert imported_app.enable_site is False
         assert imported_app.enable_api is False
+        imported_site = imported_app.site_with_session(session=db_session_with_containers)
+        assert imported_site is not None
+        assert imported_site.title == exported_data["site"]["title"]
         draft = db_session_with_containers.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.agent_id == imported_agent.id,

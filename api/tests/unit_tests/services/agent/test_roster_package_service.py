@@ -29,8 +29,8 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus
-from models.model import App, AppMode, IconType
+from models.enums import AppStatus, CustomizeTokenStrategy
+from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
@@ -911,8 +911,17 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         created_by="account-1",
         updated_by="account-1",
     )
+    assert agent.app_id is not None
+    site = Site(
+        app_id=agent.app_id,
+        title="Agent Site",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        icon_type=IconType.EMOJI,
+        icon="S",
+    )
     sqlite_session.add_all(
-        [_app("33333333-3333-4333-8333-333333333333"), skill_file, config_file, agent, snapshot, draft]
+        [_app("33333333-3333-4333-8333-333333333333"), site, skill_file, config_file, agent, snapshot, draft]
     )
     sqlite_session.commit()
 
@@ -939,6 +948,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     app_model = sqlite_session.get(App, agent.app_id)
     assert app_model is not None
     standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
+    assert standalone_dsl["site"]["title"] == "Agent Site"
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
@@ -947,6 +957,9 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             manifest_data = yaml.safe_load(archive.read("manifest.yaml"))
             app_data = yaml.safe_load(archive.read("app.yaml"))
             exported_app = AgentAppDsl.model_validate(app_data)
+            assert exported_app.site is not None
+            assert exported_app.site.title == "Agent Site"
+            assert exported_app.site.icon == "S"
             exported_soul = exported_app.package.soul
             assert exported_soul.model is not None
             assert exported_soul.model.credential_ref is None
@@ -979,7 +992,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
                     "sha256": hashlib.sha256(archive.read("app.yaml")).hexdigest(),
                 }
             ]
-            assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
+            assert set(app_data) == {"version", "kind", "app", "site", "agent", "agent_packages", "dependencies"}
             assert app_data["kind"] == "app"
             assert app_data["app"]["mode"] == "agent"
             assert app_data["app"]["icon"] == "R"

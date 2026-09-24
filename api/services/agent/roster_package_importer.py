@@ -48,6 +48,7 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.app_import_source import download_app_import_source
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
+from services.entities.site_dsl import SiteDsl, apply_site_dsl
 from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
 from services.recommended_app_package_service import RecommendedAgentPackageSource
 
@@ -215,6 +216,11 @@ class RosterAgentPackageImporter:
             )
             if app_metadata.icon_type == "image" and app_metadata.icon in materialized_icons:
                 app_metadata.icon = materialized_icons[app_metadata.icon]
+            site_data = app_dsl.site.model_copy(deep=True) if app_dsl.site is not None else None
+            if site_data is not None and site_data.icon_type == "image":
+                site_icon = site_data.icon
+                if site_icon is not None and site_icon in materialized_icons:
+                    site_data = site_data.model_copy(update={"icon": materialized_icons[site_icon]})
             for field_name, value in {
                 "icon_type": icon_type,
                 "icon": icon,
@@ -243,6 +249,7 @@ class RosterAgentPackageImporter:
                 account=account,
                 metadata=agent_package.metadata,
                 app_metadata=app_metadata,
+                site_data=site_data,
                 soul=resolved_soul,
             )
         except Exception as exc:
@@ -279,6 +286,7 @@ class RosterAgentPackageImporter:
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
         app_metadata: AgentPackageMetadata | None = None,
+        site_data: SiteDsl | None = None,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
             name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
@@ -357,6 +365,11 @@ class RosterAgentPackageImporter:
                     .values(used=True, used_by=account.id, used_at=naive_utc_now())
                 )
             create_site_record(app=app, account=account, session=session)
+            if site_data is not None:
+                site = app.site_with_session(session=session)
+                if site is None:
+                    raise RuntimeError("Imported App Site is unavailable")
+                apply_site_dsl(site=site, app=app, data=site_data, session=session)
             create_installed_app_record(app=app, session=session)
             return app.id, agent.id
 

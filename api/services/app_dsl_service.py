@@ -65,6 +65,7 @@ from services.entities.dsl_entities import (
     PendingImportOwner,
     make_app_dsl,
 )
+from services.entities.site_dsl import SiteDsl, apply_site_dsl
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.icon_configuration import (
@@ -609,6 +610,7 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
 
@@ -663,6 +665,12 @@ class AppDslService:
             self._session.add(app)
             self._session.flush()
             app_was_created.send(app, account=account, session=self._session)
+
+        if site_data is not None:
+            site = app.site_with_session(session=self._session)
+            if site is None:
+                raise ValueError("App Site is unavailable")
+            apply_site_dsl(site=site, app=app, data=site_data, session=self._session)
 
         # save dependencies
         if dependencies:
@@ -835,7 +843,7 @@ class AppDslService:
         :raises AgentVersionNotFoundError: If the selected Agent version is unavailable or not visible in history
         :raises WorkflowNotFoundError: If the selected workflow version does not exist
         :raises IsDraftWorkflowError: If the selected workflow is a draft
-        :return:
+        :return: App definition with portable Site presentation settings when a Site exists
         """
         app_mode = AppMode.value_of(app_model.mode)
 
@@ -863,6 +871,11 @@ class AppDslService:
                 )
             else:
                 cls._append_model_config_export_data(export_data, app_model, session=session)
+
+        if (site := app_model.site_with_session(session=session)) is not None:
+            export_data["site"] = SiteDsl.model_validate(site, from_attributes=True).model_dump(mode="json")
+        else:
+            export_data.pop("site", None)
 
         return export_data
 
