@@ -26,9 +26,9 @@ const WorkflowToolAction = ({
   published,
   onConfigure,
 }: WorkflowToolActionProps) => {
-  const { t } = useTranslation(['appApi', 'workflow'])
+  const { t } = useTranslation(['appApi', 'workflow', 'navigation'])
   const disabledReason = disabled ? message : undefined
-  const workflowToolLabel = t(($) => $['common.workflowAsTool'], { ns: 'workflow' })
+  const workflowToolLabel = t(($) => $['common.workflowAsTool'], { ns: 'navigation' })
 
   if (!published || isLoading)
     return (

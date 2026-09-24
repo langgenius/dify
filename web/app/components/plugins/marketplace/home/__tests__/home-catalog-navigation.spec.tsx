@@ -44,7 +44,7 @@ describe('HomeCatalogNavigation', () => {
   it('keeps template navigation inside the Marketplace platform', () => {
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
 
     expect(navigationSection).toHaveClass(styles.catalogNavigation!)
     expect(navigationSection.firstElementChild).toHaveClass('w-full')
@@ -231,7 +231,7 @@ describe('HomeCatalogNavigation', () => {
 
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
     const contentTabsSlot = document.querySelector<HTMLElement>(
       '[data-home-catalog-tabs-slot="content"]',
     )!
@@ -280,7 +280,7 @@ describe('HomeCatalogNavigation', () => {
 
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
     const contentTabsSlot = document.querySelector<HTMLElement>(
       '[data-home-catalog-tabs-slot="content"]',
     )!

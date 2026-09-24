@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from services.enterprise import rbac_service as enterprise_rbac_service
 
 if TYPE_CHECKING:
-    from services.app_service import AppListBaseParams
     from services.enterprise.rbac_service import MyPermissionsResponse
+    from services.entities.app_entities import AppListBaseParams
 
 # Permission keys (dot-notation, from MyPermissionsResponse) that grant
 # list/preview access to an app. Keep this the single source of truth for both

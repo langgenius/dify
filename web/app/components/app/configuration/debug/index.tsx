@@ -67,7 +67,7 @@ const Debug: FC<IDebug> = ({
   multipleModelConfigs,
   onMultipleModelConfigsChange,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'modelProvider'])
   const {
     canTestAndRun = false,
     appId,
@@ -439,7 +439,7 @@ const Debug: FC<IDebug> = ({
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
                   <span aria-hidden="true" className="i-ri-add-line size-3.5" />
-                  {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
+                  {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}(
                   {multipleModelConfigs.length}
                   /4)
                 </Button>

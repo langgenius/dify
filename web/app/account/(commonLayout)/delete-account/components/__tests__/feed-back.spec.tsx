@@ -52,7 +52,7 @@ describe('FeedBack', () => {
 
     render(<FeedBack onCancel={vi.fn()} onConfirm={onConfirm} />)
 
-    const feedback = screen.getByRole('textbox', { name: 'common.account.feedbackLabel' })
+    const feedback = screen.getByRole('textbox', { name: 'accountSettings.account.feedbackLabel' })
     await user.type(feedback, 'The workspace is no longer needed.')
     await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
 

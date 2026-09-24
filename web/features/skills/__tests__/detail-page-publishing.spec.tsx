@@ -522,11 +522,11 @@ describe('SkillDetailPage publishing', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.versionHistory\.filter\.all/,
+        name: /workflowHistory\.versionHistory\.filter\.all/,
       }),
     )
     await user.click(
-      await screen.findByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+      await screen.findByText('workflowHistory.versionHistory.filter.onlyShowNamedVersions'),
     )
 
     expect(screen.queryByText('#2')).not.toBeInTheDocument()

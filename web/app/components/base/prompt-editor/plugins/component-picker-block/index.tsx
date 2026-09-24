@@ -69,7 +69,7 @@ const ComponentPicker = ({
   lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -319,7 +319,7 @@ const ComponentPicker = ({
                     >
                       <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">
-                        {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
+                        {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflowAgent' })}
                       </span>
                       <span
                         aria-hidden="true"

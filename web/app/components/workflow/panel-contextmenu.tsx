@@ -23,7 +23,7 @@ import { useStore } from './store'
 import { WorkflowRunningStatus } from './types'
 
 export function PanelContextmenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation(['app', 'workflow'])
+  const { t } = useTranslation(['app', 'workflow', 'workflowComments'])
   const isPanelContextMenu = useStore((s) => s.contextMenuTarget?.type === 'panel')
   const clipboardElements = useStore((s) => s.clipboardElements)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -112,7 +112,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
               onClose()
             }}
           >
-            {t(($) => $['comments.actions.addComment'], { ns: 'workflow' })}
+            {t(($) => $['comments.actions.addComment'], { ns: 'workflowComments' })}
           </ContextMenuItem>
         )}
         {accessControl.canRun && (

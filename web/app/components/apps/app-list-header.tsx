@@ -63,7 +63,7 @@ export function AppListHeader({
   onOpenTagManagement,
   showCreateButton,
 }: AppListHeaderProps) {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'navigation'])
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
@@ -80,7 +80,7 @@ export function AppListHeader({
       title={
         <div className="flex items-center">
           <h1 id={titleId} className="text-[18px]/[21.6px] font-semibold text-text-primary">
-            {t(($) => $['menus.apps'], { ns: 'common' })}
+            {t(($) => $['menus.apps'], { ns: 'navigation' })}
           </h1>
         </div>
       }

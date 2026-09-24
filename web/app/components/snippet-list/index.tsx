@@ -70,7 +70,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 }
 
 const SnippetList = () => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'navigation'])
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
@@ -192,7 +192,7 @@ const SnippetList = () => {
             <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
               <BreadcrumbItem>
                 <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
-                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />

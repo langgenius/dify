@@ -29,7 +29,7 @@ import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation(['billing', 'common'])
+  const { t } = useTranslation(['billing', 'common', 'workspaceMembers', 'accountSettings'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
@@ -71,8 +71,8 @@ const MembersPage = () => {
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
-    ? t(($) => $['members.roles'], { ns: 'common' })
-    : t(($) => $['members.role'], { ns: 'common' })
+    ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
+    : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -122,7 +122,9 @@ const MembersPage = () => {
                       render={
                         <button
                           type="button"
-                          aria-label={t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                          aria-label={t(($) => $['account.editWorkspaceInfo'], {
+                            ns: 'accountSettings',
+                          })}
                           className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
@@ -136,7 +138,7 @@ const MembersPage = () => {
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -192,10 +194,10 @@ const MembersPage = () => {
             <thead>
               <tr className="border-b border-divider-regular">
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.name'], { ns: 'common' })}
+                  {t(($) => $['members.name'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.lastActive'], { ns: 'common' })}
+                  {t(($) => $['members.lastActive'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
                   {roleColumnLabel}

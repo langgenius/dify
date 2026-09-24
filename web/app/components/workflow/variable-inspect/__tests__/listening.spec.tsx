@@ -47,7 +47,9 @@ describe('variable inspect listening', () => {
     expect(screen.getByText('Waiting for webhook payload')).toBeInTheDocument()
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+      screen.getByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.listening.stopButton',
+      }),
     )
 
     expect(onStop).toHaveBeenCalledTimes(1)

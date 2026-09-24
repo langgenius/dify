@@ -200,7 +200,9 @@ describe('ModelLoadBalancingConfigs', () => {
     const mainSwitch = screen.getByTestId('load-balancing-switch-main')
     await user.click(mainSwitch)
     // Check if description is still there (it should be)
-    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.loadBalancingDescription'),
+    ).toBeInTheDocument()
   })
 
   it('should disable main switch when load balancing is not permitted', async () => {
@@ -289,8 +291,8 @@ describe('ModelLoadBalancingConfigs', () => {
       />,
     )
 
-    expect(screen.getByText('common.modelProvider.providerManaged')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.providerManaged')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
   })
 
   it('should remove credential at index 0', async () => {
@@ -351,8 +353,10 @@ describe('ModelLoadBalancingConfigs', () => {
       />,
     )
 
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.providerManaged')).not.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.providerManaged'),
+    ).not.toBeInTheDocument()
   })
 
   it('should show upgrade panel when modelLoadBalancingEnabled=false and not CE edition', () => {
@@ -361,7 +365,9 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(false)} />)
 
     expect(screen.getByText('upgrade')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.upgradeForLoadBalancing')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.upgradeForLoadBalancing'),
+    ).toBeInTheDocument()
   })
 
   it('should pass explicit boolean state to toggleConfigEntryEnabled (typeof state === boolean branch)', async () => {
