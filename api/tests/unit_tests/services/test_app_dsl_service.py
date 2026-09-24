@@ -483,7 +483,10 @@ def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_sessio
     assert service._warnings == []
 
 
-def test_create_or_update_app_applies_site_settings_without_changing_access(sqlite_session: Session) -> None:
+@pytest.mark.parametrize("allow_premium_site_settings", [False, True])
+def test_create_or_update_app_applies_site_settings_without_changing_access(
+    sqlite_session: Session, allow_premium_site_settings: bool
+) -> None:
     app = _app(tenant_id=_TENANT_ID)
     site = Site(
         app_id=app.id,
@@ -491,6 +494,8 @@ def test_create_or_update_app_applies_site_settings_without_changing_access(sqli
         default_language="en-US",
         customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         code="destination-code",
+        copyright="Existing copyright",
+        input_placeholder="Existing placeholder",
     )
     sqlite_session.add_all([app, site])
     sqlite_session.flush()
@@ -505,10 +510,13 @@ def test_create_or_update_app_applies_site_settings_without_changing_access(sqli
                 "icon_type": "image",
                 "icon": "55555555-5555-4555-8555-555555555555",
                 "use_icon_as_answer_icon": True,
+                "copyright": "Imported copyright",
+                "input_placeholder": "Imported placeholder",
             },
             "model_config": {"model": {}},
         },
         account=_account(tenant_id=_TENANT_ID),
+        allow_premium_site_settings=allow_premium_site_settings,
     )
 
     assert site.title == "Imported Site"
@@ -518,6 +526,8 @@ def test_create_or_update_app_applies_site_settings_without_changing_access(sqli
     assert service._warnings == []
     assert site.code == "destination-code"
     assert site.customize_token_strategy == CustomizeTokenStrategy.NOT_ALLOW
+    assert site.copyright == ("Imported copyright" if allow_premium_site_settings else "Existing copyright")
+    assert site.input_placeholder == ("Imported placeholder" if allow_premium_site_settings else "Existing placeholder")
 
 
 def test_create_or_update_app_rejects_null_required_site_setting_before_mutation(unbound_session: Session) -> None:
@@ -533,7 +543,75 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
     assert app.name == "Existing app"
 
 
-def test_export_data_includes_site_presentation_settings(
+def test_import_app_resolves_site_entitlement_before_database_writes(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"copyright": "Source copyright"},
+            }
+        ),
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+    entitlement.reset_mock()
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Legacy", "mode": "chat"}}
+        ),
+    )
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_not_called()
+
+
+def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"input_placeholder": "Source placeholder"},
+            }
+        ),
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", Mock())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+
+    result = service.confirm_import(import_id="pending-import", account=_account())
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+
+def test_load_export_data_includes_site_presentation_settings(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app = _app()
@@ -549,7 +627,7 @@ def test_export_data_includes_site_presentation_settings(
     )
     sqlite_session.add_all([app, site])
     sqlite_session.flush()
-    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock())
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(return_value=[]))
 
     data = AppDslService.load_export_data(app, session=sqlite_session).data
 

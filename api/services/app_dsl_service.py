@@ -69,6 +69,7 @@ from services.entities.dsl_entities import (
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.feature_service import FeatureService
 from services.icon_configuration import (
     DEFAULT_ICON,
     DEFAULT_ICON_TYPE,
@@ -126,7 +127,7 @@ class AppDslService:
         import_app_id: str | None = None,
         package: AppImportPackage | None = None,
     ) -> Import:
-        """Import an App DSL, materializing validated archive resources before database writes."""
+        """Import an App DSL after checking Site entitlements and staging archive resources."""
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -226,6 +227,14 @@ class AppDslService:
                     error="Missing app data in YAML content",
                 )
 
+            allow_premium_site_settings = True
+            if status != ImportStatus.PENDING and data.get("site") is not None:
+                # Resolve billing before archive uploads or database writes.
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                allow_premium_site_settings = FeatureService.can_import_premium_site_settings(tenant_id)
+
             if package is not None and package.has_resources:
                 tenant_id = account.current_tenant_id
                 if tenant_id is None:
@@ -323,6 +332,7 @@ class AppDslService:
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
                 import_app_id=import_app_id,
+                allow_premium_site_settings=allow_premium_site_settings,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -390,6 +400,13 @@ class AppDslService:
             data = yaml.safe_load(pending_data.yaml_content)
             self._warnings = list(pending_data.warnings)
 
+            allow_premium_site_settings = True
+            if data.get("site") is not None:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                allow_premium_site_settings = FeatureService.can_import_premium_site_settings(tenant_id)
+
             app = None
             if pending_data.app_id:
                 app = self._load_app_for_overwrite(account, pending_data.app_id)
@@ -413,6 +430,7 @@ class AppDslService:
                 icon_type=pending_data.icon_type,
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
+                allow_premium_site_settings=allow_premium_site_settings,
             )
 
             # Delete import info from Redis
@@ -545,6 +563,7 @@ class AppDslService:
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
         import_app_id: str | None = None,
+        allow_premium_site_settings: bool = True,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -612,7 +631,13 @@ class AppDslService:
             site = app.site_with_session(session=self._session)
             if site is None:
                 raise ValueError("App Site is unavailable")
-            apply_site_dsl(site=site, app=app, data=site_data, session=self._session)
+            apply_site_dsl(
+                site=site,
+                app=app,
+                data=site_data,
+                session=self._session,
+                allow_premium_settings=allow_premium_site_settings,
+            )
 
         # save dependencies
         if dependencies:

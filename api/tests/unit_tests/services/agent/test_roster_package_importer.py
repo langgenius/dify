@@ -68,6 +68,7 @@ from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.app_service import AppService
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAgentPackageSource
@@ -1047,6 +1048,8 @@ def test_import_restores_app_and_agent_image_icons(
         "icon_type": "image",
         "icon": site_icon,
         "use_icon_as_answer_icon": True,
+        "copyright": "Source copyright",
+        "input_placeholder": "Source placeholder",
     }
     app["agent_packages"]["agent_1"]["metadata"].update(icon_type="image", icon=agent_icon)
     manifest["icons"] = []
@@ -1066,6 +1069,7 @@ def test_import_restores_app_and_agent_image_icons(
     members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     storage = _MemoryStorage()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(FeatureService, "can_import_premium_site_settings", lambda _tenant_id: False)
     importer = RosterAgentPackageImporter(storage_backend=storage)
     if duplicate_name:
         importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
@@ -1089,3 +1093,5 @@ def test_import_restores_app_and_agent_image_icons(
         assert site.title == "Imported Site"
         assert site.use_icon_as_answer_icon is True
         assert (site.icon == imported_app.icon) is shared_icon
+        assert site.copyright is None
+        assert site.input_placeholder is None

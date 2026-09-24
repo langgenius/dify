@@ -55,9 +55,13 @@ class SiteDsl(BaseModel):
         return self
 
 
-def apply_site_dsl(*, site: Site, app: App, data: SiteDsl, session: Session) -> None:
-    """Apply supplied Site fields and silently discard inaccessible image ids."""
+def apply_site_dsl(*, site: Site, app: App, data: SiteDsl, session: Session, allow_premium_settings: bool) -> None:
+    """Apply portable Site fields, omitting unavailable paid settings and image ids."""
     values = data.model_dump(exclude_unset=True)
+    if not allow_premium_settings:
+        # Cloud free workspaces must not retain paid Site settings after import.
+        values.pop("copyright", None)
+        values.pop("input_placeholder", None)
     icon_type = values.get("icon_type", site.icon_type)
     icon = values.get("icon", site.icon)
     if {"icon_type", "icon"} & values.keys() and not is_valid_image_icon(
