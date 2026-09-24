@@ -151,14 +151,14 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    const trigger = screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ })
+    const trigger = screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ })
     expect(trigger).toHaveClass('size-6')
     expect(trigger).toHaveClass('hover:bg-state-base-hover')
 
     await user.click(trigger)
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'agentV2.roster.editInfo',
+      'agentRoster.roster.editInfo',
       'common.operation.duplicate',
       'app.exportApp',
       'common.operation.delete',
@@ -169,7 +169,7 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
@@ -183,11 +183,11 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
     const dialog = await screen.findByRole('alertdialog', {
-      name: /agentV2\.roster\.deleteDialog\.title/,
+      name: /agentRoster\.roster\.deleteDialog\.title/,
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
@@ -206,11 +206,11 @@ describe('AgentDetailSection', () => {
     mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
     const dialog = await screen.findByRole('alertdialog', {
-      name: /agentV2\.roster\.deleteDialog\.title/,
+      name: /agentRoster\.roster\.deleteDialog\.title/,
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
@@ -225,7 +225,7 @@ describe('AgentDetailSection', () => {
     renderAgentDetailSection(false)
 
     expect(
-      screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ }),
+      screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
   })
 })

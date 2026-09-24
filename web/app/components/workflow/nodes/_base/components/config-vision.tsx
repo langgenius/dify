@@ -37,7 +37,7 @@ const ConfigVision: FC<Props> = ({
   },
   onConfigChange,
 }) => {
-  const { t } = useTranslation(['appDebug', 'workflowModels'])
+  const { t } = useTranslation(['workflowModels', 'fileUpload'])
 
   const filterVar = useCallback((payload: Var) => {
     const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
@@ -67,7 +67,7 @@ const ConfigVision: FC<Props> = ({
   return (
     <Field
       title={t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflowModels' })}
-      tooltip={t(($) => $['vision.description'], { ns: 'appDebug' })!}
+      tooltip={t(($) => $['vision.description'], { ns: 'fileUpload' })!}
       operations={
         <Tooltip>
           <TooltipTrigger
@@ -82,7 +82,7 @@ const ConfigVision: FC<Props> = ({
             }
           />
           <TooltipContent>
-            {t(($) => $['vision.onlySupportVisionModelTip'], { ns: 'appDebug' })!}
+            {t(($) => $['vision.onlySupportVisionModelTip'], { ns: 'fileUpload' })!}
           </TooltipContent>
         </Tooltip>
       }

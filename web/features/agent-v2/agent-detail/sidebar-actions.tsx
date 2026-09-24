@@ -25,7 +25,7 @@ type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
 
 export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tApp } = useTranslation(['app'])
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -71,7 +71,10 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         <DropdownMenuTrigger
           render={
             <IconButton
-              aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+              aria-label={t(($) => $['roster.moreActions'], {
+                ns: 'agentRoster',
+                name: agent.name,
+              })}
               size="md"
               className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
             >
@@ -83,7 +86,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           {capabilities.canEdit && (
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span>{t(($) => $['roster.editInfo'])}</span>
+              <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
             </DropdownMenuItem>
           )}
           {canDuplicate && (
