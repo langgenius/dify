@@ -1611,9 +1611,6 @@ importers:
       nuqs:
         specifier: 'catalog:'
         version: 2.10.1(next@16.3.6(@babel/core@7.29.7(supports-color@11.0.0))(@playwright/test@1.62.1)(@types/node@25.9.7)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
-      pinyin-pro:
-        specifier: 'catalog:'
-        version: 3.29.4
       qrcode.react:
         specifier: 'catalog:'
         version: 4.2.0(react@19.3.0)
@@ -1819,6 +1816,9 @@ importers:
       i18next-resources-for-ts:
         specifier: 'catalog:'
         version: 2.1.0(@swc/helpers@0.5.23)
+      pinyin-pro:
+        specifier: 'catalog:'
+        version: 3.29.4
       playwright:
         specifier: 'catalog:'
         version: 1.63.0
