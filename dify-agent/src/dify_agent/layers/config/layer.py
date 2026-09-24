@@ -7,9 +7,10 @@ import shlex
 from dataclasses import dataclass
 from typing import ClassVar
 
+from pydantic_ai import Tool
 from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PlainLayer
+from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
@@ -18,6 +19,7 @@ from dify_agent.layers.config.configs import (
     DifyConfigRuntimeState,
 )
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.shell.output_text import utf8_prefix
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -53,6 +55,7 @@ _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file download --help": ("file", "download"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
+_SKILL_READ_PAGE_BYTES = 4 * 1024
 
 
 class DifyConfigLayerError(RuntimeError):
@@ -64,8 +67,8 @@ class DifyConfigDeps(LayerDeps):
 
 
 @dataclass(slots=True)
-class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConfigRuntimeState]):
-    """Config runtime layer that materializes prompt-mentioned targets via shell."""
+class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerConfig, DifyConfigRuntimeState]):
+    """Materialize prompt-mentioned assets and expose paged reads for config skills."""
 
     type_id: ClassVar[str | None] = DIFY_CONFIG_LAYER_TYPE_ID
 
@@ -78,13 +81,58 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
 
     @property
     @override
-    def prefix_prompts(self) -> list[str]:
-        return [self.build_prompt_context()]
+    def prefix_prompts(self) -> list[PydanticAIPrompt[object]]:
+        return [self.build_prompt_context]
 
     @property
     @override
-    def suffix_prompts(self) -> list[str]:
-        return [self.build_suffix_prompt()]
+    def suffix_prompts(self) -> list[PydanticAIPrompt[object]]:
+        return [self.build_suffix_prompt]
+
+    @property
+    @override
+    def tools(self) -> list[PydanticAITool[object]]:
+        if not self.config.skills:
+            return []
+        return [Tool(self._read_skill, name="config_skill_read")]
+
+    async def _read_skill(self, name: str, offset: int = 0) -> dict[str, str | int | bool]:
+        """Read one page of a configured skill, continuing with next_offset until complete."""
+        if name not in {skill.name for skill in self.config.skills}:
+            raise ValueError(f"unknown config skill: {name}")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+
+        content = self.runtime_state.skill_read_content.get(name)
+        if offset == 0 or content is None:
+            output = await self._run_mentioned_pull(
+                script=self._build_shell_skill_pull_script([name]),
+                target_kind="skill",
+            )
+            items = _parse_pull_items(output, target_kind="skill")
+            item = items.get(name)
+            if item is None or not isinstance(item.get("skill_md"), str):
+                raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
+            content = item["skill_md"]
+            self.runtime_state.skill_read_content[name] = content
+        encoded = content.encode("utf-8")
+        if offset > len(encoded):
+            raise ValueError("offset exceeds skill content length")
+        try:
+            remaining = encoded[offset:].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("offset must be at a UTF-8 character boundary") from exc
+
+        page = utf8_prefix(remaining, _SKILL_READ_PAGE_BYTES)
+        next_offset = offset + len(page.encode("utf-8"))
+        return {
+            "name": name,
+            "content": page,
+            "offset": offset,
+            "next_offset": next_offset,
+            "total_bytes": len(encoded),
+            "complete": next_offset == len(encoded),
+        }
 
     @override
     async def on_context_create(self) -> None:
@@ -148,6 +196,11 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
                 f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self.runtime_state.config_context_json)}"
             )
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
+        if self.config.skills:
+            usage_lines.append(
+                "Use config_skill_read to read a skill's instructions. If complete is false, call it again with "
+                "next_offset until every page has been read. Shell output can omit the middle of a large SKILL.md."
+            )
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
         if file_cli_help := self._format_agent_file_cli_help():
@@ -191,6 +244,7 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
 
     async def _pull_mentioned_targets(self) -> None:
         self.runtime_state.pulled_skill_outputs = {}
+        self.runtime_state.skill_read_content = {}
         self.runtime_state.pulled_file_outputs = {}
         if not self.config.mentioned_skill_names and not self.config.mentioned_file_names:
             return

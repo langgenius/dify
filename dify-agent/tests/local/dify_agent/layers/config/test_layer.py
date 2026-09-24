@@ -153,6 +153,87 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
 
 
 @pytest.mark.anyio
+async def test_config_skill_read_recovers_instructions_hidden_from_shell_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+    layer.config = layer.config.model_copy(
+        update={"skills": [layer.config.skills[0].model_copy(update={"name": "alpha"})]}
+    )
+    decisive_instruction = "VERIFY THE IMPORT ROW COUNT BEFORE COMMITTING"
+    skill_md = "# Alpha\n" + "A" * 5600 + decisive_instruction + "B" * 5600
+    scripts: list[str] = []
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, timeout
+        assert inject_agent_stub_env is True
+        scripts.append(script)
+        return _remote_result(
+            json.dumps({"items": [{"name": "alpha", "skill_md": skill_md, "directory_path": "/workspace/alpha"}]})
+        )
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    tool = layer.tools[0]
+    assert tool.name == "config_skill_read"
+    pages: list[str] = []
+    offset = 0
+    while True:
+        result = await tool.function_schema.call({"name": "alpha", "offset": offset}, None)  # pyright: ignore[reportArgumentType]
+        assert result["offset"] == offset
+        assert len(result["content"].encode("utf-8")) <= 4096
+        pages.append(result["content"])
+        offset = result["next_offset"]
+        if result["complete"]:
+            break
+
+    assert "".join(pages) == skill_md
+    assert decisive_instruction in pages[1]
+    assert scripts == ["set -eu\ndify-agent config skills pull --json alpha"]
+    assert "call it again with next_offset" in layer.build_suffix_prompt()
+
+
+@pytest.mark.anyio
+async def test_config_skill_read_rejects_unknown_skill_and_invalid_utf8_offset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, script, inject_agent_stub_env, timeout
+        return _remote_result(json.dumps({"items": [{"name": "runtime-skill", "skill_md": "é"}]}))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    with pytest.raises(ValueError, match="unknown config skill"):
+        await layer._read_skill("other")
+    with pytest.raises(ValueError, match="UTF-8 character boundary"):
+        await layer._read_skill("runtime-skill", offset=1)
+
+
+@pytest.mark.anyio
+async def test_config_skill_read_preserves_multibyte_characters_at_page_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+    skill_md = "A" * 4095 + "验" + "B"
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, script, inject_agent_stub_env, timeout
+        return _remote_result(json.dumps({"items": [{"name": "runtime-skill", "skill_md": skill_md}]}))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    first = await layer._read_skill("runtime-skill")
+    second = await layer._read_skill("runtime-skill", offset=first["next_offset"])
+
+    assert first["content"] == "A" * 4095
+    assert first["complete"] is False
+    assert second["content"] == "验B"
+    assert second["complete"] is True
+
+
+@pytest.mark.anyio
 async def test_on_context_create_batches_all_mentioned_assets_into_two_serial_jobs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
