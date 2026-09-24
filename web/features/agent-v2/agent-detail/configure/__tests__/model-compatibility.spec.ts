@@ -243,9 +243,19 @@ describe('isAgentCompatibleModel', () => {
 })
 
 describe('isAgentSuggestedModel', () => {
-  it('should not auto-suggest customizable models that become technically eligible', () => {
+  it('should not auto-suggest customizable models that match curated suggestion patterns', () => {
     const provider = createModel('openai-api-compatible')
 
+    // Label matches agentSuggestedModelPatterns; must not become Suggested when customizable (#42092).
+    expect(
+      isAgentSuggestedModel(
+        provider,
+        createModelItem('qwen3.7-max', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.toolCall],
+        }),
+      ),
+    ).toBe(false)
     expect(
       isAgentSuggestedModel(
         provider,

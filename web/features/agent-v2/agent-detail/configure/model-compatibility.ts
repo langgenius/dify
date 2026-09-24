@@ -115,5 +115,7 @@ export function isAgentSuggestedModel(
   _provider: ModelSelectorProvider,
   modelItem: ModelSelectorModel,
 ) {
+  if (modelItem.fetch_from === ConfigurationMethodEnum.customizableModel) return false
+
   return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
