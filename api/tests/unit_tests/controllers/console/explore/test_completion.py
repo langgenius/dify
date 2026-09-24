@@ -9,10 +9,8 @@ import controllers.console.explore.completion as completion_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import AppMode, Conversation, Tenant
-from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
-from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_generate_service import AppGenerateService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
@@ -281,6 +279,21 @@ def test_chat_rejects_other_modes_before_recording_usage(
     assert _last_used_at(harness, sqlite_session_factory) is None
 
 
+def test_chat_uses_the_mode_captured_at_admission(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
+
+    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
+
+    assert response.status_code == 200
+    assert len(chat_runtime.calls) == 1
+    assert chat_runtime.calls[0].streaming is True
+    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
+
+
 @pytest.mark.parametrize("rejection", ["permission", "tenant"])
 def test_chat_enforces_admission_before_payload_validation(
     harness: _Harness,
@@ -341,10 +354,6 @@ def test_chat_conversation_preflight_returns_404_before_starting_generation_and_
 
     services = _Services(
         installed_app_generation=InstalledAppGenerationService(
-            app_definitions=AppDefinitionQueryService(
-                definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
-                builtin_icon_url_prefix="/tools/icons",
-            ),
             usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
             runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
         )

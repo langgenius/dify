@@ -145,7 +145,7 @@ const ProviderConfigModal: FC<Props> = ({
   onSaved,
   onChosen,
 }) => {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
@@ -825,7 +825,7 @@ const ProviderConfigModal: FC<Props> = ({
                       aria-hidden
                       className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
                     />
-                    {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
                     <a
                       className="mx-1 text-primary-600"
                       target="_blank"
@@ -834,7 +834,7 @@ const ProviderConfigModal: FC<Props> = ({
                     >
                       PKCS1_OAEP
                     </a>
-                    {t(($) => $['modelProvider.encrypted.back'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
                   </div>
                 </div>
               </div>

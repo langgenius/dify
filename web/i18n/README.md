@@ -1,6 +1,6 @@
 # Internationalization
 
-English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the same flat keys and placeholders. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
+English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the source flat keys and placeholders. They may also add the plural variants required by their language. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
 
 The module keeps runtime code and bundled translation assets together. `#i18n` remains the conditional client/server entrypoint; `locales/` contains translation JSON only. Per-locale loaders preserve the existing dynamic-import boundaries. This layout is a project ownership convention, not an i18next requirement.
 
@@ -39,6 +39,38 @@ A nonempty locale cookie takes priority over `Accept-Language`. An unusable cook
 ## Add or change copy
 
 Add or change the English key first, then update every supported locale. Preserve interpolation variables and markup placeholders exactly.
+
+After changing English resources, run `pnpm i18n:generate-types` from `web/` and
+commit `resources.generated.d.ts`. The script calls
+[`i18next-resources-for-ts`]
+with `optimize: true`; the official tool preserves string literal values for
+i18next's interpolation inference and groups plural variants into base keys.
+Use those base keys with `count` instead of selecting `_one` or `_other` yourself.
+The project script handles namespace file names, formatting, and freshness checks.
+The generated file is type-only;
+runtime resource loading still uses JSON. Both `i18n:check` and the Web Style CI
+job reject stale generated types (`pnpm i18n:check-types`).
+
+Use a plural base selector with a numeric `count`, for example
+`t($ => $['accessControlDialog.members'], { count: members.length })`.
+Keep `enableSelector: 'optimize'` for the large translation catalog.
+Before migrating a suffixed plural selector to a base key, provide every category
+returned by `Intl.PluralRules(locale).resolvedOptions().pluralCategories` in
+every supported locale. Missing categories can fall back to English even when
+`_one` and `_other` exist. The key checker permits language-specific variants
+of source plural families and preserves them during `--auto-remove`; their
+placeholders and tags are checked against the English `_other` variant.
+The official i18next 26.4 selector types check interpolation parameters when
+options are supplied, but still allow the entire options argument to be omitted
+in this mode. Generated types do not close that upstream gap, and plural strings
+without a `{{count}}` placeholder do not infer a required count. Always supply
+the runtime `count` for plural calls. Broad `SelectorParam` annotations also
+widen the selected value to `string`; prefer inline selectors when parameter
+inference matters. See the [official TypeScript guidance] and [plural rules].
+
+When copy demonstrates template syntax literally, pass that syntax explicitly,
+for example `{ input: '{{input}}' }`. For dynamic labels, constrain the key union
+to the relevant feature rather than accepting every key in a namespace.
 
 Run from `web/`:
 
@@ -113,8 +145,8 @@ visited earlier in the session. Previously loaded bundles remain cached. There i
 no route policy that resets `i18n.options.ns` on navigation.
 
 Server metadata requests still use the request-scoped server instance and load
-exactly their requested namespace. Existing server consumers without a namespace
-retain their full-catalog behavior.
+exactly their requested namespace. Server translation consumers must declare their namespaces explicitly. Locale-only
+consumers subscribe to language changes without requesting a dictionary.
 
 The build analyzer continues to report route usage and check unused keys. Its
 route report is diagnostic and is not a runtime resource manifest or an allowlist.
@@ -123,6 +155,28 @@ The application no longer opts into exhaustive route namespace validation.
 Tests cover on-demand feature loading, navigation state, language persistence,
 English fallback, and concurrent streaming SSR in different locales. Production
 Vinext/browser checks are also needed when changing the Provider or loading strategy.
+
+### Namespace ownership
+
+Keep `common` limited to shared operations, statuses, and basic controls. Navigation
+and route titles belong to `navigation`; account settings, workspace members,
+model providers, and the step-by-step tour own `accountSettings`,
+`workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
+copy is shared with model configuration, not owned by dataset settings.
+
+The workflow editor keeps canvas labels, shared validation, and editor-wide hook
+messages in `workflow`. Optional surfaces own `workflowGenerator`,
+`workflowDebug`, `workflowHistory`, and `workflowComments`. Node configuration
+families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
+`workflowIntegrations`, and `workflowLogic`. Keep globally executed validation
+and accessible edge labels in the core even when their keys have a node prefix;
+a key prefix alone does not define a loading boundary.
+
+Declare resources at the component that renders them. A hidden feature should not
+request its dictionary just because its controller is mounted. The tour keeps its
+session controller mounted and renders its translation consumer only when the
+checklist, guide, or recovery prompt is visible. Preserve all existing locale
+values and language-specific plural forms when moving keys.
 
 ### Provider trial verification
 
@@ -157,3 +211,7 @@ usage. The complete authenticated Agent creation journey must still pass CI.
 Empty-store coverage also verifies shell rendering without an enclosing Suspense
 boundary, concurrent locale/fallback rendering, and hydration of both `common`
 and feature namespaces without duplicate backend requests.
+
+[`i18next-resources-for-ts`]: https://github.com/i18next/i18next-resources-for-ts
+[official TypeScript guidance]: https://www.i18next.com/overview/typescript
+[plural rules]: https://www.i18next.com/translation-function/plurals

@@ -10,7 +10,6 @@ from werkzeug.exceptions import NotFound
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
-from services.enterprise.enterprise_service import WebAppAccessMode
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -84,30 +83,3 @@ def test_create_end_user(db_session_with_containers: Session) -> None:
 def test_create_end_user_rejects_unknown_site(db_session_with_containers: Session) -> None:
     with pytest.raises(NotFound, match="Site not found"):
         WebAppAuthService.create_end_user("missing", "test@example.com", db_session_with_containers)
-
-
-@pytest.mark.parametrize(
-    ("access_mode", "expected"),
-    [
-        pytest.param(WebAppAccessMode.PRIVATE, True, id="private"),
-        pytest.param(WebAppAccessMode.PRIVATE_ALL, True, id="private-all"),
-        pytest.param(WebAppAccessMode.PUBLIC, False, id="public"),
-    ],
-)
-def test_permission_check_from_access_mode(
-    db_session_with_containers: Session,
-    access_mode: WebAppAccessMode,
-    expected: bool,
-) -> None:
-    assert (
-        WebAppAuthService.is_app_require_permission_check(
-            access_mode=access_mode,
-            session=db_session_with_containers,
-        )
-        is expected
-    )
-
-
-def test_permission_check_requires_a_reference(db_session_with_containers: Session) -> None:
-    with pytest.raises(ValueError, match="Either app_code or app_id"):
-        WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)

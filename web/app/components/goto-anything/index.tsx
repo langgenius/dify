@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 }
 
 export function GotoAnything() {
-  const { t } = useTranslation(['agentV2', 'app', 'common', 'skill'])
+  const { t } = useTranslation(['agentV2', 'app', 'common', 'skill', 'modelProvider'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
@@ -446,7 +446,7 @@ export function GotoAnything() {
 
   function getCommandOptionDescription(option: CommandOption) {
     if (option.shortcut === '/models')
-      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })
+      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
 
     const descriptionKey = isSlashMode
       ? slashCommandDescriptionKeys[option.shortcut as keyof typeof slashCommandDescriptionKeys]

@@ -43,7 +43,7 @@ const ClassItem: FC<Props> = ({
   placeholder,
   defaultLabel,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const reactId = useId()
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [draftLabel, setDraftLabel] = useState('')
@@ -106,7 +106,7 @@ const ClassItem: FC<Props> = ({
       ref={labelInputRef}
       value={draftLabel}
       aria-label={
-        defaultLabel ?? t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })
+        defaultLabel ?? t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflowModels' })
       }
       className={cn(
         'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
@@ -157,7 +157,7 @@ const ClassItem: FC<Props> = ({
       headerClassName={headerClassName}
       title={title}
       placeholder={
-        placeholder ?? t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!
+        placeholder ?? t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflowModels' })!
       }
       value={payload.name}
       onChange={handleNameChange}

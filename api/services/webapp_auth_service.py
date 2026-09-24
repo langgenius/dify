@@ -4,8 +4,6 @@ from werkzeug.exceptions import NotFound
 
 from models.enums import EndUserType
 from models.model import App, EndUser, Site
-from services.app_service import AppService
-from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, EnterpriseService
 
 
 class WebAppAuthService:
@@ -32,26 +30,3 @@ class WebAppAuthService:
         session.commit()
 
         return end_user
-
-    @classmethod
-    def is_app_require_permission_check(
-        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None, *, session: Session
-    ) -> bool:
-        """
-        Check if the app requires permission check based on its access mode.
-        """
-        if access_mode:
-            return access_mode in PERMISSION_CHECK_MODES
-
-        if not app_code and not app_id:
-            raise ValueError("Either app_code or app_id must be provided.")
-
-        if app_code:
-            app_id = AppService.get_app_id_by_code(app_code, session=session)
-        if not app_id:
-            raise ValueError("App ID could not be determined from the provided app_code.")
-
-        webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-        if webapp_settings and webapp_settings.access_mode in PERMISSION_CHECK_MODES:
-            return True
-        return False

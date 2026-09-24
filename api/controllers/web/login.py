@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from flask import make_response, request
 from flask_restx import Resource
 from jwt import InvalidTokenError
@@ -24,6 +26,7 @@ from controllers.console.wraps import (
     model_validate,
 )
 from controllers.web import web_ns
+from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.flask_admission import web_anonymous_admission
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -43,6 +46,7 @@ from services.web_authentication_service import (
     WebInvalidEmailError,
     WebInvalidTokenError,
 )
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
@@ -129,19 +133,24 @@ class LoginStatusApi(Resource):
     @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
     @web_ns.doc(
         responses={
-            200: "Login status",
-            401: "Login status",
+            HTTPStatus.OK: "Login status",
+            HTTPStatus.UNAUTHORIZED: "Login status",
         }
     )
-    @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Login status", web_ns.models[LoginStatusResponse.__name__])
     @model_validate(LoginStatusQuery)
     def get(self, query: LoginStatusQuery, _request_context: RequestContext):
-        status = application_services().web_authentication.get_login_status(
-            app_code=query.app_code,
-            user_id=query.user_id,
-            access_token=extract_webapp_access_token(request),
-            app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
-        )
+        try:
+            status = application_services().web_authentication.get_login_status(
+                app_code=query.app_code,
+                user_id=query.user_id,
+                access_token=extract_webapp_access_token(request),
+                app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
+            )
+        except WebAppAccessAppNotFoundError as error:
+            raise WebAppNotFoundError() from error
+        except WebAppAccessUnavailableError as error:
+            raise WebAppAccessServiceUnavailableError() from error
         return LoginStatusResponse(
             logged_in=status.logged_in,
             app_logged_in=status.app_logged_in,

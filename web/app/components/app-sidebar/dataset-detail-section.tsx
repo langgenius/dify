@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -68,7 +68,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
-    const baseNavigation = [
+    const baseNavigation: {
+      name: string
+      href: string
+      icon: string
+      selectedIcon: string
+      disabled: boolean
+    }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
@@ -86,7 +92,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       ...(datasetACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/datasets/${datasetId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',

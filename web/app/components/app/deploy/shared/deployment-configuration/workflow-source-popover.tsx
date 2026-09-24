@@ -111,7 +111,7 @@ export function WorkflowDependencyPreview({
   const sourceLabel =
     validPaths.length === 1
       ? firstLeafWorkflow.name
-      : t(($) => $['studio.precheck.nodeCount_other'], { count: validPaths.length })
+      : t(($) => $['studio.precheck.nodeCount'], { count: validPaths.length })
 
   return (
     <Popover>

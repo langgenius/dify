@@ -20,6 +20,7 @@ from services.web_authentication_service import (
     WebPasswordMismatchError,
     WebPasswordResetVerificationLimitedError,
 )
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError
 
 
 @dataclass
@@ -412,7 +413,7 @@ def test_password_login_rejects_account_without_complete_password_digest(
 
 
 def test_login_status_rejects_unknown_app_code(service_fixture: ServiceFixture) -> None:
-    with pytest.raises(ValueError, match="App with code missing-code not found"):
+    with pytest.raises(WebAppAccessAppNotFoundError, match="App with code missing-code not found"):
         service_fixture.service.get_login_status(
             app_code="missing-code",
             user_id=None,

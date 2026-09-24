@@ -8,7 +8,7 @@ type ModeToggleProps = {
 }
 
 const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleToggle = () => {
     const newMode = mode === 'visual' ? 'cron' : 'visual'
@@ -17,8 +17,8 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
 
   const currentText =
     mode === 'visual'
-      ? t(($) => $['nodes.triggerSchedule.useCronExpression'], { ns: 'workflow' })
-      : t(($) => $['nodes.triggerSchedule.useVisualPicker'], { ns: 'workflow' })
+      ? t(($) => $['nodes.triggerSchedule.useCronExpression'], { ns: 'workflowIntegrations' })
+      : t(($) => $['nodes.triggerSchedule.useVisualPicker'], { ns: 'workflowIntegrations' })
 
   const iconClassName =
     mode === 'visual'

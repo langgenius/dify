@@ -1,436 +1,218 @@
-"""Unit tests for console app import endpoints."""
-
-from __future__ import annotations
+"""Console imports finalize persistence before publishing permissions and access settings."""
 
 from collections.abc import Iterator
-from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
-from controllers.console.app import app_import as app_import_module
-from models.account import Account, Tenant
-from models.base import TypeBase
-from models.engine import db
+from controllers.console.app import app_import as controller
+from controllers.console.app.error import AppNotFoundError
+from extensions.ext_redis import redis_client
+from machinery.context import RequestContext
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
-from services.app_dsl_service import ImportStatus
-from services.entities.dsl_entities import CheckDependenciesResult
-from tests.unit_tests.config_override import apply_config_overrides
+from services.app.console_gateway import EnterpriseConsoleAppAccess
+from services.app_dsl_service import AppDslService, PendingData
+from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import Import, ImportStatus
+from services.errors.account import NoPermissionError
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.system_feature_service import SystemFeatureService
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
-
-class _Result:
-    def __init__(
-        self,
-        status: ImportStatus,
-        app_id: str | None = "app-1",
-        permission_keys: list[str] | None = None,
-    ):
-        self.status = status
-        self.app_id = app_id
-        self.permission_keys = permission_keys or []
-
-    def model_dump(self, mode: str = "json"):
-        return {"status": self.status, "app_id": self.app_id, "permission_keys": self.permission_keys}
-
-
-def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    monkeypatch.setattr(app_import_module.SystemFeatureService, "is_webapp_auth_enabled", lambda: enabled)
-
-
-def _make_account(account_id: str = "u1") -> Account:
-    account = Account(name="Test User", email="test@example.com")
+@pytest.fixture
+def import_context(sqlite_session_factory: sessionmaker[Session]) -> RequestContext:
+    account_id, tenant_id = str(uuid4()), str(uuid4())
+    account = Account(name="Importer", email="importer@example.com")
     account.id = account_id
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "tenant-1"
-    account._current_tenant = tenant
-    return account
+    tenant = Tenant(name="Workspace")
+    tenant.id = tenant_id
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                tenant,
+                TenantAccountJoin(tenant_id=tenant_id, account_id=account_id, role=TenantAccountRole.OWNER),
+            ]
+        )
+    return RequestContext("import-request", None, account_id, tenant_id)
 
 
 @pytest.fixture
-def app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
+def connections(sqlite_engine: Engine) -> Iterator[set[object]]:
+    checked_out: set[object] = set()
 
-    with app.app_context():
-        yield app
+    def checkout(connection: object, *_args: object) -> None:
+        checked_out.add(connection)
 
+    def checkin(connection: object, *_args: object) -> None:
+        checked_out.remove(connection)
 
-@pytest.fixture
-def sqlite_app_engine(app: Flask) -> Engine:
-    engine = db.engine
-    TypeBase.metadata.create_all(engine, tables=[TypeBase.metadata.tables[App.__tablename__]])
-    return engine
-
-
-@dataclass
-class TransactionEvents:
-    commits: int = 0
-    rollbacks: int = 0
-
-
-@pytest.fixture
-def transaction_events() -> TransactionEvents:
-    """Observe transaction decisions while keeping the controller on a real SQLAlchemy session."""
-
-    observed = TransactionEvents()
-
-    def record_commit(_session: Session) -> None:
-        observed.commits += 1
-
-    def record_rollback(_session: Session) -> None:
-        observed.rollbacks += 1
-
-    event.listen(Session, "after_commit", record_commit)
-    event.listen(Session, "after_rollback", record_rollback)
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
     try:
-        yield observed
+        yield checked_out
+        assert not checked_out
     finally:
-        event.remove(Session, "after_commit", record_commit)
-        event.remove(Session, "after_rollback", record_rollback)
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
 
 
-def _install_persisting_service_result(
+@pytest.mark.usefixtures("app_query_services")
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize("overwrite", [False, True])
+@pytest.mark.parametrize("status", list(ImportStatus))
+def test_import_transaction_and_response_contract(
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    import_context: RequestContext,
+    connections: set[object],
     monkeypatch: pytest.MonkeyPatch,
-    *,
-    method_name: str,
-    result: _Result,
-) -> str:
-    app_id = result.app_id or "rolled-back-app"
+    config_overrides,
+    status: ImportStatus,
+    overwrite: bool,
+    confirm: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=True, DEPLOYMENT_EDITION="COMMUNITY")
+    monkeypatch.setattr("services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *a, **k: True)
+    app_id = str(uuid4())
+    result = Import(id="import-1", status=status, app_id=app_id)
+    pending = PendingData(
+        tenant_id=import_context.active_workspace_id,
+        account_id=import_context.account_id,
+        import_mode="yaml-content",
+        yaml_content="app: {}",
+        app_id=app_id if overwrite else None,
+    )
+    monkeypatch.setattr(redis_client, "get", lambda _key: pending.model_dump_json())
 
-    def _return_result(import_service: app_import_module.AppDslService, *_args, **_kwargs):
-        import_service._session.add(
+    def persist(dsl: AppDslService, *, account: Account, **_kwargs) -> Import:
+        assert not connections, "Actor lookup must release its connection before starting the DSL operation"
+        assert account.id == import_context.account_id
+        assert account.current_tenant_id == import_context.active_workspace_id
+        dsl._session.add(
             App(
                 id=app_id,
-                tenant_id="tenant-1",
-                name="Imported App",
+                tenant_id=account.current_tenant_id,
+                name="Imported",
                 mode=AppMode.WORKFLOW,
                 enable_site=True,
                 enable_api=True,
             )
         )
+        dsl._session.flush()
         return result
 
-    monkeypatch.setattr(app_import_module.AppDslService, method_name, _return_result)
-    return app_id
+    monkeypatch.setattr(AppDslService, "confirm_import" if confirm else "import_app", persist)
+    permissions: list[str] = []
+    access_updates: list[tuple[str, str]] = []
+
+    def get_permissions(_self, context: RequestContext, imported_id: str) -> list[str]:
+        assert not connections
+        assert context == import_context
+        with sqlite_session_factory() as session:
+            assert session.get(App, imported_id) is not None
+        permissions.append(imported_id)
+        return ["app.acl.view_layout"]
+
+    def update_access(imported_id: str, access_mode: str) -> None:
+        assert not connections, "WebApp access initialization must follow transaction completion"
+        access_updates.append((imported_id, access_mode))
+
+    monkeypatch.setattr(EnterpriseConsoleAppAccess, "created_permissions", get_permissions)
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: True)
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
+    with app.test_request_context(
+        method="POST",
+        json={
+            "mode": "yaml-content",
+            "yaml_content": "app: {}",
+            "app_id": app_id if overwrite else None,
+        },
+    ):
+        if confirm:
+            api = controller.AppImportConfirmApi()
+            response, status_code = unwrap(api.post)(api, import_context, import_id="import-1")
+        else:
+            api = controller.AppImportApi()
+            response, status_code = unwrap(api.post)(api, import_context)
+    with sqlite_session_factory() as session:
+        assert (session.get(App, app_id) is not None) is (status != ImportStatus.FAILED)
+    completed = status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+    assert permissions == ([app_id] if completed and not overwrite else [])
+    assert response["permission_keys"] == (["app.acl.view_layout"] if permissions else [])
+    assert access_updates == ([] if confirm else [(app_id, "private")])
+    assert status_code == (
+        400 if status == ImportStatus.FAILED else 202 if status == ImportStatus.PENDING and not confirm else 200
+    )
 
 
-def _assert_app_persistence(sqlite_app_engine: Engine, app_id: str, *, persisted: bool) -> None:
-    with Session(sqlite_app_engine) as session:
-        assert (session.get(App, app_id) is not None) is persisted
-
-
-class TestAppImportApi:
-    @pytest.fixture
-    def api(self):
-        return app_import_module.AppImportApi()
-
-    def test_import_post_returns_failed_status_and_rolls_back(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = unwrap(api._import_dsl)
-
-        _install_features(monkeypatch, enabled=False)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="import_app",
-            result=_Result(ImportStatus.FAILED, app_id=None),
-        )
-
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
-
-        assert transaction_events.rollbacks == 1
-        assert transaction_events.commits == 0
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=False)
-        assert status == 400
-        assert response["status"] == ImportStatus.FAILED
-
-    def test_import_post_returns_pending_status_and_commits(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = unwrap(api._import_dsl)
-
-        _install_features(monkeypatch, enabled=False)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="import_app",
-            result=_Result(ImportStatus.PENDING),
-        )
-
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
-
-        assert transaction_events.commits == 1
-        assert transaction_events.rollbacks == 0
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        assert status == 202
-        assert response["status"] == ImportStatus.PENDING
-
-    def test_import_post_updates_webapp_auth_when_enabled(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = unwrap(api._import_dsl)
-
-        _install_features(monkeypatch, enabled=True)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="import_app",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
-        )
-        update_access = MagicMock()
-        monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
-
-        assert transaction_events.commits == 1
-        assert transaction_events.rollbacks == 0
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        update_access.assert_called_once_with("app-123", "private")
-        assert status == 200
-        assert response["status"] == ImportStatus.COMPLETED
-
-    def test_import_post_attaches_permission_keys_when_creating_new_app_and_rbac_enabled(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = _unwrap(api._import_dsl)
-
-        _install_features(monkeypatch, enabled=False)
-        monkeypatch.setattr(
-            app_import_module,
-            "current_account_with_tenant",
-            lambda: (_make_account(), "tenant-1"),
-        )
-        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="import_app",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
-        )
-        monkeypatch.setattr(
-            app_import_module,
-            "get_app_permission_keys",
-            lambda tenant_id, account_id, app_id: ["app.acl.view_layout", "app.acl.edit"],
-        )
-
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(app_import_module.AppImportPayload(mode="yaml-content"))
-
-        assert transaction_events.commits == 1
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        assert status == 200
-        assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-
-    def test_import_post_does_not_attach_permission_keys_when_overwriting_existing_app(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = _unwrap(api._import_dsl)
-
-        _install_features(monkeypatch, enabled=False)
-        monkeypatch.setattr(
-            app_import_module,
-            "current_account_with_tenant",
-            lambda: (_make_account(), "tenant-1"),
-        )
-        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="import_app",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
-        )
-        monkeypatch.setattr(
-            app_import_module,
-            "get_app_permission_keys",
-            lambda *_args, **_kwargs: ["app.acl.view_layout", "app.acl.edit"],
-        )
-
-        with app.test_request_context(
-            "/console/api/apps/imports",
-            method="POST",
-            json={"mode": "yaml-content", "app_id": "existing-app"},
-        ):
-            response, status = method(app_import_module.AppImportPayload(mode="yaml-content", app_id="existing-app"))
-
-        assert transaction_events.commits == 1
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        assert status == 200
-        assert response["permission_keys"] == []
-
-
-class TestAppImportConfirmApi:
-    @pytest.fixture
-    def api(self):
-        return app_import_module.AppImportConfirmApi()
-
-    def test_import_confirm_returns_failed_status_and_rolls_back(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = unwrap(api.post)
-
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="confirm_import",
-            result=_Result(ImportStatus.FAILED),
-        )
-
-        with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(api, _make_account(), import_id="import-1")
-
-        assert transaction_events.rollbacks == 1
-        assert transaction_events.commits == 0
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=False)
-        assert status == 400
-        assert response["status"] == ImportStatus.FAILED
-
-    def test_import_confirm_attaches_permission_keys_when_creating_new_app_and_rbac_enabled(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = _unwrap(api.post)
-
-        monkeypatch.setattr(
-            app_import_module,
-            "current_account_with_tenant",
-            lambda: (_make_account(), "tenant-1"),
-        )
-        redis_get = MagicMock(
-            return_value=(
-                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
-                b'"yaml_content":"app: {}","app_id":null,'
-                b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
+@pytest.mark.usefixtures("app_query_services")
+@pytest.mark.parametrize("missing", [False, True])
+def test_check_dependencies_releases_database_before_plugin_io(
+    app: Flask,
+    import_context: RequestContext,
+    sqlite_session_factory: sessionmaker[Session],
+    connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+    missing: bool,
+) -> None:
+    app_id = str(uuid4())
+    if not missing:
+        with sqlite_session_factory.begin() as session:
+            session.add(
+                App(
+                    id=app_id,
+                    tenant_id=import_context.active_workspace_id,
+                    name="Imported",
+                    mode=AppMode.CHAT,
+                    enable_site=True,
+                    enable_api=True,
+                )
             )
-        )
-        monkeypatch.setattr(app_import_module.redis_client, "get", redis_get)
-        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="confirm_import",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
-        )
-        monkeypatch.setattr(
-            app_import_module,
-            "get_app_permission_keys",
-            lambda tenant_id, account_id, app_id: ["app.acl.view_layout", "app.acl.edit"],
-        )
+    monkeypatch.setattr(redis_client, "get", lambda _key: '{"dependencies":[]}')
+    called = []
 
-        with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
+    def check(*, tenant_id: str, dependencies):
+        assert not connections
+        assert tenant_id == import_context.active_workspace_id
+        called.append(dependencies)
+        return []
 
-        assert transaction_events.commits == 1
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        assert status == 200
-        assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-        redis_get.assert_called_once_with("app_import_info:import-1")
-
-    def test_import_confirm_does_not_attach_permission_keys_when_overwriting_existing_app(
-        self,
-        api,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_app_engine: Engine,
-        transaction_events: TransactionEvents,
-    ) -> None:
-        method = _unwrap(api.post)
-
-        monkeypatch.setattr(
-            app_import_module,
-            "current_account_with_tenant",
-            lambda: (_make_account(), "tenant-1"),
-        )
-        monkeypatch.setattr(
-            app_import_module.redis_client,
-            "get",
-            lambda *_args, **_kwargs: (
-                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
-                b'"yaml_content":"app: {}","app_id":"existing-app",'
-                b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
-            ),
-        )
-        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        app_id = _install_persisting_service_result(
-            monkeypatch,
-            method_name="confirm_import",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
-        )
-        monkeypatch.setattr(
-            app_import_module,
-            "get_app_permission_keys",
-            lambda *_args, **_kwargs: ["app.acl.view_layout", "app.acl.edit"],
-        )
-
-        with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
-
-        assert transaction_events.commits == 1
-        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
-        assert status == 200
-        assert response["permission_keys"] == []
+    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", check)
+    api = controller.AppImportCheckDependenciesApi()
+    with app.test_request_context():
+        if missing:
+            with pytest.raises(AppNotFoundError):
+                unwrap(api.get)(api, import_context, app_id=app_id)
+            assert called == []
+        else:
+            response, code = unwrap(api.get)(api, import_context, app_id=app_id)
+            assert code == 200
+            assert response == {"leaked_dependencies": []}
+            assert called == [[]]
 
 
-class TestAppImportCheckDependenciesApi:
-    def test_import_check_dependencies_returns_result(
-        self,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        api = app_import_module.AppImportCheckDependenciesApi()
-        method = unwrap(api.get)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "check_dependencies",
-            lambda *_args, **_kwargs: CheckDependenciesResult(leaked_dependencies=[]),
-        )
+@pytest.mark.parametrize("confirm", [False, True])
+def test_permission_errors_are_mapped_at_http_boundary(
+    app_query_services, app: Flask, monkeypatch, confirm: bool
+) -> None:
+    def denied(*_args, **_kwargs):
+        raise NoPermissionError("Import denied")
 
-        with app.test_request_context("/console/api/apps/imports/app-1/check-dependencies", method="GET"):
-            response, status = method(api, app_model=App(id="app-1"))
-
-        assert status == 200
-        assert response["leaked_dependencies"] == []
+    monkeypatch.setattr(app_query_services.apps.console, "confirm_import" if confirm else "import_app", denied)
+    context = RequestContext("request", None, "actor", "workspace")
+    with app.test_request_context(method="POST", json={"mode": "yaml-content"}):
+        if confirm:
+            api = controller.AppImportConfirmApi()
+            with pytest.raises(Forbidden, match="Import denied"):
+                unwrap(api.post)(api, context, import_id="import-1")
+        else:
+            api = controller.AppImportApi()
+            with pytest.raises(Forbidden, match="Import denied"):
+                unwrap(api.post)(api, context)

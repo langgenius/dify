@@ -32,7 +32,7 @@ const MemberRow = ({
   onOpenDetails,
   onTransferOwnership,
 }: MemberRowProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['workspaceMembers'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const roleNames = roles.map((role) => role.name)
@@ -75,12 +75,12 @@ const MemberRow = ({
               </button>
               {member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
-                  {t(($) => $['members.pending'], { ns: 'common' })}
+                  {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
                 </span>
               )}
               {isCurrentUser && (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['members.you'], { ns: 'common' })}
+                  {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
                 </span>
               )}
             </div>

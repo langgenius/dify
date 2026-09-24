@@ -376,7 +376,7 @@ describe('ProviderAddedCard', () => {
       provider: 'custom/provider',
     } as unknown as ModelProvider
     renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
-    expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.configureTip')).toBeInTheDocument()
   })
 
   it('should render custom model actions when user can configure models', () => {
@@ -388,10 +388,10 @@ describe('ProviderAddedCard', () => {
     const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
 
     unmount()
@@ -399,10 +399,10 @@ describe('ProviderAddedCard', () => {
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).not.toBeInTheDocument()
   })
 
@@ -417,10 +417,10 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
   })
 })

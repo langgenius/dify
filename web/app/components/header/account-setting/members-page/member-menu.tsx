@@ -42,7 +42,7 @@ const MemberMenu = ({
   allowMultipleRoles = true,
   onTransferOwnership,
 }: MemberMenuProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -57,8 +57,8 @@ const MemberMenu = ({
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
-    ? t(($) => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRoles'], { ns: 'workspaceMembers', defaultValue: 'Assign Roles' })
+    : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -121,7 +121,7 @@ const MemberMenu = ({
             <IconButton
               size="lg"
               aria-label={t(($) => $['members.memberActions'], {
-                ns: 'common',
+                ns: 'workspaceMembers',
                 defaultValue: 'Member actions',
               })}
               className="data-popup-open:bg-state-base-hover"
@@ -144,7 +144,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleTransferOwnership}
             >
-              {t(($) => $['members.transferOwnership'], { ns: 'common' })}
+              {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
           {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
@@ -154,7 +154,7 @@ const MemberMenu = ({
               className="system-sm-medium"
               onClick={handleOpenRemoveConfirm}
             >
-              {t(($) => $['members.removeFromTeam'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -166,10 +166,13 @@ const MemberMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
+              {t(($) => $['members.removeFromTeamConfirmTitle'], {
+                ns: 'workspaceMembers',
+                memberName,
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>

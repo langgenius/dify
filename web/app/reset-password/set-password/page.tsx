@@ -27,7 +27,7 @@ type PasswordFormValues = {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation(['common', 'login'])
+  const { t } = useTranslation(['login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -126,7 +126,9 @@ const ChangePasswordForm = () => {
                 }}
                 className="mb-5"
               >
-                <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
+                <FieldLabel>
+                  {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
                 <InputGroup>
                   <InputGroupInput
                     type={showPassword ? 'text' : 'password'}
@@ -184,11 +186,13 @@ const ChangePasswordForm = () => {
                   const confirmationValue = String(value)
                   return !confirmationValue || confirmationValue === formValues.password
                     ? null
-                    : t(($) => $['account.notEqual'], { ns: 'common' })
+                    : t(($) => $['account.notEqual'], { ns: 'accountSettings' })
                 }}
                 className="mb-5"
               >
-                <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
+                <FieldLabel>
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
                 <InputGroup>
                   <InputGroupInput
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -215,7 +219,9 @@ const ChangePasswordForm = () => {
                     </IconButton>
                   </InputGroupAddon>
                 </InputGroup>
-                <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
+                <FieldError>
+                  {t(($) => $['account.notEqual'], { ns: 'accountSettings' })}
+                </FieldError>
               </Field>
               <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
                 {t(($) => $.changePasswordBtn, { ns: 'login' })}

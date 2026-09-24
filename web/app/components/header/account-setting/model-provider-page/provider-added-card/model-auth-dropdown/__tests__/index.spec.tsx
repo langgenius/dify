@@ -248,7 +248,9 @@ describe('ModelAuthDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
       await waitFor(() => {
-        expect(screen.getByText('common.modelProvider.card.noApiKeysTitle')).toBeInTheDocument()
+        expect(
+          screen.getByText('modelProvider.modelProvider.card.noApiKeysTitle'),
+        ).toBeInTheDocument()
       })
       expect(fetchMock).toHaveBeenCalledTimes(2)
     })

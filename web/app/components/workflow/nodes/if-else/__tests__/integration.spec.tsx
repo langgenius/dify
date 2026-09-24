@@ -220,7 +220,9 @@ describe('if-else path', () => {
 
       render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.ifElse.addCondition/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
+      )
       await user.click(screen.getByText('pick-var'))
 
       expect(onSelectVariable).toHaveBeenCalledWith('case-1', ['node-1', 'score'], {
@@ -253,7 +255,7 @@ describe('if-else path', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /contains/i }))
-      await user.click(screen.getByText('workflow.nodes.ifElse.comparisonOperator.is'))
+      await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
       await user.click(screen.getByRole('button', { name: /constant/i }))
       await user.click(screen.getByText('Variable'))
       fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
@@ -387,7 +389,7 @@ describe('if-else path', () => {
 
       expect(screen.getByText('IF')).toBeInTheDocument()
       expect(screen.getByText('ELIF')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
       expect(screen.getByText('False')).toBeInTheDocument()
       expect(screen.getByText('ELSE')).toBeInTheDocument()
       expect(screen.getByTestId('handle-case-1')).toBeInTheDocument()
@@ -414,7 +416,7 @@ describe('if-else path', () => {
       await user.click(screen.getByRole('button', { name: /elif/i }))
 
       expect(handleAddCase).toHaveBeenCalled()
-      expect(screen.getByText('workflow.nodes.ifElse.elseDescription')).toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.ifElse.elseDescription')).toBeInTheDocument()
     })
   })
 })

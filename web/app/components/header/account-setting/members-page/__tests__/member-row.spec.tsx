@@ -90,16 +90,20 @@ describe('MemberRow details entry points', () => {
     const user = userEvent.setup()
     const onOpenDetails = renderMemberRow()
 
-    await user.click(screen.getByRole('button', { name: /common\.members\.memberActions/ }))
+    await user.click(
+      screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ }),
+    )
     expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(onOpenDetails).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('menuitem', { name: 'common.members.removeFromTeam' }))
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
+    )
     const confirmation = screen.getByRole('alertdialog')
     expect(onOpenDetails).not.toHaveBeenCalled()
 
     await user.click(
-      within(confirmation).getByText('common.members.removeFromTeamConfirmDescription'),
+      within(confirmation).getByText('workspaceMembers.members.removeFromTeamConfirmDescription'),
     )
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.cancel' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

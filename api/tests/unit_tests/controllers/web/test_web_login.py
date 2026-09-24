@@ -6,7 +6,9 @@ from typing import override
 
 import pytest
 from flask import Flask, Response
+from flask_restx import Api
 
+from controllers.console import wraps as console_wraps
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.error import AccountBannedError
 from controllers.web import login
@@ -28,6 +30,7 @@ from services.web_authentication_service import (
     WebAuthenticationFailedError,
     WebInvalidCodeError,
 )
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 
 @pytest.fixture
@@ -130,6 +133,36 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
         "access_token": "account-token",
         "app_session_token": "passport:site-code",
     }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "status_code", "error_code"),
+    [
+        pytest.param(WebAppAccessAppNotFoundError(), 404, "app_not_found", id="unknown-app"),
+        pytest.param(WebAppAccessUnavailableError(), 503, "web_app_access_unavailable", id="access-unavailable"),
+    ],
+)
+def test_login_status_translates_access_failures_to_http_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    service_error: Exception,
+    status_code: int,
+    error_code: str,
+) -> None:
+    class UnavailableLoginStatusService(LoginStatusStub):
+        @override
+        def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
+            raise service_error
+
+    bind_service(monkeypatch, UnavailableLoginStatusService())
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    api = Api(app)
+    api.add_resource(LoginStatusApi, "/web/login/status")
+
+    response = app.test_client().get("/web/login/status?app_code=does-not-exist")
+
+    assert response.status_code == status_code
+    assert response.get_json()["code"] == error_code
 
 
 class EmailLoginStub:
