@@ -2090,24 +2090,12 @@
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
     "typescript/no-explicit-any": {
