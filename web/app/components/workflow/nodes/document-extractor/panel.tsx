@@ -18,7 +18,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.docExtractor'
 
 const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const locale = useLocale()
   const link = useNodeHelpLink(BlockEnum.DocExtractor)
   const { data: supportFileTypesResponse } = useQuery(

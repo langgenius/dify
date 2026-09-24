@@ -39,7 +39,7 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({

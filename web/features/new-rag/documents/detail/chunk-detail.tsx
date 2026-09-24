@@ -89,7 +89,7 @@ function DocumentSectionHeading({ children, level }: { children: React.ReactNode
 }
 
 function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -123,8 +123,8 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 }
 
 export function DocumentReadingPane() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const contentBlocks = useAtomValueRawSync(documentDetailContentBlocksAtom)
   const isLoadingMore = useAtomValueRawSync(documentChunksQueryIsFetchingNextPageAtom)
   const multimodalItems = useAtomValueRawSync(documentDetailMultimodalItemsAtom)
@@ -274,8 +274,8 @@ export function DocumentReadingPane() {
 }
 
 export function DocumentFactsSidebar() {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const chunksComplete = useAtomValueRawSync(documentDetailChunksCompleteAtom)
   const document = useAtomValueRawSync(documentDetailDocumentAtom)
   const indexChunks = useAtomValueRawSync(documentDetailIndexChunksAtom)

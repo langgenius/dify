@@ -65,8 +65,8 @@ function AutomaticChunkPageLoader({
 }
 
 export function DocumentChunkTreePanel() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const treeHeadingId = useId()
   const loadMoreLabelId = useId()
   const chunkCount = useAtomValueRawSync(documentDetailChunksAtom).length

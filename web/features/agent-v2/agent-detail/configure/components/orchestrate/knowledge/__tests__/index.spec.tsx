@@ -286,7 +286,7 @@ describe('KnowledgeFS composer interaction', () => {
       expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(dialog).toBeInTheDocument()
-      expect(within(dialog).getByRole('alert')).toHaveTextContent(/knowledgeFs.unavailable/)
+      expect(within(dialog).getByRole('alert').textContent).toMatch(/knowledgeFs.unavailable/)
       const advanced = within(dialog).getByRole('button', { name: /advancedSettings.label/ })
       expect(advanced).toHaveAttribute('aria-expanded', 'true')
       expect(within(dialog).queryByText(SPACE)).not.toBeInTheDocument()
@@ -332,7 +332,7 @@ describe('KnowledgeFS composer interaction', () => {
     refresh([{ ...space(), permission_keys: ['knowledge_space_read', 'knowledge_space_query'] }])
     await waitFor(() => expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument())
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(/knowledgeFs.unavailable/)
+    expect(within(dialog).getByRole('alert').textContent).toMatch(/knowledgeFs.unavailable/)
     expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue(
       'Product manual',
     )

@@ -54,7 +54,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const datasetDetail = useDatasetDetailContextWithSelector((state) => state.dataset)

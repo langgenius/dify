@@ -14,7 +14,7 @@ type PluginTypeSwitchProps = {
   variant?: 'default' | 'hero' | 'home'
 }
 const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'

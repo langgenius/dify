@@ -29,7 +29,7 @@ type ImagePreviewerProps = {
 }
 
 const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
     return images.reduce(

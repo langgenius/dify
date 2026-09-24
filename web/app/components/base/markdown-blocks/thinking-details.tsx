@@ -20,7 +20,7 @@ const ThinkingDetails = ({
   children,
   ...rest
 }: ThinkingDetailsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const status = t(($) => (isComplete ? $['chat.thought'] : $['chat.thinking']), { ns: 'common' })
 
   return (

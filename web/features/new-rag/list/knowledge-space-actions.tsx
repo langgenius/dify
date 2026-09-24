@@ -33,8 +33,8 @@ export function KnowledgeSpaceActions({
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const [menuOpen, setMenuOpen] = useState(false)

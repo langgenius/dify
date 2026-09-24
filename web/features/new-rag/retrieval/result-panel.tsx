@@ -24,8 +24,8 @@ import { cancelRetrievalResearchAtom, retryRetrievalAtom } from './state/runtime
 type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 
 function RetrievalResultSession() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const {
@@ -314,7 +314,7 @@ function RetrievalResultSession() {
 }
 
 export function RetrievalResultPanel() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { resultKey, selected } = useAtomValueRawSync(retrievalResultFactsAtom)
 
   return (

@@ -19,7 +19,7 @@ import { DocumentTasksSurface } from './tasks-surface'
 import { DocumentWorkflowBoundary } from './workflow-boundary'
 
 function DocumentDetailWorkspaceContent() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const document = useAtomValueRawSync(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const documentMissing = useAtomValueRawSync(documentMissingAtom)

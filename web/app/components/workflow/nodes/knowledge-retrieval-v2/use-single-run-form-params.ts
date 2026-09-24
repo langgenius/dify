@@ -25,7 +25,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const query = typeof runInputData.query === 'string' ? runInputData.query : ''
   const queryAttachment = runInputData.queryAttachment
   const setQuery = useCallback(

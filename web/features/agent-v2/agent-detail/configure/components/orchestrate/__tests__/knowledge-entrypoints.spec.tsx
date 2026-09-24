@@ -160,7 +160,7 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     const { queryClient } = setup({ enabled: false, configured: true })
 
     expect(screen.getByText('Product manual')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/knowledgeFs.runtimeUnavailable/)
+    expect(screen.getByRole('status').textContent).toMatch(/knowledgeFs.runtimeUnavailable/)
     expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
     expect(

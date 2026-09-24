@@ -12,7 +12,7 @@ import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
 
 export const useAvailableNodesMetaData = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)

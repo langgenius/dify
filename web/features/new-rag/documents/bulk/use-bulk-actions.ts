@@ -74,7 +74,7 @@ function useDocumentInvalidation() {
 }
 
 export function useBulkReindexAction() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -151,7 +151,7 @@ export function useBulkReindexAction() {
 }
 
 export function useBulkDownloadAction() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const canDownload = useAtomValue(documentCanDownloadAtom)
   const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
@@ -183,7 +183,7 @@ export function useBulkDownloadAction() {
 }
 
 export function useBulkAvailabilityAction() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -250,7 +250,7 @@ export function useBulkAvailabilityAction() {
 }
 
 export function useBulkRemoveAction() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)

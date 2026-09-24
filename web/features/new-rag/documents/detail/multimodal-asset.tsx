@@ -49,7 +49,7 @@ export function DocumentMultimodalAsset({
 }: {
   item: KnowledgeFsDocumentMultimodalItemResponse
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set())
   const sources = [item.asset_url, item.thumbnail_url].filter((candidate): candidate is string =>
     Boolean(candidate && !failedSources.has(candidate)),

@@ -67,7 +67,7 @@ function KnowledgeOverviewContent() {
 }
 
 function OverviewHeader() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const empty = useAtomValueRawSync(overviewEmptyAtom)
   const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
   const window = useAtomValueRawSync(overviewWindowAtom)
@@ -115,8 +115,8 @@ function OverviewKnowledgeModelReadinessBanner() {
 }
 
 function OverviewRecoveryStatus() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const pageLoading = useAtomValueRawSync(overviewPageLoadingAtom)
   const firstLoadFailed = useAtomValueRawSync(overviewFirstLoadFailedAtom)
   const retry = useSetAtom(retryOverviewSnapshotsAtom)

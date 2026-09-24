@@ -83,7 +83,7 @@ export function ConnectedSourceEditForm({
   onCancel: () => void
   onSubmit: (source: ConnectedInitialSource) => Promise<boolean>
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const [draft, setDraft] = useState(initialDraft)
 
   return (
@@ -137,7 +137,7 @@ function ConnectedSourceConfigurationFields({
   selection?: ConnectedSourceSelection
   onSelectionChange?: (selection: ConnectedSourceSelection) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { credentialId, datasource, pluginId, provider } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
   const [localSelection, setLocalSelection] = useState<ConnectedSourceSelection>([])

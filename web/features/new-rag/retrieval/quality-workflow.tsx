@@ -44,7 +44,7 @@ function goldenQuestionEvidenceOptions(
 }
 
 export function RetrievalQualityWorkflow() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const queryClient = useQueryClient()
   const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)

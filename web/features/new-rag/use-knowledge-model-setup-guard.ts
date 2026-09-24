@@ -18,7 +18,7 @@ export type KnowledgeModelReadinessGuardResult =
 type KnowledgeModelIntent = 'reindex' | 'retrieval-test' | 'source-sync' | 'upload'
 
 export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const router = useRouter()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)

@@ -22,7 +22,7 @@ export type KnowledgeViewSwitcherProps = {
 }
 
 export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const docLink = useDocLink()
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()

@@ -104,8 +104,8 @@ function GoldenQuestionDialogSession({
   onSubmit,
   pending = false,
 }: Omit<GoldenQuestionDialogProps, 'open' | 'sessionKey'>) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
   const [evidenceQuery, setEvidenceQuery] = useState('')

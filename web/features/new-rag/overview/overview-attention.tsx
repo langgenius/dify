@@ -65,8 +65,8 @@ function attentionPresentation(
 }
 
 export function AttentionPanel() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const attention = useAtomValueRawSync(overviewAttentionDataAtom)
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
   const failedTask = useAtomValueRawSync(overviewFailedFirstSourceTaskAtom)

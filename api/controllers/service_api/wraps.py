@@ -28,7 +28,7 @@ from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset
 from models.model import ApiToken, App
-from services import dataset_api_key_service
+from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.feature_service import FeatureService
 from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
@@ -334,7 +334,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         # request (not cached) so changes take effect immediately.
         # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
         # typed helper accepts it (runtime proxies every Session method through unchanged).
-        scope = dataset_api_key_service.get_key_scope(cast(Session, db.session), api_token.id)
+        scope = dataset_api_key_bindings.get_key_scope(cast(Session, db.session), api_token.id)
         if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 

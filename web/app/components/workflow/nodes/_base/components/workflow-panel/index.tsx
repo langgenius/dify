@@ -94,7 +94,7 @@ type BasePanelProps = {
 }
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const panelId = useId()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)

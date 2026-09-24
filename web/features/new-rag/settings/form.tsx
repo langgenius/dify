@@ -21,8 +21,8 @@ import {
 } from './state/workflow'
 
 export function KnowledgeSettingsForm() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const canSave = useAtomValue(knowledgeSettingsCanSubmitAtom)
   const hasDraft = useAtomValue(knowledgeSettingsHasDraftAtom)

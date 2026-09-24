@@ -16,7 +16,7 @@ import { retrievalHistorySourceFilterAtom } from './state/scoped'
 const sourceFilters = ['all', 'retrieval_test', 'workflow'] as const
 
 export function RetrievalHistoryPanel() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { activeRecordKey, displayRecords, hasNextPage, isFetchingNextPage, sourceFilter } =
     useAtomValueRawSync(retrievalHistoryFactsAtom)
   const selectRecord = useSetAtom(selectRetrievalRecordAtom)

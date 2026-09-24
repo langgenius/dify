@@ -47,7 +47,7 @@ export const TagSearchContentView = ({
   showTagManagement = true,
   canManageTags,
 }: TagSearchContentViewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const canChangeBindings = requiresTargetEditPermission
     ? canBindOrUnbindTags

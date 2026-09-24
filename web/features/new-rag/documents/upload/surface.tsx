@@ -30,7 +30,7 @@ import { DocumentStagingCanceledError } from './model'
 import { useDocumentUploadSession } from './use-document-upload-session'
 
 function DocumentUploadHeader() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
@@ -65,7 +65,7 @@ function DocumentUploadHeader() {
 }
 
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)

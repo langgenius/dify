@@ -7,7 +7,7 @@ const qualityTabClassName =
   'h-7 rounded-md border-0 px-2.5 py-0 system-xs-medium text-text-tertiary data-active:bg-background-default data-active:text-text-primary data-active:shadow-xs'
 
 export function QualityTabList() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <TabsList

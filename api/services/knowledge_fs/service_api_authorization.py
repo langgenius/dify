@@ -15,7 +15,7 @@ from models.knowledge_fs import (
     KnowledgeFSExternalAccessPolicy,
 )
 from models.model import ApiToken
-from services import dataset_api_key_service
+from repositories.knowledge import dataset_api_key_bindings
 
 
 class KnowledgeFSServiceApiAuthorizationError(RuntimeError):
@@ -93,7 +93,7 @@ class KnowledgeFSServiceApiAuthorizationService:
             # space in its tenant; a bound key only the KnowledgeFS spaces it is bound to.
             # Legacy dataset bindings never grant access here because the two knowledge base
             # kinds live in different tables.
-            scope = dataset_api_key_service.get_key_scope(session, api_token_id)
+            scope = dataset_api_key_bindings.get_key_scope(session, api_token_id)
             if not scope.allows_knowledge_space(control_space_id):
                 raise KnowledgeFSServiceApiScopeError("Dataset API key is not authorized for this KnowledgeFS space")
         api_token, control_space, policy, revision = row._t

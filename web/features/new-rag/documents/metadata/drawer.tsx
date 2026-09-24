@@ -65,7 +65,7 @@ function useMetadataFields() {
 }
 
 function useMetadataFieldMutation() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
@@ -100,7 +100,7 @@ function useMetadataFieldMutation() {
 }
 
 function CreateMetadataPopover() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
   const [open, setOpen] = useState(false)
   const metadataFieldsQuery = useMetadataFields()
   const fields = metadataFieldsQuery.data ?? []
@@ -160,7 +160,7 @@ function MetadataItem({
   field: DocumentMetadataField
   fields: DocumentMetadataField[]
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [name, setName] = useState(field.name)
@@ -307,7 +307,7 @@ function MetadataItem({
 }
 
 export function DocumentMetadataDrawer() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   const setMetadataRequest = useSetAtom(documentMetadataAtom)

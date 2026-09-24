@@ -640,8 +640,10 @@ describe('Agent access surface cards', () => {
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.customize.title',
       })
-      expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
-      expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
+      expect(dialog.textContent).toMatch(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
+      expect(dialog.textContent).toMatch(
+        /NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/,
+      )
       expect(
         within(dialog).getByRole('link', {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,

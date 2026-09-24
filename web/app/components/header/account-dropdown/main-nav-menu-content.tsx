@@ -55,7 +55,7 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme =
     theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
@@ -118,7 +118,7 @@ type MainNavMenuContentProps = {
 }
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

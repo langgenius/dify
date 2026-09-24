@@ -46,7 +46,7 @@ const getOutputType = (schema: unknown): string => {
 
 const StrategyDetail: FC<Props> = ({ provider, tenantId, detail, onHide }) => {
   const getValueFromI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   const outputSchema = useMemo(() => {
     const properties = detail.output_schema?.properties

@@ -30,7 +30,7 @@ export function CrawlPreviewPageSelection({
   sourceLabel?: string
   selectedPageIds: Set<string>
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, crawlPreviewPageSkipReason(page, rootUrl)])),

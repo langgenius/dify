@@ -34,7 +34,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   onSuccess,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)

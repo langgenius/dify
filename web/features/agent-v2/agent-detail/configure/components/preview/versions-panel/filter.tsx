@@ -36,8 +36,8 @@ export function VersionFilter({
   filterValue: AgentVersionFilter
   onFilterChange: (filterValue: AgentVersionFilter) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const isFiltering = filterValue !== 'all'
 
   return (

@@ -79,10 +79,10 @@ export function KnowledgeSpaceShell({
   children: ReactNode
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tDataset } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tDataset } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState(false)
   const pathname = usePathname()

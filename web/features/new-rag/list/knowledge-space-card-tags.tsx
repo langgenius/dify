@@ -16,7 +16,7 @@ export function KnowledgeSpaceCardTags({
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   const tags = useMemo<Tag[]>(

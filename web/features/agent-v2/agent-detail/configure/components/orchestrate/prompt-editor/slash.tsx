@@ -107,7 +107,7 @@ export function AgentPromptSlashMenu({
   onOpenCategory,
   onInsertToken,
 }: AgentPromptSlashMenuProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const title = categories.find((category) => category.key === view)?.label
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
@@ -361,7 +361,7 @@ function AgentPromptToolRows({
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const language = useGetLanguage()
   const { getProviderIcon, getProviderIcons } = useAgentPromptToolIconResolver()
   const [activeTab, setActiveTab] = useState<ToolPromptTab>('all')
@@ -596,7 +596,7 @@ function getProviderLabel(provider: ToolWithProvider, language: string) {
   return getLocalizedText(provider.label, language) || provider.name
 }
 
-function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<'agentV2'>) {
+function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<['agentV2']>) {
   if (provider.type === CollectionType.workflow)
     return t(($) => $['agentDetail.configure.tools.toolTabs.workflow'])
   if (provider.type === CollectionType.custom)
@@ -682,7 +682,7 @@ function AgentPromptProviderIcon({
 }
 
 function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'plugin'])
 
   return (
     <div className="border-t border-divider-subtle p-1">
@@ -748,7 +748,7 @@ function AgentPromptCliToolRow({
   tool: Extract<AgentTool, { kind: 'cli' }>
   onClick: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <button
@@ -779,7 +779,7 @@ function AgentPromptKnowledgeRows({
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <>
@@ -805,7 +805,7 @@ function AgentPromptKnowledgeRows({
 
 function getKnowledgeRetrievalName(
   retrieval: AgentKnowledgeRetrievalItem,
-  t: TFunction<'agentV2'>,
+  t: TFunction<['agentV2']>,
 ) {
   const nameKey = retrieval.nameKey
   return retrieval.name ?? (nameKey ? t(($) => $[nameKey]) : retrieval.id)

@@ -37,7 +37,7 @@ const Operations = ({
   onUpgrade,
   onClose,
 }: OperationsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline', 'knowledgeSpace'])
 
   const handleRename = () => {
     onClose?.()

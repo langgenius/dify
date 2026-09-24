@@ -28,7 +28,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   runResult,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<ToolNodeType>(id, payload)
 
   const hadVarParams = Object.keys(inputs.tool_parameters)

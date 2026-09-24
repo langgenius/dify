@@ -23,10 +23,7 @@ type Props = Readonly<{
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: Exclude<
-    I18nKeysWithPrefix<'billing'>,
-    'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'
-  >
+  labelKey?: I18nKeysWithPrefix<'billing', 'upgradeBtn.'> | 'triggerLimitModal.upgrade'
 }>
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
@@ -41,7 +38,7 @@ const UpgradeBtn: FC<Props> = ({
   loc,
   labelKey,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

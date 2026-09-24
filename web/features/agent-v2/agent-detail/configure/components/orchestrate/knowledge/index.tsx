@@ -27,7 +27,7 @@ function KnowledgeRetrievalIcon() {
   )
 }
 
-function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<'agentV2'>) {
+function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<['agentV2']>) {
   const nameKey = item.nameKey
   return item.name ?? (nameKey ? t(($) => $[nameKey]) : item.id)
 }
@@ -41,7 +41,7 @@ function AgentKnowledgeRetrievalRow({
   onEdit: () => void
   item: AgentKnowledgeRetrievalItem
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const itemName = getKnowledgeRetrievalName(item, t)
 
   return (
@@ -61,7 +61,7 @@ function AgentKnowledgeRetrievalRow({
 }
 
 export function AgentKnowledgeRetrieval() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const enabled = useAtomValue(agentKnowledgeFsEnabledAtom)
   const readOnly = useAgentOrchestrateReadOnly()

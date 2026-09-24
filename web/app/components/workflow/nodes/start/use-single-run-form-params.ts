@@ -16,7 +16,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
 
   const forms = (() => {

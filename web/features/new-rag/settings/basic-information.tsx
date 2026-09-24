@@ -26,8 +26,8 @@ const NAME_ERROR_ID = 'knowledge-name-error'
 const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 
 function BasicInformationSkeleton() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tSettings } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
 
   return (
     <div className="flex flex-col gap-4 pt-2">
@@ -48,10 +48,10 @@ function BasicInformationSkeleton() {
 }
 
 export function BasicInformationSection() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tSettings } = useTranslation('datasetSettings')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const current = useAtomValue(knowledgeSettingsBasicDraftAtom)
   const updateDraft = useSetAtom(updateKnowledgeSettingsBasicDraftAtom)

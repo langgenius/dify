@@ -86,7 +86,7 @@ function DocumentStatus({
   failureReason?: string
   status: DocumentDisplayStatus
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const statusLabel = t(($) => $[`documentStatus.${status}`])
   const content = (
     <>
@@ -133,7 +133,7 @@ function DocumentStatus({
 }
 
 function TaskTrigger() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const { activeTaskCount, attentionTaskCount, hasTaskError, historyIncomplete } =
     useAtomValueRawSync(taskTriggerFactsAtom)
@@ -254,8 +254,8 @@ function DocumentTitleCell({ document }: { document: LogicalDocument }) {
 }
 
 function DocumentSourceCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const sourceFactsAtom = useMemo(() => createDocumentRowSourceFactsAtom(documentId), [documentId])
   const { pending, source } = useAtomValueRawSync(sourceFactsAtom)
 
@@ -277,8 +277,8 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
 }
 
 function DocumentStatusCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
   const { failureMessageKey, status, statusPending } = useAtomValueRawSync(statusFactsAtom)
   const failureReason = failureMessageKey ? t(($) => $[failureMessageKey]) : undefined
@@ -324,7 +324,7 @@ const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
 ))
 
 export function DocumentsEmpty() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const setUploadRequest = useSetAtom(documentUploadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
@@ -371,7 +371,7 @@ export function DocumentsEmpty() {
 }
 
 function DocumentsToolbar() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const filter = useAtomValueRawSync(documentFilterAtom)
   const setFilter = useSetAtom(documentFilterAtom)
   const search = useAtomValueRawSync(documentSearchAtom)
@@ -444,7 +444,7 @@ function DocumentsToolbar() {
 }
 
 function DocumentsTableHeader() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const {
     allSelected,
     canSelect,
@@ -493,8 +493,8 @@ function DocumentsTableHeader() {
 }
 
 function DocumentsTable() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const { documents, resultsIncomplete, sourcesPending, documentSnapshotPending } =
     useAtomValueRawSync(documentTableContentFactsAtom)
   const renderWindowKey = useAtomValueRawSync(documentRenderWindowIdentityAtom)
@@ -654,7 +654,7 @@ function DocumentsTable() {
 }
 
 export function DocumentsList() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <>
@@ -674,7 +674,7 @@ export function DocumentsList() {
 }
 
 export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: number }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <div

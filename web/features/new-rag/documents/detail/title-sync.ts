@@ -7,7 +7,7 @@ import { useKnowledgeSpace } from '../../space/context'
 import { documentDetailTitleAtom } from './state/queries'
 
 export function useDocumentDetailTitle() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const documentTitle = useAtomValue(documentDetailTitleAtom)
   const { space } = useKnowledgeSpace()
   const resolvedDocumentTitle = documentTitle ?? t(($) => $.documents)

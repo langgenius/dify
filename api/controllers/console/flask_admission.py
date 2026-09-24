@@ -18,6 +18,7 @@ from controllers.console.wraps import (
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
+from libs.oauth_bearer import bearer_feature_required
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.system_feature_service import SystemFeatureService
@@ -46,6 +47,7 @@ def console_account_admission[T, **P, R](
     require_change_email_enabled: bool = False,
     require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
+    require_oauth_bearer_enabled: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_checks: Sequence[RBACCheck] | None = None,
 ) -> Callable[
@@ -56,8 +58,8 @@ def console_account_admission[T, **P, R](
 
     All combinations use this decorator factory. Requirements are data, while
     the execution order stays fixed: edition, setup, login/CSRF, optional
-    account initialization, optional enterprise license, role/RBAC checks, then
-    context construction.
+    account initialization, optional enterprise license and feature checks,
+    role/RBAC checks, then context construction.
     """
 
     def decorator(
@@ -91,6 +93,8 @@ def console_account_admission[T, **P, R](
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
         if require_change_email_enabled:
             admitted = enable_change_email(admitted)
+        if require_oauth_bearer_enabled:
+            admitted = bearer_feature_required(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
         if require_initialized:

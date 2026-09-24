@@ -29,8 +29,8 @@ export function KnowledgeUpgradeDialog({
   onCancel: () => void
   onStarted: (dataset: DatasetCardItem, job: KnowledgeFsUpgradeJobResponse) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const cancelRef = useRef<HTMLButtonElement>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const discoveryQuery = useQuery(

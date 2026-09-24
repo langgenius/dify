@@ -13,7 +13,7 @@ import { retrievalComposerModeAtom } from './state/graph'
 import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
 function RetrievalTestSurface() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const mode = useAtomValueRawSync(retrievalComposerModeAtom)

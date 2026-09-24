@@ -190,8 +190,8 @@ function ConnectedSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t } = useTranslation('knowledgeSpace')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t } = useTranslation(['knowledgeSpace'])
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
@@ -370,8 +370,8 @@ function BasicSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialSource] = useState(source)
   const [nextName, setNextName] = useState(initialSource.name)
   const [nextSyncMode, setNextSyncMode] = useState<SourceSyncPolicy['mode']>(() =>
@@ -473,8 +473,8 @@ function WebsiteSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialSource] = useState(source)
   const providerName = sourceProviderDetails(initialSource).name ?? ''
   const providerKey = metadataString(initialSource.metadata, 'providerKey')

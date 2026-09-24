@@ -24,7 +24,7 @@ type Props = Readonly<{
 }>
 
 const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [isOpen, setIsOpen] = useState(false)
   const selectedIds = useMemo(
     () => selectedSpaces.map((space) => space.control_space_id),

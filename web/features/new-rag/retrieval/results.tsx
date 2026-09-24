@@ -28,7 +28,7 @@ export type QualityDecision = 'bad-case' | 'golden'
 export type BadCaseReason = 'low-score' | 'retrieval-miss'
 
 function ScorePill({ score }: { score: number }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
   const normalized = Math.max(0, Math.min(1, score))
   const numberFormat = new Intl.NumberFormat(i18n.language, {
     maximumFractionDigits: 2,
@@ -51,7 +51,7 @@ function ScorePill({ score }: { score: number }) {
 }
 
 function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const router = useRouter()
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const [isResolving, setIsResolving] = useState(false)
@@ -133,7 +133,7 @@ export function EvidenceCard({
   evidence: RetrievalEvidence
   index: number
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const unavailable = evidence.availability === 'unavailable'
 
   return (
@@ -219,7 +219,7 @@ export function EvidenceCard({
 }
 
 export function ResultSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -289,7 +289,7 @@ export function FailedResult({
   pending?: boolean
   recovery?: { href: string; label: string }
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   return (
     <div
       role="alert"
@@ -402,7 +402,7 @@ export function ResearchAnswer({
   researchTaskId: string
   streaming: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const linkedAnswer = useMemo(
     () => linkResearchCitations(answer, citationCount),
     [answer, citationCount],
@@ -462,7 +462,7 @@ export function QualityActions({
   pending?: boolean
   qualityHref: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   if (decision) {
     return (
       <div

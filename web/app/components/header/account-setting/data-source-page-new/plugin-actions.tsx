@@ -40,7 +40,7 @@ const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
 }
 
 const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const readmeTriggerId = useId()

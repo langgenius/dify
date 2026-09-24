@@ -82,7 +82,7 @@ const SnippetMainContent = ({
   onBeforePublish,
   onSaved,
 }: SnippetMainContentProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const { handlePublish, isPublishing } = useSnippetPublish({
     snippetId,
   })

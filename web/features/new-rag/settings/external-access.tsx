@@ -15,7 +15,7 @@ const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const WORKFLOW_ACCESS_DESCRIPTION_ID = 'knowledge-workflow-access-description'
 
 export function ExternalAccessSection() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const current = useAtomValue(knowledgeSettingsExternalDraftAtom)
   const updateDraft = useSetAtom(updateKnowledgeSettingsExternalDraftAtom)

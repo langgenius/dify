@@ -26,7 +26,7 @@ const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefin
 }
 
 export const useAvailableNodesMetaData = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()

@@ -73,8 +73,8 @@ function responseStatus(error: unknown): number | undefined {
 }
 
 function DocumentsTaskDrawerHeader() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
 
   return (
@@ -106,8 +106,8 @@ function DocumentsTaskDrawerHeader() {
 }
 
 function DocumentsTaskQueryRecovery() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const open = useAtomValueRawSync(taskDrawerOpenAtom)
   const recovery = useAtomValueRawSync(taskDrawerQueryRecoveryFactsAtom)
   const retryDocuments = useSetAtom(retryTaskDrawerDocumentsAtom)
@@ -186,7 +186,7 @@ function DocumentsTaskQueryRecovery() {
 }
 
 function useDocumentsTaskRowTitle(task: BackgroundTask) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const rowLabelsAtom = useMemo(() => createTaskDrawerRowLabelsAtom(task), [task])
   const {
     documentTitle: resolvedDocumentTitle,
@@ -221,7 +221,7 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
 }
 
 function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const title = useDocumentsTaskRowTitle(task)
   const progress = taskProgress(task)
@@ -295,8 +295,8 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
   const { canRead, canWrite, includeCancelTarget, includeRetryTarget, knowledgeSpaceId } =
@@ -511,7 +511,7 @@ function DocumentsTaskRow({ task: baseTask }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskRows() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const open = useAtomValueRawSync(taskDrawerOpenAtom)
   const orderedTasks = useAtomValueRawSync(taskDrawerOrderedBaseTasksAtom)
   const rowsState = useAtomValueRawSync(taskDrawerRowsStateAtom)
@@ -563,7 +563,7 @@ function DocumentsTaskRows() {
 }
 
 function DocumentsTaskLoadMore() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const open = useAtomValueRawSync(taskDrawerOpenAtom)
   const pagination = useAtomValueRawSync(taskDrawerLoadMoreFactsAtom)
   const showMore = useSetAtom(showMoreTaskDrawerResultsAtom)

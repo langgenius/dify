@@ -63,7 +63,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
   const queryLabelId = useId()
   const headerLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const apiKeyHeaderInputId = useId()
   const apiKeyHeaderValueInputId = useId()
   const apiKeyQueryInputId = useId()

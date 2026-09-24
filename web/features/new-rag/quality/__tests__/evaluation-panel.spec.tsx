@@ -264,7 +264,7 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'knowledgeSpace.qualityPage.evaluation.dialogDescription_other:{"count":6}',
+      'knowledgeSpace.qualityPage.evaluation.dialogDescription:{"count":6}',
     )
     expect(
       screen.getByRole('radio', {
@@ -274,7 +274,7 @@ describe('QualityEvaluationPanel', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
-  it('uses singular copy for one active golden question', async () => {
+  it('passes a singular count for one active golden question', async () => {
     const user = userEvent.setup()
     serviceMock.listGoldenQuestions.mockResolvedValue({
       data: [{ id: 'golden-1', status: 'active' }],
@@ -294,7 +294,7 @@ describe('QualityEvaluationPanel', () => {
         name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
       }),
     ).toHaveAccessibleDescription(
-      'knowledgeSpace.qualityPage.evaluation.dialogDescription_one:{"count":1}',
+      'knowledgeSpace.qualityPage.evaluation.dialogDescription:{"count":1}',
     )
   })
 

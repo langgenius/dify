@@ -34,8 +34,8 @@ import {
 } from './use-bulk-actions'
 
 function BulkReindexAction() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const disabled = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
@@ -79,7 +79,7 @@ function BulkReindexAction() {
 }
 
 function BulkDownloadAction() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const downloadableDocumentIds = useAtomValueRawSync(downloadableDocumentIdsAtom)
   const disabled = !canDownload || !downloadableDocumentIds.length
@@ -105,8 +105,8 @@ function BulkDownloadAction() {
 }
 
 function BulkAvailabilityAction() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tDataset } = useTranslation('dataset')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tDataset } = useTranslation(['dataset'])
   const actionVisible = useAtomValueRawSync(selectionAvailabilityActionVisibleAtom)
   const actionDisabled = useAtomValueRawSync(selectionAvailabilityDisabledAtom)
   const targetEnabled = useAtomValueRawSync(selectionAvailabilityTargetEnabledAtom)
@@ -129,7 +129,7 @@ function BulkAvailabilityAction() {
 }
 
 function BulkRemoveAction() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const resultsUnavailable = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const { busy, pending, run } = useBulkRemoveAction()
@@ -180,7 +180,7 @@ function BulkRemoveAction() {
 }
 
 export function DocumentBulkActionsToolbar() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const selectedDocumentIds = useAtomValueRawSync(validSelectedDocumentIdsAtom)

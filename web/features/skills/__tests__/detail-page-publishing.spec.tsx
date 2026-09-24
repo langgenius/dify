@@ -133,7 +133,7 @@ describe('SkillDetailPage publishing', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('skill.skillManagement.detail.publishReferencesDescription_one:{"count":1}'),
+      screen.getByText('skill.skillManagement.detail.publishReferencesDescription:{"count":1}'),
     ).toBeInTheDocument()
     expect(await screen.findByText('Fresh Cache Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
@@ -229,12 +229,12 @@ describe('SkillDetailPage publishing', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
+        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
       }),
     )
 
     const referencesPopover = await screen.findByRole('dialog', {
-      name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
+      name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
     })
     const sidebarReferenceLink = within(referencesPopover).getByRole('link', {
       name: /Sidebar Agent/,
@@ -261,12 +261,12 @@ describe('SkillDetailPage publishing', () => {
     renderSkillDetailPage()
 
     const referenceCount = await screen.findByText(
-      'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+      'skill.skillManagement.detail.referencedBy:{"count":0}',
     )
     expect(referenceCount).toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+        name: 'skill.skillManagement.detail.referencedBy:{"count":0}',
       }),
     ).not.toBeInTheDocument()
   })
@@ -285,7 +285,7 @@ describe('SkillDetailPage publishing', () => {
     expect(
       await screen.findByRole(
         'button',
-        { name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}' },
+        { name: 'skill.skillManagement.detail.referencedBy:{"count":1}' },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument()
@@ -305,7 +305,7 @@ describe('SkillDetailPage publishing', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
+        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
       }),
     )
     expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()

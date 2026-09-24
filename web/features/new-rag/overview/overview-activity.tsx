@@ -136,7 +136,7 @@ function ActivityActor({
   showName?: boolean
   size?: 'xxs' | 'xs'
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const actor = activityActor(
     activity,
     members,
@@ -158,8 +158,8 @@ function ActivityActor({
 }
 
 function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
-  const { t, i18n } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const activities = useAtomValueRawSync(overviewActivityPreviewDataAtom)
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
   const error = useAtomValueRawSync(overviewActivityPreviewErrorAtom)
@@ -328,7 +328,7 @@ function ActivityDateRangePicker({
   dates: ActivityDateRange
   onChange: (dates: ActivityDateRange) => void
 }) {
-  const { t, i18n } = useTranslation('knowledgeSpace')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
   const today = dayjs()
   const formatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
@@ -399,9 +399,9 @@ function ActivityDrawer({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t, i18n } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tActivityLog } = useTranslation('appLog')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tActivityLog } = useTranslation(['appLog'])
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const members = useMembers().data?.accounts ?? []
   const [range, setRange] = useState<ActivityRange>('today')

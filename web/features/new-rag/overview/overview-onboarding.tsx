@@ -27,7 +27,7 @@ export function OverviewOnboarding() {
 }
 
 function IndexingProgress() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const indexingTask = useAtomValueRawSync(overviewIndexingTaskAtom)
   const indexingSourceName = useAtomValueRawSync(overviewIndexingSourceNameAtom)
   if (!indexingTask) return null
@@ -69,7 +69,7 @@ function IndexingProgress() {
 }
 
 function EmptyKnowledgeOnboarding() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const canManageDocuments = useKnowledgeSpacePermission('knowledge_space_document_write')

@@ -47,8 +47,8 @@ export function DocumentMetadataPicker({
   onRetry: () => void
   onSelect: (field: DocumentMetadataField) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'create' | 'select'>('select')
   const [query, setQuery] = useState('')

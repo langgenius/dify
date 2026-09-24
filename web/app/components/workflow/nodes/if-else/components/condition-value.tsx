@@ -16,7 +16,7 @@ type ConditionValueProps = {
   value: string | string[] | boolean
 }
 const ConditionValue = ({ variableSelector, labelName, operator, value }: ConditionValueProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes()
   const variableName =
     labelName ||

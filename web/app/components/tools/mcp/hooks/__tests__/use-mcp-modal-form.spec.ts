@@ -13,6 +13,16 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn(),
 }))
 
+vi.mock('tldts', () => ({
+  getDomain: vi.fn((url: string) => {
+    try {
+      return new URL(url).hostname
+    } catch {
+      return null
+    }
+  }),
+}))
+
 describe('useMCPModalForm', () => {
   describe('Utility Functions', () => {
     describe('isValidUrl', () => {
@@ -423,6 +433,64 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.isFetchingIcon).toBe(false)
 
       consoleErrorSpy.mockRestore()
+    })
+
+    it('should ignore stale blur when a newer blur starts before fetch completes', async () => {
+      const { uploadRemoteFileInfo } = await import('@/service/common')
+      let resolveFirstUpload: (value: {
+        id: string
+        name: string
+        size: number
+        mime_type: string
+        url: string
+      }) => void
+      const firstUpload = new Promise<{
+        id: string
+        name: string
+        size: number
+        mime_type: string
+        url: string
+      }>((resolve) => {
+        resolveFirstUpload = resolve
+      })
+
+      vi.mocked(uploadRemoteFileInfo).mockImplementation((remoteIcon) => {
+        if (String(remoteIcon).includes('first.example.com')) return firstUpload
+        return Promise.resolve({
+          id: 'file456',
+          name: 'icon2.png',
+          size: 1024,
+          mime_type: 'image/png',
+          url: 'https://example.com/files/file456/file-preview/icon2.png',
+        } as unknown as { id: string; name: string; size: number; mime_type: string; url: string })
+      })
+
+      const { result } = renderHook(() => useMCPModalForm())
+
+      const firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://second.example.com/mcp')
+      })
+
+      resolveFirstUpload!({
+        id: 'file123',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/files/file123/file-preview/icon.png',
+      })
+      await act(async () => {
+        await firstBlur
+      })
+
+      expect(result.current.state.appIcon.type).toBe('image')
+      expect((result.current.state.appIcon as AppIconImageSelection).url).toBe(
+        'https://example.com/files/file456/file-preview/icon2.png',
+      )
+      expect(result.current.state.isFetchingIcon).toBe(false)
+
+      vi.mocked(uploadRemoteFileInfo).mockReset()
     })
 
     it('should fetch icon successfully for valid URL in create mode', async () => {

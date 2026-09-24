@@ -26,7 +26,7 @@ const queryImagesMaxBytes = 32 * 1024 * 1024
 const queryImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp'])
 
 export function RetrievalComposer() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { disabled, images, mode, query, runnable } = useAtomValueRawSync(
     retrievalComposerFactsAtom,
   )

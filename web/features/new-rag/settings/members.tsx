@@ -30,7 +30,7 @@ export function KnowledgeSettingsMembers({
   onSelectedMemberIdsChange,
   onVisibilityChange,
 }: KnowledgeSettingsMembersProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <div className="min-w-0 flex-1">

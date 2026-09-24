@@ -28,8 +28,8 @@ export function KnowledgeUpgradeCard({
   onSucceeded?: (controlSpaceId: string) => void
   onSettled?: (upgrade: KnowledgeUpgrade) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const { canRetry, dataset } = upgrade
   const jobInput = {

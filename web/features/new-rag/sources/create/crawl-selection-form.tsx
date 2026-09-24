@@ -86,7 +86,7 @@ function ReadyCrawlSelectionForm({
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const {

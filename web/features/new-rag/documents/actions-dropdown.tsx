@@ -60,7 +60,7 @@ function RenameDocumentMenuItem({
   document: LogicalDocument
   onOpen: () => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
   const busy = useDocumentRowActionBusy(document.id)
 
@@ -85,8 +85,8 @@ function RenameDocumentDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [nextTitle, setNextTitle] = useState(document.title)
   const { busy, pending, run } = useRenameDocumentAction(document)
   const inputId = `new-document-${document.id}-rename`
@@ -142,7 +142,7 @@ function RenameDocumentDialog({
 }
 
 function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canEdit = useDocumentCanEdit(document.id)
   const { task } = useDocumentActionFacts(document.id)
   const { busy, run } = useRetryDocumentTaskAction(document.id, task)
@@ -163,7 +163,7 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
 }
 
 function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useReindexDocumentAction(document, status)
@@ -192,7 +192,7 @@ function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) 
 }
 
 function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const { status, documentSnapshotPending } = useDocumentActionFacts(document.id)
   const { busy, run } = useDownloadDocumentAction(document, status, documentSnapshotPending)
@@ -212,7 +212,7 @@ function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
 }
 
 function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useToggleDocumentAvailabilityAction(document, status)
@@ -246,7 +246,7 @@ function RemoveDocumentMenuItem({
   document: LogicalDocument
   onOpen: () => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
   const busy = useDocumentRowActionBusy(document.id)
   const disabled = !canEdit || document.status === 'deleting'
@@ -274,7 +274,7 @@ function RemoveDocumentDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const { pending, run } = useRemoveDocumentAction(document)
 
   return (
@@ -316,7 +316,7 @@ export function DocumentActionsDropdown({
   className?: string
   document: LogicalDocument
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const busy = useDocumentRowActionBusy(document.id)
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)

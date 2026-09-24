@@ -48,7 +48,7 @@ const RecallSettings: FC<Props> = ({
   scoreThreshold,
   topK,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'dataset', 'common'])
   const [open, setOpen] = useState(false)
   const { currentModel, currentProvider, modelList } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)

@@ -404,7 +404,7 @@ const CrawlPageList = memo(
 )
 
 function EmptyPreview() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   return (
     <div className="flex min-h-38.75 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default-subtle px-6 text-center">
       <span className="flex size-10 items-center justify-center rounded-[10px] bg-background-section-burn">
@@ -437,7 +437,7 @@ export function WebsiteCrawlPreview({
   providerName?: string
   syncPolicyField?: ReactNode
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const router = useRouter()
   const primaryActionLabelId = useId()
   const stopButtonLabelId = useId()

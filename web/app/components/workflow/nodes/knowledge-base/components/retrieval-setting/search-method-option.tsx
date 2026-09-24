@@ -143,7 +143,7 @@ function SearchMethodRadioCard({
   isRecommended,
   children,
 }: SearchMethodRadioCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const isActive = option.id === searchMethod
 
   return (
@@ -238,7 +238,7 @@ export function SearchMethodOption({
 }: SearchMethodOptionProps) {
   const rerankLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
   const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)

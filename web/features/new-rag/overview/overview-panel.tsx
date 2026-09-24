@@ -64,7 +64,7 @@ export function EmptyInline({
 }
 
 export function OverviewErrorInline() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <EmptyInline

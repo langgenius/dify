@@ -51,7 +51,7 @@ export function SourceRow({
   onCheckedChange: (checked: boolean) => void
   source: Source
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const syncWorkflow = source.syncWorkflow
   const displayStatus = sourceDisplayStatus(source)

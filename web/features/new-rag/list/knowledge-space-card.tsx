@@ -23,7 +23,7 @@ export function KnowledgeSpaceCard({
   onOpenTagManagement: () => void
   highlighted?: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const linkedAppsDescriptionId = useId()
   const summary = knowledgeSpace.technical_summary

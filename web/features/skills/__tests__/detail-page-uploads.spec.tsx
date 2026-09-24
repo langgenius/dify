@@ -29,7 +29,7 @@ describe('SkillDetailPage uploads', () => {
 
     fireEvent.dragOver(contextRegion, { dataTransfer })
 
-    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to root folder$/)
+    expect(screen.getByText(/^Upload to/).textContent).toMatch(/^Upload to root folder$/)
 
     fireEvent.drop(contextRegion, { dataTransfer })
     await confirmUploadReview()
@@ -158,7 +158,7 @@ describe('SkillDetailPage uploads', () => {
     const { dataTransfer } = createDataTransfer([upload])
     fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
 
-    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to references$/)
+    expect(screen.getByText(/^Upload to/).textContent).toMatch(/^Upload to references$/)
 
     fireEvent.drop(folder.closest('li')!, { dataTransfer })
     await confirmUploadReview()

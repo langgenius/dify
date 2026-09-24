@@ -21,9 +21,9 @@ type CreatorFilterProps = {
 }
 
 export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
-  const { t } = useTranslation('dataset')
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

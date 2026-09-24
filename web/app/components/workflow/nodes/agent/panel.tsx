@@ -29,7 +29,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     outputSchema,
     handleMemoryChange,
   } = useConfig(props.id, props.data)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isMCPVersionSupported = isSupportMCP(inputs.meta?.version ?? undefined)
 
   const resetEditor = useStore((s) => s.setControlPromptEditorRerenderKey)

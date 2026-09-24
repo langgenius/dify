@@ -28,7 +28,7 @@ const TopKItem: FC<Props> = ({
   disabled = false,
   max = env.NEXT_PUBLIC_TOP_K_MAX_VALUE,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const handleParamChange = (key: string, value: number) => {
     let notOutRangeValue = Number.parseInt(value.toFixed(0))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)

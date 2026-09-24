@@ -1,5 +1,6 @@
 {
   "desc": "هنا يمكنك تعديل الخصائص وإعدادات الاسترجاع لهذه المعرفة.",
+  "form.changeIcon": "تغيير أيقونة المعرفة",
   "form.chunkStructure.description": " حول هيكل القطعة.",
   "form.chunkStructure.learnMore": "تعرف على المزيد",
   "form.chunkStructure.title": "هيكل القطعة",

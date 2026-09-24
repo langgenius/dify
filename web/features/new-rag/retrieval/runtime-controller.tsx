@@ -94,7 +94,7 @@ async function queryFailure(error: unknown) {
 }
 
 export function RetrievalRuntimeController() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const linkedSelection = useAtomValueRawSync(retrievalLinkedSelectionAtom)

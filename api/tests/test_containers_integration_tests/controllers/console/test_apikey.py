@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from threading import Event
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from models import Account
-from models.account import AccountStatus, TenantAccountRole
+from models.account import TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.enums import ApiTokenType, DataSourceType
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding
+from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
+from services.auth.api_key_contracts import ApiKeyLimitExceededError
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -58,7 +60,7 @@ def setup_dataset(
 
 
 @pytest.fixture(autouse=True)
-def cleanup_api_tokens(db_session_with_containers: Session):
+def cleanup_api_tokens(db_session_with_containers: Session) -> Iterator[None]:
     """Remove API tokens created during each test."""
     yield
     db_session_with_containers.execute(delete(ApiToken))
@@ -186,28 +188,25 @@ class TestAppApiKeyResource:
 
     def test_delete_forbidden_for_non_admin(
         self,
-        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        test_client_with_containers: FlaskClient,
     ) -> None:
-        """A non-admin member cannot delete API keys via the controller permission check."""
-        from werkzeug.exceptions import Forbidden
+        """A non-admin member cannot delete API keys through Console admission."""
+        account, tenant = create_console_account_and_tenant(db_session_with_containers)
+        app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+        membership = db_session_with_containers.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id
+            )
+        )
+        assert membership is not None
+        membership.role = TenantAccountRole.NORMAL
+        db_session_with_containers.commit()
+        headers = authenticate_console_client(test_client_with_containers, account)
 
-        from controllers.console.apikey import BaseApiKeyResource
+        response = test_client_with_containers.delete(f"/console/api/apps/{app.id}/api-keys/{uuid4()}", headers=headers)
 
-        resource = BaseApiKeyResource()
-        resource.resource_type = ApiTokenType.APP
-        resource.resource_model = MagicMock()
-        resource.resource_id_field = "app_id"
-
-        non_admin = Account(name="Normal User", email="normal@example.com", status=AccountStatus.ACTIVE)
-        non_admin.id = "normal-user"
-        non_admin.role = TenantAccountRole.NORMAL
-
-        with (
-            flask_app_with_containers.test_request_context("/"),
-            patch("controllers.console.apikey._get_resource"),
-        ):
-            with pytest.raises(Forbidden):
-                BaseApiKeyResource.delete(resource, "rid", "kid", "tenant-id", non_admin)
+        assert response.status_code == 403
 
 
 class TestDatasetApiKeyListResource:
@@ -309,6 +308,49 @@ class TestDatasetApiKeyListResource:
         # reveal-once: the list returns masked tokens, never the full secret.
         listed = {item["id"]: item["token"] for item in resp.json["data"]}
         assert listed[scoped_resp.json["id"]] != scoped_resp.json["token"]
+
+
+def test_dataset_creation_routes_serialize_on_the_same_workspace(
+    setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+    db_session_with_containers: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The workspace request must wait until the per-dataset count/insert commits."""
+    _, _, dataset = setup_dataset
+    workspace_id, dataset_id = dataset.tenant_id, dataset.id
+    db_session_with_containers.add_all(
+        ApiToken(tenant_id=workspace_id, type=ApiTokenType.DATASET, token=f"dataset-{uuid4()}") for _ in range(9)
+    )
+    db_session_with_containers.commit()
+    repository = DatasetApiKeyRepository(session_factory=sessionmaker(bind=db_session_with_containers.get_bind()))
+    first_counted, release_first, second_started = Event(), Event(), Event()
+    generate_key = ApiToken.generate_api_key
+
+    def pause_first_insert(prefix: str, n: int, *, session: Session) -> str:
+        if prefix == "ds-":
+            first_counted.set()
+            assert release_first.wait(timeout=10), "Timed out waiting to release the first insertion"
+        return generate_key(prefix, n, session=session)
+
+    def create_workspace_key() -> None:
+        second_started.set()
+        repository.create_workspace_key(workspace_id, (), max_keys=10, prefix="dataset-")
+
+    monkeypatch.setattr(ApiToken, "generate_api_key", pause_first_insert)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(repository.create_key, workspace_id, dataset_id, max_keys=10, prefix="ds-")
+        try:
+            assert first_counted.wait(timeout=5)
+            second = pool.submit(create_workspace_key)
+            assert second_started.wait(timeout=5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.5)
+        finally:
+            release_first.set()
+        first.result(timeout=5)
+        with pytest.raises(ApiKeyLimitExceededError):
+            second.result(timeout=5)
+    assert len(repository.list_workspace_keys(workspace_id)) == 10
 
 
 class TestDatasetApiKeyResource:

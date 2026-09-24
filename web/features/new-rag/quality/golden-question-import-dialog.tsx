@@ -42,7 +42,7 @@ export function GoldenQuestionImportDialog({
 }
 
 function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()

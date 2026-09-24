@@ -92,7 +92,7 @@ function useDocumentInvalidation() {
 }
 
 export function useRenameDocumentAction(document: LogicalDocument) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canEdit = useDocumentCanEdit(document.id)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'rename')
@@ -136,7 +136,7 @@ export function useDownloadDocumentAction(
   status: DocumentDisplayStatus,
   documentSnapshotPending: boolean,
 ) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const canDownload = useAtomValue(documentCanDownloadAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'download')
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
@@ -180,7 +180,7 @@ export function useToggleDocumentAvailabilityAction(
   document: LogicalDocument,
   status: DocumentDisplayStatus,
 ) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canEdit = useDocumentCanEdit(document.id)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'toggle-availability')
@@ -215,7 +215,7 @@ export function useToggleDocumentAvailabilityAction(
 }
 
 export function useRemoveDocumentAction(document: LogicalDocument) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canEdit = useDocumentCanEdit(document.id)
   const onDocumentRemoved = useSetAtom(removeDocumentFromSelectionAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -263,7 +263,7 @@ export function useRetryDocumentTaskAction(
   documentId: string,
   task: DocumentProcessingTask | undefined,
 ) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canEdit = useDocumentCanEdit(documentId)
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -315,7 +315,7 @@ export function useRetryDocumentTaskAction(
 }
 
 export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const canEdit = useDocumentCanEdit(document.id)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)

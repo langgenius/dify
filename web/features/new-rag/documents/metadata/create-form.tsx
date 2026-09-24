@@ -24,8 +24,8 @@ export function DocumentMetadataCreateForm({
   onClose: () => void
   onCreate: (name: string, type: DocumentMetadataType) => Promise<boolean>
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [name, setName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
   const [type, setType] = useState<DocumentMetadataType>('string')

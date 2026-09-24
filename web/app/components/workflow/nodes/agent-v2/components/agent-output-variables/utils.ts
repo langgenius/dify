@@ -282,7 +282,7 @@ export function isDefaultOutput(output: DeclaredOutputConfig) {
   return AGENT_V2_RESERVED_OUTPUT_NAMES.has(output.name)
 }
 
-export function getOutputDescription(output: EditableOutputConfig, t: TFunction) {
+export function getOutputDescription(output: EditableOutputConfig, t: TFunction<['workflow']>) {
   if (output.name === 'text') return t(($) => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
   if (output.name === 'switch')
     return t(($) => $['nodes.agent.outputVars.switch'], { ns: 'workflow' })

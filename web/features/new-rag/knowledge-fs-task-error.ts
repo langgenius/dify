@@ -259,7 +259,7 @@ function knowledgeFsTaskFailureReference(
  */
 export function knowledgeFsTaskFailureDetail(
   failure: KnowledgeFsPublicFailureResponse | undefined,
-  t: TFunction<'knowledgeSpace'>,
+  t: TFunction<['knowledgeSpace']>,
 ): string | undefined {
   const stageKey = knowledgeFsTaskFailureStageKey(failure)
   const reference = knowledgeFsTaskFailureReference(failure)
@@ -268,6 +268,6 @@ export function knowledgeFsTaskFailureDetail(
       ? t(($) => $['taskFailure.failedAtStage'], { stage: t(($) => $[stageKey]) })
       : undefined,
     reference ? t(($) => $['taskFailure.reference'], { traceId: reference }) : undefined,
-  ].filter((part): part is string => Boolean(part))
+  ].filter((part) => Boolean(part))
   return parts.length ? parts.join(' · ') : undefined
 }

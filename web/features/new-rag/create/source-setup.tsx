@@ -48,7 +48,7 @@ type CreateSourceSetupProps = {
 
 export function CreateSourceSetup(props: CreateSourceSetupProps) {
   const { disabled, draft, onDraftChange, onSourceTypeChange } = props
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { datasourcePluginsQuery, providerOptions, providerOption, providerDraft, sessionKey } =
     useSourceSetupInputs(draft)
   const selectProvider = (providerKey: string) => {
@@ -118,7 +118,7 @@ function CreateSourceSetupSession({
   onDraftChange,
   shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const {
     datasourcePluginsQuery,
     datasourceAuthQuery,

@@ -25,7 +25,7 @@ export function RetrievalModeSegmentedControl({
   value: RetrievalMode
   onChange: (value: RetrievalMode) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <SegmentedControl<RetrievalMode>

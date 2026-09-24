@@ -419,7 +419,7 @@ function AgentPromptSelectionBridge({
 }
 
 export function AgentPromptEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({

@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const KnowledgeSpaceList: FC<Props> = ({ list, onChange, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const [removeHoveredId, setRemoveHoveredId] = useState<string>()
   const remove = useCallback(
     (controlSpaceId: string) => {

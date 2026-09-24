@@ -44,7 +44,7 @@ export function SourcesEmpty({
   canAddSource: boolean
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <div className="mt-2.5 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">

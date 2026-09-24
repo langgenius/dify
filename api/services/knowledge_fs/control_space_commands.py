@@ -28,6 +28,7 @@ from models.knowledge_fs import (
     KnowledgeFSProvisionCommandPayload,
     KnowledgeFSRetrievalProfileIntentPayload,
 )
+from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge_fs_control_space_repository import KnowledgeFSControlSpaceCASUpdate
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
@@ -35,7 +36,6 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
 from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
-from services import dataset_api_key_service
 from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSControlSpaceLifecycleService,
     KnowledgeFSControlSpaceNotFoundError,
@@ -302,7 +302,7 @@ class KnowledgeFSControlSpaceCommandService:
             # Dataset API keys scoped only to this space would otherwise keep a binding to a
             # space that is going away (control-space rows are soft-deleted, so nothing
             # cascades). Drop them now, mirroring legacy dataset deletion.
-            dataset_api_key_service.delete_keys_scoped_only_to_knowledge_space(session, control_space_id)
+            dataset_api_key_bindings.delete_keys_scoped_only_to_knowledge_space(session, control_space_id)
 
             payload = KnowledgeFSDeleteCommandPayload(
                 schema_version=1,

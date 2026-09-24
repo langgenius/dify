@@ -26,9 +26,9 @@ export function KnowledgeFsApiAccessDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tAppApi } = useTranslation('appApi')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tAppApi } = useTranslation(['appApi'])
+  const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)

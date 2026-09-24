@@ -22,8 +22,8 @@ export function KnowledgeModelReadinessBanner({
   className?: string
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams.toString()

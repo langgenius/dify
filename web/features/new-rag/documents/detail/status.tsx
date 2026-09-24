@@ -19,8 +19,8 @@ function focusDocumentDetailTitle() {
 }
 
 export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const latestTask = useAtomValueRawSync(documentLatestTaskAtom)
   const reindexInProgress = useAtomValueRawSync(documentReindexInProgressAtom)
   const tasksError = useAtomValueRawSync(documentTaskSnapshotErrorAtom)
@@ -70,8 +70,8 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
 }
 
 export function DocumentPermissionRecoveryNotice() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const permissionRecoveryBusy = useAtomValueRawSync(documentPermissionRecoveryBusyAtom)
   const permissionRecoveryNeeded = useAtomValueRawSync(documentPermissionRecoveryNeededAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)

@@ -30,6 +30,7 @@ type ModelSelectorBaseProps = {
   ariaInvalid?: boolean
   ariaLabelledBy?: string
   ariaRequired?: boolean
+  'aria-labelledby'?: string
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
   className?: string
@@ -62,6 +63,7 @@ function ModelSelectorRoot({
   ariaInvalid,
   ariaLabelledBy,
   ariaRequired,
+  'aria-labelledby': labelledBy,
   value,
   models,
   className,
@@ -88,7 +90,7 @@ function ModelSelectorRoot({
   surface: 'default' | 'workflow'
   shape: 'standalone' | 'split'
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(
@@ -153,7 +155,7 @@ function ModelSelectorRoot({
       <ModelSelectorTrigger
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid || undefined}
-        aria-labelledby={ariaLabelledBy}
+        aria-labelledby={ariaLabelledBy || labelledBy}
         aria-required={ariaRequired}
         currentProvider={currentProvider}
         currentModel={currentModel}

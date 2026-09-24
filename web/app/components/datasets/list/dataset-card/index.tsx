@@ -43,7 +43,7 @@ const DatasetCard = ({
   stepByStepTourActionMenuOpen,
   stepByStepTourCardTarget,
 }: DatasetCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const nameId = useId()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),

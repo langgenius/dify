@@ -114,8 +114,8 @@ export function DocumentPermissionRecoveryBulkRegion({ children }: { children: R
 }
 
 export function DocumentReadPermissionRecovery() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const { canRetryRead, denialIdentity, fetching } = useAtomValueRawSync(
     documentReadRecoveryFactsAtom,
   )

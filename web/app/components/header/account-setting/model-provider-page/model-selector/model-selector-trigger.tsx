@@ -57,7 +57,8 @@ function ModelSelectorTrigger({
   showModelMeta = true,
   isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
+  const valueId = useId()
   const requiredTextId = useId()
 
   const showClear = !!defaultModel && !!onClear
@@ -113,7 +114,7 @@ function ModelSelectorTrigger({
   const requiredText = ariaRequired
     ? t(($) => $['errorMsg.fieldRequired'], { field: '', ns: 'common' }).trim()
     : undefined
-  const triggerLabelledBy = [ariaLabelledBy, requiredText ? requiredTextId : undefined]
+  const triggerLabelledBy = [ariaLabelledBy, valueId, requiredText ? requiredTextId : undefined]
     .filter(Boolean)
     .join(' ')
 
@@ -188,6 +189,7 @@ function ModelSelectorTrigger({
               )}
 
               <span
+                id={valueId}
                 className={cn(
                   'flex grow items-center gap-1 truncate',
                   size === 'small' ? 'px-0.5' : 'px-1 py-0.75',

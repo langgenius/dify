@@ -12,7 +12,7 @@ export function DocumentErrorState({
   onRetry?: () => void
   title: string
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">

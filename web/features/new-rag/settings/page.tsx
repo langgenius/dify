@@ -17,9 +17,9 @@ import {
 } from './state/queries'
 
 function KnowledgeSettingsSkeleton() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tSettings } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
 
   return (
     <div className="flex flex-col gap-4 pt-2">
@@ -65,9 +65,9 @@ function KnowledgeSettingsSkeleton() {
 }
 
 function KnowledgeSettingsContent() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tSettings } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
   const isPending = useAtomValue(knowledgeSettingsIsPendingAtom)
   const hasError = useAtomValue(knowledgeSettingsHasErrorAtom)
   const hasData = useAtomValue(knowledgeSettingsHasDataAtom)

@@ -55,7 +55,7 @@ type GoldenQuestionDialogState =
     }
 
 function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   return (
     <span
       className={cn(
@@ -103,7 +103,7 @@ function GoldenQuestionEditorDialog({
   open: boolean
   session?: GoldenQuestionDialogState
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -171,8 +171,8 @@ function GoldenQuestionEditorDialog({
 }
 
 export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -268,13 +268,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return false
       }
-      toast.success(
-        t(
-          ($) =>
-            $[ids.size === 1 ? 'qualityPage.deletedToast_one' : 'qualityPage.deletedToast_other'],
-          { count: ids.size },
-        ),
-      )
+      toast.success(t(($) => $['qualityPage.deletedToast'], { count: ids.size }))
       setDeleteIds(undefined)
       return true
     } catch {
@@ -431,15 +425,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       {canEdit && selected.size > 0 && (
         <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
           <span className="system-sm-medium text-text-primary">
-            {t(
-              ($) =>
-                $[
-                  selected.size === 1
-                    ? 'qualityPage.selectedCount_one'
-                    : 'qualityPage.selectedCount_other'
-                ],
-              { count: selected.size },
-            )}
+            {t(($) => $['qualityPage.selectedCount'], { count: selected.size })}
           </span>
           <span aria-hidden className="h-5 w-px bg-divider-regular" />
           <Button

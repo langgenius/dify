@@ -69,8 +69,8 @@ function metadataDisplayValue(value: unknown, locale: string) {
 }
 
 function DocumentMetadataCardContent() {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const router = useRouter()
   const canEdit = useAtomValueRawSync(documentCanEditAtom)

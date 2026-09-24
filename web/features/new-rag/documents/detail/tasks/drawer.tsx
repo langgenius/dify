@@ -51,8 +51,8 @@ export function DocumentDetailTasksDrawer({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const currentDocument = useAtomValueRawSync(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canEdit = useAtomValueRawSync(documentCanEditAtom)

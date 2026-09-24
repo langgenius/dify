@@ -22,7 +22,7 @@ import GlobalInputs from './label-right-content/global-inputs'
 const InputFieldPanel = () => {
   const uniqueInputsLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const nodes = useNodes<DataSourceNodeType>()
   const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
     useInputFieldPanel()

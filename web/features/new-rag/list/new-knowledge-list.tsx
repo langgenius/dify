@@ -98,8 +98,8 @@ export function NewKnowledgeList({
   view: 'classic' | 'agent'
   onViewChange: (value: 'classic' | 'agent') => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)

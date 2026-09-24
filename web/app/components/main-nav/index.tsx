@@ -28,7 +28,7 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNav({ className, initialPlatform }: MainNavProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

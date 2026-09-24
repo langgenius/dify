@@ -52,8 +52,8 @@ export function SourceActions({
   ensureModelSetupReady: () => Promise<boolean>
   source: Source
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
   const acceptSourceSnapshot = useSetAtom(acceptSourceSnapshotAtom)

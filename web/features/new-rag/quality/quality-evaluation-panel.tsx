@@ -66,7 +66,7 @@ function keepLatestReplay(
 }
 
 function EvaluationState({ state }: { state: ReplayState }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   return (
     <span
       className={cn(
@@ -88,8 +88,8 @@ export function EvaluationReport({
   onRunStarted: (runId: string) => void
   runId: string
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const [runDialogOpen, setRunDialogOpen] = useState(false)
@@ -286,7 +286,7 @@ function EvidenceDetailsDialog({
 }
 
 function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: string }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { space } = useKnowledgeSpace()
   const evidenceDetailQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
@@ -389,7 +389,7 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
 }
 
 function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEvidenceItem }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const source = [
     evidence.document_name,
     evidence.section_path?.join(' / '),
@@ -420,7 +420,7 @@ function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEv
 }
 
 function RunEvaluationButton({ onClick }: { onClick: () => void }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <Button variant="primary" onClick={onClick}>
@@ -460,7 +460,7 @@ function RunEvaluationDialogContent({
   onClose: () => void
   onRunStarted: (runId: string) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -524,15 +524,9 @@ function RunEvaluationDialogContent({
             {t(($) => $['qualityPage.evaluation.dialogTitle'])}
           </DialogTitle>
           <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
-            {t(
-              ($) =>
-                $[
-                  activeGoldenQuestionCount === 1
-                    ? 'qualityPage.evaluation.dialogDescription_one'
-                    : 'qualityPage.evaluation.dialogDescription_other'
-                ],
-              { count: activeGoldenQuestionCount },
-            )}
+            {t(($) => $['qualityPage.evaluation.dialogDescription'], {
+              count: activeGoldenQuestionCount,
+            })}
           </DialogDescription>
           <DialogClose
             render={
@@ -578,7 +572,7 @@ export function QualityEvaluationPanel({
   actionSlot?: HTMLElement | null
   onOpenReport: (runId: string) => void
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id

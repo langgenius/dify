@@ -5,7 +5,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const Node: FC<NodeProps<KnowledgeRetrievalV2NodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const summaries = new Map(
     (data._control_spaces ?? []).map((space) => [space.control_space_id, space]),
   )

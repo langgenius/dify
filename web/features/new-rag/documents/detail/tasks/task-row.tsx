@@ -55,8 +55,8 @@ export function DocumentTaskRow({
   retryActionCount: number
   task: BackgroundTask
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canEdit = useAtomValueRawSync(documentCanEditAtom)

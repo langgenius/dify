@@ -145,7 +145,7 @@ describe('ModelSelector', () => {
       </>,
     )
 
-    expect(screen.getByRole('button', { name: 'System reasoning model' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /System reasoning model/ })).toBeInTheDocument()
   })
 
   it('exposes required and invalid field guidance on the popover trigger', () => {
@@ -167,6 +167,26 @@ describe('ModelSelector', () => {
     expect(trigger).toHaveAccessibleDescription('Select an embedding model.')
     expect(trigger).toHaveAccessibleName(/common\.errorMsg\.fieldRequired/)
   })
+  it.each([
+    { value: { provider: 'openai', model: 'gpt-4' }, name: 'Embedding Model GPT-4' },
+    { value: undefined, name: 'Embedding Model plugin.detailPanel.configureModel' },
+  ])(
+    'should include the visible field label and current value in its name ($name)',
+    ({ value, name }) => {
+      renderWithQueryClient(
+        <>
+          <div id="embedding-model-label">Embedding Model</div>
+          <ModelSelector
+            aria-labelledby="embedding-model-label"
+            value={value}
+            models={[makeModel()]}
+          />
+        </>,
+      )
+
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    },
+  )
 
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)

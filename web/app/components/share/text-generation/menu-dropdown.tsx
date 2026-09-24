@@ -33,7 +33,7 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
 
   const handleLogout = async () => {
     await webAppLogout(resolveWebAppAddress())

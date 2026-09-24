@@ -37,7 +37,7 @@ function BadCaseReason({
   reason: string
   tags: string[]
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const normalized = reason.toLowerCase()
   if (normalized === 'low-score' || (normalized.includes('low') && normalized.includes('score')))
     return t(($) => $['qualityPage.reasonValues.lowScore'])
@@ -55,7 +55,7 @@ function BadCaseReason({
 }
 
 function BadCaseStatus({ status }: { status: KnowledgeFsBadCaseResponse['status'] }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const visibleStatus = status === 'dismissed' ? 'fixed' : status
   return (
     <div className="flex h-5 items-center gap-1.5 system-xs-medium text-text-primary">
@@ -88,7 +88,7 @@ function BadCasePromotionDialog({
   onOpenChange: (session: BadCasePromotionSession | undefined) => void
   session?: BadCasePromotionSession
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -216,7 +216,7 @@ function BadCaseRow({
   item: KnowledgeFsBadCaseResponse
   onPromote: (item: KnowledgeFsBadCaseResponse) => void
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -345,7 +345,7 @@ function BadCaseRow({
 }
 
 export function BadCasesPanel() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const [promotion, setPromotion] = useState<BadCasePromotionSession>()

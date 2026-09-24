@@ -61,8 +61,8 @@ export function DocumentUploadFileList({
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   variant?: 'compact' | 'form'
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const [previewFile, setPreviewFile] = useState<File>()
 
   return (

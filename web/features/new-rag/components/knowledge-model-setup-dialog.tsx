@@ -28,9 +28,9 @@ export function KnowledgeModelSetupDialog({
   open: boolean
   readiness?: KnowledgeFsSettingsResponse
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tSettings } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
 
   const fieldLabel = (field: KnowledgeFsSettingsResponse['issues'][number]['field']) => {
     if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])

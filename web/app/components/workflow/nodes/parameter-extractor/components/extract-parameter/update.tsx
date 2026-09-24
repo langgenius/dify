@@ -54,7 +54,7 @@ const TYPES = [
 ]
 
 const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const nameLabel = t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
     ns: 'workflow',
   })

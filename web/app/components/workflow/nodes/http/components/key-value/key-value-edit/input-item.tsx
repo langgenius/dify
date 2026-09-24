@@ -37,7 +37,7 @@ const InputItem: FC<Props> = ({
   isSupportFile,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const hasValue = !!value
 

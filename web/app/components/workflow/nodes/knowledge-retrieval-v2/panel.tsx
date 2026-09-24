@@ -26,7 +26,7 @@ const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const SPACE_PAGE_SIZE = 50
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const {
     readOnly,
     inputs,

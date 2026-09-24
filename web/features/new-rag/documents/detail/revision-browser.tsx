@@ -20,7 +20,7 @@ import {
 } from './state/revisions'
 
 function RevisionLoadingState() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
@@ -39,7 +39,7 @@ function RevisionErrorState({
   onRetry?: () => void
   title: string
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
@@ -56,8 +56,8 @@ function RevisionErrorState({
 }
 
 export function DocumentRevisionBrowser() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const requestedRevision = useAtomValueRawSync(documentDetailRequestedRevisionAtom)
   const revision = useAtomValueRawSync(documentDetailRevisionAtom)
   const effectiveRevision = useAtomValueRawSync(documentDetailEffectiveRevisionAtom)

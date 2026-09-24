@@ -24,7 +24,7 @@ const sourceActionClassName =
   'hidden h-4.5 items-center rounded-none bg-transparent p-0 text-xs text-text-accent group-hover:flex hover:bg-transparent'
 
 function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][number] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'common'])
   const router = useRouter()
   const [isResolving, setIsResolving] = useState(false)
 
@@ -71,7 +71,7 @@ function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][
 }
 
 function SourceOpenAction({ source }: { source: Resources['sources'][number] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['knowledgeSpace', 'common'])
   const label = t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })
 
   if (source.data_source_type !== 'knowledge_fs') {
@@ -104,7 +104,7 @@ function SourceOpenAction({ source }: { source: Resources['sources'][number] }) 
 }
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 

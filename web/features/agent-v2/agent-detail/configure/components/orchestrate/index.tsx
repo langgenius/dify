@@ -85,7 +85,7 @@ export function AgentOrchestratePanel({
   onOpenVersions,
   onVersionRestored,
 }: AgentOrchestratePanelProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
   const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
   const orchestrateBottomAction =

@@ -90,7 +90,7 @@ export function OverviewMetrics() {
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
   const loading = useAtomValueRawSync(overviewStatsPendingAtom)
   const stats = useAtomValueRawSync(overviewStatsDataAtom)
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
   const percentFormat = new Intl.NumberFormat(i18n.language, {
     maximumFractionDigits: 0,
     style: 'percent',
@@ -154,7 +154,7 @@ export function QueryOutcomesChart() {
   const error = useAtomValueRawSync(overviewOutcomesErrorAtom)
   const loading = useAtomValueRawSync(overviewOutcomesPendingAtom)
   const buckets = outcomes?.buckets
-  const { t, i18n } = useTranslation('knowledgeSpace')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
   const chartOptions = useMemo(
     () =>
       buildQueryOutcomesChartOptions({

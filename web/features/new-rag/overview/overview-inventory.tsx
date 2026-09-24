@@ -14,7 +14,7 @@ import {
 } from './state'
 
 export function InventoryPanel() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
   const error = useAtomValueRawSync(overviewInventoryErrorAtom)
   const indexing = useAtomValueRawSync(overviewShowIndexingAtom)

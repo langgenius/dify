@@ -36,7 +36,7 @@ export function SourceTypeSelector({
   value: NewKnowledgeSourceType
   onChange: (value: NewKnowledgeSourceType) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <Fieldset disabled={disabled}>
@@ -128,7 +128,7 @@ export function SourceProviderRadioGroup<T extends string>({
 }
 
 export function SourceProviderEmptyState({ className }: { className?: string }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div
@@ -215,7 +215,7 @@ export function SourceProviderSelector({
   showEmptyState?: boolean
   onChange: (providerKey: string) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <Fieldset disabled={disabled}>
@@ -288,7 +288,7 @@ export function SourceNameField({
   preventSubmitOnEnter?: boolean
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <Field name={name} className={cn('gap-1.5', className)}>
@@ -401,7 +401,7 @@ export function SourceProviderCredentialRequiredCard({
   provider: string
   onConnect: () => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <SourceConnectionRequiredCard

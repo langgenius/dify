@@ -26,8 +26,8 @@ export function KnowledgeCreationPermissions({
   onSelectedMemberIdsChange,
   onVisibilityChange,
 }: KnowledgeCreationPermissionsProps) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const labelId = useId()
   const descriptionId = useId()
   const membersErrorId = useId()

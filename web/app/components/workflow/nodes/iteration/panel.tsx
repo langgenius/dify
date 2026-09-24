@@ -41,7 +41,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], { ns: 'workflow' })
   const errorResponseMethodLabel = t(($) => $[`${i18nPrefix}.errorResponseMethod`], {
     ns: 'workflow',

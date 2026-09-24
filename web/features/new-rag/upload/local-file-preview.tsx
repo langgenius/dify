@@ -33,8 +33,8 @@ function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => voi
 }
 
 function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const [content, setContent] = useState<string>()
   const [readFailed, setReadFailed] = useState(false)
 

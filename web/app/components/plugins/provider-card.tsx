@@ -27,7 +27,7 @@ type Props = Readonly<{
 
 const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const getValueFromI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const [
     isShowInstallFromMarketplace,

@@ -1,5 +1,6 @@
 {
   "desc": "ที่นี่คุณสามารถแก้ไขคุณสมบัติและการตั้งค่าการดึงข้อมูลของความรู้นี้",
+  "form.changeIcon": "เปลี่ยนไอคอนความรู้",
   "form.chunkStructure.description": "เกี่ยวกับ Chunk Structure",
   "form.chunkStructure.learnMore": "ศึกษาเพิ่มเติม",
   "form.chunkStructure.title": "โครงสร้างก้อน",

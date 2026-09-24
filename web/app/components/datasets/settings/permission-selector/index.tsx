@@ -17,6 +17,7 @@ import PermissionItem from './permission-item'
 type PermissionSelectorProps = {
   ariaDescribedBy?: string
   ariaLabelledBy?: string
+  'aria-labelledby'?: string
   disabled?: boolean
   disableWhenRbacEnabled?: boolean
   invalid?: boolean
@@ -31,6 +32,7 @@ type PermissionSelectorProps = {
 const PermissionSelector = ({
   ariaDescribedBy,
   ariaLabelledBy,
+  'aria-labelledby': labelledBy,
   disabled,
   disableWhenRbacEnabled = true,
   invalid,
@@ -41,7 +43,7 @@ const PermissionSelector = ({
   onChange,
   onMemberSelect,
 }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const selectedValueId = useId()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -91,7 +93,11 @@ const PermissionSelector = ({
     <Popover>
       <PopoverTrigger
         aria-describedby={ariaDescribedBy}
-        aria-labelledby={ariaLabelledBy ? `${ariaLabelledBy} ${selectedValueId}` : undefined}
+        aria-labelledby={
+          ariaLabelledBy || labelledBy
+            ? `${ariaLabelledBy || labelledBy} ${selectedValueId}`
+            : undefined
+        }
         aria-invalid={invalid}
         disabled={isDisabled}
         className={cn(
@@ -187,10 +193,10 @@ const PermissionSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        className="border-none bg-transparent shadow-none"
+        className="max-w-(--available-width) border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
-        <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+        <div className="relative w-120 max-w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
             disabled={isDisabled || permissionChangeDisabled}
             value={permission}

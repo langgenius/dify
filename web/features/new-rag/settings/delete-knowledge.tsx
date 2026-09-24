@@ -23,8 +23,8 @@ import { knowledgeSettingsSpaceAtom } from './state/queries'
 import { knowledgeSettingsHasPendingSaveAtom } from './state/workflow'
 
 export function DeleteKnowledgeAction() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)

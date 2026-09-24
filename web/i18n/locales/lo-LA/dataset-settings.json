@@ -1,5 +1,6 @@
 {
   "desc": "ຢູ່ບ່ອນນີ້ ເຈົ້າສາມາດແກ້ໄຂຄຸນສົມບັດ ແລະ ການຕັ້ງຄ່າການຄົ້ນຄືນຂອງຄວາມຮູ້ນີ້.",
+  "form.changeIcon": "ປ່ຽນໄອຄອນຄວາມຮູ້",
   "form.chunkStructure.description": " ກ່ຽວກັບໂຄງສ້າງສ່ວນຂໍ້ມູນ.",
   "form.chunkStructure.learnMore": "ຮຽນຮູ້ເພີ່ມເຕີມ",
   "form.chunkStructure.title": "ໂຄງສ້າງສ່ວນຂໍ້ມູນ",

@@ -16,7 +16,7 @@ import { queryKeyMatchesKnowledgeSpace } from './recovery'
 import { useTaskRuntimeController } from './use-task-runtime'
 
 export function DocumentTaskRuntimeController() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const tasksOpen = useAtomValueRawSync(documentTasksOpenAtom)

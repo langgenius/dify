@@ -40,8 +40,8 @@ export function DocumentUploadForm({
   uploading,
   ref,
 }: DocumentUploadFormProps) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFilesAnnouncedRef = useRef(false)
   const filesRef = useRef(initialFiles)

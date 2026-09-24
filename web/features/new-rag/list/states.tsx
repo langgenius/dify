@@ -26,7 +26,7 @@ export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,296px),1fr))] gap-3'
 
 export function NewKnowledgeLoadingState() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -92,7 +92,7 @@ function EmptyAction({
   recommended?: boolean
   title: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const unavailable = t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })
   const recommendedLabel = t(($) => $['firstEmpty.recommended'], { ns: 'dataset' })
   const descriptionId = useId()
@@ -203,7 +203,7 @@ export function NewKnowledgeEmptyState({
   canCreate: boolean
   uploadAvailable: boolean
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const canStart = canCreate
 
   return (

@@ -80,10 +80,10 @@ export function CreateKnowledgePage() {
 }
 
 function CreateKnowledgeSession() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tDatasetCreation } = useTranslation('datasetCreation')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
   useDocumentTitle(t(($) => $.createTitle))
   const router = useRouter()

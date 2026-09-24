@@ -439,8 +439,8 @@ describe('Logs Container', () => {
       renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Act
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       // Assert
       await waitFor(() => {
@@ -602,7 +602,7 @@ describe('Logs Container', () => {
       renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(screen.getByText('Success')).toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded')).toBeInTheDocument()
       expect(screen.getByText('500')).toBeInTheDocument()
     })
   })

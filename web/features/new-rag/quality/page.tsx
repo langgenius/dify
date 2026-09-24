@@ -18,7 +18,7 @@ const qualityTabParser = parseAsStringLiteral(['bad-cases', 'evaluations'] as co
 const qualityRunParser = parseAsString.withOptions({ history: 'push' })
 
 export function QualityPage() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [queryTab, setQueryTab] = useQueryState('tab', qualityTabParser)
   const [queryRunId, setQueryRunId] = useQueryState('run', qualityRunParser)
   const activeTab: QualityTab =

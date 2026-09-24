@@ -13,7 +13,7 @@ export function DocumentDetailHeader({
   backPath: string
   title: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
 
   return (
     <>

@@ -58,7 +58,7 @@ function DatasourceParameterField({
   value: DatasourceParameterValue | undefined
   onChange: (value: DatasourceParameterValue | undefined) => void
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
   const generatedId = useId()
   const [numberDraft, setNumberDraft] = useState<string>()
   const [touched, setTouched] = useState(false)
@@ -354,7 +354,7 @@ export function WebsiteDatasourceParameterForm({
   schemas: DatasourceParameterSchema[]
   onChange: (parameters: DatasourceParameters) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const [optionsOpen, setOptionsOpen] = useState(false)
   const primarySchemas = schemas.filter((schema) => schema.required)
   const optionSchemas = schemas.filter((schema) => !schema.required)

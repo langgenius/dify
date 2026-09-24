@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const TextToSpeech = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const textToSpeech = useFeatures((s) => s.features.text2speech) // .language .voice .autoPlay
   const languageInfo = languages.find((i) => i.value === textToSpeech?.language)
   const [modalOpen, setModalOpen] = useState(false)

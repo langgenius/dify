@@ -92,7 +92,7 @@ function initialEditorValue(seconds: number) {
 }
 
 function syncPolicyValueLabel(
-  t: TFunction<'knowledgeSpace'>,
+  t: TFunction<['knowledgeSpace']>,
   language: string,
   value: SyncPolicyValue,
 ) {
@@ -138,8 +138,8 @@ function CustomIntervalPopover({
   onApply: (seconds: number) => void
   onOpenChange: (open: boolean) => void
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
-  const tCommon = useTranslation('common').t
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const tCommon = useTranslation(['common']).t
   const initial = initialEditorValue(initialSeconds)
   const [unit, setUnit] = useState<IntervalUnit>(initial.unit)
   const [amount, setAmount] = useState<number | null>(initial.value)
@@ -244,7 +244,7 @@ export function SyncPolicyField({
   value: SyncPolicyValue
   onChange: (value: SyncPolicyValue) => void
 }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
   const anchorRef = useRef<HTMLButtonElement>(null)
   const [customOpen, setCustomOpen] = useState(false)
   const selectedChoice = choiceForValue(value)

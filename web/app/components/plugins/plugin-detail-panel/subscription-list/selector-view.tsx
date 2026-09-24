@@ -22,7 +22,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
 }) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
   const [deletedSubscription, setDeletedSubscription] = useState<TriggerSubscription | null>(null)
   const subscriptionCount = subscriptions?.length || 0

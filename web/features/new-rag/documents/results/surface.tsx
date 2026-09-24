@@ -60,8 +60,8 @@ function focusNextRecoveryTarget() {
 }
 
 function DocumentQueryRecoveryNotice() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
   const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -121,8 +121,8 @@ function DocumentQueryRecoveryNotice() {
 }
 
 function DependencyRecoveryBoundary({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
   const retryButtonRef = useRef<HTMLButtonElement>(null)
@@ -213,8 +213,8 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
 }
 
 function DocumentCollectionState() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const documents = useAtomValueRawSync(documentsAtom)
   const recovery = useAtomValueRawSync(documentCollectionFactsAtom)

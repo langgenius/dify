@@ -247,8 +247,8 @@ export function AgentWorkingDirectoryPanel({
   const temporaryFilesLabelId = useId()
   const persistentFilesLabelId = useId()
 
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const persistentFilesTooltip = t(
     ($) => $['agentDetail.configure.workingDirectory.persistentFilesTooltip'],
   )

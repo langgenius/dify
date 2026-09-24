@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <span

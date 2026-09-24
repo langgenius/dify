@@ -31,7 +31,7 @@ function formatRecordTime(value: number, locale: string) {
 }
 
 export function RecordTime({ value }: { value: number }) {
-  const { i18n, t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation(['knowledgeSpace'])
   const [showJustNow, setShowJustNow] = useState(() => {
     const age = Date.now() - value
     return age >= 0 && age < 60_000
@@ -337,7 +337,7 @@ export function ResearchProcess({
   plan?: KnowledgeFsResearchTaskPlanResponse
   task: KnowledgeFsResearchTaskResponse
 }) {
-  const { t, i18n } = useTranslation('knowledgeSpace')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
   const active = researchTaskIsActive(task)
   const now = useClock(active)
   const firstProgressAt = events[0] ? researchProgressTime(events[0]) : undefined
@@ -539,7 +539,7 @@ export function RecordButton({
   onClick: () => void
   record: RetrievalTestRecord
 }) {
-  const { t, i18n } = useTranslation('knowledgeSpace')
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
   const failed = record.status === 'failed'
   const queryImageCount = record.queryImages?.length ?? 0
   const activeResearchStage =

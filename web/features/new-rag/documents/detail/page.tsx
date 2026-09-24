@@ -16,8 +16,8 @@ import { useDocumentDetailTitle } from './title-sync'
 import { DocumentDetailWorkspace } from './workspace'
 
 function DocumentDetailContent() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const document = useAtomValueRawSync(documentDetailQueryDataAtom)
   const documentError = useAtomValueRawSync(documentDetailQueryErrorAtom)
   const documentIsPending = useAtomValueRawSync(documentDetailQueryIsPendingAtom)

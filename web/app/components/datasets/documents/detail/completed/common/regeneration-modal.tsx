@@ -19,7 +19,7 @@ type IDefaultContentProps = {
 }
 
 const DefaultContent: FC<IDefaultContentProps> = React.memo(({ onCancel, onConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   return (
     <>
@@ -44,7 +44,7 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({ onCancel, onConfi
 DefaultContent.displayName = 'DefaultContent'
 
 const RegeneratingContent: FC = React.memo(() => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   return (
     <>
@@ -74,7 +74,7 @@ type IRegenerationCompletedContentProps = {
 
 const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = React.memo(
   ({ onClose }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'datasetDocuments'])
     const targetTime = useRef(Date.now() + 5000)
     const [countdown] = useCountDown({
       targetDate: targetTime.current,

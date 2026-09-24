@@ -88,7 +88,7 @@ const ChatInputArea = ({
 }: ChatInputAreaProps) => {
   const footerNoticeLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const {
     wrapperRef,
     textareaRef,
@@ -333,7 +333,7 @@ const ChatInputArea = ({
                         t(
                           ($) =>
                             $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
-                          { ns: 'common', botName },
+                          { ns: 'common', botName: botName ?? '' },
                         ) || '',
                       )
                 }

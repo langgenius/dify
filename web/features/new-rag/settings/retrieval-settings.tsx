@@ -53,10 +53,10 @@ const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
 const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 export function RetrievalSettingsSection() {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tSettings } = useTranslation('datasetSettings')
-  const { t: tAppDebug } = useTranslation('appDebug')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tSettings } = useTranslation(['datasetSettings'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const settings = useAtomValue(knowledgeSettingsSettingsAtom)
   const current = useAtomValue(knowledgeSettingsRetrievalDraftAtom)

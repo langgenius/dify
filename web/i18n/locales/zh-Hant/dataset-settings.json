@@ -1,5 +1,6 @@
 {
   "desc": "在這裡您可以修改知識庫的工作方式以及其它設定。",
+  "form.changeIcon": "修改知識庫圖示",
   "form.chunkStructure.description": "關於塊結構。",
   "form.chunkStructure.learnMore": "瞭解詳情",
   "form.chunkStructure.title": "區塊結構",

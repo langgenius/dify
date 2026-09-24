@@ -148,7 +148,7 @@ class ClearFreePlanTenantExpiredLogs:
                         f"-{time.time()}.json",
                         json.dumps(
                             jsonable_encoder(
-                                [message.to_dict() for message in messages],
+                                [message.to_dict(session=session) for message in messages],
                             ),
                         ).encode("utf-8"),
                     )
@@ -188,7 +188,7 @@ class ClearFreePlanTenantExpiredLogs:
                         f"-{time.time()}.json",
                         json.dumps(
                             jsonable_encoder(
-                                [conversation.to_dict() for conversation in conversations],
+                                [conversation.to_dict(session=session) for conversation in conversations],
                             ),
                         ).encode("utf-8"),
                     )

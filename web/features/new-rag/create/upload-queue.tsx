@@ -54,7 +54,7 @@ export function CreateUploadQueue({
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
   const validUploadCount = uploads.filter(({ issue }) => !issue).length

@@ -23,7 +23,7 @@ import {
 import { useRefreshDocumentWritePermission } from './write-permission'
 
 export function DocumentReindexAction() {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canCancel = useAtomValueRawSync(documentCanCancelReindexAtom)
   const cancelBusy = useAtomValueRawSync(documentReindexCancelBusyAtom)

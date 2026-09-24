@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-full max-w-240 p-0">

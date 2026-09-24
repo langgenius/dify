@@ -46,7 +46,7 @@ function KnowledgeSpaceOption({
   disabled: boolean
   onCheckedChange: (checked: boolean) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const id = useId()
   const name =
     space.technical_summary?.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])
@@ -112,8 +112,8 @@ function KnowledgeSpaceOption({
 
 /** Mounted once per interaction: the composer changes only on explicit confirmation. */
 export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onClose }: Props) {
-  const { t } = useTranslation('agentV2')
-  const { t: tc } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tc } = useTranslation(['common'])
   const [draft, setDraft] = useState(initialBindings)
   const [filter, setFilter] = useState('')
   const [submitted, setSubmitted] = useState(false)

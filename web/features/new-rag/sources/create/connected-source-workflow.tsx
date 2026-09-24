@@ -375,7 +375,7 @@ function ResourceList({
   selectionScope: SelectableResource[]
   selected: ReadonlyMap<string, SelectableResource>
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const selectableResources = selectionScope.filter(isSelectableResource)
   const driveContainers = selectionScope.filter(isDriveContainer)
   const allDriveContainersLoaded = driveContainers.every(
@@ -536,7 +536,7 @@ function ResourceConfiguration({
   provider: SourceProvider
   providerRegion?: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const queryClient = useQueryClient()
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
@@ -1460,7 +1460,7 @@ function AppliedResourceConfiguration({
   provider: SourceProvider
   providerRegion?: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [appliedParameters, setAppliedParameters] = useState<DatasourceParameters | undefined>(
     () => (parametersValid ? parameters : undefined),
   )
@@ -1568,7 +1568,7 @@ function ConnectedSourceWorkflowSession({
   onDraftChange,
   onExit,
 }: ConnectedSourceWorkflowProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const queryClient = useQueryClient()
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({

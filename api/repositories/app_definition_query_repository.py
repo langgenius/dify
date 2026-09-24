@@ -82,6 +82,12 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
         self._session_factory = session_factory
 
     @override
+    def get_mode(self, app_id: str) -> str | None:
+        with self._session_factory() as session:
+            mode = session.scalar(select(App.mode).where(App.id == app_id).limit(1))
+            return mode.value if mode is not None else None
+
+    @override
     def get_published_parameter_config(
         self,
         app_id: str,

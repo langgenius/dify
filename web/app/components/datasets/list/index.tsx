@@ -45,7 +45,7 @@ function LegacyList({
 }: {
   knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)

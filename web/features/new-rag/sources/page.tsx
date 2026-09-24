@@ -86,8 +86,8 @@ function SourcesPageContent({
   onSearchChange: (value: string) => void
   onSortChange: (value: SourceSort) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
   const {
     configureModelSetup,
@@ -282,8 +282,8 @@ function SourcesTable({
   onSortChange: (value: SourceSort) => void
   sort: SourceSort
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const allFilteredSourcesSelected =
     filteredSources.length > 0 &&

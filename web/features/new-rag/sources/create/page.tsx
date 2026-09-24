@@ -175,7 +175,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const generatedId = useId()
   const descriptionId = field.description ? `${generatedId}-description` : undefined
   const label = humanizeFieldName(field.name)
@@ -267,7 +267,7 @@ function ConnectionForm({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider, credentialId)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
@@ -425,8 +425,8 @@ function ManagedProviderConnection({
   provider: Provider
   providerName: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState(false)
   const requestRef = useRef<
@@ -541,7 +541,7 @@ function UnconfiguredProvider({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [configuring, setConfiguring] = useState(false)
   const difyManaged = isDifyManagedProvider(provider)
 
@@ -617,8 +617,8 @@ function ConnectionProblem({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
@@ -687,7 +687,7 @@ function ProvisioningConnection({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -756,7 +756,7 @@ function AddSourcePageContent({
   knowledgeSpaceId,
   sourceDraftKey,
 }: AddSourcePageProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { t } = useTranslation(['knowledgeSpace'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
