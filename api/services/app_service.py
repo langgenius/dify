@@ -156,15 +156,15 @@ class AppResponseView:
 
     @property
     def access_mode(self) -> str | None:
-        return getattr(self._app, "access_mode", None)
+        return cast(str | None, self._app.__dict__.get("access_mode"))
 
     @property
     def permission_keys(self) -> list[str]:
-        return getattr(self._app, "permission_keys", [])
+        return cast(list[str], self._app.__dict__.get("permission_keys", []))
 
     @property
     def app_id(self) -> str | None:
-        return getattr(self._app, "app_id", None)
+        return cast(str | None, self._app.__dict__.get("app_id"))
 
     @property
     def deleted_tools(self) -> list[Any]:
