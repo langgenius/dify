@@ -396,7 +396,9 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
             "fetch",
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ) as fetch,
-        patch.object(file_gateway._file_uploads, "upload_file_for_actor", return_value=_stub_upload_file()) as upload_file,
+        patch.object(
+            file_gateway._file_uploads, "upload_file_for_actor", return_value=_stub_upload_file()
+        ) as upload_file,
     ):
         with app.test_request_context(
             "/files/appdeploy/remote-upload",

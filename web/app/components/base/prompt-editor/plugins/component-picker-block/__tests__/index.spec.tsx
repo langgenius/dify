@@ -666,14 +666,16 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await setEditorText(editor, '/', true)
     await flushNextTick()
 
-    const newOutputAction = await screen.findByText('workflow.nodes.agent.outputVars.newOutput')
+    const newOutputAction = await screen.findByText(
+      'workflowAgent.nodes.agent.outputVars.newOutput',
+    )
     fireEvent.click(newOutputAction)
 
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_AGENT_OUTPUT_BLOCK_COMMAND, undefined)
     await waitFor(() => {
       expect(readEditorText(editor)).not.toContain('/')
       expect(
-        screen.queryByText('workflow.nodes.agent.outputVars.newOutput'),
+        screen.queryByText('workflowAgent.nodes.agent.outputVars.newOutput'),
       ).not.toBeInTheDocument()
     })
 
@@ -681,7 +683,9 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     fireEvent.focus(editable)
 
     await flushNextTick()
-    expect(screen.queryByText('workflow.nodes.agent.outputVars.newOutput')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflowAgent.nodes.agent.outputVars.newOutput'),
+    ).not.toBeInTheDocument()
   })
 
   it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {

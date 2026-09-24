@@ -294,7 +294,7 @@ function AgentConfigurePageComposerContent({
     agentSoulConfig,
   } = configureData
   const { t } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['modelProvider'])
   const [clearChatByMode, setClearChatByMode] = useState<
     Record<AgentConfigureRightPanelMode, boolean>
   >({
@@ -596,7 +596,9 @@ function AgentConfigurePageComposerContent({
                   rightPanelChatMode === 'build'
                     ? async () => {
                         if (!currentModel?.provider || !currentModel.model) {
-                          toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                          toast.error(
+                            tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }),
+                          )
                           throw new Error('Agent model is required.')
                         }
 

@@ -37,7 +37,7 @@ const ConfigVision: FC<Props> = ({
   },
   onConfigChange,
 }) => {
-  const { t } = useTranslation(['appDebug', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'workflowModels'])
 
   const filterVar = useCallback((payload: Var) => {
     const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
@@ -66,7 +66,7 @@ const ConfigVision: FC<Props> = ({
 
   return (
     <Field
-      title={t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflow' })}
+      title={t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflowModels' })}
       tooltip={t(($) => $['vision.description'], { ns: 'appDebug' })!}
       operations={
         <Tooltip>

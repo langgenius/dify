@@ -26,7 +26,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   placeholder,
   contentType,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
   const typeOptions = useMemo(() => createParameterTypeOptions(contentType), [contentType])
@@ -35,22 +35,24 @@ const ParameterTable: FC<ParameterTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: t(($) => $['nodes.triggerWebhook.varName'], { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.varName'], { ns: 'workflowIntegrations' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t(($) => $['nodes.triggerWebhook.varNamePlaceholder'], { ns: 'workflow' }),
+      placeholder: t(($) => $['nodes.triggerWebhook.varNamePlaceholder'], {
+        ns: 'workflowIntegrations',
+      }),
     },
     {
       key: 'type',
-      title: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflowIntegrations' }),
       type: 'select',
       width: 'w-[120px]',
-      placeholder: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflow' }),
+      placeholder: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflowIntegrations' }),
       options: typeOptions,
     },
     {
       key: 'required',
-      title: t(($) => $['nodes.triggerWebhook.required'], { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.required'], { ns: 'workflowIntegrations' }),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -104,7 +106,8 @@ const ParameterTable: FC<ParameterTableProps> = ({
       onChange={handleDataChange}
       readonly={readonly}
       placeholder={
-        placeholder || t(($) => $['nodes.triggerWebhook.noParameters'], { ns: 'workflow' })
+        placeholder ||
+        t(($) => $['nodes.triggerWebhook.noParameters'], { ns: 'workflowIntegrations' })
       }
       emptyRowData={emptyRowData}
       showHeader={true}

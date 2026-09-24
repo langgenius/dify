@@ -29,7 +29,7 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation(['runLog', 'workflow', 'appLog'])
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput'])
   const docLink = useDocLink()
   const { data: pausedDetails } = useWorkflowPausedDetails({
     workflowRunId: workflowRunId || '',
@@ -43,7 +43,7 @@ const StatusPanel: FC<ResultProps> = ({
       (node) => node.pause_type.type === 'human_input',
     )
     if (hasHumanInputNode) {
-      reasons.push(t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' }))
+      reasons.push(t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflowHumanInput' }))
     }
     return reasons
   }, [pausedDetails, t])
@@ -223,7 +223,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
               <div className="system-2xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['nodes.humanInput.log.reason'], { ns: 'workflow' })}
+                {t(($) => $['nodes.humanInput.log.reason'], { ns: 'workflowHumanInput' })}
               </div>
               {pausedReasons.length > 0 ? (
                 pausedReasons.map((reason) => (
@@ -238,7 +238,9 @@ const StatusPanel: FC<ResultProps> = ({
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['nodes.humanInput.log.backstageInputURL'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.humanInput.log.backstageInputURL'], {
+                    ns: 'workflowHumanInput',
+                  })}
                 </div>
                 {pausedInputURLs.map((url) => (
                   <a

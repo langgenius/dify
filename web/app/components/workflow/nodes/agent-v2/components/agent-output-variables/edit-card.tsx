@@ -56,7 +56,7 @@ export function OutputEditCard({
   onCancel: () => void
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
 }) {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowAgent'])
   const nameErrorId = useId()
   const editorRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState(state.draft)
@@ -85,7 +85,7 @@ export function OutputEditCard({
   return (
     <div ref={editorRef}>
       <Form
-        aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflow' })}
+        aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflowAgent' })}
         className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
         onSubmit={(event) => {
           event.preventDefault()
@@ -96,7 +96,7 @@ export function OutputEditCard({
           <div className="flex h-6 items-center gap-x-2">
             <Field name="name" invalid={hasNameError} className="contents">
               <FieldLabel className="sr-only">
-                {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
               </FieldLabel>
               <Input
                 aria-describedby={hasNameError ? nameErrorId : undefined}
@@ -106,7 +106,7 @@ export function OutputEditCard({
                 pattern={OUTPUT_NAME_PATTERN_SOURCE}
                 value={draft.name}
                 placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
-                  ns: 'workflow',
+                  ns: 'workflowAgent',
                 })}
                 className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
                 onChange={(event) => updateDraft({ name: event.currentTarget.value })}
@@ -123,7 +123,7 @@ export function OutputEditCard({
                   checked={draft.required}
                   onCheckedChange={(required) => updateDraft({ required })}
                 />
-                {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflowAgent' })}
               </FieldLabel>
             </Field>
           </div>
@@ -135,19 +135,19 @@ export function OutputEditCard({
                 className="mt-1 px-1 py-0 system-xs-regular text-text-destructive"
               >
                 {duplicateName
-                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflow' })
-                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflow' })}
+                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
+                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
               </FieldError>
             </Field>
           )}
           <Field name="description" className="contents">
             <FieldLabel className="sr-only">
-              {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflowAgent' })}
             </FieldLabel>
             <Input
               value={draft.description}
               placeholder={t(($) => $['nodes.agent.outputVars.descriptionPlaceholder'], {
-                ns: 'workflow',
+                ns: 'workflowAgent',
               })}
               className="mt-2 h-5 rounded-md border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
               onChange={(event) => updateDraft({ description: event.currentTarget.value })}
@@ -161,26 +161,28 @@ export function OutputEditCard({
                 aria-hidden="true"
                 className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"
               />
-              {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflowAgent' })}
             </CollapsibleTrigger>
             <CollapsiblePanel className="border-t border-divider-subtle">
               <div className="px-3 py-2">
                 <Field name="defaultValue">
                   <FieldLabel className="system-xs-medium">
-                    {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], {
+                      ns: 'workflowAgent',
+                    })}
                   </FieldLabel>
                   <Textarea
                     size="small"
                     value={draft.defaultValue}
                     placeholder={t(($) => $['nodes.agent.outputVars.defaultValuePlaceholder'], {
-                      ns: 'workflow',
+                      ns: 'workflowAgent',
                     })}
                     className="min-h-6"
                     onValueChange={(defaultValue) => updateDraft({ defaultValue })}
                   />
                   {defaultValueErrorKey && (
                     <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                      {t(($) => $[defaultValueErrorKey], { ns: 'workflow' })}
+                      {t(($) => $[defaultValueErrorKey], { ns: 'workflowAgent' })}
                     </FieldError>
                   )}
                 </Field>
@@ -193,7 +195,7 @@ export function OutputEditCard({
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
-            {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
+            {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflowAgent' })}
             <ConfirmHotkeyHint />
           </Button>
         </div>

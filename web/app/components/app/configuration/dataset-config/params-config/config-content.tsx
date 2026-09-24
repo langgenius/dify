@@ -52,7 +52,7 @@ const ConfigContent: FC<Props> = ({
   const rerankLabelId = useId()
   const rerankOptionLabelId = useId()
 
-  const { t } = useTranslation(['common', 'dataset', 'workflow'])
+  const { t } = useTranslation(['dataset', 'workflow', 'modelProvider'])
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
 
@@ -156,8 +156,8 @@ const ConfigContent: FC<Props> = ({
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     },
   ]
 
@@ -280,12 +280,12 @@ const ConfigContent: FC<Props> = ({
                   id={rerankLabelId}
                   className="ml-1 system-sm-semibold leading-8 text-text-secondary"
                 >
-                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
                 </div>
                 <Infotip>
                   <InfotipTrigger aria-labelledby={rerankLabelId} className="ml-1" />
                   <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
-                    {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })}
                   </InfotipContent>
                 </Infotip>
               </div>
@@ -358,12 +358,12 @@ const ConfigContent: FC<Props> = ({
               id={reasoningLabelId}
               className="text-[13px] leading-8 font-medium text-text-primary"
             >
-              {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}
+              {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' })}
             </div>
             <Infotip>
               <InfotipTrigger aria-labelledby={reasoningLabelId} />
               <InfotipContent aria-labelledby={reasoningLabelId}>
-                {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+                {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'modelProvider' })}
               </InfotipContent>
             </Infotip>
           </div>

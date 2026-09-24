@@ -145,8 +145,8 @@ visited earlier in the session. Previously loaded bundles remain cached. There i
 no route policy that resets `i18n.options.ns` on navigation.
 
 Server metadata requests still use the request-scoped server instance and load
-exactly their requested namespace. Existing server consumers without a namespace
-retain their full-catalog behavior.
+exactly their requested namespace. Server translation consumers must declare their namespaces explicitly. Locale-only
+consumers subscribe to language changes without requesting a dictionary.
 
 The build analyzer continues to report route usage and check unused keys. Its
 route report is diagnostic and is not a runtime resource manifest or an allowlist.
@@ -155,6 +155,28 @@ The application no longer opts into exhaustive route namespace validation.
 Tests cover on-demand feature loading, navigation state, language persistence,
 English fallback, and concurrent streaming SSR in different locales. Production
 Vinext/browser checks are also needed when changing the Provider or loading strategy.
+
+### Namespace ownership
+
+Keep `common` limited to shared operations, statuses, and basic controls. Navigation
+and route titles belong to `navigation`; account settings, workspace members,
+model providers, and the step-by-step tour own `accountSettings`,
+`workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
+copy is shared with model configuration, not owned by dataset settings.
+
+The workflow editor keeps canvas labels, shared validation, and editor-wide hook
+messages in `workflow`. Optional surfaces own `workflowGenerator`,
+`workflowDebug`, `workflowHistory`, and `workflowComments`. Node configuration
+families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
+`workflowIntegrations`, and `workflowLogic`. Keep globally executed validation
+and accessible edge labels in the core even when their keys have a node prefix;
+a key prefix alone does not define a loading boundary.
+
+Declare resources at the component that renders them. A hidden feature should not
+request its dictionary just because its controller is mounted. The tour keeps its
+session controller mounted and renders its translation consumer only when the
+checklist, guide, or recovery prompt is visible. Preserve all existing locale
+values and language-specific plural forms when moving keys.
 
 ### Provider trial verification
 

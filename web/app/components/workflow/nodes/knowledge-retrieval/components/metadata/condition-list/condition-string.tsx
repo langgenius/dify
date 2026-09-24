@@ -26,7 +26,7 @@ const ConditionString = ({
   isCommonVariable,
   commonVariables,
 }: ConditionStringProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const handleVariableValueChange = useCallback(
     (v: ValueSelector) => {
       onChange(`{{#${v.join('.')}#}}`)
@@ -68,10 +68,10 @@ const ConditionString = ({
           value={value}
           onValueChange={onChange}
           aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
-            ns: 'workflow',
+            ns: 'workflowModels',
           })}
           placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
-            ns: 'workflow',
+            ns: 'workflowModels',
           })}
         />
       )}
