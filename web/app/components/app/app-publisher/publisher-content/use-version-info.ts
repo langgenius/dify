@@ -22,7 +22,7 @@ export function useVersionInfo({
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
   const { mutate: updateWorkflow } = useUpdateWorkflow()
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
@@ -47,11 +47,13 @@ export function useVersionInfo({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
+          toast.success(
+            t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
+          )
           invalidateAppWorkflow(appId)
         },
         onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
+          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
         },
         onSettled: () => {
           setIsOpen(false)

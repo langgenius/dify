@@ -238,7 +238,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     const sendButton = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
     })
     expect(sendButton).toBeDisabled()
 
@@ -250,7 +250,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+        screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
       ).toBeInTheDocument(),
     )
     expect(requests).toContainEqual(
@@ -279,11 +279,13 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
     expect(
-      await screen.findByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+      await screen.findByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done',
+      ),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
@@ -294,16 +296,16 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+      screen.queryByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
     await waitFor(() => {
@@ -388,7 +390,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     const sendButton = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
     })
     expect(sendButton).toBeDisabled()
 
@@ -439,7 +441,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.vars',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.vars',
       }),
     )
 
@@ -472,7 +474,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     expect(screen.getByText('external@example.com')).toBeInTheDocument()
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.tip'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.tip'),
     ).toBeInTheDocument()
   })
 
@@ -531,7 +533,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     })
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
@@ -563,18 +565,22 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugModeTip'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.debugModeTip',
+      ),
     ).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugDone'),
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.debugDone',
+        ),
       ).toBeInTheDocument(),
     )
   })
@@ -602,13 +608,15 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3'),
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3',
+        ),
       ).toBeInTheDocument(),
     )
     expect(screen.getByText('external@example.com')).toBeInTheDocument()

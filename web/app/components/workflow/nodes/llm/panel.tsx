@@ -46,7 +46,7 @@ const getModelSelectionKey = (
   `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider', 'workflowModels'])
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,
@@ -209,7 +209,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
           required
           warningDot={hasModelWarning}
           operations={
@@ -235,7 +235,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
                 onValueChange={(nextValue) => nextValue && handleEnvironmentModelChange(nextValue)}
               >
                 <SelectTrigger
-                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
                   className="w-full"
                 >
                   {selectedEnvironmentVariableName ??
@@ -272,8 +272,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
 
         {/* knowledge */}
         <Field
-          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
-          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflowModels' })}
+          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflowModels' })!}
         >
           <>
             <VarReferencePicker
@@ -286,7 +286,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             />
             {shouldShowContextTip && (
               <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
-                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflowModels' })}
               </div>
             )}
           </>

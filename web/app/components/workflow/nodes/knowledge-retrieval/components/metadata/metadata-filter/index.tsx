@@ -32,7 +32,7 @@ const MetadataFilter = ({
 }: MetadataFilterProps) => {
   const titleId = useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [collapsed, setCollapsed] = useState(true)
 
   const handleMetadataFilterModeChangeWrapped = useCallback(
@@ -57,7 +57,7 @@ const MetadataFilter = ({
         <CollapseTrigger>
           <CollapseTitle>
             <span id={titleId}>
-              {t(($) => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflow' })}
+              {t(($) => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflowModels' })}
             </span>
           </CollapseTitle>
           {metadataFilterMode === MetadataFilteringModeEnum.automatic && <CollapseIndicator />}
@@ -65,7 +65,7 @@ const MetadataFilter = ({
         <Infotip>
           <InfotipTrigger aria-labelledby={titleId} />
           <InfotipContent aria-labelledby={titleId} className="w-50">
-            {t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflowModels' })}
           </InfotipContent>
         </Infotip>
         <CollapseActions>
@@ -87,7 +87,7 @@ const MetadataFilter = ({
           <>
             <div className="px-4 body-xs-regular text-text-tertiary">
               {t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.desc'], {
-                ns: 'workflow',
+                ns: 'workflowModels',
               })}
             </div>
             <div className="mt-1 px-4">

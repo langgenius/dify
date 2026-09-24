@@ -49,7 +49,7 @@ type BaseNodeProps = {
 }
 
 const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
-  const { t } = useTranslation(['workflow', 'plugin'])
+  const { t } = useTranslation(['workflow', 'plugin', 'workflowLogic'])
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -137,7 +137,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     const translationKey = getLoopIndexTextKey(data._runningStatus)
     const text =
       translationKey && data._loopIndex !== undefined
-        ? t(($) => $[translationKey], { ns: 'workflow', count: data._loopIndex })
+        ? t(($) => $[translationKey], { ns: 'workflowLogic', count: data._loopIndex })
         : ''
 
     if (text) {

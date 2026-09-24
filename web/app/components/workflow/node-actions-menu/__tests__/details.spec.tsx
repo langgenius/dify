@@ -259,7 +259,7 @@ describe('node actions menu details', () => {
       },
     })
 
-    await user.click(screen.getByText('workflow.debug.variableInspect.trigger.stop'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.stop'))
 
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(store.getState().initShowLastRunTab).toBe(true)

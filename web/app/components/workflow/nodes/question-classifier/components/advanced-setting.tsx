@@ -42,7 +42,7 @@ const AdvancedSetting: FC<Props> = ({
 }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <>
@@ -50,12 +50,12 @@ const AdvancedSetting: FC<Props> = ({
         title={
           <div className="flex items-center space-x-1">
             <span id={instructionLabelId} className="uppercase">
-              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
             </span>
             <Infotip>
               <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
               <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
-                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
               </InfotipContent>
             </Infotip>
           </div>
