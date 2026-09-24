@@ -1,10 +1,9 @@
 import type { Credential } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import CredentialItem from './authorized/credential-item'
 
 type CredentialSelectorProps = {
@@ -43,28 +42,34 @@ const CredentialSelector = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        nativeButton={false}
         disabled={disabled}
         render={
-          <div className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 system-sm-regular" />
+          <button
+            type="button"
+            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+          />
         }
       >
         {selectedCredential && (
-          <div className="flex items-center">
+          <span className="flex items-center">
             {!selectedCredential.addNewCredential && <StatusDot className="mr-2 ml-1 shrink-0" />}
-            <div
+            <span
               className="truncate system-sm-regular text-components-input-text-filled"
               title={selectedCredential.credential_name}
             >
               {selectedCredential.credential_name}
-            </div>
-            {selectedCredential.from_enterprise && <Badge className="shrink-0">Enterprise</Badge>}
-          </div>
+            </span>
+            {selectedCredential.from_enterprise && (
+              <span className="badge badge-m shrink-0 px-1.25 py-0.5 system-2xs-medium">
+                Enterprise
+              </span>
+            )}
+          </span>
         )}
         {!selectedCredential && (
-          <div className="grow truncate system-sm-regular text-components-input-text-placeholder">
+          <span className="grow truncate system-sm-regular text-components-input-text-placeholder">
             {t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'modelProvider' })}
-          </div>
+          </span>
         )}
         <RiArrowDownSLine className="size-4 text-text-quaternary" />
       </PopoverTrigger>
@@ -72,6 +77,9 @@ const CredentialSelector = ({
         sideOffset={0}
         className="w-(--anchor-width) rounded-xl border-[0.5px] border-current bg-components-panel-bg-blur p-0"
       >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'modelProvider' })}
+        </PopoverTitle>
         <div className="max-h-80 overflow-y-auto p-1">
           {credentials.map((credential) => (
             <CredentialItem
@@ -87,13 +95,14 @@ const CredentialSelector = ({
           ))}
         </div>
         {!notAllowAddNewCredential && (
-          <div
-            className="flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 system-xs-medium text-text-accent-light-mode-only"
+          <button
+            type="button"
+            className="flex h-10 w-full cursor-pointer items-center border-t border-t-divider-subtle px-7 text-left system-xs-medium text-text-accent-light-mode-only focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
             onClick={handleAddNewCredential}
           >
             <RiAddLine className="mr-1 size-4" />
             {t(($) => $['modelProvider.auth.addNewModelCredential'], { ns: 'modelProvider' })}
-          </div>
+          </button>
         )}
       </PopoverContent>
     </Popover>
