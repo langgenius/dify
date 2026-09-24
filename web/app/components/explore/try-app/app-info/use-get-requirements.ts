@@ -1,5 +1,7 @@
-import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import type { TryAppInfo } from '@/service/try-app'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { AgentTool } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
@@ -8,7 +10,7 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import { consoleQuery } from '@/service/console'
 
 type Params = {
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   appId: string
   agentComposer?: AgentAppComposerResponse
 }

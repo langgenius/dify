@@ -1,7 +1,9 @@
 'use client'
-import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
-import type { TryAppInfo } from '@/service/try-app'
 import * as React from 'react'
 import BasicAppPreview from './basic-app-preview'
 import FlowAppPreview from './flow-app-preview'
@@ -10,7 +12,7 @@ const AgentAppPreview = React.lazy(() => import('./agent-app-preview'))
 
 type Props = {
   readonly appId: string
-  readonly appDetail: TryAppInfo
+  readonly appDetail: TrialAppDetailResponse
   readonly agentComposer?: AgentAppComposerResponse
 }
 
@@ -22,7 +24,7 @@ const Preview: FC<Props> = ({ appId, appDetail, agentComposer }) => {
       {appDetail.mode === 'agent' && agentComposer ? (
         <AgentAppPreview appDetail={appDetail} composer={agentComposer} />
       ) : isBasicApp ? (
-        <BasicAppPreview appId={appId} />
+        <BasicAppPreview appId={appId} appDetail={appDetail} />
       ) : (
         <FlowAppPreview appId={appId} className="h-full" />
       )}

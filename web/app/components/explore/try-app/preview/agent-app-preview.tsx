@@ -1,13 +1,15 @@
 'use client'
 
-import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import type { TryAppInfo } from '@/service/try-app'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentTemplateOrchestration } from '@/features/agent-v2/template-preview'
 
 type Props = Readonly<{
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   composer: AgentAppComposerResponse
 }>
 

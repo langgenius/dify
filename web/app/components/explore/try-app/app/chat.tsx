@@ -1,7 +1,7 @@
 'use client'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { EmbeddedChatbotContextValue } from '@/app/components/base/chat/embedded-chatbot/context'
-import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -22,7 +22,7 @@ import { AppSourceType } from '@/service/share'
 
 type Props = Readonly<{
   appId: string
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   className: string
 }>
 

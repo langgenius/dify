@@ -1,7 +1,9 @@
 'use client'
-import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
-import type { TryAppInfo } from '@/service/try-app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -12,7 +14,7 @@ import useGetRequirements from './use-get-requirements'
 
 type Props = Readonly<{
   appId: string
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   canCreate?: boolean
   categories?: string[]
   className?: string

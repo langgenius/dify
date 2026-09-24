@@ -187,8 +187,7 @@ export function WebAppAccessCard({
   async function handleSaveSettings(params: ConfigParams) {
     if (!appId || !canManageWebApp) return
 
-    const { enable_sso: _enableSso, ...body } = params
-    const sitePayload = body satisfies AppSiteUpdatePayload
+    const sitePayload = params satisfies AppSiteUpdatePayload
 
     try {
       await updateSiteMutation.mutateAsync({

@@ -1,6 +1,7 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -10,7 +11,6 @@ import { Suspense, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
-import { useGetTryAppInfo } from '@/service/use-try-app'
 import AppInfo from './app-info'
 import Preview from './preview'
 import { TypeEnum } from './types'
@@ -41,7 +41,16 @@ function TryApp({
   onCreate,
 }: Props) {
   const { t } = useTranslation(['common', 'explore'])
-  const { data: appDetail, isLoading, isFetching, refetch } = useGetTryAppInfo(appId)
+  const {
+    data: appDetail,
+    isLoading,
+    isFetching,
+    isFetched,
+    errorUpdateCount,
+    refetch,
+  } = useQuery(
+    consoleQuery.trialApps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const isAgent = templateMode === 'agent' || appDetail?.mode === 'agent'
   const composerQuery = useQuery(
     consoleQuery.trialApps.byAppId.agentComposer.get.queryOptions({
@@ -49,9 +58,13 @@ function TryApp({
       enabled: isAgent,
     }),
   )
-  const agentLoading = isAgent && composerQuery.isLoading
+  const agentLoading = isAgent && composerQuery.isLoading && !composerQuery.isFetched
   const hasLoadError =
-    !isLoading && !agentLoading && (!appDetail || (isAgent && !composerQuery.data))
+    (!appDetail && (!isLoading || isFetched)) ||
+    (isAgent && !composerQuery.data && (!composerQuery.isLoading || composerQuery.isFetched))
+  const isInitialLoading = !hasLoadError && ((isLoading && !isFetched) || agentLoading)
+  const keepErrorForExit =
+    hasLoadError || errorUpdateCount > 0 || composerQuery.errorUpdateCount > 0
   const isRetrying = isFetching || composerQuery.isFetching
   const retryLabelId = useId()
   const detailTabRef = useRef<HTMLButtonElement>(null)
@@ -119,48 +132,66 @@ function TryApp({
           </div>
           <div className="mt-2 flex h-0 grow justify-between space-x-2">
             <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
-              {isLoading || agentLoading ? (
+              {isInitialLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <LoadingPlaceholder />
                 </div>
-              ) : hasLoadError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-5">
-                  <div className="flex flex-col items-center gap-5" role="alert">
-                    <span className="flex size-12 items-center justify-center rounded-xl bg-background-body">
-                      <span
-                        aria-hidden
-                        className="i-ri-error-warning-line size-6 text-text-tertiary"
-                      />
-                    </span>
-                    <p className="title-xl-semi-bold text-text-primary">
-                      {t(($) => $['tryApp.loadError'], { ns: 'explore' })}
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary-accent"
-                    disabled={isRetrying}
-                    focusableWhenDisabled={isRetrying}
-                    aria-labelledby={retryLabelId}
-                    onClick={handleRetry}
-                  >
-                    <span id={retryLabelId}>
-                      {isRetrying
-                        ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
-                        : t(($) => $['operation.retry'], { ns: 'common' })}
-                    </span>
-                  </Button>
-                </div>
-              ) : appDetail ? (
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center">
-                      <LoadingPlaceholder />
+              ) : (
+                <div className="relative size-full">
+                  {keepErrorForExit && (
+                    <div
+                      aria-hidden={!hasLoadError}
+                      inert={!hasLoadError}
+                      className={cn(
+                        'absolute inset-0 flex flex-col items-center justify-center gap-5 transition-opacity duration-150 motion-reduce:transition-none',
+                        hasLoadError ? 'opacity-100' : 'pointer-events-none opacity-0',
+                      )}
+                    >
+                      <div className="flex flex-col items-center gap-5" role="alert">
+                        <span className="flex size-12 items-center justify-center rounded-xl bg-background-body">
+                          <span
+                            aria-hidden
+                            className="i-ri-error-warning-line size-6 text-text-tertiary"
+                          />
+                        </span>
+                        <p className="title-xl-semi-bold text-text-primary">
+                          {t(($) => $['tryApp.loadError'], { ns: 'explore' })}
+                        </p>
+                      </div>
+                      <Button
+                        variant="secondary-accent"
+                        className="flex-row-reverse"
+                        loading={isRetrying}
+                        aria-labelledby={retryLabelId}
+                        onClick={handleRetry}
+                      >
+                        <span id={retryLabelId}>
+                          {isRetrying
+                            ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
+                            : t(($) => $['operation.retry'], { ns: 'common' })}
+                        </span>
+                      </Button>
                     </div>
-                  }
-                >
-                  <Preview appId={appId} appDetail={appDetail} agentComposer={composerQuery.data} />
-                </Suspense>
-              ) : null}
+                  )}
+                  {appDetail && !hasLoadError && (
+                    <div className="size-full opacity-100 transition-opacity duration-150 motion-reduce:transition-none starting:opacity-0">
+                      <Suspense
+                        fallback={
+                          <div className="flex h-full items-center justify-center">
+                            <LoadingPlaceholder />
+                          </div>
+                        }
+                      >
+                        <Preview
+                          appId={appId}
+                          appDetail={appDetail}
+                          agentComposer={composerQuery.data}
+                        />
+                      </Suspense>
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsPanel>
             {canTrial && (
               <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
