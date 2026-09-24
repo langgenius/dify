@@ -159,7 +159,7 @@ it('keeps tiny gzip changes and attribution-only or entry-boundary changes in th
   }
   expect(shouldComment(base, merged)).toBe(false)
   const report = compare(base, merged)
-  expect(report).toContain('+0.49 KiB')
+  expect(report).toContain('+500 B (+2.50%)')
   expect(report).toContain('New entry')
   expect(report).toContain('Removed entry')
   expect(report).toContain('example')
