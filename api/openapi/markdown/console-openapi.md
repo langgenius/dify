@@ -16053,9 +16053,9 @@ This class is used to store the schema information of an api based tool.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string | Import mode: yaml-content, yaml-url, ifpkg-url, or template | Yes |
+| mode | string | Import mode | Yes |
 | name | string |  | No |
-| package_url | string | New Agent template .ifpkg download URL for ifpkg-url mode | No |
+| package_url | string |  | No |
 | template_id | string |  | No |
 | version_id | string |  | No |
 | yaml_content | string |  | No |
