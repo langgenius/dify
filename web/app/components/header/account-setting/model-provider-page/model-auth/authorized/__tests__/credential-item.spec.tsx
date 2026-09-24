@@ -1,5 +1,6 @@
 import type { Credential } from '../../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CredentialItem from '../credential-item'
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
@@ -39,6 +40,47 @@ describe('CredentialItem', () => {
     fireEvent.click(screen.getByText('Test API Key'))
 
     expect(onItemClick).toHaveBeenCalledWith(credential)
+  })
+
+  it('selects a credential with the keyboard and exposes its selected state', async () => {
+    const user = userEvent.setup()
+    const onItemClick = vi.fn()
+
+    render(
+      <CredentialItem
+        credential={credential}
+        onItemClick={onItemClick}
+        showSelectedIcon
+        selectedCredentialId="cred-1"
+      />,
+    )
+
+    const option = screen.getByRole('button', { name: 'Test API Key' })
+    expect(option).toHaveAttribute('aria-pressed', 'true')
+    await user.tab()
+    expect(option).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onItemClick).toHaveBeenCalledWith(credential)
+  })
+
+  it('keeps edit and delete reachable by keyboard without hovering', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+
+    render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
+
+    await user.tab()
+    const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+    expect(editButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onEdit).toHaveBeenCalledWith(credential)
+
+    await user.tab()
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+    expect(deleteButton).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onDelete).toHaveBeenCalledWith(credential)
   })
 
   it('should not call onItemClick when credential is unavailable', () => {
@@ -103,6 +145,7 @@ describe('CredentialItem', () => {
       .getAllByRole('button')
       .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
+    expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
