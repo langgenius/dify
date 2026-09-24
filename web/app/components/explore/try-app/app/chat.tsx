@@ -95,7 +95,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
             {currentConversationId && inputsForms.length > 0 && <ViewFormDropdown />}
           </div>
         </div>
-        <div className="mx-auto mt-4 flex h-0 w-192.25 grow flex-col">
+        <div className="mx-auto mt-4 flex h-0 w-full max-w-192.25 min-w-0 grow flex-col">
           {!isHideTryNotice && (
             <Alert
               className="mb-4 shrink-0"

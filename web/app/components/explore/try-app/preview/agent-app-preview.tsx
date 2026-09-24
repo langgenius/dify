@@ -21,7 +21,7 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
   const features = composer.agent_soul.app_features
 
   return (
-    <div className="flex size-full min-h-0 overflow-hidden bg-background-default">
+    <div className="flex h-[75dvh] min-h-0 w-full flex-col gap-2 overflow-visible bg-background-default lg:h-full @max-[599px]/agent-preview:h-auto @min-[600px]/agent-preview:flex-row @min-[600px]/agent-preview:gap-0 @min-[600px]/agent-preview:overflow-hidden">
       <AgentTemplateOrchestration
         key={composer.active_config_snapshot?.id ?? composer.agent.id}
         agentId={composer.agent.id}
@@ -29,7 +29,7 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
         versionId={composer.active_config_snapshot?.id}
         config={composer.agent_soul}
       />
-      <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-md bg-background-body px-6 py-5">
+      <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-md bg-background-body px-6 py-5 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none">
         <AgentTemplateGridBackground />
         <section
           aria-labelledby={previewHeadingId}
