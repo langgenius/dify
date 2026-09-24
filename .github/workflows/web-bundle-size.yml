@@ -112,6 +112,7 @@ jobs:
           path: bundle-results
 
       - name: Compare and summarize
+        id: compare
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -127,6 +128,8 @@ jobs:
       - name: Update PR report
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SHOULD_COMMENT: ${{ steps.compare.outputs.should-comment }}
         with:
           script: |
             const fs = require('node:fs');
@@ -145,6 +148,13 @@ jobs:
             const existing = comments.find(comment =>
               comment.user?.login === 'github-actions[bot]' &&
               comment.body?.startsWith('<!-- dify-vinext-bundle-size -->'));
+            if (process.env.SHOULD_COMMENT !== 'true') {
+              if (existing) {
+                await github.rest.issues.deleteComment({ owner, repo, comment_id: existing.id });
+              }
+              core.info('Bundle changes are below the PR comment thresholds. See the job summary.');
+              return;
+            }
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {

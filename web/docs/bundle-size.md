@@ -20,8 +20,15 @@ job instead of appearing as savings.
 
 ## Reading the report
 
-The comparison appears directly in the Actions summary and in an updated comment
-for same-repository PRs. Merge queue runs receive the summary and artifacts without
+The full comparison always appears in the Actions summary. Same-repository PRs
+receive an updated comment only when the absolute gzip change reaches at least
+5 KiB for all client JS, 1 KiB for client CSS, or 2 KiB for any entry present in
+both revisions. Increases and decreases both qualify. Raw sizes, package
+attribution, and added/removed entry boundaries do not independently trigger a
+comment. If a later run falls below every threshold, the existing report comment
+is removed to avoid leaving stale results.
+
+Merge queue runs receive the summary and artifacts without
 a PR comment. Fork PRs receive the summary and artifacts without a
 privileged build or comment token. Reports are informational: growth does not fail
 the check; build, analysis, and reporting errors do.
