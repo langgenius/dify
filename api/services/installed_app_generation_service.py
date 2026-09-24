@@ -45,6 +45,15 @@ class InstalledAppGenerationRuntime(Protocol):
         streaming: bool,
     ) -> GenerationResponse: ...
 
+    def generate_more_like_this(
+        self,
+        *,
+        app_id: str,
+        account_id: str,
+        message_id: str,
+        streaming: bool,
+    ) -> GenerationResponse: ...
+
 
 class InstalledAppGenerationService:
     def __init__(
@@ -76,6 +85,25 @@ class InstalledAppGenerationService:
             raise InstalledAppNotChatError(f"App {installed_app.app_id} is not a chat app")
 
         return self._generate(installed_app=installed_app, account_id=account_id, args=args, streaming=True)
+
+    def generate_more_like_this(
+        self,
+        *,
+        installed_app: InstalledAppRef,
+        account_id: str,
+        message_id: str,
+        streaming: bool,
+    ) -> GenerationResponse:
+        if installed_app.app_mode != "completion":
+            raise InstalledAppNotCompletionError(f"App {installed_app.app_id} is not a completion app")
+
+        # Regenerating an earlier message does not record installation usage.
+        return self._runtime.generate_more_like_this(
+            app_id=installed_app.app_id,
+            account_id=account_id,
+            message_id=message_id,
+            streaming=streaming,
+        )
 
     def generate_workflow(
         self, *, installed_app: InstalledAppRef, account_id: str, args: Mapping[str, object]
