@@ -6,12 +6,34 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantAccountJoin, TenantStatus
+from services.account_login_service import ConsoleAuthWorkspaceQuery
+from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
+from services.entities.account_access_entities import AccountWorkspaceSnapshot
+from services.oauth_device_application_service import DeviceWorkspaceQuery
+from services.oauth_device_contracts import DeviceWorkspace
 from services.workspace_query_service import WorkspaceQuery, WorkspaceRecord
 
 
-class WorkspaceQueryRepository(WorkspaceQuery):
-    def __init__(self, client: sessionmaker[Session]) -> None:
-        self._client = client
+class WorkspaceQueryRepository(
+    WorkspaceQuery,
+    AccountWorkspaceMembershipQuery,
+    AccountWorkspaceSnapshotQuery,
+    ConsoleAuthWorkspaceQuery,
+    DeviceWorkspaceQuery,
+):
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
+        """Read the current membership role without loading or mutating an Account."""
+        stmt = (
+            select(TenantAccountJoin.role)
+            .where(TenantAccountJoin.account_id == account_id, TenantAccountJoin.tenant_id == tenant_id)
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            role = session.scalar(stmt)
+            return role.value if role is not None else None
 
     @override
     def list_for_account(self, account_id: str) -> tuple[WorkspaceRecord, ...]:
@@ -31,7 +53,7 @@ class WorkspaceQueryRepository(WorkspaceQuery):
             .order_by(Tenant.created_at.asc())
         )
 
-        with self._client() as session:
+        with self._session_factory() as session:
             rows = session.execute(stmt).all()
             return tuple(
                 WorkspaceRecord(
@@ -43,3 +65,68 @@ class WorkspaceQueryRepository(WorkspaceQuery):
                 )
                 for workspace_id, name, status, created_at, last_opened_at in rows
             )
+
+    @override
+    def list_ids_for_account(self, account_id: str) -> tuple[str, ...]:
+        stmt = select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id)
+        with self._session_factory() as session:
+            return tuple(session.scalars(stmt).all())
+
+    @override
+    def list_account_access_workspaces(self, account_id: str) -> tuple[AccountWorkspaceSnapshot, ...]:
+        """List every membership for the OpenAPI account identity response.
+
+        Unlike the Console workspace picker, the identity response preserves
+        its existing behavior of including archived memberships.
+        """
+        stmt = (
+            select(
+                Tenant.id,
+                Tenant.name,
+                TenantAccountJoin.role,
+                TenantAccountJoin.current,
+            )
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(TenantAccountJoin.account_id == account_id)
+            .order_by(Tenant.created_at.asc(), Tenant.id.asc())
+        )
+        with self._session_factory() as session:
+            return tuple(
+                AccountWorkspaceSnapshot(
+                    id=workspace_id,
+                    name=name,
+                    role=role.value,
+                    current=current,
+                )
+                for workspace_id, name, role, current in session.execute(stmt).all()
+            )
+
+    @override
+    def list_for_device_flow(self, account_id: str) -> tuple[DeviceWorkspace, ...]:
+        return tuple(
+            DeviceWorkspace(
+                id=workspace.id,
+                name=workspace.name,
+                role=workspace.role,
+                current=workspace.current,
+            )
+            for workspace in self.list_account_access_workspaces(account_id)
+        )
+
+    @override
+    def has_active_for_account(self, account_id: str) -> bool:
+        stmt = (
+            select(Tenant.id)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(
+                TenantAccountJoin.account_id == account_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(stmt) is not None
+
+    @override
+    def has_active_membership(self, account_id: str) -> bool:
+        return self.has_active_for_account(account_id)

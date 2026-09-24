@@ -46,7 +46,7 @@ class ApiBasedToolSchemaParser:
         server_url = openapi["servers"][0]["url"]
         request_env = request.headers.get("X-Request-Env") if has_request_context() else None
         if request_env:
-            matched_servers = [server["url"] for server in openapi["servers"] if server["env"] == request_env]
+            matched_servers = [server["url"] for server in openapi["servers"] if server.get("env") == request_env]
             server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces

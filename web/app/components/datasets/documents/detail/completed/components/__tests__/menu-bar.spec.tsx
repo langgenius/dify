@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuBar from '../menu-bar'
 
 vi.mock('../../display-toggle', () => ({
@@ -69,7 +69,7 @@ describe('MenuBar', () => {
 
   it('should call onInputChange when input changes', () => {
     renderMenuBar()
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
     fireEvent.change(input, { target: { value: 'test search' } })
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('test search')
   })
@@ -94,7 +94,9 @@ describe('MenuBar', () => {
 
   it('should render the selected status in the trigger', () => {
     renderMenuBar()
-    expect(screen.getByText('All')).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'datasetDocuments.segment.statusFilterLabel' }),
+    ).toHaveTextContent('All')
   })
 
   it('should render status options when dropdown is opened', async () => {

@@ -15,7 +15,7 @@ type ActionsProps = {
 }
 
 const Actions = ({ CustomActions }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const form = useFormContext()
 
   const [isSubmitting, canSubmit] = useStore(form.store, (state) => [
@@ -28,7 +28,7 @@ const Actions = ({ CustomActions }: ActionsProps) => {
   return (
     <Button
       variant="primary"
-      disabled={isSubmitting || !canSubmit}
+      disabled={!canSubmit && !isSubmitting}
       loading={isSubmitting}
       onClick={() => form.handleSubmit()}
     >

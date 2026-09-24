@@ -10,6 +10,7 @@ api = ExternalApi(
     version="1.0",
     title="Service API",
     description="API for application services",
+    register_default_root=False,
 )
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")

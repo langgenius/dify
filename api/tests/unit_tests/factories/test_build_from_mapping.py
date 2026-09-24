@@ -10,10 +10,16 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    grant_tool_file_access,
+)
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import CreatorUserRole, ToolFile, UploadFile
 
@@ -37,6 +43,16 @@ TEST_CONFIG = FileUploadConfig(
 def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
     return _build_from_mapping(
         mapping=mapping,
+        tenant_id=tenant_id,
+        config=config,
+        strict_type_validation=strict_type_validation,
+        access_controller=TEST_ACCESS_CONTROLLER,
+    )
+
+
+def build_from_mappings(*, mappings, tenant_id, config=None, strict_type_validation=False):
+    return _build_from_mappings(
+        mappings=mappings,
         tenant_id=tenant_id,
         config=config,
         strict_type_validation=strict_type_validation,
@@ -233,6 +249,25 @@ def test_build_from_remote_url(mock_http_head):
     assert file.size == 2048
 
 
+def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "factories.file_factory.builders.helpers.get_signed_file_url",
+        lambda **_kwargs: "https://example.com/signed-upload-file",
+    )
+    mapping = {
+        "transfer_method": "remote_url",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "image",
+    }
+
+    files = build_from_mappings(mappings=[mapping], tenant_id=TEST_TENANT_ID)
+
+    assert len(files) == 1
+    assert files[0].transfer_method == FileTransferMethod.REMOTE_URL
+    assert resolve_file_record_id(files[0].reference) == TEST_UPLOAD_FILE_ID
+    assert files[0].storage_key == "test_key"
+
+
 def test_build_from_remote_url_prefers_filename_extension_over_mimetype():
     mapping = {
         "transfer_method": "remote_url",
@@ -416,6 +451,26 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
     with bind_file_access_scope(unauthorized_scope):
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+
+def test_build_from_mapping_allows_granted_tool_file_for_other_end_user():
+    """Tool files produced in this run must remain readable by later nodes (#41169).
+
+    Workflow-as-tool from an agent binds an EndUser scope. Plugin downloads often
+    store ToolFile.user_id as a different identity, so a grant is required.
+    """
+    unauthorized_scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="different-end-user",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    with bind_file_access_scope(unauthorized_scope):
+        grant_tool_file_access([TEST_TOOL_FILE_ID])
+        file = build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
+    assert file.type == FileType.DOCUMENT
 
 
 def test_disallowed_file_types():

@@ -22,7 +22,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: mockUseQuery,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       workflows: {

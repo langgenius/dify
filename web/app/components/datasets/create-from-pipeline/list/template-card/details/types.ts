@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
 
-export enum EffectColor {
-  indigo = 'indigo',
-  blueLight = 'blue-light',
-  green = 'green',
-  none = 'none',
-}
+export const EffectColor = {
+  indigo: 'indigo',
+  blueLight: 'blue-light',
+  green: 'green',
+  none: 'none',
+} as const
+
+export type EffectColor = (typeof EffectColor)[keyof typeof EffectColor]
 
 export type Option = {
   icon: ReactNode

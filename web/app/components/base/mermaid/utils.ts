@@ -184,7 +184,7 @@ export function isMermaidCodeComplete(code: string): boolean {
 
     // Check for basic syntax structure
     const hasValidStart =
-      /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(
+      /^(?:graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(
         trimmedCode,
       )
 

@@ -10,12 +10,9 @@ import ModelName from '../index'
 
 let mockLocale = 'en-US'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    i18n: {
-      language: mockLocale,
-    },
-  }),
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale,
 }))
 
 const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -40,6 +37,12 @@ describe('ModelName', () => {
   })
 
   describe('rendering', () => {
+    it('should render nothing while the model is unavailable', () => {
+      const { container } = render(<ModelName modelItem={undefined} />)
+
+      expect(container).toBeEmptyDOMElement()
+    })
+
     it('should render the localized model label when translation exists', () => {
       mockLocale = 'zh-Hans'
       const modelItem = createModelItem()

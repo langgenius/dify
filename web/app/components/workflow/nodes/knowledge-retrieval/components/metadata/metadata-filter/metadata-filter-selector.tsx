@@ -18,33 +18,33 @@ const MetadataFilterSelector = ({
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.manual,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
   ]
@@ -62,7 +62,7 @@ const MetadataFilterSelector = ({
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-[280px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
           {options.map((option) => (

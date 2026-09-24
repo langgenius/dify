@@ -1,7 +1,7 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +33,7 @@ const CrawledResult = ({
   showPreview = false,
   isMultipleChoice = true,
 }: CrawledResultProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const isCheckAll = checkedList.length === list.length
 

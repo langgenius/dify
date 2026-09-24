@@ -3,14 +3,16 @@ import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from './types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
-  return [
+  const valueFreeOperators: readonly ComparisonOperator[] = [
     ComparisonOperator.empty,
     ComparisonOperator.notEmpty,
     ComparisonOperator.isNull,
     ComparisonOperator.isNotNull,
     ComparisonOperator.exists,
     ComparisonOperator.notExists,
-  ].includes(operator)
+  ]
+
+  return valueFreeOperators.includes(operator)
 }
 
 const notTranslateKey = [
@@ -168,16 +170,18 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
 }
 
 export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator) => {
-  if (!operator) return false
-
-  return [
+  const valueFreeOperators: readonly ComparisonOperator[] = [
     ComparisonOperator.empty,
     ComparisonOperator.notEmpty,
     ComparisonOperator.isNull,
     ComparisonOperator.isNotNull,
     ComparisonOperator.exists,
     ComparisonOperator.notExists,
-  ].includes(operator)
+  ]
+
+  if (!operator) return false
+
+  return valueFreeOperators.includes(operator)
 }
 
 export const branchNameCorrect = (branches: Branch[]) => {

@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { mockEmojiData } from '@/test/emoji-picker'
 import RenameDatasetModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -18,7 +19,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -27,13 +28,8 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: (params: unknown) => mockUpdateDatasetSetting(params),
 }))
 
-// Mock AppIcon - simplified mock to enable testing onClick callback
 vi.mock('../../../base/app-icon', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="app-icon" onClick={onClick}>
-      Icon
-    </button>
-  ),
+  default: () => <span data-testid="app-icon">Icon</span>,
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
@@ -47,7 +43,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
     let selectedBackground = '#FFEAD5'
     return (
       <div>
-        <input placeholder="Search emojis..." />
+        <input placeholder="common.operation.search" />
         <button
           type="button"
           aria-label="#E4FBCC"
@@ -165,9 +161,9 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render modal when show is true', () => {
+    it('should render a named dialog when show is true', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
     })
 
     it('should render name input with dataset name', () => {
@@ -325,6 +321,33 @@ describe('RenameDatasetModal', () => {
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose when Escape is pressed', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+
+      await user.keyboard('{Escape}')
+
+      expect(handleClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should submit the form when Enter is pressed in the name input', async () => {
+      const user = userEvent.setup()
+      render(<RenameDatasetModal {...defaultProps} />)
+
+      await user.type(screen.getByRole('textbox', { name: 'datasetSettings.form.name' }), '{Enter}')
+
+      await waitFor(() => {
+        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            name: 'Test Dataset',
+            description: 'Test description',
+          }),
+        })
+      })
+    })
+
     it('should call API when save button is clicked with valid name', async () => {
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -362,7 +385,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(saveButton)!.toBeDisabled()
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
       })
 
       // Resolve the promise to clean up
@@ -777,12 +800,11 @@ describe('RenameDatasetModal', () => {
   describe('Icon Picker Integration', () => {
     it('should render app icon component', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      // The modal should render with name label and input
-      // AppIcon is rendered alongside the name input
-      // The modal should render with name label and input
-      // AppIcon is rendered alongside the name input
-      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.edit datasetSettings.form.nameAndIcon',
+        }),
+      ).toContainElement(screen.getByTestId('app-icon'))
     })
 
     it('should initialize icon state from dataset', () => {
@@ -889,7 +911,7 @@ describe('RenameDatasetModal', () => {
       // Initially picker should not be visible
       // Initially picker should not be visible
       // Initially picker should not be visible
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
 
       const appIcon = screen.getByTestId('app-icon')
       await act(async () => {
@@ -897,7 +919,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
     })
 
@@ -907,12 +929,12 @@ describe('RenameDatasetModal', () => {
 
       await user.click(screen.getByTestId('app-icon'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
 
       // Save and verify new icon is used
@@ -942,12 +964,12 @@ describe('RenameDatasetModal', () => {
 
       await user.click(screen.getByTestId('app-icon'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: '#E0F2FE' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
 
       const saveButton = screen.getByText('common.operation.save')
@@ -981,11 +1003,11 @@ describe('RenameDatasetModal', () => {
 
       const user = userEvent.setup()
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
 
       // Save and verify original icon is preserved
@@ -1145,7 +1167,7 @@ describe('RenameDatasetModal', () => {
 
       // Button should be disabled now
       // Button should be disabled now
-      expect(saveButton)!.toBeDisabled()
+      expect(saveButton).toHaveAttribute('aria-disabled', 'true')
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
@@ -1263,7 +1285,7 @@ describe('RenameDatasetModal', () => {
 
       // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton)!.toBeDisabled()
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
       })
 
       // Resolve promise to complete the test
@@ -1342,3 +1364,5 @@ describe('RenameDatasetModal', () => {
     })
   })
 })
+
+mockEmojiData()

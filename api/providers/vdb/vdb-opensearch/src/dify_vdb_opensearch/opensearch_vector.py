@@ -191,7 +191,7 @@ class OpenSearchVector(BaseVector):
         try:
             self._client.get(index=self._collection_name.lower(), id=id)
             return True
-        except:
+        except Exception:
             return False
 
     @override

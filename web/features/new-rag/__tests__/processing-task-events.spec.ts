@@ -1,13 +1,13 @@
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import { withEventMeta } from '@orpc/client'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { streamProcessingTaskEvents } from '../services/processing-task-events'
 
 const { mockStreamEvents } = vi.hoisted(() => ({
   mockStreamEvents: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents: mockStreamEvents,

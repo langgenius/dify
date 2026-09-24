@@ -15,7 +15,7 @@ import {
 } from './use-interactions.helpers'
 
 export const useNodeIterationInteractions = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 

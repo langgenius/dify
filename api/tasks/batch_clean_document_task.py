@@ -11,7 +11,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
+from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
@@ -64,6 +64,17 @@ def batch_clean_document_task(
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
+
+                total_image_upload_file_ids.extend(
+                    session.scalars(
+                        select(SegmentAttachmentBinding.attachment_id).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                        )
+                    ).all()
+                )
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -161,6 +172,13 @@ def batch_clean_document_task(
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
+                        binding_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(batch),
+                        )
+                        session.execute(binding_delete_stmt)
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()

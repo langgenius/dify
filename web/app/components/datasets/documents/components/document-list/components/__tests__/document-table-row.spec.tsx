@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -23,6 +24,12 @@ vi.mock('@/next/navigation', () => ({
     push: mockPush,
   }),
   useSearchParams: () => new URLSearchParams(mockSearchParams),
+}))
+
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (value: { dataset: { permission_keys: string[] } }) => unknown,
+  ) => selector({ dataset: { permission_keys: ['dataset.acl.edit'] } }),
 }))
 
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
@@ -160,6 +167,26 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Row Navigation', () => {
+    it('provides a keyboard-accessible detail link preserving search parameters', async () => {
+      const user = userEvent.setup()
+      mockSearchParams = 'page=2&status=error'
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
+
+      const link = screen.getByRole('link', { name: 'test-document.txt' })
+      expect(link).toHaveAttribute(
+        'href',
+        '/datasets/dataset-1/documents/doc-1?page=2&status=error',
+      )
+      await user.tab()
+      expect(getRowCheckbox()).toHaveFocus()
+      await user.tab()
+      expect(link).toHaveFocus()
+      await user.keyboard('{Control>}')
+      await user.click(link)
+      await user.keyboard('{/Control}')
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
     it('should navigate to document detail on row click', () => {
       render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -284,20 +311,22 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Rename Action', () => {
-    it('should call onShowRenameModal when rename button is clicked', () => {
+    it('exposes a named rename action that can be activated with the keyboard', async () => {
+      const user = userEvent.setup()
       const onShowRenameModal = vi.fn()
-      const { container } = render(
-        <DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />,
-        { wrapper: createWrapper() },
-      )
+      render(<DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />, {
+        wrapper: createWrapper(),
+      })
 
-      // Find the rename button by finding the RiEditLine icon's parent
-      const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
-      if (renameButtons.length > 0) {
-        fireEvent.click(renameButtons[0]!)
-        expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
-        expect(mockPush).not.toHaveBeenCalled()
-      }
+      await user.tab()
+      await user.tab()
+      await user.tab()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
+      ).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 

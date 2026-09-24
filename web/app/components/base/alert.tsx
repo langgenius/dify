@@ -17,7 +17,7 @@ const bgVariants = cva('', {
   },
 })
 const Alert: React.FC<Props> = ({ type = 'info', message, onHide, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('pointer-events-none w-full', className)}>

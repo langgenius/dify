@@ -1,55 +1,10 @@
 # New RAG
 
-Renders the KnowledgeFS-backed knowledge list, creation flows, sources, documents, and processing
-tasks.
+This feature owns the KnowledgeFS-backed knowledge list, creation flows, sources, documents, revisions, and processing tasks.
 
-## Internal Modules
+- `routes.ts` provides feature route construction; new or modified navigation must consume it instead of rebuilding paths.
+- Document query modules own server state. View components receive query results and user commands rather than mirroring remote state.
+- Processing task events are normalized by the feature service and coordinated by the task observer and progress store.
+- Exit confirmation, creation, and processing overlays are feature compositions of Dify UI Dialog, AlertDialog, Drawer, and Popover primitives.
 
-- `add-source-page`
-- `components/create-knowledge-dialog-parts`
-- `components/create-knowledge-exit-dialog`
-- `components/knowledge-space-card`
-- `components/knowledge-view-switcher`
-- `components/new-knowledge-list-states`
-- `crawl-selection-form`
-- `create-knowledge-page`
-- `create-upload-queue`
-- `create-knowledge-workflow`
-- `document-list`
-- `document-chunk-detail`
-- `document-chunk-tree`
-- `document-detail-header`
-- `document-detail-model`
-- `document-detail-queries`
-- `document-detail-page`
-- `document-detail-status`
-- `document-revision-content`
-- `document-model`
-- `document-upload-policy`
-- `documents-page`
-- `knowledge-route-guard`
-- `knowledge-space-shell`
-- `new-knowledge-list`
-- `processing-tasks-drawer`
-- `routes`
-- `services/processing-task-events`
-- `sources-page`
-- `storage`
-- `task-event-observer`
-- `use-document-task-status`
-- `use-document-reindex`
-- `website-crawl-preview`
-
-## External Modules
-
-- `app/components/base/corner-label`
-- `app/components/base/loading`
-- `app/components/base/search-input`
-- `app/components/base/skeleton`
-- `app/components/datasets/external-api/external-api-panel`
-- `app/components/datasets/extra-info/service-api`
-- `context/external-api-panel-context`
-- `context/permission-state`
-- `hooks/use-format-time-from-now`
-- `service/knowledge/use-dataset`
-- `utils/permission`
+Files in this directory remain feature-owned; direct consumers do not become their owners. Keep shared dataset APIs and permission policy in their existing owners rather than copying them into this feature.

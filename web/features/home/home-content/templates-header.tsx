@@ -19,7 +19,7 @@ export function HomeTemplatesHeader({
   onCategoryChange: (category: string) => void
   onKeywordsChange: (keywords: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'app'])
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">
@@ -52,6 +52,7 @@ export function HomeTemplatesHeader({
         <div className="flex shrink-0 items-center gap-3">
           <SearchInput
             className="w-40 shrink-0"
+            aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
             value={keywords}
             onValueChange={onKeywordsChange}
           />

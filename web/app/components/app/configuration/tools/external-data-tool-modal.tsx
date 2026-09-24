@@ -14,13 +14,13 @@ import {
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import { useDocLink, useLocale } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import {
   buildProviders,
@@ -41,7 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   onSave,
   onValidateBeforeSave,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
@@ -133,7 +133,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent popupClassName="w-[354px]">
+            <SelectContent className="w-88.5">
               {providers.map((option) => (
                 <SelectItem key={option.key} value={option.key}>
                   <SelectItemText>{option.name}</SelectItemText>
@@ -190,7 +190,10 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 rel="noopener noreferrer"
                 className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
               >
-                <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
+                <span
+                  aria-hidden
+                  className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-text-accent"
+                />
                 {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
               </a>
             </div>

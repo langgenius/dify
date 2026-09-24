@@ -1,3 +1,4 @@
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { resetReactFlowMockState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -36,6 +37,11 @@ vi.mock('@/service/use-triggers', async () =>
 let mockTheme = 'light'
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
+}))
+
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  basePath: '/dify',
 }))
 
 vi.mock('@/utils', () => ({
@@ -150,12 +156,10 @@ describe('useToolIcon', () => {
     expect(
       renderWorkflowHook(() => useToolIcon(dataSourceData), {
         initialStoreState: {
-          dataSourceList: [
-            { id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource.svg' },
-          ] as never,
+          dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
         },
       }).result.current,
-    ).toBe('/datasource.svg')
+    ).toBe('/dify/datasource.svg')
   })
 
   it('should fallback to provider_icon when no collection match', () => {
@@ -237,9 +241,7 @@ describe('useGetToolIcon', () => {
         buildInTools: [
           { id: 'override-1', name: 'override', icon: '/override.svg', plugin_id: 'p1' },
         ] as never,
-        dataSourceList: [
-          { id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource-store.svg' },
-        ] as never,
+        dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
       },
     })
 
@@ -258,7 +260,7 @@ describe('useGetToolIcon', () => {
         type: BlockEnum.DataSource,
         plugin_id: 'datasource-1',
       }),
-    ).toBe('/datasource-store.svg')
+    ).toBe('/dify/datasource.svg')
     expect(store.getState().buildInTools).toHaveLength(1)
   })
 

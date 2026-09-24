@@ -1,6 +1,7 @@
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   BannerResponse,
+  RecommendedAppDetailResponse,
   RecommendedAppInfoResponse,
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
@@ -23,6 +24,7 @@ import {
   stepByStepTourSessionAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -47,7 +49,7 @@ function StepByStepTourSessionFixture({
 }
 
 const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
+  userProfile: { id: 'user-1', name: 'Evan' },
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
@@ -64,7 +66,9 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
-const mockGetRecommendedApp = vi.hoisted(() => vi.fn())
+const mockGetRecommendedApp = vi.hoisted(() =>
+  vi.fn<(input: { params: { app_id: string } }) => Promise<RecommendedAppDetailResponse>>(),
+)
 const mockAppQueries = vi.hoisted(() => ({
   listQueryOptions: vi.fn(),
   recentQueryOptions: vi.fn(),
@@ -203,171 +207,154 @@ const toastMocks = vi.hoisted(() => {
   return { record, api }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('@/service/use-explore', () => ({
-  useLearnDifyAppList: () => ({
-    data: mockLearnDifyApps,
-    isLoading: mockLearnDifyLoading,
-    isError: false,
-  }),
+vi.mock('@/service/base', () => ({
+  request: async (url: string) => {
+    const pathname = new URL(url).pathname
+    if (pathname.endsWith('/explore/apps/learn-dify')) {
+      if (mockLearnDifyLoading) return new Promise<Response>(() => {})
+      return Response.json({ recommended_apps: mockLearnDifyApps })
+    }
+    if (pathname.endsWith('/explore/apps')) {
+      return Response.json({
+        categories: mockExploreData?.categories ?? [],
+        recommended_apps: mockExploreData?.allList ?? [],
+      })
+    }
+    const appId = pathname.match(/\/explore\/apps\/([^/]+)$/)?.[1]
+    if (!appId) throw new Error(`Unexpected request: ${pathname}`)
+    return Response.json(
+      await mockGetRecommendedApp({ params: { app_id: decodeURIComponent(appId) } }),
+    )
+  },
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    systemFeatures: () => Promise.resolve({}),
-  },
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['console', 'systemFeatures'],
-          ...options,
-        }),
-      },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    consoleClient: {
+      systemFeatures: () => Promise.resolve({}),
     },
-    apps: {
-      get: {
-        queryOptions: (options: {
-          input?: { query?: { limit?: number } }
-          select?: (response: {
-            data: RecentAppResponse[]
-            has_more: boolean
-            limit: number
-            page: number
-            total: number
-          }) => unknown
-        }) => {
-          mockAppQueries.listQueryOptions(options)
-          const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-          const response = {
-            data: mockWorkspaceApps.slice(0, limit),
-            has_more: false,
-            limit,
-            page: 1,
-            total: mockWorkspaceApps.length,
-          }
-          return {
-            queryKey: ['console', 'apps', 'get', options],
-            queryFn: () => Promise.resolve(response),
-            initialData: response,
-            select: options.select,
-          }
-        },
-      },
-      recent: {
-        get: {
-          queryOptions: (options: {
-            input?: { query?: { limit?: number } }
-            select?: (response: { data: RecentAppResponse[] }) => unknown
-          }) => {
-            mockAppQueries.recentQueryOptions(options)
-            const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-            const response = {
-              data: mockWorkspaceApps.slice(0, limit),
-            }
-            return {
-              queryKey: ['console', 'apps', 'recent', 'get', options],
-              queryFn: () => Promise.resolve(response),
-              initialData: response,
-              select: options.select,
-            }
-          },
-        },
-      },
-    },
-    onboarding: {
-      stepByStepTour: {
-        state: {
+    consoleQuery: {
+      account: {
+        profile: {
           get: {
-            queryKey: () => mockStepByStepTour.stateQueryKey,
-            queryOptions: () => ({
-              queryKey: mockStepByStepTour.stateQueryKey,
-              queryFn: async () => mockStepByStepTour.state,
-            }),
-          },
-          patch: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mockStepByStepTour.patchState,
-              ...options,
-            }),
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
           },
         },
       },
-    },
-    explore: {
-      apps: {
-        byAppId: {
-          get: {
-            queryOptions: (options: { input: { params: { app_id: string } } }) => ({
-              queryKey: ['console', 'explore', 'apps', 'byAppId', 'get', options.input],
-              queryFn: () => mockGetRecommendedApp(options.input),
-            }),
-          },
-        },
+      systemFeatures: {
         get: {
-          queryKey: ({ input }: { input?: unknown } = {}) => [
-            'console',
-            'explore',
-            'apps',
-            'get',
-            input,
-          ],
-          queryOptions: (options: {
-            input?: { query?: { language?: string } }
-            select?: (response: {
-              categories: string[]
-              recommended_apps: RecommendedAppResponse[]
-            }) => unknown
-          }) => {
-            const response = {
-              categories: mockExploreData?.categories ?? [],
-              recommended_apps: mockExploreData?.allList ?? [],
-            }
-            return {
-              queryKey: ['console', 'explore', 'apps', 'get', options.input],
-              queryFn: () => Promise.resolve(response),
-              initialData: response,
-              select: options.select,
-            }
-          },
-        },
-      },
-      banners: {
-        get: {
-          queryKey: ({ input }: { input?: unknown } = {}) => [
-            'console',
-            'explore',
-            'banners',
-            'get',
-            input,
-          ],
-          queryOptions: (options: {
-            input?: { query?: { language?: string } }
-            select?: (response: BannerResponse[]) => unknown
-          }) => ({
-            queryKey: ['console', 'explore', 'banners', 'get', options.input],
-            queryFn: () => Promise.resolve(mockBanners),
-            initialData: mockBanners,
-            select: options.select,
+          queryKey: () => ['console', 'systemFeatures'],
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: ['console', 'systemFeatures'],
+            ...options,
           }),
         },
       },
+      apps: {
+        get: {
+          queryOptions: (options: {
+            input?: { query?: { limit?: number } }
+            select?: (response: {
+              data: RecentAppResponse[]
+              has_more: boolean
+              limit: number
+              page: number
+              total: number
+            }) => unknown
+          }) => {
+            mockAppQueries.listQueryOptions(options)
+            const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
+            const response = {
+              data: mockWorkspaceApps.slice(0, limit),
+              has_more: false,
+              limit,
+              page: 1,
+              total: mockWorkspaceApps.length,
+            }
+            return {
+              queryKey: ['console', 'apps', 'get', options],
+              queryFn: () => Promise.resolve(response),
+              initialData: response,
+              select: options.select,
+            }
+          },
+        },
+        recent: {
+          get: {
+            queryOptions: (options: {
+              input?: { query?: { limit?: number } }
+              select?: (response: { data: RecentAppResponse[] }) => unknown
+            }) => {
+              mockAppQueries.recentQueryOptions(options)
+              const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
+              const response = {
+                data: mockWorkspaceApps.slice(0, limit),
+              }
+              return {
+                queryKey: ['console', 'apps', 'recent', 'get', options],
+                queryFn: () => Promise.resolve(response),
+                initialData: response,
+                select: options.select,
+              }
+            },
+          },
+        },
+      },
+      onboarding: {
+        stepByStepTour: {
+          state: {
+            get: {
+              queryKey: () => mockStepByStepTour.stateQueryKey,
+              queryOptions: () => ({
+                queryKey: mockStepByStepTour.stateQueryKey,
+                queryFn: async () => mockStepByStepTour.state,
+              }),
+            },
+            patch: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mockStepByStepTour.patchState,
+                ...options,
+              }),
+            },
+          },
+        },
+      },
+      explore: {
+        apps: actual.consoleQuery.explore.apps,
+        banners: {
+          get: {
+            queryKey: ({ input }: { input?: unknown } = {}) => [
+              'console',
+              'explore',
+              'banners',
+              'get',
+              input,
+            ],
+            queryOptions: (options: {
+              input?: { query?: { language?: string } }
+              select?: (response: BannerResponse[]) => unknown
+            }) => ({
+              queryKey: ['console', 'explore', 'banners', 'get', options.input],
+              queryFn: () => Promise.resolve(mockBanners),
+              initialData: mockBanners,
+              select: options.select,
+            }),
+          },
+        },
+      },
     },
-  },
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
+  }
 })
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -541,8 +528,10 @@ type RenderOptions = {
 }
 
 const localeInput = { query: { language: 'en-US' } }
-const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
+const homeTemplatesQueryKey = consoleQuery.explore.apps.get.queryKey({ input: localeInput })
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
+const recommendedAppQueryKey = (appId: string) =>
+  consoleQuery.explore.apps.byAppId.get.queryKey({ input: { params: { app_id: appId } } })
 
 const renderHomeContent = ({
   hasEditPermission = false,
@@ -551,6 +540,7 @@ const renderHomeContent = ({
 }: RenderOptions = {}) => {
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile,
     systemFeatures: {
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
@@ -562,6 +552,14 @@ const renderHomeContent = ({
       categories: mockExploreData.categories,
       recommended_apps: mockExploreData.allList,
     })
+  }
+  if (!mockLearnDifyLoading) {
+    queryClient.setQueryData(
+      consoleQuery.explore.apps.learnDify.get.queryKey({ input: localeInput }),
+      {
+        recommended_apps: mockLearnDifyApps,
+      },
+    )
   }
   if (options.enableExploreBanner) queryClient.setQueryData(exploreBannersQueryKey, mockBanners)
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
@@ -630,6 +628,20 @@ describe('HomeContent', () => {
   })
 
   describe('Rendering', () => {
+    it('should always render the page intro as the only h1 when the banner is disabled', () => {
+      renderHomeContent()
+
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'explore.banner.greeting:{"name":"Evan"}',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.tagline')).toBeInTheDocument()
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+    })
+
     it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -680,7 +692,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -895,6 +907,8 @@ describe('HomeContent', () => {
     })
 
     it('should keep selected category when clearing search text', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [
@@ -909,15 +923,11 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'alp' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
       })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      await user.type(input, 'alp')
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -925,7 +935,9 @@ describe('HomeContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should filter apps by search keywords', async () => {
+    it('should filter local templates immediately as the user types', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -935,15 +947,45 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
       })
+      await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
+    })
+
+    it('should find templates by description and explain empty results', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [
+          createApp({ description: 'Summarize invoices' }),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Gamma' },
+            description: 'Translate documents',
+          }),
+        ],
+      }
+      renderHomeContent()
+
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
+      await user.type(input, 'INVOICE')
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByText('Gamma')).not.toBeInTheDocument()
+
+      await user.clear(input)
+      await user.type(input, 'unmatched')
+
+      expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noTemplateFoundTip')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.newApp.noTemplateFound')
     })
 
     it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
@@ -953,6 +995,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -988,6 +1033,39 @@ describe('HomeContent', () => {
       })
     })
 
+    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockHandleImportDSL.mockResolvedValue(undefined)
+      const { queryClient } = renderHomeContent({ hasEditPermission: true })
+      queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
+        export_data: 'cached-yaml',
+        mode: AppModeEnum.CHAT,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: recommendedAppQueryKey('app-1'),
+        exact: true,
+        refetchType: 'none',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.any(Object),
+      )
+    })
+
     it('should open create flow from learn dify item card click', async () => {
       vi.useRealTimers()
       const user = userEvent.setup()
@@ -996,6 +1074,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1134,6 +1215,9 @@ describe('HomeContent', () => {
         minimized: true,
       })
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1191,6 +1275,9 @@ describe('HomeContent', () => {
       })
       mockStepByStepTour.patchState.mockRejectedValueOnce(new Error('patch failed'))
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1256,6 +1343,9 @@ describe('HomeContent', () => {
         minimized: true,
       })
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1323,6 +1413,8 @@ describe('HomeContent', () => {
 
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -1332,17 +1424,13 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
       })
+      await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
@@ -1355,6 +1443,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1377,6 +1468,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1405,6 +1499,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1456,6 +1553,9 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
       mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1513,6 +1613,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     })
   })
 })

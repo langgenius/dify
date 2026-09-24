@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,6 +16,10 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
@@ -23,8 +27,8 @@ vi.mock('@/context/i18n', () => ({
 
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -88,7 +92,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       externalKnowledgeApi: {
@@ -364,16 +368,12 @@ describe('ExternalKnowledgeBaseConnector', () => {
       expect((descriptionInput as HTMLTextAreaElement).value).toBe('My Description')
     })
 
-    it('should handle cancel button click', async () => {
-      const user = userEvent.setup()
+    it('should link back to the dataset list from cancel', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
-      const cancelButton = screen
-        .getByText('dataset.externalKnowledgeForm.cancel')
-        .closest('button')
-      await user.click(cancelButton!)
-
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      expect(
+        screen.getByRole('link', { name: 'dataset.externalKnowledgeForm.cancel' }),
+      ).toHaveAttribute('href', '/datasets')
     })
 
     it('should handle back button click', async () => {

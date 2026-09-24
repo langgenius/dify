@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen'
+import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
 
 /**
  * Get compliance document download link

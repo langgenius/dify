@@ -3,18 +3,17 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 
 const APIKeyInfoPanel: FC = () => {
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -23,14 +22,19 @@ const APIKeyInfoPanel: FC = () => {
   })
   const isCloud = deploymentEdition === 'CLOUD'
 
-  const { isAPIKeySet } = useProviderContext()
+  const { data: hasActiveProvider = false } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: 'llm' } },
+      select: (response) => response.data.some((provider) => provider.status === 'active'),
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
 
   const [isShow, setIsShow] = useState(true)
 
-  if (isAPIKeySet) return null
+  if (hasActiveProvider) return null
 
   if (!isShow) return null
 
@@ -47,7 +51,7 @@ const APIKeyInfoPanel: FC = () => {
           isCloud ? 'flex h-8 items-center space-x-1' : 'mb-6 leading-8',
         )}
       >
-        {isCloud && <em-emoji id="😀" />}
+        {isCloud && <span>😀</span>}
         {isCloud ? (
           <div>
             {t(($) => $['apiKeyInfo.cloud.trial.title'], {
@@ -71,7 +75,7 @@ const APIKeyInfoPanel: FC = () => {
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
         </div>
-        <LinkExternal02 className="size-4" />
+        <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-4" />
       </Button>
       {!isCloud && (
         <a
@@ -81,7 +85,7 @@ const APIKeyInfoPanel: FC = () => {
           rel="noopener noreferrer"
         >
           <div>{t(($) => $['apiKeyInfo.tryCloud'], { ns: 'appOverview' })}</div>
-          <LinkExternal02 className="size-3" />
+          <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
         </a>
       )}
       <div

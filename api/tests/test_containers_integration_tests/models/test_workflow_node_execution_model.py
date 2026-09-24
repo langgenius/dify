@@ -109,7 +109,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=account.id,
         )
 
-        result = execution.created_by_account
+        result = execution.created_by_account(session=db_session_with_containers)
 
         assert result is not None
         assert result.id == account.id
@@ -126,7 +126,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=account.id,
         )
 
-        result = execution.created_by_account
+        result = execution.created_by_account(session=db_session_with_containers)
 
         assert result is None
 
@@ -146,7 +146,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=end_user.id,
         )
 
-        result = execution.created_by_end_user
+        result = execution.created_by_end_user(session=db_session_with_containers)
 
         assert result is not None
         assert result.id == end_user.id
@@ -165,6 +165,6 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=end_user.id,
         )
 
-        result = execution.created_by_end_user
+        result = execution.created_by_end_user(session=db_session_with_containers)
 
         assert result is None

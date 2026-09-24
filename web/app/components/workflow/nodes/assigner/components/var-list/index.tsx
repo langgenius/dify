@@ -2,15 +2,14 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -49,7 +48,7 @@ const VarList: FC<Props> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowLogic'])
   const handleAssignedVarChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {
@@ -94,9 +93,9 @@ const VarList: FC<Props> = ({
     (index: number) => {
       return (value: ValueSelector | string | number | boolean) => {
         const newList = produce(list, (draft) => {
-          draft[index]!.value = value as ValueSelector
+          draft[index]!.value = value
         })
-        onChange(newList, value as ValueSelector)
+        onChange(newList, Array.isArray(value) ? value : undefined)
       }
     },
     [list, onChange],
@@ -144,7 +143,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflow' })}
+        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflowLogic' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -174,7 +173,7 @@ const VarList: FC<Props> = ({
                   filterVar={filterVar}
                   placeholder={
                     t(($) => $['nodes.assigner.selectAssignedVariable'], {
-                      ns: 'workflow',
+                      ns: 'workflowLogic',
                     }) as string
                   }
                   minWidth={352}
@@ -206,7 +205,7 @@ const VarList: FC<Props> = ({
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
                     placeholder={
-                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string
+                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' }) as string
                     }
                     minWidth={352}
                     popupFor="toAssigned"
@@ -215,19 +214,11 @@ const VarList: FC<Props> = ({
                 )}
               {!!(item.operation === WriteMode.set && assignedVarType) && (
                 <>
-                  {assignedVarType === 'number' && (
-                    <Input
-                      type="number"
-                      value={item.value as number}
-                      onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
-                      className="w-full"
-                    />
-                  )}
                   {assignedVarType === 'string' && (
                     <Textarea
                       aria-label={
                         item.variable_selector?.join('.') ||
-                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' })
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
                       }
                       value={item.value as string}
                       onValueChange={(value) => handleToAssignedVarChange(index)(value)}
@@ -251,23 +242,40 @@ const VarList: FC<Props> = ({
                   )}
                 </>
               )}
-              {writeModeTypesNum?.includes(item.operation) && (
-                <Input
-                  type="number"
-                  value={item.value as number}
-                  onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
-                  placeholder="Enter number value..."
+              {((item.operation === WriteMode.set && assignedVarType === VarType.number) ||
+                writeModeTypesNum?.includes(item.operation)) && (
+                <NumberField
+                  step="any"
+                  value={typeof item.value === 'number' ? item.value : null}
+                  readOnly={readonly}
+                  onValueChange={(value) => handleToAssignedVarChange(index)(value ?? '')}
                   className="w-full"
-                />
+                >
+                  <NumberFieldGroup>
+                    <NumberFieldInput
+                      aria-label={
+                        item.variable_selector.join('.') ||
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
+                      }
+                      placeholder={
+                        writeModeTypesNum?.includes(item.operation)
+                          ? 'Enter number value...'
+                          : undefined
+                      }
+                    />
+                  </NumberFieldGroup>
+                </NumberField>
               )}
             </div>
-            <ActionButton
-              size="l"
-              className="group shrink-0 hover:bg-state-destructive-hover!"
+            <IconButton
+              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+              size="lg"
+              tone="destructive"
+              className="shrink-0"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         )
       })}

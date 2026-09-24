@@ -90,8 +90,8 @@ class AnnotationReplyFeature:
                     )
 
                     return annotation
-        except Exception as e:
-            logger.warning("Query annotation failed, exception: %s.", str(e))
+        except Exception:
+            logger.warning("Query annotation failed.", exc_info=True)
             return None
 
         return None

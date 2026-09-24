@@ -60,7 +60,7 @@ describe('CredentialItem', () => {
     render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} />)
 
     expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
-    expect(screen.getByText('common.modelProvider.card.unavailable')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.card.unavailable')).toBeInTheDocument()
   })
 
   it('should render available credential with success indicator', () => {

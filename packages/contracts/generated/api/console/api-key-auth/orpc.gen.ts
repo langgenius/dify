@@ -8,7 +8,7 @@ import {
   zGetApiKeyAuthDataSourceResponse,
   zPostApiKeyAuthDataSourceBindingBody,
   zPostApiKeyAuthDataSourceBindingResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

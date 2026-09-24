@@ -546,3 +546,31 @@ class TestConverter:
         assert converted["empty_list"] == []
         assert converted["mixed_list"] == [file_one, "raw"]
         assert converted["none_value"] is None
+
+    def test_merge_blob_chunks_rejects_declared_size_above_limit(self):
+        """A declared total_length above the limit is rejected before allocation."""
+
+        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+            yield ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
+                message=ToolInvokeMessage.BlobChunkMessage(
+                    id="file1", sequence=0, total_length=1025, blob=b"x", end=False
+                ),
+            )
+
+        with pytest.raises(ValueError, match="File is too large"):
+            list(merge_blob_chunks(mock_generator(), max_file_size=1024))
+
+    def test_merge_blob_chunks_rejects_absurd_declared_size(self):
+        """An absurd declared total_length raises ValueError, not MemoryError/OverflowError."""
+
+        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+            yield ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
+                message=ToolInvokeMessage.BlobChunkMessage(
+                    id="file1", sequence=0, total_length=2**62, blob=b"x", end=False
+                ),
+            )
+
+        with pytest.raises(ValueError, match="File is too large"):
+            list(merge_blob_chunks(mock_generator()))

@@ -26,7 +26,7 @@ const VersionMismatchModal = ({
   onClose,
   onConfirm,
 }: VersionMismatchModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <AlertDialog

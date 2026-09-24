@@ -1,15 +1,33 @@
-import { renderHook } from '@testing-library/react'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   createCredentialState,
   createModel,
   createModelItem,
-  createProviderMeta,
 } from '@/app/components/workflow/__tests__/model-provider-fixtures'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddingModelStatus } from '../use-embedding-model-status'
 
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
+
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
+const mockProviderSummary = vi.hoisted(() => vi.fn())
 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
@@ -18,18 +36,26 @@ vi.mock(
   }),
 )
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
-}))
+const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    ...mockProviderSummary(),
+    plugins: {},
+  })
+  return renderHookWithConsoleQuery(callback, { ...options, queryClient })
+}
 
 describe('useEmbeddingModelStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
-        createProviderMeta({
-          supported_model_types: [ModelTypeEnum.textEmbedding],
-        }),
+    mockProviderSummary.mockReturnValue({
+      data: [
+        {
+          ...providerSummaryFixture,
+          ...{
+            supported_model_types: [ModelTypeEnum.textEmbedding],
+          },
+        } satisfies ModelProviderSummaryResponse,
       ],
     })
     mockUseCredentialPanelState.mockReturnValue(createCredentialState())

@@ -24,14 +24,6 @@ describe('KeyWordNumber', () => {
       ).toBeInTheDocument()
     })
 
-    it('should render infotip with question icon', () => {
-      render(<KeyWordNumber {...defaultProps} />)
-      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.numberOfKeywords' })
-      const container = trigger.parentElement
-      const questionIcon = container?.querySelector('.i-ri-question-line')
-      expect(questionIcon).toBeInTheDocument()
-    })
-
     it('should render slider', () => {
       render(<KeyWordNumber {...defaultProps} />)
       expect(getSlider()).toBeInTheDocument()

@@ -85,8 +85,8 @@ class DockerComposeStack:
     env_file: Path
     services: tuple[str, ...]
     profiles: tuple[str, ...] = ()
-    ready_delay_seconds: float = 0.0
     warmup_urls: tuple[str, ...] = ()
+    shutdown_timeout_seconds: int | None = None
 
     def _compose_command(self) -> list[str]:
         command = [
@@ -115,8 +115,6 @@ class DockerComposeStack:
         ]
         completed = subprocess.run(wait_command, cwd=self.repo_root, text=True, capture_output=True)
         if completed.returncode == 0:
-            if self.ready_delay_seconds > 0:
-                time.sleep(self.ready_delay_seconds)
             self._warm_up()
             return
 
@@ -135,8 +133,11 @@ class DockerComposeStack:
         )
 
     def down(self) -> None:
-        """Stop services started for this pytest run."""
-        subprocess.run(self._compose_command() + ["down"], cwd=self.repo_root, check=True)
+        """Stop test services, optionally overriding Compose's shutdown grace period."""
+        command = self._compose_command() + ["down"]
+        if self.shutdown_timeout_seconds is not None:
+            command.extend(("--timeout", str(self.shutdown_timeout_seconds)))
+        subprocess.run(command, cwd=self.repo_root, check=True)
 
     def _warm_up(self) -> None:
         for url in self.warmup_urls:
@@ -164,10 +165,12 @@ def build_middleware_stack(repo_root: Path, services: list[str]) -> DockerCompos
         name="middleware",
         project_name="dify-pytest-middleware",
         repo_root=repo_root,
-        compose_files=(repo_root / "docker" / "docker-compose.middleware.yaml",),
+        compose_files=(
+            repo_root / "docker" / "docker-compose.middleware.yaml",
+            repo_root / "docker" / "docker-compose.pytest.middleware.yaml",
+        ),
         env_file=repo_root / "docker" / "middleware.env",
         services=tuple(services),
-        ready_delay_seconds=5.0,
         warmup_urls=("http://127.0.0.1:8194/health",),
     )
 

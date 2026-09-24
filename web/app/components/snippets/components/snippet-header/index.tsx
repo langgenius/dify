@@ -20,15 +20,10 @@ const PublishAction = ({
   isPublishing,
   onPublish,
 }: Pick<SnippetHeaderProps, 'canSave' | 'isPublishing' | 'onPublish'>) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
 
   return (
-    <Button
-      variant="primary"
-      loading={isPublishing}
-      disabled={isPublishing || !canSave}
-      onClick={onPublish}
-    >
+    <Button variant="primary" loading={isPublishing} disabled={!canSave} onClick={onPublish}>
       {t(($) => $.publishButton)}
     </Button>
   )
@@ -41,7 +36,7 @@ const SnippetHeader = ({
   isPublishing,
   onPublish,
 }: SnippetHeaderProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const viewHistoryProps = useMemo(() => {
     return {
       historyUrl: `/snippets/${snippetId}/workflow-runs`,

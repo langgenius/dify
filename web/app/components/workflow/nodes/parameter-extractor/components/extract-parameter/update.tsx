@@ -4,6 +4,7 @@ import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -15,14 +16,13 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Input from '@/app/components/base/input'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
 
@@ -54,7 +54,10 @@ const TYPES = [
 ]
 
 const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowModels'])
+  const nameLabel = t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
+    ns: 'workflowModels',
+  })
   const isAdd = type === 'add'
   const [param, setParam] = useState<Param>(isAdd ? DEFAULT_PARAM : (payload as Param))
   const [renameInfo, setRenameInfo] = useState<MoreInfo | undefined>(undefined)
@@ -110,7 +113,9 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
     if (!param.name)
       errMessage = t(($) => $[`${errorI18nPrefix}.fieldRequired`], {
         ns: 'workflow',
-        field: t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], { ns: 'workflow' }),
+        field: t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
+          ns: 'workflowModels',
+        }),
       })
     if (
       !errMessage &&
@@ -125,7 +130,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
       errMessage = t(($) => $[`${errorI18nPrefix}.fieldRequired`], {
         ns: 'workflow',
         field: t(($) => $[`${i18nPrefix}.addExtractParameterContent.description`], {
-          ns: 'workflow',
+          ns: 'workflowModels',
         }),
       })
 
@@ -148,7 +153,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
       {isAdd && (
         <button
           type="button"
-          aria-label={t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflow' })}
+          aria-label={t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })}
           className="mx-1 cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={showAddModal}
         >
@@ -164,19 +169,16 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
         >
           <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })}
             </DialogTitle>
 
             <div>
               <div className="space-y-2">
-                <Field
-                  title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
-                    ns: 'workflow',
-                  })}
-                >
+                <Field title={nameLabel}>
                   <Input
+                    aria-label={nameLabel}
                     value={param.name}
-                    onChange={(e) => handleParamChange('name')(e.target.value)}
+                    onValueChange={(value) => handleParamChange('name')(value)}
                     placeholder={t(
                       ($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`],
                       {
@@ -187,7 +189,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                 </Field>
                 <Field
                   title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.type`], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 >
                   <Select<ParamType>
@@ -217,13 +219,13 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                 )}
                 <Field
                   title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 >
                   <Textarea
                     aria-label={t(
                       ($) => $[`${i18nPrefix}.addExtractParameterContent.description`],
-                      { ns: 'workflow' },
+                      { ns: 'workflowModels' },
                     )}
                     value={param.description}
                     onValueChange={(value) => handleParamChange('description')(value)}
@@ -235,13 +237,13 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                 </Field>
                 <Field
                   title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 >
                   <>
                     <div className="mb-1.5 text-xs leading-4.5 font-normal text-text-tertiary">
                       {t(($) => $[`${i18nPrefix}.addExtractParameterContent.requiredContent`], {
-                        ns: 'workflow',
+                        ns: 'workflowModels',
                       })}
                     </div>
                     <Switch

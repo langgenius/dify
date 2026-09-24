@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -148,7 +148,7 @@ class ClearFreePlanTenantExpiredLogs:
                         f"-{time.time()}.json",
                         json.dumps(
                             jsonable_encoder(
-                                [message.to_dict() for message in messages],
+                                [message.to_dict(session=session) for message in messages],
                             ),
                         ).encode("utf-8"),
                     )
@@ -188,7 +188,7 @@ class ClearFreePlanTenantExpiredLogs:
                         f"-{time.time()}.json",
                         json.dumps(
                             jsonable_encoder(
-                                [conversation.to_dict() for conversation in conversations],
+                                [conversation.to_dict(session=session) for conversation in conversations],
                             ),
                         ).encode("utf-8"),
                     )
@@ -371,7 +371,7 @@ class ClearFreePlanTenantExpiredLogs:
         def process_tenant(flask_app: Flask, tenant_id: str):
             try:
                 if (
-                    not dify_config.BILLING_ENABLED
+                    dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
                     or BillingService.get_info(tenant_id)["subscription"]["plan"] == CloudPlan.SANDBOX
                 ):
                     # only process sandbox tenant

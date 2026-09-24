@@ -8,7 +8,7 @@
  * The implementation ensures clipboard operations work across all supported browsers
  * while gracefully handling permissions and API availability.
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { writeTextToClipboard } from './clipboard'
 
 describe('Clipboard Utilities', () => {

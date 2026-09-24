@@ -20,7 +20,7 @@ type Props = Readonly<{
   EditorProps
 
 const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProps }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const isLeftBraceRef = useRef(false)
 

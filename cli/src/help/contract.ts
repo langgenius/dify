@@ -49,13 +49,18 @@ export const CONTRACT: Contract = {
   },
 }
 
-// Single source for the top-level GLOBAL FLAGS section: flags that work across
-// commands. `-o` is parsed globally (see sniffOutputFormat); its accepted values
-// come straight from CONTRACT.outputFormats so the two can never drift.
+// Single source for the top-level GLOBAL FLAGS section: flags the framework
+// parses before any command sees argv. `-o` is parsed globally (see
+// sniffOutputFormat); its accepted values come straight from
+// CONTRACT.outputFormats so the two can never drift.
 export const GLOBAL_FLAG_HELP: ReadonlyArray<{ label: string; description: string }> = [
   {
     label: '-o, --output <format>',
     description: `Output format: ${CONTRACT.outputFormats.join('|')}`,
+  },
+  {
+    label: '--compact',
+    description: 'Command map with only command/description/effect (top-level help, json|yaml)',
   },
   { label: '-v, --verbose', description: 'Enable verbose logging' },
   {

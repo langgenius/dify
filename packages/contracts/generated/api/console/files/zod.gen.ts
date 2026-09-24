@@ -31,12 +31,12 @@ export const zUploadConfig = z.object({
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -44,8 +44,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**

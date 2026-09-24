@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
 import VariableIcon from './variable-icon'
@@ -59,7 +58,12 @@ const VariableLabel = ({
           {capitalize(variableType)}
         </div>
       )}
-      {!!errorMsg && <Warning className="size-3 shrink-0 text-text-warning" />}
+      {!!errorMsg && (
+        <span
+          aria-hidden
+          className="i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
+        />
+      )}
       {rightSlot}
     </div>
   )

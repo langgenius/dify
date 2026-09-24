@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { BaseError, HttpClientError, isBaseError, newError, unknownError } from './base'
 import { ErrorCode, ExitCode } from './codes'
 

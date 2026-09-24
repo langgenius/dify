@@ -1,6 +1,7 @@
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -8,7 +9,9 @@ type MonthlyDaysSelectorProps = {
 }
 
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
-  const { t } = useTranslation()
+  const lastDayLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []
@@ -29,10 +32,10 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   ]
 
   return (
-    <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
-      </label>
+    <Fieldset className="space-y-2">
+      <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
+        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflowIntegrations' })}
+      </FieldsetLegend>
 
       <div className="space-y-1.5">
         {rows.map((row, rowIndex) => (
@@ -48,20 +51,24 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   }`}
                 >
                   <button
+                    id={lastDayLabelId}
                     type="button"
                     onClick={() => handleDayClick(day)}
                     className="min-w-0 flex-1 py-1"
                   >
-                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflowIntegrations' })}
                   </button>
-                  <Infotip
-                    aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                      ns: 'workflow',
-                    })}
-                    className="mr-1 size-3"
-                    iconSize="small"
-                  >
-                    {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={lastDayLabelId}
+                      className="mr-1 size-3"
+                      iconSize="small"
+                    />
+                    <InfotipContent aria-labelledby={lastDayLabelId}>
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflowIntegrations',
+                      })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ) : (
@@ -91,12 +98,12 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {/* Warning message for day 31 - aligned with grid */}
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
-          <div className="col-span-7 text-xs text-gray-500">
-            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+          <div className="col-span-7 text-xs text-text-tertiary">
+            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflowIntegrations' })}
           </div>
         </div>
       )}
-    </div>
+    </Fieldset>
   )
 }
 

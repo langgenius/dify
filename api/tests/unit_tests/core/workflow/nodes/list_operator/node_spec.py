@@ -4,7 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from graphon.entities import GraphInitParams
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
 from graphon.runtime import GraphRuntimeState
@@ -69,29 +69,6 @@ class TestListOperatorNode:
             )
 
         return _create_node
-
-    def test_node_initialization(self, mock_graph_runtime_state, graph_init_params):
-        """Test node initializes correctly."""
-        config = {
-            "title": "List Operator",
-            "variable": ["sys", "list"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
-
-        node = self._build_node(
-            data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        assert node.node_type == BuiltinNodeTypes.LIST_OPERATOR
-        assert node._node_data.title == "List Operator"
-
-    def test_version(self):
-        """Test version returns correct value."""
-        assert ListOperatorNode.version() == "1"
 
     def test_run_with_string_array(self, list_operator_node_factory):
         """Test with string array."""

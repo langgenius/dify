@@ -1,5 +1,5 @@
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 export const NAME_MAX_LENGTH = 160
 export const DESCRIPTION_MAX_LENGTH = 2000

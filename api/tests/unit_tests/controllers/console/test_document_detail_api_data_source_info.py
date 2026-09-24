@@ -7,6 +7,7 @@ and data_source_detail_dict for all data_source_type values, including "local_fi
 
 import json
 from typing import Literal, NotRequired, TypedDict
+from unittest.mock import MagicMock
 
 from models.dataset import Document
 
@@ -116,7 +117,7 @@ class TestDocumentDetailDataSourceInfo:
         )
 
         # data_source_detail_dict should return raw data for notion_import
-        detail_result = document.data_source_detail_dict
+        detail_result = document.get_data_source_detail_dict(session=MagicMock())
         assert detail_result == notion_data
 
         # Test website_crawl
@@ -127,7 +128,7 @@ class TestDocumentDetailDataSourceInfo:
         )
 
         # data_source_detail_dict should return raw data for website_crawl
-        detail_result = document.data_source_detail_dict
+        detail_result = document.get_data_source_detail_dict(session=MagicMock())
         assert detail_result == website_data
 
     def test_local_file_data_source_detail_dict_without_db(self):
@@ -139,5 +140,5 @@ class TestDocumentDetailDataSourceInfo:
         )
 
         # Should return empty dict for local_file type (handled in the model)
-        detail_result = document.data_source_detail_dict
+        detail_result = document.get_data_source_detail_dict(session=MagicMock())
         assert detail_result == {}

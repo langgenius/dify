@@ -1,15 +1,15 @@
 'use client'
-
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillFileNode = AgentFileNode
@@ -95,7 +95,7 @@ function AgentSkillFileList({
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (fileListLoading) {
     return (
@@ -109,7 +109,7 @@ function AgentSkillFileList({
           </h3>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <Loading type="area" />
+          <LoadingPlaceholder />
         </div>
       </div>
     )
@@ -226,14 +226,14 @@ function AgentFilePreviewContent({
   isLoading?: boolean
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const isPreviewDownloadLoading = downloadActionLoadingTarget === 'preview'
 
   if (isLoading || isDownloadLoading) {
     return (
       <div className="flex min-h-40 flex-1 items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -343,15 +343,14 @@ export function AgentSkillDetailDialog({
   skillName: string
   detail: AgentSkillDetail
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
 
   return (
     <DialogContent
-      backdropProps={{ forceRender: true }}
-      backdropClassName="fixed"
+      backdropProps={{ forceRender: true, className: 'fixed' }}
       className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
     >
       <div
@@ -393,14 +392,14 @@ export function AgentSkillDetailDialog({
               </h2>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="-my-0.5 flex shrink-0 items-center gap-1">
             {detail.onDownloadFile && previewTitle && (
               <button
                 type="button"
                 aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
                 onClick={() => detail.onDownloadFile?.('header')}
                 disabled={isHeaderDownloadLoading}
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               >
                 <span
                   aria-hidden
@@ -413,13 +412,23 @@ export function AgentSkillDetailDialog({
                 />
               </button>
             )}
-            <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={tCommon(($) => $['operation.close'])}
+                  size="lg"
+                  className="shrink-0"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
         </div>
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
           <ScrollAreaViewport
             aria-labelledby={dialogTitleId}
-            className="overscroll-contain outline-none focus-visible:outline-none"
+            className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent

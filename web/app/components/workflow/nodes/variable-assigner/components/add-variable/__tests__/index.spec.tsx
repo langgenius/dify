@@ -62,7 +62,7 @@ describe('variable-assigner/add-variable', () => {
     expect(triggerVisual).toHaveClass('bg-primary-600!')
 
     expect(
-      screen.getByText('workflow.nodes.variableAssigner.setAssignVariable'),
+      screen.getByText('workflowLogic.nodes.variableAssigner.setAssignVariable'),
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('answer'))

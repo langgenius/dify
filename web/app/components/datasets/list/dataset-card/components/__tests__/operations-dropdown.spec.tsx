@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -22,11 +22,6 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
     },
   })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -88,17 +83,6 @@ describe('OperationsDropdown', () => {
       const moreIcon = container.querySelector('.i-ri-more-fill')
       expect(moreIcon).toBeInTheDocument()
     })
-
-    it('should render in hidden state initially (group-hover)', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass(
-        'invisible',
-        'pointer-events-none',
-        'group-hover:visible',
-        'group-hover:pointer-events-auto',
-      )
-    })
   })
 
   describe('Props', () => {
@@ -149,7 +133,7 @@ describe('OperationsDropdown', () => {
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
 
     it('should hide resource access option when RBAC is disabled', () => {
@@ -162,7 +146,7 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
@@ -307,7 +291,7 @@ describe('OperationsDropdown', () => {
       )
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
-      fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+      fireEvent.click(screen.getByText('navigation.settings.resourceAccess'))
 
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })

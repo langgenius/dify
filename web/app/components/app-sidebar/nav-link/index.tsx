@@ -1,25 +1,15 @@
 'use client'
-import type { RemixiconComponentType } from '@remixicon/react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
-export type NavIcon =
-  | React.ComponentType<
-      React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
-        title?: string | undefined
-        titleId?: string | undefined
-      }
-    >
-  | RemixiconComponentType
-
 export type NavLinkProps = {
   name: string
   href?: string
   iconMap: {
-    selected: NavIcon
-    normal: NavIcon
+    selected: string
+    normal: string
   }
   mode?: string
   disabled?: boolean
@@ -49,7 +39,7 @@ const NavLink = ({
   )
   const isActive =
     active ?? (href ? href.toLowerCase().split('/')?.pop() === formattedSegment : false)
-  const NavIcon = isActive ? iconMap.selected : iconMap.normal
+  const iconClassName = isActive ? iconMap.selected : iconMap.normal
 
   const isCollapsed = mode !== 'expand'
   const borderClassName = 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px]'
@@ -66,7 +56,7 @@ const NavLink = ({
 
   const renderIcon = () => (
     <div className="flex size-5 items-center justify-center">
-      <NavIcon className="size-4.5 shrink-0" aria-hidden="true" />
+      <span aria-hidden className={cn('size-4.5 shrink-0', iconClassName)} />
     </div>
   )
 

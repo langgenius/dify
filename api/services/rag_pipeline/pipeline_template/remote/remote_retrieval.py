@@ -18,7 +18,10 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None:
+        del current_tenant_id
         try:
             return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:

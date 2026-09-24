@@ -5,7 +5,8 @@ Feature: Keyboard navigation
   Scenario: Skip repeated navigation and move focus to the main content
     Given I am signed in as the default E2E admin
     When I open the default console entry
-    And I focus and activate the skip navigation link with the keyboard
+    Then I should be on the console home
+    When I focus and activate the skip navigation link with the keyboard
     Then the console main content should have keyboard focus
 
   @unauthenticated

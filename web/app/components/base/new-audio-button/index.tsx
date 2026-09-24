@@ -1,9 +1,8 @@
 'use client'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiVolumeUpLine } from '@remixicon/react'
-import { t } from 'i18next'
 import { useState } from 'react'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { useTranslation } from 'react-i18next'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
@@ -17,6 +16,7 @@ type AudioBtnProps = Readonly<{
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
 const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
+  const { t } = useTranslation(['appApi'])
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
@@ -67,8 +67,8 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
   const tooltipContent = {
     initial: t(($) => $.play, { ns: 'appApi' }),
     ended: t(($) => $.play, { ns: 'appApi' }),
-    paused: t(($) => $.pause, { ns: 'appApi' }),
-    playing: t(($) => $.playing, { ns: 'appApi' }),
+    paused: t(($) => $.play, { ns: 'appApi' }),
+    playing: t(($) => $.pause, { ns: 'appApi' }),
     loading: t(($) => $.loading, { ns: 'appApi' }),
   }[audioState]
 
@@ -77,18 +77,17 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
       <TooltipTrigger
         render={
           <span className="inline-flex">
-            <ActionButton
-              state={
-                audioState === 'loading' || audioState === 'playing'
-                  ? ActionButtonState.Active
-                  : ActionButtonState.Default
+            <IconButton
+              data-audio-active={
+                audioState === 'loading' || audioState === 'playing' ? '' : undefined
               }
+              className="data-audio-active:bg-state-accent-active data-audio-active:text-text-accent data-audio-active:hover:bg-state-accent-active-alt data-disabled:bg-transparent data-disabled:text-text-disabled"
               aria-label={tooltipContent}
               onClick={handleToggle}
               disabled={audioState === 'loading'}
             >
-              <RiVolumeUpLine className="size-4" aria-hidden="true" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-volume-up-line size-4" />
+            </IconButton>
           </span>
         }
       />

@@ -38,8 +38,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -263,7 +263,7 @@ describe('OnlineDocuments', () => {
 
       render(<OnlineDocuments {...props} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -273,7 +273,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -654,7 +654,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
   })
 
@@ -870,7 +870,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1119,7 +1119,7 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {

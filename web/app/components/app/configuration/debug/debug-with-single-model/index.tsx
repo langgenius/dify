@@ -2,7 +2,7 @@ import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -10,15 +10,14 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 
 type DebugWithSingleModelProps = {
@@ -33,7 +32,10 @@ const DebugWithSingleModel = ({
 }: DebugWithSingleModelProps & {
   ref: React.RefObject<DebugWithSingleModelRefType>
 }) => {
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const {
     readonly,
     canTestAndRun = false,
@@ -46,7 +48,6 @@ const DebugWithSingleModel = ({
   } = useDebugConfigurationContext()
   const debugInputReadonly = !canTestAndRun
   const canManageAnnotation = !readonly && canTestAndRun
-  const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
@@ -137,7 +138,6 @@ const DebugWithSingleModel = ({
       modelConfig.mode,
       modelConfig.model_id,
       modelConfig.provider,
-      textGenerationModelList,
     ],
   )
 
@@ -161,7 +161,7 @@ const DebugWithSingleModel = ({
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
       icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons

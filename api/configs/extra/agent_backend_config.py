@@ -7,13 +7,25 @@ class AgentBackendConfig(BaseSettings):
     Configuration settings for the Agent backend runtime integration.
     """
 
+    AGENT_SANDBOX_METERING_ENABLED: bool = Field(default=False, description="Persist independent E2B runtime usage.")
+    AGENT_SANDBOX_METERING_PROJECT_ID: str = Field(
+        default="", description="Allowed E2B project/team for this database."
+    )
+    AGENT_SANDBOX_METERING_START_AT: str = Field(
+        default="", description="Immutable UTC activation instant, aligned to a whole second; required when enabled."
+    )
+    AGENT_SANDBOX_METERING_INTERVAL_SECONDS: int | str = Field(
+        default=60,
+        description="Celery Beat interval in seconds; validated only when registering optional usage collection.",
+    )
+
     AGENT_BACKEND_BASE_URL: str | None = Field(
         description="Base URL for the Dify Agent backend service.",
         default=None,
     )
 
     AGENT_BACKEND_API_TOKEN: str | None = Field(
-        description="Bearer token for authenticating with the Agent backend /runs API.",
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
         default=None,
     )
 
@@ -37,9 +49,17 @@ class AgentBackendConfig(BaseSettings):
         default=3,
     )
 
-    AGENT_BACKEND_RUN_TIMEOUT_SECONDS: PositiveFloat = Field(
-        description="Total deadline for one Agent backend run event stream.",
-        default=1200,
+    AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description=(
+            "Client timeout for Agent backend calls that may carry a Home Snapshot transfer: "
+            "snapshot capture and delete, and Execution Binding creation that restores one. "
+        ),
+        default=45.0,
+    )
+
+    AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Client timeout for converting a Binding file to a ToolFile through the Agent backend.",
+        default=240,
     )
 
     AGENT_SHELL_ENABLED: bool = Field(

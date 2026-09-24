@@ -36,7 +36,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   onCancel,
   // onHide,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const mainContentRef = useRef<HTMLDivElement>(null)
   // new prompt editor blur trigger click...
   // useClickAway(() => {

@@ -1,14 +1,20 @@
-"""Enterprise license gating performed by the global ``before_request`` hook."""
+"""Behaviour the Flask application factory installs app-wide.
+
+Enterprise license gating through the global ``before_request`` hook, and the
+flask-restx defaults every API surface inherits from the app config.
+"""
 
 from unittest.mock import patch
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, abort
 from flask_restx import Resource
 
 from app_factory import create_flask_app_with_configs
+from enums import DeploymentEdition
 from libs.external_api import ExternalApi
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import config_overrides_context
 
 INVALID_STATUSES = [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]
 VALID_STATUSES = [LicenseStatus.ACTIVE, LicenseStatus.EXPIRING]
@@ -18,8 +24,12 @@ def _license(status: LicenseStatus | None):
     return patch("app_factory.EnterpriseService.get_cached_license_status", return_value=status)
 
 
-def _enterprise(enabled: bool = True):
-    return patch("app_factory.dify_config.ENTERPRISE_ENABLED", enabled)
+def _enterprise():
+    return config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+
+def _community():
+    return config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 @pytest.fixture
@@ -134,7 +144,7 @@ class TestServiceApiLicenseGate:
 
     @pytest.mark.parametrize("status", INVALID_STATUSES)
     def test_does_not_gate_community_edition(self, gated_app: Flask, status: LicenseStatus):
-        with _enterprise(False), _license(status):
+        with _community(), _license(status):
             response = gated_app.test_client().post("/v1/chat-messages")
 
         assert response.status_code == 200
@@ -165,7 +175,7 @@ class TestMcpLicenseGate:
 
     @pytest.mark.parametrize("status", INVALID_STATUSES)
     def test_does_not_gate_community_edition(self, gated_app: Flask, status: LicenseStatus):
-        with _enterprise(False), _license(status):
+        with _community(), _license(status):
             response = gated_app.test_client().post("/mcp/server/srv-code/mcp")
 
         assert response.status_code == 200
@@ -196,7 +206,7 @@ class TestTriggerLicenseGate:
 
     @pytest.mark.parametrize("status", INVALID_STATUSES)
     def test_does_not_gate_community_edition(self, gated_app: Flask, status: LicenseStatus):
-        with _enterprise(False), _license(status):
+        with _community(), _license(status):
             response = gated_app.test_client().post("/triggers/webhook/hook-id")
 
         assert response.status_code == 200
@@ -312,3 +322,30 @@ class TestSessionSurfaceLicenseGate:
             response = gated_app.test_client().get("/health")
 
         assert response.status_code == 200
+
+
+class TestRestxRoute404Help:
+    """flask-restx appends url-map suggestions to 404 bodies unless the factory opts out."""
+
+    @pytest.fixture
+    def gated_route_app(self) -> Flask:
+        app = create_flask_app_with_configs()
+        bp = Blueprint("console_test", __name__, url_prefix="/console/api")
+        api = ExternalApi(bp)
+
+        # An admission gate (edition, license) answers 404 on a route that exists.
+        @api.route("/account/education")
+        class EducationGated(Resource):
+            def get(self):
+                abort(404)
+
+        app.register_blueprint(bp)
+        return app
+
+    def test_404_body_carries_no_route_suggestions(self, gated_route_app: Flask):
+        response = gated_route_app.test_client().get("/console/api/account/education")
+
+        assert response.status_code == 404
+        message = response.get_json()["message"]
+        assert "did you mean" not in message.lower()
+        assert "/console/api/account/education" not in message

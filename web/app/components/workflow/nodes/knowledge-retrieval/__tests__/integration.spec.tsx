@@ -1,10 +1,14 @@
+import type { ReactElement } from 'react'
 import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import {
+  createAccountProfileQueryClient,
+  createAccountProfileQueryWrapper,
+} from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
@@ -33,6 +37,11 @@ import {
   MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '../types'
+
+const renderWithAccountProfile = (ui: ReactElement) =>
+  render(ui, {
+    wrapper: createAccountProfileQueryWrapper(),
+  })
 
 const mockHasEditPermissionForDataset = vi.fn(
   (
@@ -136,10 +145,6 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -422,7 +427,7 @@ describe('knowledge-retrieval path', () => {
     it('should render empty and populated dataset lists', () => {
       const onChange = vi.fn()
 
-      const { rerender } = render(<DatasetList list={[]} onChange={onChange} />)
+      const { rerender } = renderWithAccountProfile(<DatasetList list={[]} onChange={onChange} />)
 
       expect(screen.getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
 
@@ -454,7 +459,7 @@ describe('knowledge-retrieval path', () => {
         canAccessConfig: false,
       })
 
-      render(<DatasetList list={[dataset]} onChange={vi.fn()} />)
+      renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
 
       const datasetItem = getDatasetItem()
 
@@ -523,11 +528,11 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
         }),
       )
       await user.click(
-        screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'),
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.options.manual.title'),
       )
 
       expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
@@ -563,7 +568,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
         }),
       )
 
@@ -593,7 +598,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.add/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.add/i,
         }),
       )
       await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
@@ -632,7 +637,7 @@ describe('knowledge-retrieval path', () => {
 
       expect(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
         }),
       ).toBeInTheDocument()
 
@@ -646,7 +651,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
         }),
       )
 
@@ -681,7 +686,9 @@ describe('knowledge-retrieval path', () => {
         <ConditionVariableSelector onChange={onVariableChange} varType={VarType.string} />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.panel.select'))
+      await user.click(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
+      )
       await user.click(screen.getByText('pick-var'))
 
       expect(onVariableChange).toHaveBeenCalledWith(['node-1', 'field'], { type: VarType.string })
@@ -694,7 +701,9 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.panel.select'))
+      await user.click(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
+      )
       await user.click(screen.getByText('sys.user_name'))
 
       expect(onCommonVariableChange).toHaveBeenCalledWith('sys.user_name')
@@ -728,7 +737,7 @@ describe('knowledge-retrieval path', () => {
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
-      await user.click(screen.getByText('workflow.nodes.ifElse.comparisonOperator.is'))
+      await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
       fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
@@ -767,7 +776,7 @@ describe('knowledge-retrieval path', () => {
       store.getState().updateDatasetsDetail([createDataset()])
 
       const renderNode = (datasetIds: string[]) =>
-        render(
+        renderWithAccountProfile(
           <DatasetsDetailContext.Provider value={store}>
             <Node
               id="knowledge-node"

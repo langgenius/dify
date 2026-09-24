@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { ComboboxInput, ComboboxInputGroup } from '@langgenius/dify-ui/combobox'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -9,18 +8,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-
-type ModelSelectorPopupFrameProps = {
-  children: ReactNode
-}
-
-export function ModelSelectorPopupFrame({ children }: ModelSelectorPopupFrameProps) {
-  return (
-    <div className="flex max-h-[min(624px,var(--available-height,624px))] flex-col overflow-hidden rounded-xl bg-components-panel-bg">
-      {children}
-    </div>
-  )
-}
+import { SearchInput } from '@/app/components/base/search-input'
 
 type ModelSelectorSearchHeaderProps = {
   inputValue: string
@@ -31,39 +19,16 @@ export function ModelSelectorSearchHeader({
   inputValue,
   onInputValueChange,
 }: ModelSelectorSearchHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="shrink-0 bg-components-panel-bg px-2 pt-2 pb-1">
-      <ComboboxInputGroup
-        className={cn(
-          'h-8 min-h-8 px-2',
-          inputValue
-            ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
-            : 'border-transparent bg-components-input-bg-normal',
-        )}
-      >
-        <span
-          className={`mr-0.5 i-ri-search-line size-4 shrink-0 ${inputValue ? 'text-text-tertiary' : 'text-text-quaternary'} `}
-          aria-hidden="true"
-        />
-        <ComboboxInput
-          aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-          className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-          placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-        />
-        {inputValue && (
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.clear'], { ns: 'common' }) || 'Clear'}
-            className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-active"
-            onClick={() => onInputValueChange('')}
-            onPointerDown={(event) => event.preventDefault()}
-          >
-            <span className="i-custom-vender-solid-general-x-circle size-3.5" aria-hidden="true" />
-          </button>
-        )}
-      </ComboboxInputGroup>
+      <SearchInput
+        aria-label={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
+        placeholder={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
+        value={inputValue}
+        onValueChange={onInputValueChange}
+      />
     </div>
   )
 }
@@ -75,7 +40,7 @@ type ModelSelectorScrollBodyProps = {
 
 export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
-    <ScrollArea className="relative min-h-0 overflow-hidden">
+    <ScrollArea className="min-h-0 overflow-hidden">
       <ScrollAreaViewport
         aria-label={label}
         style={{ overflowX: 'hidden' }}
@@ -84,7 +49,7 @@ export function ModelSelectorScrollBody({ children, label }: ModelSelectorScroll
       >
         <ScrollAreaContent style={{ minWidth: 0 }}>{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2">
+      <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollArea>
@@ -92,11 +57,11 @@ export function ModelSelectorScrollBody({ children, label }: ModelSelectorScroll
 }
 
 export function CompatibleModelsNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="px-4 py-2 system-xs-regular text-text-tertiary">
-      {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
+      {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'modelProvider' })}
     </div>
   )
 }
@@ -110,20 +75,21 @@ export function ShowIncompatibleModelsButton({
   showIncompatibleModels,
   onClick,
 }: ShowIncompatibleModelsButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
-    <button
-      type="button"
-      className="flex h-10 w-full cursor-pointer items-center px-4 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+    <Button
+      variant="ghost"
+      size="medium"
+      className="h-10 w-full justify-start rounded-none px-4 text-left system-xs-regular text-text-tertiary"
       onClick={onClick}
     >
       <span className="min-w-0 truncate">
         {showIncompatibleModels
-          ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
-          : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })}
+          ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'modelProvider' })
+          : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'modelProvider' })}
       </span>
-    </button>
+    </Button>
   )
 }
 
@@ -132,20 +98,21 @@ type ModelProviderSettingsFooterProps = {
 }
 
 export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="shrink-0 border-t border-divider-subtle p-1">
-      <button
-        type="button"
-        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      <Button
+        variant="ghost"
+        size="medium"
+        className="w-full justify-start gap-2 px-3 py-1 text-text-tertiary"
         onClick={onOpenSettings}
       >
-        <span className="i-ri-equalizer-2-line size-4 shrink-0" />
+        <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
         <span className="system-xs-medium">
-          {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
+          {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'modelProvider' })}
         </span>
-      </button>
+      </Button>
     </div>
   )
 }

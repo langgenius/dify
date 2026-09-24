@@ -70,7 +70,7 @@ import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -176,10 +176,7 @@ function createWorkflowWrapper(
   if (!externalQueryClient) seedSystemFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
-  const QueryClientWrapper = externalQueryClient
-    ? ({ children }: { children: React.ReactNode }) =>
-        React.createElement(QueryClientProvider, { client: queryClient }, children)
-    : createQueryClientWrapper(queryClient)
+  const QueryClientWrapper = createQueryClientWrapper(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children

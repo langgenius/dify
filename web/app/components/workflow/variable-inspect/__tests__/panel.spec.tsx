@@ -131,19 +131,27 @@ describe('VariableInspect Panel', () => {
   })
 
   it('should render the listening state and stop the workflow on demand', () => {
-    renderPanel({
+    const { store } = renderPanel({
       isListening: true,
       listeningTriggerType: BlockEnum.TriggerWebhook,
+      showVariableInspectPanel: true,
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+      screen.getByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.listening.stopButton',
+      }),
     )
 
-    expect(screen.getByText('workflow.debug.variableInspect.listening.title'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('workflowDebug.debug.variableInspect.listening.title'),
+    )!.toBeInTheDocument()
     expect(mockEmit).toHaveBeenCalledWith({
       type: EVENT_WORKFLOW_STOP,
     })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
   it('should render the empty state and close the panel from the header action', () => {
@@ -151,9 +159,9 @@ describe('VariableInspect Panel', () => {
       showVariableInspectPanel: true,
     })
 
-    fireEvent.click(screen.getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(screen.getByText('workflow.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
@@ -167,7 +175,7 @@ describe('VariableInspect Panel', () => {
 
     await waitFor(() => expect(screen.getAllByText('API_KEY').length).toBeGreaterThan(1))
 
-    expect(screen.getByText('workflow.debug.variableInspect.envNode'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.envNode'))!.toBeInTheDocument()
     expect(screen.getAllByText('string').length).toBeGreaterThan(0)
     expect(screen.getByText('env-value'))!.toBeInTheDocument()
   })

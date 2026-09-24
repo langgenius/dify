@@ -1,4 +1,4 @@
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const CHUNK_PAGE_SIZE = 100
 

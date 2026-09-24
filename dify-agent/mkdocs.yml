@@ -27,7 +27,9 @@ nav:
           - Plugin Tool Layer: dify-agent/user-manual/plugin-tool-layer/index.md
           - History Layer: dify-agent/user-manual/history-layer/index.md
           - Structured Output Layer: dify-agent/user-manual/structured-output-layer/index.md
-      - Operations Guide: dify-agent/guide/index.md
+      - Operations Guide:
+          - Overview: dify-agent/guide/index.md
+          - OpenShell Runtime Backend: dify-agent/guide/openshell.md
       - Examples: dify-agent/examples/index.md
 
 theme:

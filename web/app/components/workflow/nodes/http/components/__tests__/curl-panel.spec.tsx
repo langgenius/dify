@@ -1,6 +1,6 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import * as curlParser from '../curl-parser'
@@ -21,7 +21,7 @@ vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

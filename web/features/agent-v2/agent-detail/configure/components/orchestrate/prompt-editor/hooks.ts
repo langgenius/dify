@@ -14,6 +14,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { Theme } from '@/types/app'
+import { getProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 
 type ProviderTool = Extract<AgentTool, { kind: 'provider' }>
@@ -45,6 +46,9 @@ function createProviderMap(providers: ToolWithProvider[]) {
 
   providers.forEach((provider) => {
     providerById.set(provider.id, provider)
+    // Configured tools persist the provider reference, which is the server identifier
+    // for MCP providers. Keep the primary key too so older configs still resolve.
+    providerById.set(getProviderReference(provider), provider)
     providerById.set(provider.name, provider)
     if (provider.plugin_id) {
       providerById.set(provider.plugin_id, provider)

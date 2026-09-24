@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
@@ -54,6 +54,7 @@ let MockDeviceFlowError: MockDeviceFlowErrorCtor
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  document.title = ''
   mockSearchParams = {}
   // router.replace(pathname) in the real app drops the query string; mirror
   // that so useSearchParams reflects the cleared URL on the next render.
@@ -79,6 +80,9 @@ describe('error_expired terminal state', () => {
   it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
+    await waitFor(() => {
+      expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
+    })
   })
 
   it('ghost button resets to code_entry', async () => {
@@ -170,5 +174,6 @@ describe('error_sso dedicated view', () => {
     render(<DevicePage />)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
+    expect(document.title).toBe('deviceFlow.codeEntry.title - Dify')
   })
 })

@@ -50,6 +50,7 @@
     ```python
     from sqlalchemy.orm import Mapped
 
+
     class Dataset(TypeBase):
         __tablename__ = "datasets"
         id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
@@ -58,6 +59,7 @@
   - Good:
     ```python
     from sqlalchemy.orm import Mapped
+
 
     class Dataset(TypeBase):
         __tablename__ = "datasets"
@@ -101,6 +103,7 @@
     from sqlalchemy.dialects.postgresql import JSONB
     from sqlalchemy.orm import Mapped
 
+
     class ToolConfig(TypeBase):
         __tablename__ = "tool_configs"
         config: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -110,6 +113,7 @@
     from sqlalchemy.orm import Mapped
 
     from models.types import AdjustedJSON
+
 
     class ToolConfig(TypeBase):
         __tablename__ = "tool_configs"
@@ -146,7 +150,5 @@
     default_expr = sa.text("'database'::character varying") if _is_pg(conn) else sa.text("'database'")
 
     with op.batch_alter_table("dataset_keyword_tables") as batch_op:
-        batch_op.add_column(
-            sa.Column("data_source_type", sa.String(255), server_default=default_expr, nullable=False)
-        )
+        batch_op.add_column(sa.Column("data_source_type", sa.String(255), server_default=default_expr, nullable=False))
     ```

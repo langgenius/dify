@@ -14,7 +14,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { BlockEnum } from '../types'
 import { setupNodeSelectionListener } from '../utils/node-navigation'
 import { useNodesInteractions } from './use-nodes-interactions'
@@ -45,7 +45,8 @@ export const useWorkflowSearch = () => {
 
       const targetTools =
         (nodeData.provider_type && toolCollections[nodeData.provider_type]) || workflowTools
-      return targetTools?.find((tool: any) => canFindTool(tool.id, nodeData.provider_id))?.icon
+      return targetTools?.find((tool: any) => matchesProviderReference(tool, nodeData.provider_id))
+        ?.icon
     },
     [buildInTools, customTools, workflowTools, mcpTools],
   )

@@ -11,16 +11,24 @@ from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
+    IncludeSecretQuery,
     RagPipelineExportApi,
     RagPipelineImportApi,
     RagPipelineImportCheckDependenciesApi,
     RagPipelineImportConfirmApi,
+    RagPipelineImportPayload,
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from models.account import Account
 from models.dataset import Pipeline
 from models.engine import db
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
+from tests.unit_tests.model_factories import make_account
+
+
+def _account() -> Account:
+    return make_account(name="RAG Import Tester", email="rag-import@example.com")
 
 
 @pytest.fixture
@@ -46,7 +54,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -67,7 +75,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 200
         assert response == {
@@ -85,7 +93,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,
@@ -105,7 +113,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 400
         assert response["status"] == "failed"
@@ -118,7 +126,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.PENDING,
@@ -139,7 +147,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 202
         assert response["status"] == "pending"
@@ -152,7 +160,7 @@ class TestRagPipelineImportConfirmApi:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -182,7 +190,7 @@ class TestRagPipelineImportConfirmApi:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = MagicMock()
+        user = _account()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,
@@ -287,7 +295,7 @@ class TestRagPipelineExportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, pipeline)
+            response, status = method(api, IncludeSecretQuery(), pipeline)
 
         assert status == 200
         assert response == {"data": "yaml: data"}

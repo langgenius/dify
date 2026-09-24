@@ -5,12 +5,14 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message, MessageFile
-from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel
+from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 
 TABLES = (App, Conversation, Message, MessageFile, WorkflowAppLog, WorkflowNodeExecutionModel)
 
@@ -19,32 +21,37 @@ TABLES = (App, Conversation, Message, MessageFile, WorkflowAppLog, WorkflowNodeE
 def _bind_trace_database(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
-    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     """Use real SQLite sessions for ORM lookups without changing trace-domain data."""
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.db",
-        SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
+        SimpleNamespace(engine=sqlite_engine, session=scoped_session(sqlite_session_factory)),
     )
 
 
-def _make_workflow_run():
-    return SimpleNamespace(
+def _make_workflow_run() -> WorkflowRun:
+    return WorkflowRun(
         workflow_id="wf-1",
         tenant_id="tenant-1",
         id="run-1",
-        elapsed_time=1,
-        status="succeeded",
-        inputs_dict={},
-        outputs_dict={},
+        elapsed_time=1.0,
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        inputs="{}",
+        outputs="{}",
+        graph="{}",
+        type=WorkflowType.WORKFLOW,
         version="1",
         error=None,
         total_tokens=0,
+        total_steps=0,
         created_at=datetime(2026, 1, 1, 0, 0, 0),
         finished_at=datetime(2026, 1, 1, 0, 0, 1),
-        triggered_from="user",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         app_id="app-1",
-        to_dict=lambda self=None: {"id": "run-1"},
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="user-1",
+        exceptions_count=0,
     )
 
 
@@ -77,7 +84,7 @@ def _make_message_data():
         def __init__(self, values):
             self.__dict__.update(values)
 
-        def to_dict(self):
+        def to_dict(self, **_kwargs: object):
             return dict(self.__dict__)
 
     return _MessageData(data)
@@ -145,7 +152,7 @@ def test_message_trace_metadata_includes_trace_session_id(monkeypatch, sqlite_se
     sqlite_session.add_all([app, conversation])
     sqlite_session.commit()
 
-    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id: _make_message_data())
+    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id, session: _make_message_data())
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
     task = TraceTask(

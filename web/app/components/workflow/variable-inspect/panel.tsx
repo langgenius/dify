@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
@@ -27,7 +27,7 @@ export type currentVarType = {
 }
 
 const Panel: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowDebug'])
 
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
@@ -173,11 +173,14 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Listening onStop={handleStopListening} />
@@ -191,11 +194,14 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Empty />

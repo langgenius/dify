@@ -11,7 +11,9 @@
 # actually start. dify-api is intentionally left lean.
 
 # base image
-FROM python:3.12-slim-bookworm AS base
+# trixie (glibc 2.41): the `openshell` wheel bundles a Rust CLI binary and
+# only ships manylinux_2_39 wheels, which bookworm's glibc 2.36 cannot load.
+FROM python:3.12-slim-trixie AS base
 
 WORKDIR /app/api
 

@@ -1,7 +1,7 @@
 import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { LanguagesSupported } from '@/i18n-config/language'
+import type { LanguagesSupported } from '@/i18n/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
 import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
@@ -66,14 +66,6 @@ export const AppModeEnum = {
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
   AGENT: 'agent' as AppModeEnum,
 } as const
-export const AppModes = [
-  AppModeEnum.COMPLETION,
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.CHAT,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.AGENT_CHAT,
-] as const
-
 /**
  * Variable type
  */

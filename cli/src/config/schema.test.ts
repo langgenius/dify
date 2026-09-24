@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { CONFIG_FILE_NAME } from '@/store/manager'
 import { ALLOWED_FORMATS, ConfigFileSchema, CURRENT_SCHEMA_VERSION, emptyConfig } from './schema'
 

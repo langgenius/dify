@@ -13,7 +13,7 @@ from graphon.enums import BuiltinNodeTypes
 
 
 def _create_trace_instance() -> LangFuseDataTrace:
-    with patch("dify_trace_langfuse.langfuse_trace.Langfuse", autospec=True):
+    with patch("dify_trace_langfuse.langfuse_trace.LangfuseAPI", autospec=True):
         return LangFuseDataTrace(
             LangfuseConfig(
                 public_key="public-key",

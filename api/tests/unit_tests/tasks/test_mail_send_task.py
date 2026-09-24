@@ -13,10 +13,14 @@ import smtplib
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from python_http_client.exceptions import ForbiddenError, UnauthorizedError
 
-from configs import dify_config
 from configs.feature import TemplateMode
-from libs.email_i18n import EmailType
+from extensions.ext_mail import Mail
+from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
+from libs.sendgrid import SendGridClient
+from libs.smtp import SMTPClient
+from services.entities.feature_entities import BrandingModel
 from tasks.mail_inner_task import _render_template_with_strategy, send_inner_email_task
 from tasks.mail_register_task import (
     send_email_register_mail_task,
@@ -31,93 +35,90 @@ from tasks.mail_reset_password_task import (
 class TestEmailTemplateRendering:
     """Test email template rendering with various scenarios."""
 
-    def test_render_template_unsafe_mode(self):
+    def test_render_template_unsafe_mode(self, config_overrides):
         """Test template rendering in unsafe mode with Jinja2 syntax."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
         substitutions = {"name": "John", "code": "123456"}
 
         # Act
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.UNSAFE):
-            result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.UNSAFE)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert
         assert result == "Hello John, your code is 123456"
 
-    def test_render_template_sandbox_mode(self):
+    def test_render_template_sandbox_mode(self, config_overrides):
         """Test template rendering in sandbox mode for security."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
         substitutions = {"name": "Alice", "code": "654321"}
 
         # Act
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            with patch.object(dify_config, "MAIL_TEMPLATING_TIMEOUT", 3):
-                result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX, MAIL_TEMPLATING_TIMEOUT=3)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert
         assert result == "Hello Alice, your code is 654321"
 
-    def test_render_template_disabled_mode(self):
+    def test_render_template_disabled_mode(self, config_overrides):
         """Test template rendering when templating is disabled."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
         substitutions = {"name": "Bob", "code": "999999"}
 
         # Act
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.DISABLED):
-            result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.DISABLED)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert - should return body unchanged
         assert result == "Hello {{ name }}, your code is {{ code }}"
 
-    def test_render_template_sandbox_timeout(self):
+    def test_render_template_sandbox_timeout(self, config_overrides):
         """Test that sandbox mode respects timeout settings and range limits."""
         # Arrange - template with very large range (exceeds sandbox MAX_RANGE)
         body = "{% for i in range(1000000) %}{{ i }}{% endfor %}"
         substitutions: dict[str, str] = {}
 
         # Act & Assert - sandbox blocks ranges larger than MAX_RANGE (100000)
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            with patch.object(dify_config, "MAIL_TEMPLATING_TIMEOUT", 1):
-                # Should raise OverflowError for range too big
-                with pytest.raises((TimeoutError, RuntimeError, OverflowError)):
-                    _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX, MAIL_TEMPLATING_TIMEOUT=1)
+        with pytest.raises((TimeoutError, RuntimeError, OverflowError)):
+            _render_template_with_strategy(body, substitutions)
 
-    def test_render_template_invalid_mode(self):
+    def test_render_template_invalid_mode(self, config_overrides):
         """Test that invalid template mode raises ValueError."""
         # Arrange
         body = "Test"
         substitutions: dict[str, str] = {}
 
         # Act & Assert
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", "invalid_mode"):
-            with pytest.raises(ValueError, match="Unsupported mail templating mode"):
-                _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE="invalid_mode")
+        with pytest.raises(ValueError, match="Unsupported mail templating mode"):
+            _render_template_with_strategy(body, substitutions)
 
-    def test_render_template_with_special_characters(self):
+    def test_render_template_with_special_characters(self, config_overrides):
         """Test template rendering with special characters and HTML."""
         # Arrange
         body = "<h1>Hello {{ name }}</h1><p>Code: {{ code }}</p>"
         substitutions = {"name": "Test<User>", "code": "ABC&123"}
 
         # Act
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert
         assert "Test<User>" in result
         assert "ABC&123" in result
 
-    def test_render_template_missing_variable_sandbox(self):
+    def test_render_template_missing_variable_sandbox(self, config_overrides):
         """Test sandbox mode handles missing variables gracefully."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ missing_var }}"
         substitutions = {"name": "John"}
 
         # Act - sandbox mode renders undefined variables as empty strings by default
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert - undefined variable is rendered as empty string
         assert "Hello John" in result
@@ -131,8 +132,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_tls_ssl(self, mock_smtp_ssl):
         """Test SMTP send with TLS using SMTP_SSL."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -161,8 +160,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_opportunistic_tls(self, mock_smtp):
         """Test SMTP send with opportunistic TLS (STARTTLS)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -193,8 +190,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_tls(self, mock_smtp):
         """Test SMTP send without TLS encryption."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -223,8 +218,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_authentication(self, mock_smtp):
         """Test SMTP send without authentication (empty credentials)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -252,8 +245,6 @@ class TestSMTPIntegration:
     def test_smtp_send_authentication_failure(self, mock_smtp_ssl):
         """Test SMTP send handles authentication failure."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.login.side_effect = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
@@ -280,8 +271,6 @@ class TestSMTPIntegration:
     def test_smtp_send_timeout_error(self, mock_smtp_ssl):
         """Test SMTP send handles timeout errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = TimeoutError("Connection timeout")
 
         client = SMTPClient(
@@ -304,8 +293,6 @@ class TestSMTPIntegration:
     def test_smtp_send_connection_refused(self, mock_smtp_ssl):
         """Test SMTP send handles connection refused errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = ConnectionRefusedError("Connection refused")
 
         client = SMTPClient(
@@ -328,8 +315,6 @@ class TestSMTPIntegration:
     def test_smtp_send_ensures_cleanup_on_error(self, mock_smtp_ssl):
         """Test SMTP send ensures cleanup even when errors occur."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.sendmail.side_effect = smtplib.SMTPException("Send failed")
@@ -437,12 +422,11 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
-    @patch("tasks.mail_reset_password_task.dify_config")
-    def test_reset_password_when_account_not_exist_with_register(self, mock_config, mock_mail, mock_email_service):
+    def test_reset_password_when_account_not_exist_with_register(self, mock_mail, mock_email_service, config_overrides):
         """Test reset password task when account doesn't exist and registration is allowed."""
         # Arrange
         mock_mail.is_inited.return_value = True
-        mock_config.CONSOLE_WEB_URL = "https://console.example.com"
+        config_overrides(CONSOLE_WEB_URL="https://console.example.com")
         mock_service = MagicMock()
         mock_email_service.return_value = mock_service
 
@@ -515,12 +499,11 @@ class TestMailTaskInternationalization:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.dify_config")
-    def test_account_exist_task_includes_urls(self, mock_config, mock_mail, mock_email_service):
+    def test_account_exist_task_includes_urls(self, mock_mail, mock_email_service, config_overrides):
         """Test account exist task includes proper URLs in template context."""
         # Arrange
         mock_mail.is_inited.return_value = True
-        mock_config.CONSOLE_WEB_URL = "https://console.example.com"
+        config_overrides(CONSOLE_WEB_URL="https://console.example.com")
         mock_service = MagicMock()
         mock_email_service.return_value = mock_service
 
@@ -610,8 +593,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_success(self, mock_sg_client):
         """Test SendGrid client sends email successfully."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_response = MagicMock()
@@ -633,8 +614,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_missing_recipient(self, mock_sg_client):
         """Test SendGrid client raises error when recipient is missing."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="noreply@example.com")
 
         mail_data = {"to": "", "subject": "Test Subject", "html": "<p>Test Content</p>"}
@@ -647,10 +626,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_unauthorized_error(self, mock_sg_client):
         """Test SendGrid client handles unauthorized errors."""
         # Arrange
-        from python_http_client.exceptions import UnauthorizedError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(
@@ -669,10 +644,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_forbidden_error(self, mock_sg_client):
         """Test SendGrid client handles forbidden errors."""
         # Arrange
-        from python_http_client.exceptions import ForbiddenError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(MagicMock(status_code=403), "Forbidden")
@@ -689,8 +660,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_timeout_error(self, mock_sg_client):
         """Test SendGrid client handles timeout errors."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = TimeoutError("Request timeout")
@@ -707,21 +676,22 @@ class TestSendGridIntegration:
 class TestMailExtension:
     """Test mail extension initialization and configuration."""
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_smtp_configuration(self, mock_config):
+    @pytest.fixture(autouse=True)
+    def _smtp_config(self, config_overrides) -> None:
+        config_overrides(
+            MAIL_TYPE="smtp",
+            SMTP_SERVER="smtp.example.com",
+            SMTP_PORT=465,
+            SMTP_USERNAME="user@example.com",
+            SMTP_PASSWORD="password123",
+            SMTP_USE_TLS=True,
+            SMTP_OPPORTUNISTIC_TLS=False,
+            MAIL_DEFAULT_SEND_FROM="noreply@example.com",
+        )
+
+    def test_mail_init_smtp_configuration(self):
         """Test mail extension initializes SMTP client correctly."""
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "smtp"
-        mock_config.SMTP_SERVER = "smtp.example.com"
-        mock_config.SMTP_PORT = 465
-        mock_config.SMTP_USERNAME = "user@example.com"
-        mock_config.SMTP_PASSWORD = "password123"
-        mock_config.SMTP_USE_TLS = True
-        mock_config.SMTP_OPPORTUNISTIC_TLS = False
-        mock_config.MAIL_DEFAULT_SEND_FROM = "noreply@example.com"
-
         mail = Mail()
         mock_app = MagicMock()
 
@@ -732,13 +702,10 @@ class TestMailExtension:
         assert mail.is_inited() is True
         assert mail._client is not None
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_without_mail_type(self, mock_config):
+    def test_mail_init_without_mail_type(self, config_overrides):
         """Test mail extension skips initialization when MAIL_TYPE is not set."""
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = None
+        config_overrides(MAIL_TYPE=None)
 
         mail = Mail()
         mock_app = MagicMock()
@@ -749,12 +716,9 @@ class TestMailExtension:
         # Assert
         assert mail.is_inited() is False
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_send_validates_parameters(self, mock_config):
+    def test_mail_send_validates_parameters(self):
         """Test mail send validates required parameters."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mail._client = MagicMock()
         mail._default_send_from = "noreply@example.com"
@@ -771,12 +735,9 @@ class TestMailExtension:
         with pytest.raises(ValueError, match="mail html is not set"):
             mail.send(to="test@example.com", subject="Test", html="")
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_send_uses_default_from(self, mock_config):
+    def test_mail_send_uses_default_from(self):
         """Test mail send uses default from address when not provided."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -800,9 +761,6 @@ class TestEmailI18nService:
     def test_email_service_sends_with_branding(self, mock_renderer_class, mock_branding_class, mock_sender_class):
         """Test email service sends email with branding support."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
-        from services.feature_service import BrandingModel
-
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "<html>Rendered content</html>"
         mock_renderer_class.return_value = mock_renderer
@@ -848,8 +806,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_single_recipient(self, mock_sender_class):
         """Test email service sends raw email to single recipient."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -872,8 +828,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_multiple_recipients(self, mock_sender_class):
         """Test email service sends raw email to multiple recipients."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -932,8 +886,7 @@ class TestEdgeCasesAndErrorHandling:
     and various error scenarios to ensure robust error handling.
     """
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_invalid_smtp_config_missing_server(self, mock_config):
+    def test_mail_init_invalid_smtp_config_missing_server(self, config_overrides):
         """
         Test mail initialization fails when SMTP server is missing.
 
@@ -941,11 +894,7 @@ class TestEdgeCasesAndErrorHandling:
         configuration parameters are not provided.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "smtp"
-        mock_config.SMTP_SERVER = None  # Missing required parameter
-        mock_config.SMTP_PORT = 465
+        config_overrides(MAIL_TYPE="smtp", SMTP_SERVER=None, SMTP_PORT=465)
 
         mail = Mail()
         mock_app = MagicMock()
@@ -954,8 +903,7 @@ class TestEdgeCasesAndErrorHandling:
         with pytest.raises(ValueError, match="SMTP_SERVER and SMTP_PORT are required"):
             mail.init_app(mock_app)
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_invalid_smtp_opportunistic_tls_without_tls(self, mock_config):
+    def test_mail_init_invalid_smtp_opportunistic_tls_without_tls(self, config_overrides):
         """
         Test mail initialization fails with opportunistic TLS but TLS disabled.
 
@@ -963,13 +911,13 @@ class TestEdgeCasesAndErrorHandling:
         This test ensures the configuration is validated properly.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "smtp"
-        mock_config.SMTP_SERVER = "smtp.example.com"
-        mock_config.SMTP_PORT = 587
-        mock_config.SMTP_USE_TLS = False  # TLS disabled
-        mock_config.SMTP_OPPORTUNISTIC_TLS = True  # But opportunistic TLS enabled
+        config_overrides(
+            MAIL_TYPE="smtp",
+            SMTP_SERVER="smtp.example.com",
+            SMTP_PORT=587,
+            SMTP_USE_TLS=False,
+            SMTP_OPPORTUNISTIC_TLS=True,
+        )
 
         mail = Mail()
         mock_app = MagicMock()
@@ -978,8 +926,7 @@ class TestEdgeCasesAndErrorHandling:
         with pytest.raises(ValueError, match="SMTP_OPPORTUNISTIC_TLS is not supported without enabling SMTP_USE_TLS"):
             mail.init_app(mock_app)
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_unsupported_mail_type(self, mock_config):
+    def test_mail_init_unsupported_mail_type(self, config_overrides):
         """
         Test mail initialization fails with unsupported mail type.
 
@@ -987,9 +934,7 @@ class TestEdgeCasesAndErrorHandling:
         are accepted and invalid types are rejected.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "unsupported_provider"
+        config_overrides(MAIL_TYPE="unsupported_provider")
 
         mail = Mail()
         mock_app = MagicMock()
@@ -1007,8 +952,6 @@ class TestEdgeCasesAndErrorHandling:
         emails with empty subjects without crashing.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1040,8 +983,6 @@ class TestEdgeCasesAndErrorHandling:
         subject lines and email bodies.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1131,9 +1072,17 @@ class TestResendIntegration:
     instead of SMTP or SendGrid.
     """
 
+    @pytest.fixture(autouse=True)
+    def _resend_config(self, config_overrides) -> None:
+        config_overrides(
+            MAIL_TYPE="resend",
+            RESEND_API_KEY="re_test_api_key",
+            RESEND_API_URL=None,
+            MAIL_DEFAULT_SEND_FROM="noreply@example.com",
+        )
+
     @patch("builtins.__import__", side_effect=__import__)
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_resend_configuration(self, mock_config, mock_import):
+    def test_mail_init_resend_configuration(self, mock_import):
         """
         Test mail extension initializes Resend client correctly.
 
@@ -1141,13 +1090,6 @@ class TestResendIntegration:
         and the client is initialized.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "resend"
-        mock_config.RESEND_API_KEY = "re_test_api_key"
-        mock_config.RESEND_API_URL = None
-        mock_config.MAIL_DEFAULT_SEND_FROM = "noreply@example.com"
-
         # Create mock resend module
         mock_resend = MagicMock()
         mock_emails = MagicMock()
@@ -1174,8 +1116,7 @@ class TestResendIntegration:
         assert mock_resend.api_key == "re_test_api_key"
 
     @patch("builtins.__import__", side_effect=__import__)
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_resend_with_custom_url(self, mock_config, mock_import):
+    def test_mail_init_resend_with_custom_url(self, mock_import, config_overrides):
         """
         Test mail extension initializes Resend with custom API URL.
 
@@ -1183,12 +1124,7 @@ class TestResendIntegration:
         This test ensures custom URLs are properly configured.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "resend"
-        mock_config.RESEND_API_KEY = "re_test_api_key"
-        mock_config.RESEND_API_URL = "https://custom-resend.example.com"
-        mock_config.MAIL_DEFAULT_SEND_FROM = "noreply@example.com"
+        config_overrides(RESEND_API_URL="https://custom-resend.example.com")
 
         # Create mock resend module
         mock_resend = MagicMock()
@@ -1215,8 +1151,7 @@ class TestResendIntegration:
         assert mail.is_inited() is True
         assert mock_resend.api_url == "https://custom-resend.example.com"
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_init_resend_missing_api_key(self, mock_config):
+    def test_mail_init_resend_missing_api_key(self, config_overrides):
         """
         Test mail initialization fails when Resend API key is missing.
 
@@ -1224,10 +1159,7 @@ class TestResendIntegration:
         proper validation of required configuration.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
-        mock_config.MAIL_TYPE = "resend"
-        mock_config.RESEND_API_KEY = None  # Missing API key
+        config_overrides(RESEND_API_KEY=None)
 
         mail = Mail()
         mock_app = MagicMock()
@@ -1272,7 +1204,7 @@ class TestTemplateContextValidation:
         assert context["to"] == "test@example.com"
         assert context["code"] == "ABC123"
 
-    def test_render_template_with_complex_nested_data(self):
+    def test_render_template_with_complex_nested_data(self, config_overrides):
         """
         Test template rendering with complex nested data structures.
 
@@ -1287,8 +1219,8 @@ class TestTemplateContextValidation:
         substitutions = {"user": {"name": "John Doe"}, "items": ["apple", "banana", "cherry"]}
 
         # Act
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            result = _render_template_with_strategy(body, substitutions)
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX)
+        result = _render_template_with_strategy(body, substitutions)
 
         # Assert
         assert "John Doe" in result
@@ -1296,7 +1228,7 @@ class TestTemplateContextValidation:
         assert "banana" in result
         assert "cherry" in result
 
-    def test_render_template_with_conditional_logic(self):
+    def test_render_template_with_conditional_logic(self, config_overrides):
         """
         Test template rendering with conditional logic.
 
@@ -1307,9 +1239,9 @@ class TestTemplateContextValidation:
         body = "{% if is_premium %}Premium User{% else %}Free User{% endif %}"
 
         # Act - Test with premium user
-        with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
-            result_premium = _render_template_with_strategy(body, {"is_premium": True})
-            result_free = _render_template_with_strategy(body, {"is_premium": False})
+        config_overrides(MAIL_TEMPLATING_MODE=TemplateMode.SANDBOX)
+        result_premium = _render_template_with_strategy(body, {"is_premium": True})
+        result_free = _render_template_with_strategy(body, {"is_premium": False})
 
         # Assert
         assert "Premium User" in result_premium
@@ -1324,8 +1256,7 @@ class TestEmailValidation:
     validated before sending to prevent errors.
     """
 
-    @patch("extensions.ext_mail.dify_config")
-    def test_mail_send_with_invalid_email_format(self, mock_config):
+    def test_mail_send_with_invalid_email_format(self):
         """
         Test mail send with malformed email address.
 
@@ -1333,8 +1264,6 @@ class TestEmailValidation:
         this test documents the current behavior.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -1364,8 +1293,6 @@ class TestSMTPEdgeCases:
         or extensive formatting. This test ensures they're handled.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1401,8 +1328,6 @@ class TestSMTPEdgeCases:
         recipient per call. This test documents that behavior.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1434,8 +1359,6 @@ class TestSMTPEdgeCases:
         whitespace to avoid authentication with blank credentials.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 

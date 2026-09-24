@@ -1,9 +1,10 @@
 import type { TryAppInfo } from '@/service/try-app'
 import type { AgentTool } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { useGetTryAppFlowPreview } from '@/service/use-try-app'
+import { consoleQuery } from '@/service/console'
 
 type Params = {
   appDetail: TryAppInfo
@@ -104,7 +105,12 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
   const isBasic = ['chat', 'completion', 'agent-chat'].includes(appDetail.mode)
   const isAgent = appDetail.mode === 'agent-chat'
   const isAdvanced = !isBasic
-  const { data: flowData } = useGetTryAppFlowPreview(appId, isBasic)
+  const { data: flowData } = useQuery(
+    consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: !isBasic,
+    }),
+  )
 
   const requirements: RequirementItem[] = []
   const modelConfig = appDetail.model_config

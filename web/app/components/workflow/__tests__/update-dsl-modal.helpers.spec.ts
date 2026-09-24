@@ -95,7 +95,7 @@ workflow:
       expect(isImportCompleted(DSLImportStatus.PENDING)).toBe(false)
     })
 
-    it('should use distinct Agent warning messages in the import notification', () => {
+    it('should use the warning fallback in the import notification', () => {
       const t = ((key: (selector: Record<string, string>) => string) =>
         key({
           'common.importSuccess': 'Import succeeded',
@@ -103,32 +103,12 @@ workflow:
           'common.importWarningDetails': 'Some configuration may need attention',
         })) as never
 
-      const payload = getImportNotificationPayload(DSLImportStatus.COMPLETED_WITH_WARNINGS, t, [
-        {
-          code: 'agent_file_omitted',
-          path: 'agent_packages.agent_1.omitted_assets',
-          message: "Agent file 'brief.pdf' was not included.",
-          details: {},
-        },
-        {
-          code: 'agent_file_omitted',
-          path: 'agent_packages.agent_1.omitted_assets',
-          message: "Agent file 'brief.pdf' was not included.",
-          details: {},
-        },
-        {
-          code: 'agent_tool_authorization_required',
-          path: 'agent_packages.agent_1.soul.tools.dify_tools.0',
-          message: "Agent tool 'web_search' requires authorization.",
-          details: {},
-        },
-      ])
+      const payload = getImportNotificationPayload(DSLImportStatus.COMPLETED_WITH_WARNINGS, t)
 
       expect(payload).toEqual({
         type: 'warning',
         message: 'Caution',
-        children:
-          "Agent file 'brief.pdf' was not included. · Agent tool 'web_search' requires authorization.",
+        children: 'Some configuration may need attention',
       })
     })
 

@@ -117,33 +117,28 @@ describe('FileInAttachmentItem', () => {
     expect(circle)!.toBeInTheDocument()
   })
 
-  it('should render replay icon when upload failed', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
+  it('should render retry button when upload failed', () => {
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
 
-    // ReplayLine renders an SVG with data-icon="ReplayLine"
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    expect(replayIcon)!.toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    expect(retryButton)!.toBeInTheDocument()
   })
 
-  it('should call onReUpload when replay icon is clicked', () => {
+  it('should call onReUpload when retry button is clicked', () => {
     const onReUpload = vi.fn()
-    const { container } = render(
-      <FileInAttachmentItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
-    )
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    fireEvent.click(retryButton)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
   it('should indicate error state when progress is -1', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
 
-    // Error state is confirmed by the presence of the replay icon
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    expect(replayIcon)!.toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    expect(retryButton)!.toBeInTheDocument()
   })
 
   it('should render eye icon for previewable image files', () => {

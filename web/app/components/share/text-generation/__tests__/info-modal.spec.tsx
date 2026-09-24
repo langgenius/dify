@@ -1,6 +1,6 @@
 import type { SiteInfo } from '@/models/share'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import InfoModal from '../info-modal'
 
 const siteInfo: SiteInfo = {
@@ -30,7 +30,13 @@ describe('InfoModal', () => {
   it('shows the app identity when opened', async () => {
     await renderModal()
 
-    expect(screen.getByText('Test App')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Test App' })).toBeInTheDocument()
+  })
+
+  it('names the dialog when the app title is empty', async () => {
+    await renderModal({ ...siteInfo, title: '' })
+
+    expect(screen.getByRole('dialog', { name: 'common.userProfile.about' })).toBeInTheDocument()
   })
 
   it('shows the copyright and custom disclaimer when provided', async () => {

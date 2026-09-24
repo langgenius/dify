@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
@@ -27,6 +28,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
@@ -202,6 +204,7 @@ class ToolTransformService:
         controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
             auth_type=auth_type,
+            session=db.session(),
         )
 
         return controller
@@ -243,7 +246,6 @@ class ToolTransformService:
     @staticmethod
     def mcp_provider_to_user_provider(
         db_provider: MCPToolProvider,
-        for_list: bool = False,
         user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
@@ -251,7 +253,7 @@ class ToolTransformService:
 
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = db_provider.load_user()
+            user = db_provider.load_user(db.session())
             user_name = user.name if user else None
 
         # Convert to entity and use its API response method
@@ -263,7 +265,7 @@ class ToolTransformService:
         except (ValidationError, ValueError):
             mcp_tools = []
         # Add additional fields specific to the transform
-        response["id"] = db_provider.server_identifier if not for_list else db_provider.id
+        response["id"] = db_provider.id
         response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
         response["server_identifier"] = db_provider.server_identifier
 
@@ -282,7 +284,7 @@ class ToolTransformService:
     ) -> list[ToolApiEntity]:
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = mcp_provider.load_user()
+            user = mcp_provider.load_user(db.session())
             user_name = user.name if user else "Anonymous"
 
         return [
@@ -305,15 +307,17 @@ class ToolTransformService:
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
         labels: list[str] | None = None,
+        *,
+        session: Session,
     ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
         """
         username = "Anonymous"
-        if db_provider.user is None:
+        user = db_provider.user(session=session)
+        if user is None:
             raise ValueError(f"user is None for api provider {db_provider.id}")
         try:
-            user = db_provider.user
             if not user:
                 raise ValueError("user not found")
 

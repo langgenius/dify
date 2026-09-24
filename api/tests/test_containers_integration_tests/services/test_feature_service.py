@@ -4,17 +4,17 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
-from services.feature_service import (
+from enums import CloudPlan, DeploymentEdition
+from services.entities.feature_entities import (
     FeatureModel,
-    FeatureService,
     KnowledgeRateLimitModel,
     LicenseModel,
     LicenseStatus,
     SSOProtocol,
     SystemFeatureModel,
 )
+from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class TestFeatureService:
@@ -26,23 +26,24 @@ class TestFeatureService:
         with (
             patch("services.feature_service.BillingService") as mock_billing_service,
             patch("services.feature_service.EnterpriseService") as mock_enterprise_service,
+            patch("services.system_feature_service.EnterpriseService", new=mock_enterprise_service),
         ):
             # Setup default mock returns for BillingService
             mock_billing_service.get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly", "education": True},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": True},
                 "members": {"size": 5, "limit": 10},
                 "apps": {"size": 3, "limit": 20},
                 "vector_space": {"size": 2, "limit": 10},
                 "documents_upload_quota": {"size": 15, "limit": 100},
                 "annotation_quota_limit": {"size": 8, "limit": 50},
-                "docs_processing": "enhanced",
                 "can_replace_logo": True,
                 "model_load_balancing_enabled": True,
-                "knowledge_rate_limit": {"limit": 100},
             }
 
-            mock_billing_service.get_knowledge_rate_limit.return_value = {"limit": 100, "subscription_plan": "pro"}
+            mock_billing_service.get_knowledge_rate_limit.return_value = {
+                "limit": 100,
+                "subscription_plan": CloudPlan.PROFESSIONAL,
+            }
 
             # Setup default mock returns for EnterpriseService
             mock_enterprise_service.get_workspace_info.return_value = {
@@ -88,23 +89,21 @@ class TestFeatureService:
 
     def test_get_features_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
-        Test successful feature retrieval with billing and enterprise enabled.
+        Test successful feature retrieval for the Cloud edition.
 
         This test verifies:
         - Proper feature model creation with all required fields
         - Correct integration with billing service
-        - Proper enterprise workspace information handling
+        - Enterprise workspace information remains isolated from Cloud
         - Return value correctness and structure
         """
         # Arrange: Setup test data with proper config mocking
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = True
 
             # Act: Execute the method under test
@@ -115,8 +114,7 @@ class TestFeatureService:
             assert isinstance(result, FeatureModel)
 
             # Verify billing features
-            assert result.billing.enabled is True
-            assert result.billing.subscription.plan == "pro"
+            assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
             assert result.billing.subscription.interval == "monthly"
             assert result.education.activated is True
 
@@ -141,15 +139,13 @@ class TestFeatureService:
             assert result.annotation_quota_limit.limit == 50
 
             # Verify other features
-            assert result.docs_processing == "enhanced"
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is True
-            assert result.knowledge_rate_limit == 100
 
-            # Verify enterprise features
-            assert result.workspace_members.enabled is True
-            assert result.workspace_members.size == 5
-            assert result.workspace_members.limit == 10
+            # Enterprise workspace features are not loaded in Cloud.
+            assert result.workspace_members.enabled is False
+            assert result.workspace_members.size == 0
+            assert result.workspace_members.limit == 0
 
             # Verify webapp copyright is enabled for non-sandbox plans
             assert result.webapp_copyright_enabled is True
@@ -157,9 +153,7 @@ class TestFeatureService:
 
             # Verify mock interactions
             mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-            mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_called_once_with(
-                tenant_id
-            )
+            mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_not_called()
 
     def test_get_features_sandbox_plan(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -175,26 +169,21 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = False
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
             # Set mock return value inside the patch context
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.SANDBOX, "interval": "monthly", "education": False},
                 "members": {"size": 1, "limit": 3},
                 "apps": {"size": 1, "limit": 5},
                 "vector_space": {"size": 1, "limit": 2},
                 "documents_upload_quota": {"size": 5, "limit": 20},
                 "annotation_quota_limit": {"size": 2, "limit": 10},
-                "docs_processing": "standard",
                 "can_replace_logo": False,
                 "model_load_balancing_enabled": False,
-                "knowledge_rate_limit": {"limit": 10},
             }
 
             # Act: Execute the method under test
@@ -221,8 +210,6 @@ class TestFeatureService:
         assert result.is_allow_transfer_workspace is False
         assert result.can_replace_logo is False
         assert result.model_load_balancing_enabled is False
-        assert result.docs_processing == "standard"
-        assert result.knowledge_rate_limit == 10
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -231,7 +218,7 @@ class TestFeatureService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test successful knowledge rate limit retrieval with billing enabled.
+        Test successful knowledge rate limit retrieval in the Cloud edition.
 
         This test verifies:
         - Proper knowledge rate limit model creation
@@ -243,7 +230,7 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
 
             # Act: Execute the method under test
             result = FeatureService.get_knowledge_rate_limit(tenant_id)
@@ -255,7 +242,7 @@ class TestFeatureService:
             # Verify rate limit configuration
             assert result.enabled is True
             assert result.limit == 100
-            assert result.subscription_plan == "pro"
+            assert result.subscription_plan == CloudPlan.PROFESSIONAL
 
             # Verify mock interactions
             mock_external_service_dependencies["billing_service"].get_knowledge_rate_limit.assert_called_once_with(
@@ -275,9 +262,8 @@ class TestFeatureService:
         # Arrange: Setup test data with proper config
         tenant_id = self._create_test_tenant_id()
 
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -288,7 +274,7 @@ class TestFeatureService:
             mock_config.MAIL_TYPE = "smtp"
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -348,9 +334,8 @@ class TestFeatureService:
         - The response structure adheres to the public schema for unauthenticated clients.
         """
         # Arrange: Setup test data with exact same config as success test
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -361,7 +346,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             # Act: Execute the public (unauthenticated) system-features call
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Basic structure
         assert result is not None
@@ -403,11 +388,11 @@ class TestFeatureService:
         - Detail withheld from the public system-features model is present here.
         """
         # Arrange
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.system_feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             # Act
-            result = FeatureService.get_license()
+            result = SystemFeatureService.get_license()
 
         # Assert: full license detail is populated
         assert isinstance(result, LicenseModel)
@@ -422,10 +407,10 @@ class TestFeatureService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Non-enterprise deployments have no license, so limits are unconstrained."""
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+        with patch("services.system_feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
-            result = FeatureService.get_license()
+            result = SystemFeatureService.get_license()
 
         assert isinstance(result, LicenseModel)
         assert result.status == LicenseStatus.NONE
@@ -446,9 +431,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup basic config mock (no enterprise)
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            mock_config.ENTERPRISE_ENABLED = False
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -461,7 +445,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -484,11 +468,11 @@ class TestFeatureService:
             # Verify marketplace configuration
             assert result.enable_marketplace is False
 
-    def test_get_features_billing_disabled(
+    def test_get_features_community_edition(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test feature retrieval when billing is disabled.
+        Test feature retrieval for the Community edition.
 
         This test verifies:
         - Proper feature model creation without billing
@@ -496,13 +480,11 @@ class TestFeatureService:
         - Default configuration values
         - Return value correctness and structure
         """
-        # Arrange: Setup billing disabled mock
+        # Arrange: Use the Community edition.
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = False
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = True
 
             tenant_id = self._create_test_tenant_id()
@@ -514,14 +496,11 @@ class TestFeatureService:
             assert result is not None
             assert isinstance(result, FeatureModel)
 
-            # Verify billing is disabled
-            assert result.billing.enabled is False
-
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is True
-            assert result.dataset_operator_enabled is True
-            assert result.education.enabled is True
+            # CLOUD-only: the Console education endpoints 404 on every other edition.
+            assert result.education.enabled is False
 
             # Verify default limitations
             assert result.members.size == 0
@@ -534,27 +513,25 @@ class TestFeatureService:
             assert result.documents_upload_quota.limit == 50
             assert result.annotation_quota_limit.size == 0
             assert result.annotation_quota_limit.limit == 10
-            assert result.knowledge_rate_limit == 10
-            assert result.docs_processing == "standard"
 
             # Verify no enterprise features
             assert result.workspace_members.enabled is False
             assert result.webapp_copyright_enabled is False
 
-    def test_get_knowledge_rate_limit_billing_disabled(
+    def test_get_knowledge_rate_limit_community_edition(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test knowledge rate limit retrieval when billing is disabled.
+        Test knowledge rate limit retrieval for the Community edition.
 
         This test verifies:
         - Proper knowledge rate limit model creation without billing
         - Default rate limit configuration
         - Return value correctness and structure
         """
-        # Arrange: Setup billing disabled mock
+        # Arrange: Use the Community edition.
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             tenant_id = self._create_test_tenant_id()
 
@@ -568,7 +545,7 @@ class TestFeatureService:
             # Verify default configuration
             assert result.enabled is False
             assert result.limit == 10
-            assert result.subscription_plan == ""  # Empty string when billing is disabled
+            assert result.subscription_plan == ""
 
             # Verify no billing service calls
             mock_external_service_dependencies["billing_service"].get_knowledge_rate_limit.assert_not_called()
@@ -577,7 +554,7 @@ class TestFeatureService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test feature retrieval with enterprise enabled but billing disabled.
+        Test feature retrieval for the Enterprise edition.
 
         This test verifies:
         - Proper feature model creation with enterprise only
@@ -587,11 +564,9 @@ class TestFeatureService:
         """
         # Arrange: Setup enterprise only mock
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = False
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.CAN_REPLACE_LOGO = False
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
             tenant_id = self._create_test_tenant_id()
@@ -602,9 +577,6 @@ class TestFeatureService:
             # Assert: Verify the expected outcomes
             assert result is not None
             assert isinstance(result, FeatureModel)
-
-            # Verify billing is disabled
-            assert result.billing.enabled is False
 
             # Verify enterprise features
             assert result.webapp_copyright_enabled is True
@@ -617,7 +589,6 @@ class TestFeatureService:
             # Verify environment-based features
             assert result.can_replace_logo is False
             assert result.model_load_balancing_enabled is False
-            assert result.dataset_operator_enabled is False
             assert result.education.enabled is False
 
             # Verify default limitations
@@ -634,11 +605,11 @@ class TestFeatureService:
             )
             mock_external_service_dependencies["billing_service"].get_info.assert_not_called()
 
-    def test_get_system_features_enterprise_disabled(
+    def test_get_system_features_community_edition(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test system features retrieval when enterprise is disabled.
+        Test system features retrieval for the Community edition.
 
         This test verifies:
         - Proper system feature model creation without enterprise
@@ -646,10 +617,9 @@ class TestFeatureService:
         - Default configuration values
         - Return value correctness and structure
         """
-        # Arrange: Setup enterprise disabled mock
-        with patch("services.feature_service.dify_config") as mock_config:
+        # Arrange: Use the Community edition.
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            mock_config.ENTERPRISE_ENABLED = False
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -661,7 +631,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 50
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -693,21 +663,19 @@ class TestFeatureService:
 
     def test_get_features_no_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
-        Test feature retrieval without tenant ID (billing disabled).
+        Test Cloud feature retrieval without a tenant ID.
 
         This test verifies:
         - Proper feature model creation without tenant ID
-        - Correct handling when billing is disabled
+        - Billing data is not loaded without a tenant ID
         - Default configuration values
         - Return value correctness and structure
         """
         # Arrange: Setup no tenant ID scenario
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             # Act: Execute the method under test
@@ -717,13 +685,9 @@ class TestFeatureService:
             assert result is not None
             assert isinstance(result, FeatureModel)
 
-            # Verify billing is disabled due to no tenant ID
-            assert result.billing.enabled is False
-
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is False
-            assert result.dataset_operator_enabled is True
             assert result.education.enabled is False
 
             # Verify default limitations
@@ -753,16 +717,13 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "basic", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 # Missing members, apps, vector_space, etc.
             }
 
@@ -774,8 +735,7 @@ class TestFeatureService:
         assert isinstance(result, FeatureModel)
 
         # Verify billing features
-        assert result.billing.enabled is True
-        assert result.billing.subscription.plan == "basic"
+        assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
         assert result.billing.subscription.interval == "yearly"
 
         # Verify default values for missing billing info
@@ -789,10 +749,8 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
-        # Verify basic plan restrictions (non-sandbox plans have webapp copyright enabled)
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -815,16 +773,13 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "vector_space": {"size": 0, "limit": 0},
                 "apps": {"size": 5, "limit": 10},
             }
@@ -844,7 +799,7 @@ class TestFeatureService:
         assert result.apps.size == 5
         assert result.apps.limit == 10
 
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -855,8 +810,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -874,9 +827,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup edge case webapp auth mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -891,7 +843,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -934,16 +886,13 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "basic", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 "members": {"size": 10, "limit": 10},
                 "vector_space": {"size": 3, "limit": 5},
             }
@@ -963,7 +912,7 @@ class TestFeatureService:
         assert result.vector_space.size == 3
         assert result.vector_space.limit == 5
 
-        # Verify basic plan features (non-sandbox plans have webapp copyright enabled)
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -974,8 +923,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -994,9 +941,8 @@ class TestFeatureService:
         """
 
         # Test case 1: Official only scope
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1013,14 +959,13 @@ class TestFeatureService:
                 }
             }
 
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
             assert result.plugin_installation_permission.plugin_installation_scope == "official_only"
             assert result.plugin_installation_permission.restrict_to_marketplace_only is True
 
         # Test case 2: All plugins scope
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1034,14 +979,13 @@ class TestFeatureService:
                 "PluginInstallationPermission": {"pluginInstallationScope": "all", "restrictToMarketplaceOnly": False}
             }
 
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
             assert result.plugin_installation_permission.plugin_installation_scope == "all"
             assert result.plugin_installation_permission.restrict_to_marketplace_only is False
 
         # Test case 3: Specific partners scope
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1058,14 +1002,13 @@ class TestFeatureService:
                 }
             }
 
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
             assert result.plugin_installation_permission.plugin_installation_scope == "official_and_specific_partners"
             assert result.plugin_installation_permission.restrict_to_marketplace_only is False
 
         # Test case 4: None scope
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1079,7 +1022,7 @@ class TestFeatureService:
                 "PluginInstallationPermission": {"pluginInstallationScope": "none", "restrictToMarketplaceOnly": True}
             }
 
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
             assert result.plugin_installation_permission.plugin_installation_scope == "none"
             assert result.plugin_installation_permission.restrict_to_marketplace_only is True
 
@@ -1102,8 +1045,7 @@ class TestFeatureService:
         }
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = False
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1138,8 +1080,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup inactive license mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.system_feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1158,7 +1100,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the authenticated license accessor
-            result = FeatureService.get_license()
+            result = SystemFeatureService.get_license()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1187,9 +1129,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup partial enterprise info mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1206,7 +1147,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1261,16 +1202,13 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "enterprise", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "members": {"size": 0, "limit": 0},
                 "apps": {"size": 0, "limit": -1},
                 "vector_space": {"size": 0, "limit": 999999},
@@ -1297,7 +1235,7 @@ class TestFeatureService:
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 1
 
-        # Verify enterprise plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1317,9 +1255,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup edge case protocols mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1336,7 +1273,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1374,8 +1311,7 @@ class TestFeatureService:
         # Arrange: Setup edge case education mock
         tenant_id = self._create_test_tenant_id()
         mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "enabled": True,
-            "subscription": {"plan": "education", "interval": "semester", "education": True},
+            "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "semester", "education": True},
             "members": {"size": 100, "limit": 200},
             "apps": {"size": 50, "limit": 100},
             "vector_space": {"size": 20, "limit": 50},
@@ -1384,6 +1320,7 @@ class TestFeatureService:
         }
 
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.EDUCATION_ENABLED = True
 
             # Act: Execute the method under test
@@ -1397,7 +1334,7 @@ class TestFeatureService:
             assert result.education.enabled is True
             assert result.education.activated is True
 
-            # Verify education plan limits
+            # Verify education subscription limits.
             assert result.members.size == 100
             assert result.members.limit == 200
             assert result.apps.size == 50
@@ -1409,53 +1346,12 @@ class TestFeatureService:
             assert result.annotation_quota_limit.size == 200
             assert result.annotation_quota_limit.limit == 500
 
-            # Verify education plan features
+            # Verify paid plan behavior.
             assert result.webapp_copyright_enabled is True
             assert result.is_allow_transfer_workspace is True
 
             # Verify mock interactions
             mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-
-    def test_license_limitation_model_is_available(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test LicenseLimitationModel.is_available method with various scenarios.
-
-        This test verifies:
-        - Proper quota availability calculation
-        - Correct handling of unlimited limits
-        - Proper handling of disabled limits
-        - Return value correctness for different scenarios
-        """
-        from services.feature_service import LicenseLimitationModel
-
-        # Test case 1: Limit disabled
-        disabled_limit = LicenseLimitationModel(enabled=False, size=5, limit=10)
-        assert disabled_limit.is_available(3) is True
-        assert disabled_limit.is_available(10) is True
-
-        # Test case 2: Unlimited limit
-        unlimited_limit = LicenseLimitationModel(enabled=True, size=5, limit=0)
-        assert unlimited_limit.is_available(3) is True
-        assert unlimited_limit.is_available(100) is True
-
-        # Test case 3: Available quota
-        available_limit = LicenseLimitationModel(enabled=True, size=5, limit=10)
-        assert available_limit.is_available(3) is True
-        assert available_limit.is_available(5) is True
-        assert available_limit.is_available(1) is True
-
-        # Test case 4: Insufficient quota
-        insufficient_limit = LicenseLimitationModel(enabled=True, size=8, limit=10)
-        assert insufficient_limit.is_available(3) is False
-        assert insufficient_limit.is_available(2) is True
-        assert insufficient_limit.is_available(1) is True
-
-        # Test case 5: Exact quota usage
-        exact_limit = LicenseLimitationModel(enabled=True, size=7, limit=10)
-        assert exact_limit.is_available(3) is True
-        assert exact_limit.is_available(3) is True
 
     def test_get_features_workspace_members_disabled(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1476,8 +1372,7 @@ class TestFeatureService:
         }
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = False
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1510,8 +1405,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup expired license mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.system_feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1530,7 +1425,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the authenticated license accessor
-            result = FeatureService.get_license()
+            result = SystemFeatureService.get_license()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1546,64 +1441,6 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_features_edge_case_docs_processing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test feature retrieval with edge case document processing configuration.
-
-        This test verifies:
-        - Proper handling of different document processing modes
-        - Correct integration with billing service
-        - Proper fallback to default values
-        - Return value correctness and structure
-        """
-        # Arrange: Setup edge case docs processing mock with proper config
-        tenant_id = self._create_test_tenant_id()
-
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
-            mock_config.CAN_REPLACE_LOGO = True
-            mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
-            mock_config.EDUCATION_ENABLED = False
-
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "premium", "interval": "monthly"},
-                "docs_processing": "advanced",
-                "can_replace_logo": True,
-                "model_load_balancing_enabled": True,
-            }
-
-            # Act: Execute the method under test
-            result = FeatureService.get_features(tenant_id)
-
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert isinstance(result, FeatureModel)
-
-        # Verify docs processing configuration
-        assert result.docs_processing == "advanced"
-        assert result.can_replace_logo is True
-        assert result.model_load_balancing_enabled is True
-
-        # Verify premium plan features
-        assert result.webapp_copyright_enabled is True
-        assert result.is_allow_transfer_workspace is True
-
-        # Verify default limitations (no specific billing info)
-        assert result.members.size == 0
-        assert result.members.limit == 1
-        assert result.apps.size == 0
-        assert result.apps.limit == 10
-        assert result.vector_space.size == 0
-        assert result.vector_space.limit == 5
-
-        # Verify mock interactions
-        mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-
     def test_get_system_features_edge_case_branding(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -1617,9 +1454,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup edge case branding mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1639,7 +1475,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1682,18 +1518,14 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "enterprise", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "annotation_quota_limit": {"size": 999, "limit": 1000},
-                "knowledge_rate_limit": {"limit": 500},
             }
 
             # Act: Execute the method under test
@@ -1707,10 +1539,7 @@ class TestFeatureService:
         assert result.annotation_quota_limit.size == 999
         assert result.annotation_quota_limit.limit == 1000
 
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 500
-
-        # Verify enterprise plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1723,7 +1552,6 @@ class TestFeatureService:
         assert result.vector_space.limit == 5
         assert result.documents_upload_quota.size == 0
         assert result.documents_upload_quota.limit == 50
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -1744,21 +1572,17 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "documents_upload_quota": {
                     "size": 0,  # Edge case: zero current size
                     "limit": 0,  # Edge case: zero limit
                 },
-                "knowledge_rate_limit": {"limit": 100},
             }
 
             # Act: Execute the method under test
@@ -1772,10 +1596,7 @@ class TestFeatureService:
         assert result.documents_upload_quota.size == 0
         assert result.documents_upload_quota.limit == 0
 
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 100
-
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1788,7 +1609,6 @@ class TestFeatureService:
         assert result.vector_space.limit == 5
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10  # Default value when not provided
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -1806,9 +1626,8 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup lost license mock with proper config
-        with patch("services.feature_service.dify_config") as mock_config:
+        with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-            mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
@@ -1823,7 +1642,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = SystemFeatureService.get_public_system_features()
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1861,21 +1680,17 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {
-                    "plan": "pro",
+                    "plan": CloudPlan.PROFESSIONAL,
                     "interval": "monthly",
                     "education": False,  # Education explicitly disabled
                 },
-                "knowledge_rate_limit": {"limit": 100},
             }
 
             # Act: Execute the method under test
@@ -1888,10 +1703,7 @@ class TestFeatureService:
         # Verify education configuration
         assert result.education.activated is False
 
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 100
-
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1906,7 +1718,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10  # Default value when not provided
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)

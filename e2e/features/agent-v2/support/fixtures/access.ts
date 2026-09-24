@@ -1,8 +1,8 @@
-import type { ConsoleClient } from '../../../../support/api/console-client'
-import type { DifyWorld } from '../../../support/world'
-import type { PreseededResource } from './common'
-import { requirePreseededAgent, requirePreseededWorkflow } from './agents'
-import { failFixturePrerequisite } from './common'
+import type { ConsoleClient } from '../../../../support/api/console-client.ts'
+import type { DifyWorld } from '../../../support/world.ts'
+import type { PreseededResource } from './common.ts'
+import { requirePreseededAgent, requirePreseededWorkflow } from './agents.ts'
+import { failFixturePrerequisite } from './common.ts'
 
 export async function requirePreseededAgentWorkflowReference(
   world: DifyWorld,

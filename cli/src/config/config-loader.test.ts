@@ -1,6 +1,6 @@
 import type { YamlStore } from '@/store/store'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { getConfigurationStore } from '@/store/manager'

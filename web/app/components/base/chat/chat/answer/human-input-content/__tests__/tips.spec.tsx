@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import Tips from '../tips'
 
@@ -8,11 +9,6 @@ const mockConsoleState = vi.hoisted(() => ({
     email: 'test@example.com',
   },
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 describe('Tips', () => {
   beforeEach(() => {
@@ -29,7 +25,10 @@ describe('Tips', () => {
   })
 
   it('should render email tip in debug mode', () => {
-    render(<Tips showEmailTip={true} isEmailDebugMode={true} showDebugModeTip={false} />)
+    renderWithAccountProfile(
+      <Tips showEmailTip={true} isEmailDebugMode={true} showDebugModeTip={false} />,
+      { accountProfile: mockConsoleState.userProfile },
+    )
 
     expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.queryByText('workflow.common.humanInputEmailTip')).not.toBeInTheDocument()

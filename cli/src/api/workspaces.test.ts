@@ -1,7 +1,7 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { WorkspacesClient } from './workspaces.js'
 
@@ -26,9 +26,11 @@ describe('WorkspacesClient.list', () => {
       jsonResponder(
         200,
         {
-          workspaces: [
-            { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
-          ],
+          page: 1,
+          limit: 200,
+          total: 1,
+          has_more: false,
+          data: [{ id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true }],
         },
         cap,
       ),
@@ -37,8 +39,8 @@ describe('WorkspacesClient.list', () => {
     const res = await makeClient(stub.url).list()
 
     expect(stub.captured.method).toBe('GET')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces')
-    expect(res.workspaces[0]?.id).toBe('ws-1')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces?page=1&limit=200')
+    expect(res.data[0]?.id).toBe('ws-1')
   })
 
   it('maps 401 to a classified BaseError', async () => {

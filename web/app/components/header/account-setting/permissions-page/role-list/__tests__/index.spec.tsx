@@ -67,7 +67,7 @@ describe('RoleList', () => {
     it('shows a loading status while the first page is loading', () => {
       render(<RoleList groups={[]} isLoading />)
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(screen.queryByText(/permission\.role\.groups/)).not.toBeInTheDocument()
     })
 
@@ -124,7 +124,7 @@ describe('RoleList', () => {
       )
 
       expect(screen.getByText('Owner')).toBeInTheDocument()
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 

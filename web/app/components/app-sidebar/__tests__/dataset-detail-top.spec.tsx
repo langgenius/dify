@@ -24,8 +24,11 @@ describe('DatasetDetailTop', () => {
   it('links the combined home control to home and labels the breadcrumb as datasets', () => {
     render(<DatasetDetailTop />)
 
-    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'common.menus.datasets' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(screen.getByRole('link', { name: 'navigation.menus.datasets' })).toHaveAttribute(
       'href',
       '/datasets',
     )

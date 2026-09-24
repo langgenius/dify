@@ -1,5 +1,5 @@
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { bufferStreams } from '@/sys/io/streams'
 import { runUseHost } from './use-host'

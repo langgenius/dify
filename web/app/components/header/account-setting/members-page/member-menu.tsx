@@ -17,11 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
@@ -42,7 +42,7 @@ const MemberMenu = ({
   allowMultipleRoles = true,
   onTransferOwnership,
 }: MemberMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -57,8 +57,8 @@ const MemberMenu = ({
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
-    ? t(($) => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRoles'], { ns: 'workspaceMembers', defaultValue: 'Assign Roles' })
+    : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -114,27 +114,23 @@ const MemberMenu = ({
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
-    <div role="presentation">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
-            <ActionButton
-              size="l"
-              className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+            <IconButton
+              size="lg"
               aria-label={t(($) => $['members.memberActions'], {
-                ns: 'common',
+                ns: 'workspaceMembers',
                 defaultValue: 'Member actions',
               })}
-            />
+              className="data-popup-open:bg-state-base-hover"
+            >
+              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          popupClassName="min-w-[180px] rounded-xl"
-        >
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
@@ -148,7 +144,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleTransferOwnership}
             >
-              {t(($) => $['members.transferOwnership'], { ns: 'common' })}
+              {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
           {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
@@ -158,7 +154,7 @@ const MemberMenu = ({
               className="system-sm-medium"
               onClick={handleOpenRemoveConfirm}
             >
-              {t(($) => $['members.removeFromTeam'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -170,10 +166,13 @@ const MemberMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
+              {t(($) => $['members.removeFromTeamConfirmTitle'], {
+                ns: 'workspaceMembers',
+                memberName,
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>

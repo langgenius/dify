@@ -198,7 +198,7 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('nodes.note.addNote'))
     fireEvent.click(screen.getByText('common.run'))
     fireEvent.click(screen.getByText('common.pasteHere'))
-    fireEvent.click(screen.getByText('export'))
+    fireEvent.click(screen.getByText('exportApp'))
     fireEvent.click(screen.getByText('importApp'))
 
     await waitFor(() => {
@@ -224,7 +224,7 @@ describe('PanelContextmenu', () => {
       },
     })
 
-    expect(await screen.findByText('export')).toBeInTheDocument()
+    expect(await screen.findByText('exportApp')).toBeInTheDocument()
     expect(screen.queryByText('importApp')).not.toBeInTheDocument()
   })
 

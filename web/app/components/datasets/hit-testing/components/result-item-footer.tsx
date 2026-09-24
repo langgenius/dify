@@ -14,7 +14,7 @@ type Props = {
 const i18nPrefix = ''
 
 const ResultItemFooter: FC<Props> = ({ docType, docTitle, showDetailModal }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
 
   return (
     <div className="mt-3 flex h-10 items-center justify-between border-t border-divider-subtle pr-2 pl-3">

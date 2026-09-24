@@ -49,7 +49,7 @@ const createLoopNode = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => 
   ...overrides,
 })
 
-const createVariableNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+const createVariableNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool): Node =>
   ({
     id,
     position: { x: 0, y: 0 },

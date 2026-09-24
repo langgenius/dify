@@ -172,7 +172,6 @@ class TestApiModeration:
         with pytest.raises(ValueError, match="API-based Extension not found"):
             api_moderation._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, {})
 
-    @pytest.mark.parametrize("sqlite_session", [(APIBasedExtension,)], indirect=True)
     def test_get_api_based_extension(self, sqlite_session: Session) -> None:
         target = APIBasedExtension(
             tenant_id="tenant-1",

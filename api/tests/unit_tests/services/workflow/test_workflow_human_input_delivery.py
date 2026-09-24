@@ -17,11 +17,11 @@ from core.workflow.human_input_adapter import (
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.enums import BuiltinNodeTypes
 from models import Account
-from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
+from tests.unit_tests.model_factories import make_account, make_app
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -35,23 +35,18 @@ def _make_service(sqlite_session: Session) -> WorkflowService:
 
 
 def _app() -> App:
-    return App(
-        id=APP_ID,
+    return make_app(
+        app_id=APP_ID,
         tenant_id=TENANT_ID,
-        name="Test App",
-        description="",
         mode=AppMode.WORKFLOW,
-        status=AppStatus.NORMAL,
+        icon_type=None,
         enable_site=False,
         enable_api=False,
-        max_active_requests=None,
     )
 
 
 def _account() -> Account:
-    account = Account(name="Test User", email="test@example.com")
-    account.id = ACCOUNT_ID
-    return account
+    return make_account(account_id=ACCOUNT_ID, name="Test User", email="test@example.com")
 
 
 def _build_node_config(delivery_methods: list[EmailDeliveryMethod]) -> dict[str, object]:

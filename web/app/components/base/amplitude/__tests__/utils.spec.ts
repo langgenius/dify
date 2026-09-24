@@ -28,16 +28,17 @@ vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
 }))
 
 vi.mock('../init', () => ({
-  getIsAmplitudeInitialized: () => mockState.initialized,
-}))
-
-vi.mock('@amplitude/analytics-browser', () => ({
-  track: (...args: unknown[]) => mockTrack(...args),
-  flush: (...args: unknown[]) => mockFlush(...args),
-  setUserId: (...args: unknown[]) => mockSetUserId(...args),
-  identify: (...args: unknown[]) => mockIdentify(...args),
-  reset: (...args: unknown[]) => mockReset(...args),
-  Identify: MockIdentify,
+  getAmplitudeClient: () =>
+    mockState.initialized
+      ? {
+          track: mockTrack,
+          flush: mockFlush,
+          setUserId: mockSetUserId,
+          identify: mockIdentify,
+          reset: mockReset,
+          Identify: MockIdentify,
+        }
+      : undefined,
 }))
 
 describe('amplitude utils', () => {

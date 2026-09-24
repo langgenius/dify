@@ -38,6 +38,10 @@ from agenton_collections.layers.plain import PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
+from dify_agent.layers.execution_context import (
+    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+    DifyExecutionContextLayerConfig,
+)
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.protocol.schemas import CreateRunRequest, RunComposition, RunLayerSpec
 
@@ -51,6 +55,18 @@ request = CreateRunRequest(
                 config=PromptLayerConfig(
                     prefix="You can ask a human only when the missing decision is required to continue.",
                     user="Review the deployment plan and proceed only after getting the required approval.",
+                ),
+            ),
+            RunLayerSpec(
+                name="execution_context",
+                type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                config=DifyExecutionContextLayerConfig(
+                    tenant_id="replace-with-tenant-id",
+                    user_id="replace-with-user-id",
+                    user_from="account",
+                    app_id="replace-with-app-id",
+                    agent_mode="single_step",
+                    invoke_from="debugger",
                 ),
             ),
             RunLayerSpec(
@@ -70,11 +86,11 @@ request = CreateRunRequest(
             RunLayerSpec(
                 name=DIFY_AGENT_MODEL_LAYER_ID,
                 type="dify.plugin.llm",
+                deps={"execution_context": "execution_context"},
                 config=DifyPluginLLMLayerConfig(
                     plugin_id="langgenius/openai",
                     model_provider="openai",
                     model="gpt-5.2",
-                    credentials={"openai_api_key": "<redacted>"},
                 ),
             ),
         ]

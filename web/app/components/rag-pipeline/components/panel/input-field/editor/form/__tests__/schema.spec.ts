@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { createInputFieldSchema, TEXT_MAX_LENGTH } from '../schema'
 
@@ -7,7 +7,7 @@ vi.mock('@/config', () => ({
   MAX_VAR_KEY_LENGTH: 30,
 }))
 
-const t: TFunction = ((key: string) => key) as unknown as TFunction
+const t: TFunction<['appDebug']> = ((key: string) => key) as unknown as TFunction<['appDebug']>
 
 const defaultOptions = { maxFileUploadLimit: 10 }
 

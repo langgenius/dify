@@ -115,7 +115,7 @@ describe('NodeControl', () => {
       )
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
       )
 
       expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })

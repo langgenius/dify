@@ -5,7 +5,7 @@ import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // ==================== Imports (after mocks) ====================
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import MultipleToolSelector from '../index'
@@ -471,7 +471,7 @@ describe('MultipleToolSelector', () => {
       const addSelector = screen.getByTestId('tool-selector-add')
       expect(addSelector).toHaveAttribute('data-controlled-state', 'false')
 
-      // Act - Click add button (ActionButton)
+      // Act - Click the add icon button.
       const actionButton = screen.getByRole('button', {
         name: 'plugin.detailPanel.toolSelector.title',
       })
@@ -703,7 +703,7 @@ describe('MultipleToolSelector', () => {
       // Arrange & Act
       const { container } = renderComponent({ disabled: true })
 
-      // Assert - ActionButton (add button with mx-1 class) should not be rendered
+      // Assert - The add icon button should not be rendered.
       const actionButton = container.querySelector('[class*="mx-1"]')
       expect(actionButton).not.toBeInTheDocument()
     })

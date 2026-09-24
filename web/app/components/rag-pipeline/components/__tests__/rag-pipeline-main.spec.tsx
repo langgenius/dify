@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
 import { cleanup, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'

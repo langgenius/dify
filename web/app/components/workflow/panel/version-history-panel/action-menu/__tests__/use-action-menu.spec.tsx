@@ -6,6 +6,7 @@ describe('useActionMenu', () => {
   it('returns restore, edit, export, copy and delete operations for app workflows', () => {
     const { result } = renderWorkflowHook(() =>
       useActionMenu({
+        workflowId: 'version-1',
         isNamedVersion: true,
         canImportExportDSL: true,
         isShowDelete: false,
@@ -31,6 +32,7 @@ describe('useActionMenu', () => {
     const { result } = renderWorkflowHook(
       () =>
         useActionMenu({
+          workflowId: 'version-1',
           isNamedVersion: false,
           canImportExportDSL: true,
           isShowDelete: true,
@@ -49,14 +51,16 @@ describe('useActionMenu', () => {
       {
         key: VersionHistoryContextMenuOptions.restore,
         name: 'workflow.common.restore',
+        disabled: false,
       },
       {
         key: VersionHistoryContextMenuOptions.edit,
-        name: 'workflow.versionHistory.nameThisVersion',
+        name: 'workflowHistory.versionHistory.nameThisVersion',
       },
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: 'workflow.versionHistory.copyId',
+        name: 'workflowHistory.versionHistory.copyId',
+        description: 'version-1',
       },
     ])
   })
@@ -64,6 +68,7 @@ describe('useActionMenu', () => {
   it('omits export when import/export DSL permission is missing', () => {
     const { result } = renderWorkflowHook(() =>
       useActionMenu({
+        workflowId: 'version-1',
         isNamedVersion: true,
         canImportExportDSL: false,
         isShowDelete: false,

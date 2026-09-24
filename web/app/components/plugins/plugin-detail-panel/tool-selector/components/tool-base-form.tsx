@@ -43,7 +43,7 @@ export function ToolBaseForm({
   onSelectMultipleTool,
   onDescriptionChange,
 }: ToolBaseFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div className="flex flex-col gap-3 px-4 py-2">

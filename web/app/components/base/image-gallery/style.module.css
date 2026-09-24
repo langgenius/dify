@@ -2,10 +2,27 @@
   max-height: 200px;
   margin-right: 8px;
   margin-bottom: 8px;
-  object-fit: contain;
-  object-position: center;
+  padding: 0;
+  overflow: hidden;
+  line-height: 0;
+  appearance: none;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.img-1 .image {
+  width: auto;
+  max-width: 100%;
 }
 
 .item:nth-child(3n) {

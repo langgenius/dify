@@ -1,12 +1,12 @@
-'use client'
-
 import type { PropsWithChildren } from 'react'
-import { useTranslation } from 'react-i18next'
-import useDocumentTitle from '@/hooks/use-document-title'
+import MarketplaceDocumentTitle from './document-title'
 
+// Server layout: a client layout here Flight-double-resolves the page.
 export default function MarketplaceLayout({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['mainNav.marketplace'], { ns: 'common' }))
-
-  return children
+  return (
+    <>
+      <MarketplaceDocumentTitle />
+      {children}
+    </>
+  )
 }

@@ -25,9 +25,9 @@ import {
   WorkflowMessagesChart,
 } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
@@ -72,12 +72,15 @@ function ChartViewContent({
   headerRight,
   deploymentEdition,
 }: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
   const appDetail = useAppStore((state) => state.appDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canMonitor = React.useMemo(
     () =>

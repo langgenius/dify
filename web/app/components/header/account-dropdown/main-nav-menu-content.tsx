@@ -16,7 +16,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
@@ -25,9 +25,9 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -55,7 +55,7 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['accountSettings'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme =
     theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
@@ -65,13 +65,13 @@ function AppearanceSubmenu() {
       <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
-          label={t(($) => $['account.appearanceLabel'], { ns: 'common' })}
+          label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="max-h-90 w-34.75 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
@@ -84,7 +84,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
-              label={t(($) => $['account.appearanceLight'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<Theme>
@@ -94,7 +94,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
-              label={t(($) => $['account.appearanceDark'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<Theme>
@@ -104,7 +104,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
-              label={t(($) => $['account.appearanceSystem'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
@@ -118,12 +118,22 @@ type MainNavMenuContentProps = {
 }
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings', 'navigation'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { isEducationAccount } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan === true,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (
@@ -167,7 +177,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-account-circle-line"
-            label={t(($) => $['account.account'], { ns: 'common' })}
+            label={t(($) => $['account.account'], { ns: 'accountSettings' })}
             trailing={<ExternalLinkIndicator />}
           />
         </DropdownMenuLinkItem>
@@ -177,7 +187,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"
-            label={t(($) => $['settings.preferences'], { ns: 'common' })}
+            label={t(($) => $['settings.preferences'], { ns: 'navigation' })}
           />
         </DropdownMenuItem>
         <AppearanceSubmenu />

@@ -1,15 +1,14 @@
 import json
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from redis import RedisError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
-from models.account import TenantAccountJoin
 
 logger = logging.getLogger(__name__)
 
@@ -79,39 +78,22 @@ def sync_workspace_member_removal(workspace_id: str, member_id: str, *, source: 
         source: Source of the sync request (e.g., "workspace_member_removed")
 
     Returns:
-        bool: True if task was queued (or skipped in community), False if queueing failed
+        bool: True if task was queued (or skipped outside the Enterprise edition), False if queueing failed
     """
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
     return _queue_task(workspace_id=workspace_id, member_id=member_id, source=source)
 
 
-def sync_account_deletion(account_id: str, *, source: str, session: Session) -> bool:
-    """
-    Sync full account deletion across all workspaces (enterprise only).
-
-    Fetches all workspace memberships for the account and queues a sync task for each.
-    Handles enterprise edition check internally. Safe to call in community edition (no-op).
-
-    Args:
-        account_id: The account ID being deleted
-        source: Source of the sync request (e.g., "account_deleted")
-        session: SQLAlchemy session used to fetch workspace memberships
-
-    Returns:
-        bool: True if all tasks were queued (or skipped in community), False if any queueing failed
-    """
-    if not dify_config.ENTERPRISE_ENABLED:
+def sync_account_deletion_memberships(account_id: str, workspace_ids: Sequence[str], *, source: str) -> bool:
+    """Queue deletion synchronization after membership persistence has been read and closed."""
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
-    # Fetch all workspaces the account belongs to
-    workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
-
-    # Queue sync task for each workspace
     success = True
-    for join in workspace_joins:
-        if not _queue_task(workspace_id=join.tenant_id, member_id=account_id, source=source):
+    for workspace_id in workspace_ids:
+        if not _queue_task(workspace_id=workspace_id, member_id=account_id, source=source):
             success = False
 
     return success

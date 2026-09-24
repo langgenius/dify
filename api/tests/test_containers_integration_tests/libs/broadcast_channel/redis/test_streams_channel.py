@@ -4,6 +4,7 @@ Integration tests for Redis Streams broadcast channel implementation using TestC
 This suite focuses on the semantics that differ from Redis Pub/Sub:
 - Every active subscription should receive each newly published message.
 - Each subscription should only observe messages published after its listener starts.
+- Prepared subscriptions should observe messages published after preparation but before listener startup.
 """
 
 import threading
@@ -16,9 +17,9 @@ import pytest
 import redis
 from testcontainers.redis import RedisContainer
 
-from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
+from libs.broadcast_channel.channel import BroadcastChannel, Subscription, SupportsPreparedSubscription, Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
+from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel, _StreamsSubscription
 
 
 class TestRedisStreamsBroadcastChannelIntegration:
@@ -146,6 +147,39 @@ class TestRedisStreamsBroadcastChannelIntegration:
         finally:
             first_subscription.close()
             second_subscription.close()
+
+    def test_prepare_subscription_fixes_boundary_before_listener_starts(
+        self,
+        broadcast_channel: BroadcastChannel,
+    ) -> None:
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        topic.publish(b"before-prepare")
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, SupportsPreparedSubscription)
+
+        subscription = subscriber.prepare_subscription()
+        topic.publish(b"after-prepare-before-start")
+
+        try:
+            assert self._receive_message(subscription) == b"after-prepare-before-start"
+            assert subscription.receive(timeout=0.1) is None
+        finally:
+            subscription.close()
+
+    def test_subscription_with_injected_start_id_reads_only_later_entries(
+        self,
+        redis_client: redis.Redis,
+    ) -> None:
+        stream_key = self._get_test_topic_name()
+        start_id = redis_client.xadd(stream_key, {b"data": b"at-boundary"})
+        redis_client.xadd(stream_key, {b"data": b"after-boundary"})
+        subscription = _StreamsSubscription(redis_client, stream_key, start_id=start_id)
+
+        try:
+            assert self._receive_message(subscription) == b"after-boundary"
+            assert subscription.receive(timeout=0.1) is None
+        finally:
+            subscription.close()
 
     def test_topic_isolation(self, broadcast_channel: BroadcastChannel) -> None:
         """Messages from different topics should remain isolated."""

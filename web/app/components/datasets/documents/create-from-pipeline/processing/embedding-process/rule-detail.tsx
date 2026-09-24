@@ -15,7 +15,12 @@ type RuleDetailProps = {
 }
 
 const RuleDetail = ({ sourceData, indexingType, retrievalMethod }: RuleDetailProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'dataset',
+    'datasetCreation',
+    'datasetDocuments',
+    'datasetSettings',
+  ])
 
   const getValue = useCallback(
     (field: string) => {

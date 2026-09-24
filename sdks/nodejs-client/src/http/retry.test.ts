@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { NetworkError, RateLimitError, TimeoutError } from '../errors/dify-error'
 import { getRetryDelayMs, shouldRetry } from './retry'
 

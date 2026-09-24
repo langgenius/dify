@@ -29,7 +29,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     _children: [],
     logical_operator: LogicalOperator.and,
   },
-  checkValid(payload: LoopNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: LoopNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     payload.loop_variables?.forEach((variable) => {
@@ -41,6 +41,11 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     })
 
     payload.break_conditions!.forEach((condition) => {
+      const emptyOperators: readonly ComparisonOperator[] = [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+
       if (
         !errorMessages &&
         (!condition.variable_selector || condition.variable_selector.length === 0)
@@ -57,9 +62,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       if (!errorMessages) {
         if (
           condition.sub_variable_condition &&
-          ![ComparisonOperator.empty, ComparisonOperator.notEmpty].includes(
-            condition.comparison_operator!,
-          )
+          !emptyOperators.includes(condition.comparison_operator!)
         ) {
           const isSet = condition.sub_variable_condition.conditions.every((c) => {
             if (!c.comparison_operator) return false
@@ -111,7 +114,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
 
 type OptionItem = {
   value: string
-  i18nKey: I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+  i18nKey: I18nKeysByPrefix<'workflowLogic', 'nodes.ifElse.optionName.'>
 }
 
 export const FILE_TYPE_OPTIONS = [

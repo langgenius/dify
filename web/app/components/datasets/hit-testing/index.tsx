@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type {
   ExternalKnowledgeBaseHitTesting,
@@ -19,6 +20,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -26,11 +28,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {
@@ -53,7 +55,7 @@ type Props = Readonly<{
 }>
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetHitTesting'])
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -67,7 +69,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canRunRetrievalRecall = getDatasetACLCapabilities(currentDataset?.permission_keys, {
     currentUserId,
@@ -98,20 +103,42 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
   ] = useBoolean(!isMobile)
 
-  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } =
-    useHitTesting(datasetId)
+  const {
+    mutateAsync: hitTestingMutation,
+    isPending: isHitTestingPending,
+    isError: isHitTestingError,
+  } = useHitTesting(datasetId)
   const {
     mutateAsync: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
+    isError: isExternalKnowledgeBaseHitTestingError,
   } = useExternalKnowledgeBaseHitTesting(datasetId)
 
   const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
+  const result = isExternal ? externalHitResult : hitResult
+  const isRetrievalError = isExternal ? isExternalKnowledgeBaseHitTestingError : isHitTestingError
+  const resultTitle = t(($) => $['hit.title'], {
+    ns: 'datasetHitTesting',
+    num: result?.records.length ?? 0,
+  })
+  const retrievalErrorMessage = t(($) => $['api.actionFailed'], { ns: 'common' })
+  const panelTitle =
+    !isRetrievalLoading && !isRetrievalError && result
+      ? resultTitle
+      : t(($) => $.title, { ns: 'datasetHitTesting' })
+  const retrievalStatus = isRetrievalLoading
+    ? t(($) => $.loading, { ns: 'common' })
+    : isRetrievalError
+      ? retrievalErrorMessage
+      : result
+        ? resultTitle
+        : ''
 
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
+      <h2 className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
-      </div>
+      </h2>
       <div className="grow space-y-2 overflow-y-auto">
         {results.map((record, idx) =>
           isExternal ? (
@@ -148,10 +175,13 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     setShowRightPanel(!isMobile)
   }, [isMobile, setShowRightPanel])
 
-  if (!canRunRetrievalRecall) return <Loading type="app" />
+  if (!canRunRetrievalRecall) return <LoadingPlaceholder className="h-full" />
 
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
+      <div role="status" aria-atomic="true" className="sr-only">
+        {retrievalStatus}
+      </div>
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">
@@ -178,12 +208,12 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
           canRunRetrievalRecall={canRunRetrievalRecall}
         />
-        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">
+        <h2 className="mt-6 mb-3 text-base font-semibold text-text-primary">
           {t(($) => $.records, { ns: 'datasetHitTesting' })}
-        </div>
+        </h2>
         {isRecordsLoading && (
           <div className="flex-1">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         )}
         {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (
@@ -213,11 +243,16 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
+        title={panelTitle}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading ? (
             <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
               <CardSkelton />
+            </div>
+          ) : isRetrievalError ? (
+            <div className="flex h-full items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
+              {retrievalErrorMessage}
             </div>
           ) : (
             (() => {

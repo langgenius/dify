@@ -5,7 +5,7 @@ import type {
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { selectFromList } from '@/sys/io/select'
 import { bufferStreams } from '@/sys/io/streams'
@@ -56,7 +56,11 @@ function fakeClient(opts: {
       opts.list ??
         (() =>
           Promise.resolve({
-            workspaces: [
+            page: 1,
+            limit: 20,
+            total: 2,
+            has_more: false,
+            data: [
               { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
               {
                 id: '00000000-0000-0000-0000-000000000002',

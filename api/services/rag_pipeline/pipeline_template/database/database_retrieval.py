@@ -47,7 +47,10 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return self.fetch_pipeline_templates_from_db(language, session=session)
 
     @override
-    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None:
+        del current_tenant_id
         return self.fetch_pipeline_template_detail_from_db(template_id, session=session)
 
     @override

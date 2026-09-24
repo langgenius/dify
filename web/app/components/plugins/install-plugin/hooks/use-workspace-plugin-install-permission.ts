@@ -1,11 +1,15 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { hasPermission } from '@/utils/permission'
 
 const useWorkspacePluginInstallPermission = () => {
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const canInstallPlugin = useMemo(() => {
@@ -34,7 +38,7 @@ const useWorkspacePluginInstallPermission = () => {
     canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
-    currentDifyVersion: langGeniusVersionInfo?.current_version,
+    currentDifyVersion: currentVersion,
   }
 }
 

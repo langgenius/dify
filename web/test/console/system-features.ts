@@ -61,6 +61,7 @@ const baseSystemFeatures = {
 
 const baseSystemFeaturesLicense = {
   status: zLicenseStatus.enum.none,
+  license_expiry_notice_enabled: false,
   expired_at: '',
   workspaces: {
     enabled: false,

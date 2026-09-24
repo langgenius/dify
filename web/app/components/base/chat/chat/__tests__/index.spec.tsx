@@ -14,7 +14,7 @@ import Chat from '../index'
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
 // ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
 //                 and the VoiceInput / FileContextProvider chains.
-// PromptLogModal– pulls CopyFeedbackNew and deep modal dep chain.
+// PromptLogModal– pulls CopyFeedback and deep modal dep chain.
 // AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
 //                 from ahooks, and AgentLogDetail (workflow graph renderer).
 // es-toolkit/compat – debounce must return a fn with .cancel() or the cleanup
@@ -177,6 +177,48 @@ describe('Chat', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  describe('Agent response announcements', () => {
+    const renderAgentContent: NonNullable<ChatProps['renderAgentContent']> = () => null
+
+    it('keeps historical answers silent and announces response lifecycle without streaming tokens', () => {
+      const history = [makeChatItem({ id: 'history', isAnswer: true, content: 'Old answer' })]
+      const { rerender } = renderChat({ chatList: history, renderAgentContent })
+      const status = screen.getByRole('status')
+      expect(status).toBeEmptyDOMElement()
+      expect(status).toHaveAttribute('aria-atomic', 'true')
+
+      rerender(<Chat chatList={history} renderAgentContent={renderAgentContent} isResponding />)
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('agentV2.agentDetail.configure.answer.thinking')
+
+      const streaming = [
+        ...history,
+        makeChatItem({ id: 'new', isAnswer: true, content: 'First token' }),
+      ]
+      rerender(<Chat chatList={streaming} renderAgentContent={renderAgentContent} isResponding />)
+      expect(status).toHaveTextContent('agentV2.agentDetail.configure.answer.thinking')
+      expect(status).not.toHaveTextContent('First token')
+
+      rerender(
+        <Chat chatList={streaming} renderAgentContent={renderAgentContent} isResponding={false} />,
+      )
+      expect(status).toHaveTextContent('agentV2.agentDetail.configure.answer.responseEnded')
+
+      rerender(
+        <Chat chatList={history} renderAgentContent={renderAgentContent} isResponding={false} />,
+      )
+      expect(status).toHaveTextContent('agentV2.agentDetail.configure.answer.responseEnded')
+
+      rerender(<Chat chatList={history} renderAgentContent={renderAgentContent} isResponding />)
+      expect(status).toHaveTextContent('agentV2.agentDetail.configure.answer.thinking')
+    })
+
+    it('leaves other chat renderers unchanged', () => {
+      renderChat({ isResponding: true })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
   })
 
   describe('Rendering', () => {

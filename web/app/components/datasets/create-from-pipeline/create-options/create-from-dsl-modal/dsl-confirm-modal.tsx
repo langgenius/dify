@@ -24,7 +24,7 @@ const DSLConfirmModal = ({
   onConfirm,
   confirmDisabled = false,
 }: DSLConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <AlertDialog

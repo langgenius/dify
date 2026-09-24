@@ -1,6 +1,6 @@
 import type { Clock } from './device-flow'
 import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '@/api/oauth-device'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import {

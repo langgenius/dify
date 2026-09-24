@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
 
 const IterationStartNode = ({ id, data }: NodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="nodrag group mt-1 flex size-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg shadow-xs">
@@ -30,7 +30,7 @@ const IterationStartNode = ({ id, data }: NodeProps) => {
 }
 
 export const IterationStartNodeDumb = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="nodrag relative top-5.25 left-4.25 z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">

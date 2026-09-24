@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import { act, renderHook } from '@testing-library/react'
 import { BATCH_CONCURRENCY } from '@/config'
@@ -21,7 +22,8 @@ const createPromptConfig = (): PromptConfig => ({
   ],
 })
 
-const createTranslator = () => withSelectorKey(vi.fn((key: string) => key))
+const createTranslator = () =>
+  withSelectorKey(vi.fn((key: string) => key)) as TextGenerationTranslate
 
 const renderBatchHook = (promptConfig: PromptConfig = createPromptConfig()) => {
   const notify = vi.fn()

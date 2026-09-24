@@ -7,7 +7,7 @@ import {
   zPostEmailCodeLoginResponse,
   zPostEmailCodeLoginValidityBody,
   zPostEmailCodeLoginValidityResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

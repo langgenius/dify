@@ -35,10 +35,9 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   }
 }

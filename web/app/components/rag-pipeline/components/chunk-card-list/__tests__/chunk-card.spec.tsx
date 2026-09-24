@@ -1,6 +1,6 @@
 import type { ParentChildChunk } from '../types'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkCard from '../chunk-card'
 

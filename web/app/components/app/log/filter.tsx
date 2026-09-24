@@ -8,7 +8,7 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useAnnotationsCount } from '@/service/use-log'
 import {
@@ -51,7 +51,7 @@ const Filter: FC<IFilterProps> = ({
   setQueryParams,
 }: IFilterProps) => {
   const { data, isLoading } = useAnnotationsCount(appId)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
@@ -101,16 +101,13 @@ const Filter: FC<IFilterProps> = ({
           },
         ]}
       />
-      <Input
-        wrapperClassName="w-[200px]"
-        showLeftIcon
-        showClearIcon
-        value={queryParams.keyword}
+      <SearchInput
+        className="w-50"
+        value={queryParams.keyword ?? ''}
         placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
-        onChange={(e) => {
-          setQueryParams({ ...queryParams, keyword: e.target.value })
+        onValueChange={(value) => {
+          setQueryParams({ ...queryParams, keyword: value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
       {isChatMode && (
         <>

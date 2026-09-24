@@ -15,13 +15,15 @@ export type HumanInputNodeType = CommonNodeType & {
   timeout_unit: 'hour' | 'day'
 }
 
-export enum DeliveryMethodType {
-  WebApp = 'webapp',
-  Email = 'email',
-  Slack = 'slack',
-  Teams = 'teams',
-  Discord = 'discord',
-}
+export const DeliveryMethodType = {
+  WebApp: 'webapp',
+  Email: 'email',
+  Slack: 'slack',
+  Teams: 'teams',
+  Discord: 'discord',
+} as const
+
+export type DeliveryMethodType = (typeof DeliveryMethodType)[keyof typeof DeliveryMethodType]
 
 export type Recipient = {
   type: 'member' | 'external'
@@ -48,12 +50,14 @@ export type DeliveryMethod = {
   config?: EmailConfig
 }
 
-export enum UserActionButtonType {
-  Primary = 'primary',
-  Default = 'default',
-  Accent = 'accent',
-  Ghost = 'ghost',
-}
+export const UserActionButtonType = {
+  Primary: 'primary',
+  Default: 'default',
+  Accent: 'accent',
+  Ghost: 'ghost',
+} as const
+
+export type UserActionButtonType = (typeof UserActionButtonType)[keyof typeof UserActionButtonType]
 
 export type UserAction = {
   id: string
@@ -81,12 +85,12 @@ type BaseFormInputItem = {
 }
 
 export type ParagraphFormInput = BaseFormInputItem & {
-  type: InputVarType.paragraph
+  type: typeof InputVarType.paragraph
   default: StringDefault
 }
 
 export type SelectFormInput = BaseFormInputItem & {
-  type: InputVarType.select
+  type: typeof InputVarType.select
   option_source: StringListSource
 }
 
@@ -97,12 +101,12 @@ type SharedFileFormInput = Pick<
 
 export type FileFormInput = BaseFormInputItem &
   SharedFileFormInput & {
-    type: InputVarType.singleFile
+    type: typeof InputVarType.singleFile
   }
 
 export type FileListFormInput = BaseFormInputItem &
   SharedFileFormInput & {
-    type: InputVarType.multiFiles
+    type: typeof InputVarType.multiFiles
     number_limits?: UploadFileSetting['number_limits']
   }
 

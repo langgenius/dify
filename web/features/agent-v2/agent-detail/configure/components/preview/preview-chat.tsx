@@ -19,7 +19,7 @@ function AgentPreviewChatEmptyState({
   agentName,
   showUnconfiguredNotice,
 }: AgentChatRuntimeEmptyStateProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const imageUrl = agentIconType === 'image' || agentIconType === 'link' ? agentIcon : undefined
   const iconType = imageUrl ? 'image' : agentIconType
 
@@ -46,7 +46,7 @@ function AgentPreviewChatEmptyState({
 }
 
 export function AgentPreviewChat(props: AgentPreviewChatProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const agentName =
     props.agentName || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])
 

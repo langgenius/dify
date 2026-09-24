@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const Footer: FC<TimePickerFooterProps> = ({ handleSelectCurrentTime, handleConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['time'])
 
   return (
     <div className="flex items-center justify-between border-t-[0.5px] border-divider-regular p-2">

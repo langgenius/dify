@@ -4,7 +4,6 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +14,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
@@ -26,6 +26,7 @@ import { useSnippetRun } from '../hooks/use-snippet-run'
 import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { canCreateAndModifySnippets } from '../utils/permission'
+import { useSnippetDSL } from './hooks/use-snippet-dsl'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
@@ -50,7 +51,7 @@ type SnippetMainContentProps = {
   onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
 }
 
-const unsupportedSnippetBlockTypes = new Set([
+const unsupportedSnippetBlockTypes = new Set<BlockEnum>([
   BlockEnum.HumanInput,
   BlockEnum.End,
   BlockEnum.KnowledgeRetrieval,
@@ -80,7 +81,7 @@ const SnippetMainContent = ({
   onBeforePublish,
   onSaved,
 }: SnippetMainContentProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const { handlePublish, isPublishing } = useSnippetPublish({
     snippetId,
   })
@@ -203,6 +204,7 @@ const SnippetMain = ({
     canEdit: canEditSnippet,
     snippetId,
   })
+  const { handleExportDSL } = useSnippetDSL({ snippetId, snippetName: snippet.name })
   const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = useSnippetStartRun({
     handleRun,
   })
@@ -320,6 +322,7 @@ const SnippetMain = ({
       handleStopRun,
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
+      handleExportDSL,
       getWorkflowRunAndTraceUrl,
       availableNodesMetaData,
       fetchInspectVars,
@@ -366,6 +369,7 @@ const SnippetMain = ({
     handleStartWorkflowRun,
     handleStopRun,
     handleWorkflowStartRunInWorkflow,
+    handleExportDSL,
     getWorkflowRunAndTraceUrl,
     hasNodeInspectVars,
     hasSetInspectVar,

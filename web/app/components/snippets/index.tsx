@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
@@ -17,7 +17,7 @@ const SnippetPageLoading = ({ snippetId }: SnippetPageProps) => {
   return (
     <SnippetLayout snippetId={snippetId} section="orchestrate">
       <div className="flex h-full items-center justify-center bg-background-body">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     </SnippetLayout>
   )

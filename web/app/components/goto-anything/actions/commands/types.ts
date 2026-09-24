@@ -16,7 +16,7 @@ export type SlashCommandHandler<TDeps = unknown> = {
 
   /**
    * Command mode:
-   * - 'direct': Execute immediately when selected (e.g., /docs, /community)
+   * - 'direct': Execute immediately when selected (e.g., /docs, /discord)
    * - 'submenu': Show submenu options (e.g., /theme, /language)
    */
   mode?: 'direct' | 'submenu'

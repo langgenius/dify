@@ -3,8 +3,9 @@ import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -42,6 +43,7 @@ export function OutputEditCard({
   existingOutputs,
   editingIndex,
   allowDefaultValue = true,
+  reservedNames,
   state,
   onCancel,
   onConfirm,
@@ -49,11 +51,12 @@ export function OutputEditCard({
   existingOutputs: EditableOutputConfig[]
   editingIndex?: number
   allowDefaultValue?: boolean
+  reservedNames?: ReadonlySet<string>
   state: EditingState
   onCancel: () => void
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowAgent'])
   const nameErrorId = useId()
   const editorRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState(state.draft)
@@ -62,9 +65,11 @@ export function OutputEditCard({
     (output, index) => output.name === trimmedName && index !== editingIndex,
   )
   const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
-  const hasNameError = duplicateName || nameInvalid
+  const reservedName = reservedNames?.has(trimmedName) ?? false
+  const hasNameError = duplicateName || nameInvalid || reservedName
   const defaultValueErrorKey = getDefaultValueErrorKey(draft)
-  const confirmDisabled = !trimmedName || nameInvalid || duplicateName || !!defaultValueErrorKey
+  const confirmDisabled =
+    !trimmedName || nameInvalid || duplicateName || reservedName || !!defaultValueErrorKey
   function updateDraft(next: Partial<OutputDraft>) {
     setDraft((prev) => ({ ...prev, ...next }))
   }
@@ -80,7 +85,7 @@ export function OutputEditCard({
   return (
     <div ref={editorRef}>
       <Form
-        aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflow' })}
+        aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflowAgent' })}
         className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
         onSubmit={(event) => {
           event.preventDefault()
@@ -91,20 +96,19 @@ export function OutputEditCard({
           <div className="flex h-6 items-center gap-x-2">
             <Field name="name" invalid={hasNameError} className="contents">
               <FieldLabel className="sr-only">
-                {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
               </FieldLabel>
-              <FieldControl
+              <Input
                 aria-describedby={hasNameError ? nameErrorId : undefined}
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
                 autoFocus
                 required
                 pattern={OUTPUT_NAME_PATTERN_SOURCE}
-                size="small"
                 value={draft.name}
                 placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
-                  ns: 'workflow',
+                  ns: 'workflowAgent',
                 })}
-                className="h-6 w-24 px-1.5 py-0 code-sm-semibold"
+                className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
                 onChange={(event) => updateDraft({ name: event.currentTarget.value })}
               />
             </Field>
@@ -115,14 +119,11 @@ export function OutputEditCard({
             <Field name="required" className="contents">
               <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
                 <Switch
-                  aria-label={t(($) => $['nodes.agent.outputVars.requiredLabel'], {
-                    ns: 'workflow',
-                  })}
                   size="xs"
                   checked={draft.required}
                   onCheckedChange={(required) => updateDraft({ required })}
                 />
-                {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflowAgent' })}
               </FieldLabel>
             </Field>
           </div>
@@ -134,53 +135,54 @@ export function OutputEditCard({
                 className="mt-1 px-1 py-0 system-xs-regular text-text-destructive"
               >
                 {duplicateName
-                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflow' })
-                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflow' })}
+                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
+                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
               </FieldError>
             </Field>
           )}
           <Field name="description" className="contents">
             <FieldLabel className="sr-only">
-              {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflowAgent' })}
             </FieldLabel>
-            <FieldControl
-              size="small"
+            <Input
               value={draft.description}
               placeholder={t(($) => $['nodes.agent.outputVars.descriptionPlaceholder'], {
-                ns: 'workflow',
+                ns: 'workflowAgent',
               })}
-              className="mt-2 h-5 border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
+              className="mt-2 h-5 rounded-md border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
               onChange={(event) => updateDraft({ description: event.currentTarget.value })}
             />
           </Field>
         </div>
         {allowDefaultValue && (
           <Collapsible>
-            <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
+            <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset">
               <span
                 aria-hidden="true"
-                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"
               />
-              {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflowAgent' })}
             </CollapsibleTrigger>
             <CollapsiblePanel className="border-t border-divider-subtle">
               <div className="px-3 py-2">
-                <Field name="defaultValue" className="gap-1">
-                  <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-                    {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], { ns: 'workflow' })}
+                <Field name="defaultValue">
+                  <FieldLabel className="system-xs-medium">
+                    {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], {
+                      ns: 'workflowAgent',
+                    })}
                   </FieldLabel>
                   <Textarea
                     size="small"
                     value={draft.defaultValue}
                     placeholder={t(($) => $['nodes.agent.outputVars.defaultValuePlaceholder'], {
-                      ns: 'workflow',
+                      ns: 'workflowAgent',
                     })}
-                    className="mt-1 min-h-6"
+                    className="min-h-6"
                     onValueChange={(defaultValue) => updateDraft({ defaultValue })}
                   />
                   {defaultValueErrorKey && (
                     <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                      {t(($) => $[defaultValueErrorKey], { ns: 'workflow' })}
+                      {t(($) => $[defaultValueErrorKey], { ns: 'workflowAgent' })}
                     </FieldError>
                   )}
                 </Field>
@@ -192,14 +194,8 @@ export function OutputEditCard({
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button
-            type="submit"
-            size="small"
-            variant="primary"
-            disabled={confirmDisabled}
-            aria-label={t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
-          >
-            {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
+          <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
+            {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflowAgent' })}
             <ConfirmHotkeyHint />
           </Button>
         </div>

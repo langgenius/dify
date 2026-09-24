@@ -2,7 +2,7 @@ import { registerCommands, unregisterCommands } from '../command-bus'
 import { languageCommand } from '../language'
 
 vi.mock('../command-bus')
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', supported: true },
     { value: 'zh-Hans', name: '简体中文', supported: true },

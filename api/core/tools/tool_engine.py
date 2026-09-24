@@ -273,8 +273,15 @@ class ToolEngine:
 
         # Add JSON parts, avoiding duplicates from text parts.
         if json_parts:
-            existing_parts = set(parts)
-            parts.extend(p for p in json_parts if p not in existing_parts)
+
+            def normalize_json(text: str) -> str:
+                try:
+                    return json.dumps(json.loads(text), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                except (ValueError, RecursionError):
+                    return text
+
+            existing_parts = {normalize_json(p) for p in parts}
+            parts.extend(p for p in json_parts if normalize_json(p) not in existing_parts)
 
         return "".join(parts)
 

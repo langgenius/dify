@@ -728,7 +728,7 @@ export const MobileNavigation: Story = {
             className="h-full transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-ending-style:pointer-events-none group-data-starting-style:translate-y-[100dvh] motion-reduce:transition-none"
           >
             <ScrollAreaViewport
-              className="size-full touch-auto overscroll-contain"
+              className="touch-auto overscroll-contain"
               role="region"
               aria-label="Mobile drawer viewport"
             >

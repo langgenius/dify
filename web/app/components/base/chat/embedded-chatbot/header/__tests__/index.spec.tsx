@@ -143,22 +143,6 @@ describe('EmbeddedChatbot Header', () => {
       expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
     })
 
-    it('should render divider only when currentConversationId is present', () => {
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-        ...defaultContext,
-      } as EmbeddedChatbotContextValue)
-      const { unmount } = render(<Header title="Test Chatbot" />)
-      expect(screen.getByTestId('divider')).toBeInTheDocument()
-      unmount()
-
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-        ...defaultContext,
-        currentConversationId: '',
-      } as EmbeddedChatbotContextValue)
-      render(<Header title="Test Chatbot" />)
-      expect(screen.queryByTestId('divider')).not.toBeInTheDocument()
-    })
-
     it('should render reset button when allowResetChat is true and conversation exists', () => {
       render(<Header title="Test Chatbot" allowResetChat={true} />)
 

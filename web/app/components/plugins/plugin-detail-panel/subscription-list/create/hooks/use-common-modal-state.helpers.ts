@@ -1,12 +1,12 @@
 'use client'
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { Dispatch, SetStateAction } from 'react'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef } from 'react'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
 type FormValuesResult = {
@@ -14,10 +14,7 @@ type FormValuesResult = {
   isCheckValidated: boolean
 }
 
-export type PluginTriggerTranslate = (
-  selector: SelectorParam<'pluginTrigger'>,
-  options: { ns: 'pluginTrigger' },
-) => string
+export type PluginTriggerTranslate = TFunction<['pluginTrigger']>
 
 type InitializeBuilderParams = {
   createBuilder: (params: {

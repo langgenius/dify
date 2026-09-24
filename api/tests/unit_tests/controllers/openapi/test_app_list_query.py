@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from controllers.openapi._models import MAX_PAGE_LIMIT
 from controllers.openapi.apps import AppListQuery
+from services.app_service import AppListParams
 
 from ._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
 
@@ -107,3 +108,8 @@ def test_all_fields_accept_valid_values():
     assert q.mode is not None
     assert q.mode.value == "workflow"
     assert q.name == "search"
+
+
+def test_max_page_limit_is_accepted_by_the_app_service():
+    # The catalog advertises MAX_PAGE_LIMIT; the service model must not reject it.
+    assert AppListParams(limit=MAX_PAGE_LIMIT).limit == MAX_PAGE_LIMIT

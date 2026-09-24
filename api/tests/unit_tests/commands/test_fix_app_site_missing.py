@@ -1,77 +1,132 @@
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from commands import system as system_commands
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppMode, IconType, Site
 
 
-def test_fix_app_site_missing_passes_loaded_session_to_signal(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = object()
-    tenant = MagicMock()
-    tenant.get_accounts.return_value = [account]
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+def _persist_missing_site_owner(session: Session) -> tuple[Account, App]:
+    """Persist an app without a Site and its complete tenant owner chain."""
+    tenant = Tenant(name="Command workspace")
+    account = Account(name="Owner", email=f"owner-{uuid.uuid4()}@example.com")
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.OWNER,
+    )
+    app = App(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant.id,
+        name="Missing Site App",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=False,
+        created_by=account.id,
+    )
+    session.add_all([tenant, account, membership, app])
+    session.commit()
+    return account, app
 
-    session = Session()
+
+def _site_for(app: App) -> Site:
+    return Site(
+        app_id=app.id,
+        title=app.name,
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.UUID,
+        code=f"site-{app.id}",
+    )
+
+
+def _bind_command_database(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> tuple[scoped_session[Session], Session]:
+    """Expose a callable real scoped session through the Flask-SQLAlchemy shape."""
+    command_sessions = scoped_session(sqlite_session_factory)
+    command_session = command_sessions()
+    monkeypatch.setattr(
+        system_commands,
+        "db",
+        SimpleNamespace(engine=sqlite_engine, session=command_sessions),
+    )
+    return command_sessions, command_session
+
+
+def test_fix_app_site_missing_passes_loaded_session_to_signal(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account, app = _persist_missing_site_owner(sqlite_session)
+    command_sessions, command_session = _bind_command_database(monkeypatch, sqlite_engine, sqlite_session_factory)
     phase_events: list[str] = []
-    scalar = MagicMock(return_value=app)
-    get = MagicMock(return_value=tenant)
-    commit = MagicMock(side_effect=lambda: phase_events.append("commit"))
-    monkeypatch.setattr(session, "scalar", scalar)
-    monkeypatch.setattr(session, "get", get)
-    monkeypatch.setattr(session, "commit", commit)
+    event.listen(command_session, "after_commit", lambda _session: phase_events.append("commit"))
 
-    scoped_session = MagicMock(return_value=session)
-    scoped_session.scalar.return_value = app
+    def create_site(sender: App, *, account: Account, session: Session) -> None:
+        phase_events.append("signal")
+        assert sender.id == app.id
+        assert account.id == account_id
+        assert session is command_session
+        session.add(_site_for(sender))
 
-    connection = MagicMock()
-    connection.execute.side_effect = [[SimpleNamespace(id=app.id)], []]
-    engine = MagicMock()
-    engine.begin.return_value.__enter__.return_value = connection
-
-    monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=engine, session=scoped_session))
-    send = MagicMock(side_effect=lambda *_args, **_kwargs: phase_events.append("signal"))
+    account_id = account.id
+    send = MagicMock(side_effect=create_site)
     monkeypatch.setattr(system_commands.app_was_created, "send", send)
 
-    system_commands.fix_app_site_missing.callback()
+    try:
+        system_commands.fix_app_site_missing.callback()
+    finally:
+        command_sessions.remove()
 
-    scoped_session.assert_called_once_with()
-    scalar.assert_called_once()
-    get.assert_called_once_with(system_commands.Tenant, app.tenant_id)
-    tenant.get_accounts.assert_called_once_with(session=session)
-    send.assert_called_once_with(app, account=account, session=session)
-    commit.assert_called_once_with()
+    send.assert_called_once()
     assert phase_events == ["signal", "commit"]
-    assert isinstance(send.call_args.kwargs["session"], Session)
+    sqlite_session.expire_all()
+    persisted_site = sqlite_session.query(Site).filter_by(app_id=app.id).one()
+    assert persisted_site.title == app.name
 
 
-def test_fix_app_site_missing_rolls_back_when_signal_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = object()
-    tenant = MagicMock()
-    tenant.get_accounts.return_value = [account]
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    session = MagicMock()
+def test_fix_app_site_missing_rolls_back_when_signal_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _account, app = _persist_missing_site_owner(sqlite_session)
+    command_sessions, command_session = _bind_command_database(monkeypatch, sqlite_engine, sqlite_session_factory)
     phase_events: list[str] = []
-    session.scalar.return_value = app
-    session.get.return_value = tenant
-    session.rollback.side_effect = lambda: phase_events.append("rollback")
+    event.listen(command_session, "after_rollback", lambda _session: phase_events.append("rollback"))
 
-    connection = MagicMock()
-    connection.execute.side_effect = [[SimpleNamespace(id=app.id)], []]
-    engine = MagicMock()
-    engine.begin.return_value.__enter__.return_value = connection
-
-    monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=engine, session=MagicMock(return_value=session)))
-
-    def fail_signal(*_args, **_kwargs) -> None:
+    def fail_signal(sender: App, **_kwargs: object) -> None:
         phase_events.append("signal")
+        # Ensure the command's next raw scan terminates while its own transaction
+        # still exercises the rollback path.
+        with sqlite_session_factory() as observer:
+            observer.add(_site_for(sender))
+            observer.commit()
         raise RuntimeError("failed")
 
     monkeypatch.setattr(system_commands.app_was_created, "send", MagicMock(side_effect=fail_signal))
 
-    system_commands.fix_app_site_missing.callback()
+    try:
+        system_commands.fix_app_site_missing.callback()
+    finally:
+        command_sessions.remove()
 
-    session.rollback.assert_called_once_with()
-    session.commit.assert_not_called()
     assert phase_events == ["signal", "rollback"]
+    sqlite_session.expire_all()
+    assert sqlite_session.get(App, app.id) is not None

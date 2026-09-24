@@ -7,7 +7,7 @@ import {
   zGetRemoteFilesByUrlResponse,
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

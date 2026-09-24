@@ -1,15 +1,3 @@
-// The difyctl agent skill, in full — one hand-authored, pure-delegation file.
-//
-// It inlines NO command list, NO flag list, and ships no reference files. The
-// command surface is discovered at runtime via `difyctl help -o json`, so this
-// template has nothing to derive from the binary and nothing that can drift
-// from it. `{{VERSION}}` is the only substitution; it is filled at emit time by
-// renderSkill() in ./skill.
-//
-// RED LINE: keep this pure delegation. The moment a command or flag listing is
-// added here, the embedded static copy can fall out of sync with the command
-// surface — at which point it must instead be generated from the command model
-// with a snapshot test (see SKILL-SPEC.md §10, decision D2).
 export const SKILL_TEMPLATE = `---
 name: difyctl
 description: Drive the difyctl CLI to manage Dify apps, workspaces, members and runs. Use when the task involves difyctl or operating a Dify instance from the command line.
@@ -20,10 +8,25 @@ description: Drive the difyctl CLI to manage Dify apps, workspaces, members and 
 difyctl is self-describing — do not guess commands.
 
 ## Discover the command surface
-Run \`difyctl help -o json\` for the version-current map: every command
-(args, flags, examples, \`effect\`) plus the global \`contract\` (exit codes,
-output formats, error envelope, HITL protocol). Treat that JSON as the
-source of truth; this file only bootstraps you into it.
+1. Read the complete compact sitemap:
+   \`difyctl help -o json --compact\`
+   Each entry contains only \`command\`, \`description\`, and \`effect\`.
+2. Decide whether the request maps to one command, needs clarification, or is
+   unsupported.
+3. When one command is selected, inspect it:
+   \`difyctl help <path> -o json\`
+   Expand a multi-token path as separate shell arguments; never quote the
+   entire returned path.
+   That JSON is the source of truth for args, flags, examples, \`effect\`,
+   and \`agentGuide\`. Never skip it — the sitemap carries no args or flags,
+   so any flag you name without this step is a guess.
+
+When the task depends on global exit codes, error envelopes, HITL, or retry
+semantics, read \`difyctl help agent\`.
+
+Do not read the full command tree. Report unsupported only after checking the
+compact sitemap. Clarify only when more than one command could satisfy the
+request.
 
 ## The one non-obvious thing: HITL pauses are not failures
 A run can pause for human input. It exits with **code 0** and emits a
@@ -31,8 +34,8 @@ A run can pause for human input. It exits with **code 0** and emits a
 Resume as the payload instructs (see \`difyctl resume app --help\`).
 
 ## Before any write/destructive action
-Check the command's \`effect\` (\`read\` / \`write\` / \`destructive\`) in
-\`difyctl help -o json\` before running it.
+Treat the inspected command's \`effect\` as the confirmation gate before
+running it. Never execute a write/destructive command without confirmation.
 
 ---
 difyctl skill v{{VERSION}} — if \`difyctl version\` differs, re-run

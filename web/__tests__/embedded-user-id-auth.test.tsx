@@ -95,7 +95,10 @@ describe('embedded user id propagation in authentication flows', () => {
       })
     })
     expect(setWebAppAccessTokenMock).toHaveBeenCalledWith('login-token')
-    expect(setWebAppPassportMock).toHaveBeenCalledWith('test-app', 'passport-token')
+    expect(setWebAppPassportMock).toHaveBeenCalledWith(
+      { kind: 'default', code: 'test-app' },
+      'passport-token',
+    )
     expect(replaceMock).toHaveBeenCalledWith('/chatbot/test-app')
   })
 
@@ -166,7 +169,10 @@ describe('embedded user id propagation in authentication flows', () => {
       })
     })
     expect(setWebAppAccessTokenMock).toHaveBeenCalledWith('code-token')
-    expect(setWebAppPassportMock).toHaveBeenCalledWith('test-app', 'passport-token')
+    expect(setWebAppPassportMock).toHaveBeenCalledWith(
+      { kind: 'default', code: 'test-app' },
+      'passport-token',
+    )
     expect(replaceMock).toHaveBeenCalledWith('/chatbot/test-app')
   })
 

@@ -3,12 +3,9 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from configs import dify_config
-
-if TYPE_CHECKING:
-    from enums.quota_type import QuotaType
+from enums import DeploymentEdition, QuotaType
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +20,7 @@ class QuotaCharge:
         try:
             do_work()
             charge.commit()   # Confirm consumption
-        except:
+        except Exception:
             charge.refund()   # Release frozen quota
 
     If neither commit() nor refund() is called, the billing system's
@@ -88,8 +85,6 @@ class QuotaCharge:
 
 
 def unlimited() -> QuotaCharge:
-    from enums.quota_type import QuotaType
-
     return QuotaCharge(success=True, charge_id=None, _quota_type=QuotaType.UNLIMITED)
 
 
@@ -123,8 +118,8 @@ class QuotaService:
         from services.billing_service import BillingService
         from services.errors.app import QuotaExceededError
 
-        if not dify_config.BILLING_ENABLED:
-            logger.debug("Billing disabled, allowing request for %s", tenant_id)
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            logger.debug("Quota billing is unavailable outside the Cloud edition; allowing request for %s", tenant_id)
             return QuotaCharge(success=True, charge_id=None, _quota_type=quota_type)
 
         logger.info("Reserving %d %s quota for tenant %s", amount, quota_type.value, tenant_id)
@@ -179,7 +174,7 @@ class QuotaService:
 
     @staticmethod
     def check(quota_type: QuotaType, tenant_id: str, amount: int = 1) -> bool:
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return True
 
         if amount <= 0:
@@ -198,7 +193,7 @@ class QuotaService:
         try:
             from services.billing_service import BillingService
 
-            if not dify_config.BILLING_ENABLED:
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                 return
 
             if not reservation_id:

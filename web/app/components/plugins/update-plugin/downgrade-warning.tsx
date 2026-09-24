@@ -9,7 +9,7 @@ type Props = Readonly<{
   onExcludeAndDowngrade: () => void
 }>
 const DowngradeWarningModal = ({ onCancel, onJustDowngrade, onExcludeAndDowngrade }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'plugin'])
 
   return (
     <>

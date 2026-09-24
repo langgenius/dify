@@ -64,7 +64,7 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     )
 
     const trigger = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
     })
 
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
       }),
     )
     await user.type(screen.getByRole('textbox', { name: 'member search' }), 'member one')

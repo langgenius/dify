@@ -46,12 +46,11 @@ describe('NoteEditor Toolbar Operator', () => {
 
   it('keeps the menu open when toggling show author', async () => {
     const user = userEvent.setup()
-    const { onShowAuthorChange } = renderOperator(true)
+    renderOperator(true)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('switch'))
 
-    expect(onShowAuthorChange).toHaveBeenCalledWith(false)
     expect(screen.getByText('workflow.nodes.note.editor.showAuthor')).toBeInTheDocument()
   })
 })

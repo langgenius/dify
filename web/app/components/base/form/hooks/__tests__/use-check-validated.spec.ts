@@ -5,7 +5,7 @@ import { useCheckValidated } from '../use-check-validated'
 
 const mockNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },

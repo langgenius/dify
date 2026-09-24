@@ -13,7 +13,7 @@ type StatisticsProps = {
 }
 
 const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const relatedAppsTotal = relatedApps?.total
   const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0
@@ -51,10 +51,7 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
               </button>
             }
           />
-          <PopoverContent
-            placement="top-start"
-            popupClassName="border-0 bg-transparent p-0 shadow-none"
-          >
+          <PopoverContent placement="top-start" className="border-0 bg-transparent p-0 shadow-none">
             {hasRelatedApps ? (
               <LinkedAppsPanel relatedApps={relatedApps.data} isMobile={!expand} />
             ) : (

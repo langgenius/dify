@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { checkForUpdates, fetchReleases, handleUpload } from '../hooks'
 
 const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({
@@ -6,7 +6,7 @@ const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({
   mockUploadGitHub: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

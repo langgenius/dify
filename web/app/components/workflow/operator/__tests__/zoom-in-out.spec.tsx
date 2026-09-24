@@ -1,4 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
@@ -154,6 +156,41 @@ describe('workflow zoom controls', () => {
     menu = openZoomMenu()
     fireEvent.click(menu.getByText('workflow.operator.showUserCursors'))
     expect(mockToggleUserCursors).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes display settings as checked menu items and updates them with the keyboard', async () => {
+    const user = userEvent.setup()
+    const DisplaySettings = () => {
+      const [showMiniMap, setShowMiniMap] = useState(true)
+      return (
+        <ZoomInOut
+          showMiniMap={showMiniMap}
+          onToggleMiniMap={() => setShowMiniMap((value) => !value)}
+          showUserCursors={false}
+          showUserComments
+        />
+      )
+    }
+    renderZoomInOut(<DisplaySettings />)
+
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    const miniMap = screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showMiniMap' })
+    expect(miniMap).toBeChecked()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showUserCursors' }),
+    ).not.toBeChecked()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showUserComments' }),
+    ).toBeChecked()
+    expect(screen.getByRole('menuitem', { name: '200%' })).toBeInTheDocument()
+
+    miniMap.focus()
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showMiniMap' }),
+    ).not.toBeChecked()
+    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('keeps the show-user-comments action disabled in comment mode', () => {

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { PluginSource } from '../../../../types'
 import PluginSourceBadge from '../plugin-source-badge'
 
@@ -12,6 +12,6 @@ describe('PluginSourceBadge', () => {
   ])('labels the %s source badge', (source, label) => {
     render(<PluginSourceBadge source={source} />)
 
-    expect(screen.getByLabelText(label)).toBeInTheDocument()
+    expect(screen.getByText(label)).toBeInTheDocument()
   })
 })

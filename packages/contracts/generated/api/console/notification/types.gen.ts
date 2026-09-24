@@ -30,7 +30,9 @@ export type NotificationItemResponse = {
 export type GetNotificationData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: string
+  }
   url: '/notification'
 }
 

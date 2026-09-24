@@ -5,6 +5,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.telemetry.events import (
+    AppCreatedEvent,
+    AppCreatedPayload,
+    DraftNodeExecutionTraceEvent,
+    NodeExecutionPayload,
+    PromptGenerationEvent,
+    PromptGenerationPayload,
+    TelemetryContext,
+)
 from core.telemetry.gateway import emit, is_enterprise_telemetry_enabled
 from enterprise.telemetry.contracts import TelemetryCase
 
@@ -16,24 +25,48 @@ class TestTelemetryCoreExports:
         assert callable(exported_func)
 
 
-@pytest.fixture
-def mock_ops_trace_manager():
-    mock_module = MagicMock()
-    mock_trace_task_class = MagicMock()
-    mock_trace_task_class.return_value = MagicMock()
-    mock_module.TraceTask = mock_trace_task_class
-    mock_module.TraceQueueManager = MagicMock()
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-    mock_trace_entity = MagicMock()
-    mock_trace_task_name = MagicMock()
-    mock_trace_task_name.return_value = "workflow"
-    mock_trace_entity.TraceTaskName = mock_trace_task_name
+_TRACE_CTX = TelemetryContext(tenant_id="tenant-789", user_id="user-456", app_id="app-123")
 
-    with (
-        patch.dict(sys.modules, {"core.ops.ops_trace_manager": mock_module}),
-        patch.dict(sys.modules, {"core.ops.entities.trace_entity": mock_trace_entity}),
-    ):
-        yield mock_module, mock_trace_entity
+
+def _node_event() -> DraftNodeExecutionTraceEvent:
+    return DraftNodeExecutionTraceEvent(
+        context=_TRACE_CTX,
+        payload=NodeExecutionPayload(node_execution_data={}),
+    )
+
+
+def _prompt_event() -> PromptGenerationEvent:
+    return PromptGenerationEvent(
+        context=_TRACE_CTX,
+        payload=PromptGenerationPayload(
+            tenant_id="tenant-789",
+            operation_type="generate",
+            instruction="test",
+            generated_output="out",
+            model_provider="openai",
+            model_name="gpt-4",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            latency=0.5,
+        ),
+    )
+
+
+def _app_created_event() -> AppCreatedEvent:
+    return AppCreatedEvent(
+        context=TelemetryContext(tenant_id="tenant-123"),
+        payload=AppCreatedPayload(app_id="app-abc"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Trace routing integration
+# ---------------------------------------------------------------------------
 
 
 class TestGatewayIntegrationTraceRouting:
@@ -41,72 +74,46 @@ class TestGatewayIntegrationTraceRouting:
     def mock_trace_manager(self) -> MagicMock:
         return MagicMock()
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    def test_ce_eligible_trace_routed_to_trace_manager(
+    def test_trace_event_routed_to_trace_manager(
         self,
         mock_trace_manager: MagicMock,
     ) -> None:
         with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True):
-            context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
-            payload = {"workflow_run_id": "run-abc"}
-
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
-
+            emit(_prompt_event(), mock_trace_manager)
             mock_trace_manager.add_trace_task.assert_called_once()
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    def test_ce_eligible_trace_routed_when_ee_disabled(
-        self,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"workflow_run_id": "run-abc"}
-
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
-
-            mock_trace_manager.add_trace_task.assert_called_once()
-
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
     def test_enterprise_only_trace_dropped_when_ee_disabled(
         self,
         mock_trace_manager: MagicMock,
     ) -> None:
         with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"node_id": "node-abc"}
-
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
-
+            emit(_node_event(), mock_trace_manager)
             mock_trace_manager.add_trace_task.assert_not_called()
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
     def test_enterprise_only_trace_routed_when_ee_enabled(
         self,
         mock_trace_manager: MagicMock,
     ) -> None:
         with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"node_id": "node-abc"}
-
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
-
+            emit(_node_event(), mock_trace_manager)
             mock_trace_manager.add_trace_task.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Metric/log routing integration
+# ---------------------------------------------------------------------------
 
 
 class TestGatewayIntegrationMetricRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_metric_case_routes_to_celery_task(
+    def test_metric_event_routes_to_celery_task(
         self,
         mock_ee_enabled: MagicMock,
     ) -> None:
         from enterprise.telemetry.contracts import TelemetryEnvelope
 
         with patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay") as mock_delay:
-            context = {"tenant_id": "tenant-123"}
-            payload = {"app_id": "app-abc", "name": "My App"}
-
-            emit(TelemetryCase.APP_CREATED, context, payload)
+            emit(_app_created_event())
 
             mock_delay.assert_called_once()
             envelope_json = mock_delay.call_args[0][0]
@@ -115,33 +122,10 @@ class TestGatewayIntegrationMetricRouting:
             assert envelope.tenant_id == "tenant-123"
             assert envelope.payload["app_id"] == "app-abc"
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_tool_execution_trace_routed(
-        self,
-        mock_ee_enabled: MagicMock,
-    ) -> None:
-        mock_trace_manager = MagicMock()
-        context = {"tenant_id": "tenant-123", "app_id": "app-123"}
-        payload = {"tool_name": "test_tool", "tool_inputs": {}, "tool_outputs": "result"}
 
-        emit(TelemetryCase.TOOL_EXECUTION, context, payload, mock_trace_manager)
-
-        mock_trace_manager.add_trace_task.assert_called_once()
-
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_moderation_check_trace_routed(
-        self,
-        mock_ee_enabled: MagicMock,
-    ) -> None:
-        mock_trace_manager = MagicMock()
-        context = {"tenant_id": "tenant-123", "app_id": "app-123"}
-        payload = {"message_id": "msg-123", "moderation_result": {"flagged": False}}
-
-        emit(TelemetryCase.MODERATION_CHECK, context, payload, mock_trace_manager)
-
-        mock_trace_manager.add_trace_task.assert_called_once()
+# ---------------------------------------------------------------------------
+# CE eligibility integration
+# ---------------------------------------------------------------------------
 
 
 class TestGatewayIntegrationCEEligibility:
@@ -149,70 +133,26 @@ class TestGatewayIntegrationCEEligibility:
     def mock_trace_manager(self) -> MagicMock:
         return MagicMock()
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    def test_workflow_run_is_ce_eligible(
-        self,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"workflow_run_id": "run-abc"}
-
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
-
-            mock_trace_manager.add_trace_task.assert_called_once()
-
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    def test_message_run_is_ce_eligible(
-        self,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"message_id": "msg-abc", "conversation_id": "conv-123"}
-
-            emit(TelemetryCase.MESSAGE_RUN, context, payload, mock_trace_manager)
-
-            mock_trace_manager.add_trace_task.assert_called_once()
-
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
-    def test_node_execution_not_ce_eligible(
-        self,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"node_id": "node-abc"}
-
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
-
-            mock_trace_manager.add_trace_task.assert_not_called()
-
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
     def test_draft_node_execution_not_ce_eligible(
         self,
         mock_trace_manager: MagicMock,
     ) -> None:
         with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456"}
-            payload = {"node_execution_data": {}}
-
-            emit(TelemetryCase.DRAFT_NODE_EXECUTION, context, payload, mock_trace_manager)
-
+            emit(_node_event(), mock_trace_manager)
             mock_trace_manager.add_trace_task.assert_not_called()
 
-    @pytest.mark.usefixtures("mock_ops_trace_manager")
     def test_prompt_generation_not_ce_eligible(
         self,
         mock_trace_manager: MagicMock,
     ) -> None:
         with patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False):
-            context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
-            payload = {"operation_type": "generate", "instruction": "test"}
-
-            emit(TelemetryCase.PROMPT_GENERATION, context, payload, mock_trace_manager)
-
+            emit(_prompt_event(), mock_trace_manager)
             mock_trace_manager.add_trace_task.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# is_enterprise_telemetry_enabled
+# ---------------------------------------------------------------------------
 
 
 class TestIsEnterpriseTelemetryEnabled:

@@ -5,21 +5,30 @@ describe('CredentialIcon', () => {
   it('shows the credential initial when there is no avatar', () => {
     render(<CredentialIcon name="alice" />)
 
-    expect(screen.getByText('A')).toBeInTheDocument()
+    expect(screen.getByText('A').parentElement).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('shows the credential avatar when one is configured', () => {
-    render(<CredentialIcon avatarUrl="https://example.com/avatar.png" name="Alice" />)
+  it('hides the credential avatar from the accessibility tree', () => {
+    const { container } = render(
+      <CredentialIcon avatarUrl="https://example.com/avatar.png" name="Alice" />,
+    )
 
-    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/avatar.png')
+    const image = container.querySelector('img')
+
+    expect(image).toHaveAttribute('src', 'https://example.com/avatar.png')
+    expect(image).toHaveAttribute('alt', '')
+    expect(image?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('falls back to the credential initial when the avatar fails to load', () => {
-    render(<CredentialIcon avatarUrl="https://example.com/missing.png" name="Alice" />)
+    const { container } = render(
+      <CredentialIcon avatarUrl="https://example.com/missing.png" name="Alice" />,
+    )
 
-    fireEvent.error(screen.getByRole('img'))
+    fireEvent.error(container.querySelector('img')!)
 
-    expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    expect(screen.getByText('A')).toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
+    expect(screen.getByText('A').parentElement).toHaveAttribute('aria-hidden', 'true')
   })
 })

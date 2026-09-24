@@ -9,6 +9,7 @@ export type AgentAppPagination = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
@@ -23,6 +24,7 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -47,7 +49,7 @@ export type AgentAppDetailWithSite = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
@@ -78,6 +80,7 @@ export type AgentAppUpdatePayload = {
 }
 
 export type AgentApiAccessResponse = {
+  access_ready: boolean
   api_key_count: number
   api_rph: number
   api_rpm: number
@@ -104,6 +107,7 @@ export type ApiKeyList = {
 
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string
@@ -288,45 +292,6 @@ export type AgentDebugConversationRefreshResponse = {
   debug_conversation_message_count?: number
 }
 
-export type AgentDriveListResponse = {
-  items?: Array<AgentDriveItemResponse>
-}
-
-export type AgentDriveDownloadResponse = {
-  url: string
-}
-
-export type AgentDrivePreviewResponse = {
-  binary: boolean
-  key: string
-  size?: number | null
-  text?: string | null
-  truncated: boolean
-}
-
-export type AgentDriveSkillListResponse = {
-  items?: Array<AgentDriveSkillItemResponse>
-}
-
-export type AgentDriveSkillInspectResponse = {
-  archive_key?: string | null
-  created_at?: number | null
-  description: string
-  file_tree?: Array<{
-    [key: string]: unknown
-  }>
-  files?: Array<AgentDriveSkillFileResponse>
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  path: string
-  size?: number | null
-  skill_md: AgentDriveSkillMarkdownResponse
-  skill_md_key: string
-  source: string
-  warnings?: Array<string>
-}
-
 export type AgentAppFeaturesPayload = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
@@ -341,19 +306,6 @@ export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
-}
-
-export type AgentDriveDeleteResponse = {
-  removed_keys?: Array<string>
-  result: string
-}
-
-export type AgentDriveFilePayload = {
-  upload_file_id: string
-}
-
-export type AgentDriveFileCommitResponse = {
-  file: AgentDriveFileResponse
 }
 
 export type AgentLogSourceListResponse = {
@@ -414,6 +366,7 @@ export type AgentPublishResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
   draft?: AgentConfigDraftSummaryResponse | null
+  publication_kind: 'first' | 'update'
   result: string
 }
 
@@ -431,6 +384,16 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type AgentSandboxDownloadPayload = {
+  caller_id: string
+  caller_type: 'build_draft' | 'conversation'
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
@@ -439,32 +402,20 @@ export type SandboxReadResponse = {
   truncated: boolean
 }
 
-export type AgentSandboxUploadPayload = {
-  caller_id: string
-  caller_type: 'build_draft' | 'conversation'
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
-}
-
-export type AgentSkillUploadResponse = {
-  manifest: SkillManifest
-  skill: AgentUploadedSkillResponse
-}
-
-export type SkillToolInferenceResult = {
-  cli_tools?: Array<CliToolSuggestion>
-  inferable: boolean
-  reason?: string | null
-}
-
 export type AgentStatisticSummaryEnvelopeResponse = {
   charts: AgentStatisticChartsResponse
   source: string
   summary: AgentStatisticSummaryResponse
 }
+
+export type TextToSpeechPayload = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text: string
+  voice?: string | null
+}
+
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
@@ -516,7 +467,7 @@ export type AgentAppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
@@ -526,6 +477,11 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type AgentPublicationCountsResponse = {
+  drafts: number
+  published: number
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
@@ -647,7 +603,6 @@ export type AgentSoulConfig = {
   config_note?: string
   config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
-  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -684,6 +639,7 @@ export type WorkflowNodeJobConfig = {
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
   mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
   workflow_prompt?: string
@@ -818,45 +774,6 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
-export type AgentDriveItemResponse = {
-  created_at?: number | null
-  file_kind: string
-  hash?: string | null
-  is_skill?: boolean | null
-  key: string
-  mime_type?: string | null
-  size?: number | null
-  skill_metadata?: string | null
-}
-
-export type AgentDriveSkillItemResponse = {
-  archive_key?: string | null
-  created_at?: number | null
-  description: string
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  path: string
-  size?: number | null
-  skill_md_key: string
-}
-
-export type AgentDriveSkillFileResponse = {
-  available_in_drive: boolean
-  drive_key?: string | null
-  name: string
-  path: string
-  type: string
-}
-
-export type AgentDriveSkillMarkdownResponse = {
-  binary: boolean
-  key: string
-  size?: number | null
-  text?: string | null
-  truncated: boolean
-}
-
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
   [key: string]: unknown
@@ -882,14 +799,6 @@ export type AgentTextToSpeechFeatureConfig = {
   language?: string | null
   voice?: string | null
   [key: string]: unknown
-}
-
-export type AgentDriveFileResponse = {
-  drive_key: string
-  file_id: string
-  mime_type?: string | null
-  name: string
-  size?: number | null
 }
 
 export type AgentLogSourceResponse = {
@@ -1036,32 +945,6 @@ export type SandboxFileEntryResponse = {
   type: 'dir' | 'file' | 'other' | 'symlink'
 }
 
-export type SkillManifest = {
-  description: string
-  entry_path: string
-  files: Array<string>
-  hash: string
-  name: string
-  size: number
-}
-
-export type AgentUploadedSkillResponse = {
-  archive_key?: string | null
-  description: string
-  name: string
-  path: string
-  skill_md_key: string
-}
-
-export type CliToolSuggestion = {
-  command?: string
-  description?: string
-  env_suggestions?: Array<EnvSuggestion>
-  inferred_from?: string
-  install_commands?: Array<string>
-  name: string
-}
-
 export type AgentStatisticChartsResponse = {
   average_response_time?: Array<AgentAverageResponseTimeStatisticResponse>
   average_session_interactions?: Array<AgentAverageSessionInteractionStatisticResponse>
@@ -1084,6 +967,11 @@ export type AgentStatisticSummaryResponse = {
   total_price: string
   total_tokens: number
   user_satisfaction_rate: number
+}
+
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
 }
 
 export type AgentConfigRevisionResponse = {
@@ -1181,11 +1069,6 @@ export type AgentSoulEnvConfig = {
   variables?: Array<AgentEnvVariableConfig>
 }
 
-export type AgentSoulFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
-}
-
 export type AgentSoulHumanConfig = {
   contacts?: Array<AgentHumanContactConfig>
   tools?: Array<AgentHumanToolConfig>
@@ -1278,6 +1161,11 @@ export type WorkflowNodeJobMetadata = {
 }
 
 export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
+
+export type WorkflowOutputRoutes = {
+  enabled?: boolean
+  routes?: Array<WorkflowOutputRoute>
+}
 
 export type WorkflowPreviousNodeOutputRef = {
   key?: string | null
@@ -1401,12 +1289,6 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
-export type EnvSuggestion = {
-  key: string
-  reason?: string
-  secret_likely?: boolean
-}
-
 export type AgentAverageResponseTimeStatisticResponse = {
   date: string
   latency: number
@@ -1516,35 +1398,6 @@ export type AgentEnvVariableConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
@@ -1584,6 +1437,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -1660,6 +1514,26 @@ export type DeclaredOutputFailureStrategy = {
 export type DeclaredOutputFileConfig = {
   extensions?: Array<string>
   mime_types?: Array<string>
+}
+
+export type AgentFileRefConfig = {
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowOutputRoute = {
+  id: string
+  label?: string | null
+  name?: string
 }
 
 export type AgentCliToolAuthorizationStatus =
@@ -1880,6 +1754,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -1891,11 +1767,13 @@ export type AgentAppPaginationWritable = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -1919,7 +1797,7 @@ export type AgentAppDetailWithSiteWritable = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
@@ -1954,7 +1832,7 @@ export type AgentAppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
@@ -2011,6 +1889,7 @@ export type GetAgentData = {
       | 'workflow'
     name?: string
     page?: number
+    publication_status?: 'drafts' | 'published'
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
   }
@@ -2033,6 +1912,7 @@ export type PostAgentData = {
 export type PostAgentErrors = {
   400: unknown
   403: unknown
+  409: unknown
 }
 
 export type PostAgentResponses = {
@@ -2779,93 +2659,6 @@ export type PostAgentByAgentIdDebugConversationRefreshResponses = {
 export type PostAgentByAgentIdDebugConversationRefreshResponse =
   PostAgentByAgentIdDebugConversationRefreshResponses[keyof PostAgentByAgentIdDebugConversationRefreshResponses]
 
-export type GetAgentByAgentIdDriveFilesData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: {
-    prefix?: string
-  }
-  url: '/agent/{agent_id}/drive/files'
-}
-
-export type GetAgentByAgentIdDriveFilesResponses = {
-  200: AgentDriveListResponse
-}
-
-export type GetAgentByAgentIdDriveFilesResponse =
-  GetAgentByAgentIdDriveFilesResponses[keyof GetAgentByAgentIdDriveFilesResponses]
-
-export type GetAgentByAgentIdDriveFilesDownloadData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query: {
-    key: string
-  }
-  url: '/agent/{agent_id}/drive/files/download'
-}
-
-export type GetAgentByAgentIdDriveFilesDownloadResponses = {
-  200: AgentDriveDownloadResponse
-}
-
-export type GetAgentByAgentIdDriveFilesDownloadResponse =
-  GetAgentByAgentIdDriveFilesDownloadResponses[keyof GetAgentByAgentIdDriveFilesDownloadResponses]
-
-export type GetAgentByAgentIdDriveFilesPreviewData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query: {
-    key: string
-  }
-  url: '/agent/{agent_id}/drive/files/preview'
-}
-
-export type GetAgentByAgentIdDriveFilesPreviewResponses = {
-  200: AgentDrivePreviewResponse
-}
-
-export type GetAgentByAgentIdDriveFilesPreviewResponse =
-  GetAgentByAgentIdDriveFilesPreviewResponses[keyof GetAgentByAgentIdDriveFilesPreviewResponses]
-
-export type GetAgentByAgentIdDriveSkillsData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/drive/skills'
-}
-
-export type GetAgentByAgentIdDriveSkillsResponses = {
-  200: AgentDriveSkillListResponse
-}
-
-export type GetAgentByAgentIdDriveSkillsResponse =
-  GetAgentByAgentIdDriveSkillsResponses[keyof GetAgentByAgentIdDriveSkillsResponses]
-
-export type GetAgentByAgentIdDriveSkillsBySkillPathInspectData = {
-  body?: never
-  path: {
-    agent_id: string
-    skill_path: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/drive/skills/{skill_path}/inspect'
-}
-
-export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses = {
-  200: AgentDriveSkillInspectResponse
-}
-
-export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponse =
-  GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses[keyof GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses]
-
 export type PostAgentByAgentIdFeaturesData = {
   body: AgentAppFeaturesPayload
   path: {
@@ -2906,40 +2699,6 @@ export type PostAgentByAgentIdFeedbacksResponses = {
 
 export type PostAgentByAgentIdFeedbacksResponse =
   PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
-
-export type DeleteAgentByAgentIdFilesData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query: {
-    key: string
-  }
-  url: '/agent/{agent_id}/files'
-}
-
-export type DeleteAgentByAgentIdFilesResponses = {
-  200: AgentDriveDeleteResponse
-}
-
-export type DeleteAgentByAgentIdFilesResponse =
-  DeleteAgentByAgentIdFilesResponses[keyof DeleteAgentByAgentIdFilesResponses]
-
-export type PostAgentByAgentIdFilesData = {
-  body: AgentDriveFilePayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/files'
-}
-
-export type PostAgentByAgentIdFilesResponses = {
-  201: AgentDriveFileCommitResponse
-}
-
-export type PostAgentByAgentIdFilesResponse =
-  PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
 
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never
@@ -3114,6 +2873,22 @@ export type GetAgentByAgentIdSandboxFilesResponses = {
 export type GetAgentByAgentIdSandboxFilesResponse =
   GetAgentByAgentIdSandboxFilesResponses[keyof GetAgentByAgentIdSandboxFilesResponses]
 
+export type PostAgentByAgentIdSandboxFilesDownloadData = {
+  body: AgentSandboxDownloadPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/sandbox/files/download'
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponses = {
+  200: SandboxDownloadResponse
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponse =
+  PostAgentByAgentIdSandboxFilesDownloadResponses[keyof PostAgentByAgentIdSandboxFilesDownloadResponses]
+
 export type GetAgentByAgentIdSandboxFilesReadData = {
   body?: never
   path: {
@@ -3134,78 +2909,6 @@ export type GetAgentByAgentIdSandboxFilesReadResponses = {
 export type GetAgentByAgentIdSandboxFilesReadResponse =
   GetAgentByAgentIdSandboxFilesReadResponses[keyof GetAgentByAgentIdSandboxFilesReadResponses]
 
-export type PostAgentByAgentIdSandboxFilesUploadData = {
-  body: AgentSandboxUploadPayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/sandbox/files/upload'
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponses = {
-  200: SandboxUploadResponse
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponse =
-  PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
-
-export type PostAgentByAgentIdSkillsUploadData = {
-  body: {
-    file: Blob | File
-  }
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/upload'
-}
-
-export type PostAgentByAgentIdSkillsUploadErrors = {
-  400: unknown
-}
-
-export type PostAgentByAgentIdSkillsUploadResponses = {
-  201: AgentSkillUploadResponse
-}
-
-export type PostAgentByAgentIdSkillsUploadResponse =
-  PostAgentByAgentIdSkillsUploadResponses[keyof PostAgentByAgentIdSkillsUploadResponses]
-
-export type DeleteAgentByAgentIdSkillsBySlugData = {
-  body?: never
-  path: {
-    agent_id: string
-    slug: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/{slug}'
-}
-
-export type DeleteAgentByAgentIdSkillsBySlugResponses = {
-  200: AgentDriveDeleteResponse
-}
-
-export type DeleteAgentByAgentIdSkillsBySlugResponse =
-  DeleteAgentByAgentIdSkillsBySlugResponses[keyof DeleteAgentByAgentIdSkillsBySlugResponses]
-
-export type PostAgentByAgentIdSkillsBySlugInferToolsData = {
-  body?: never
-  path: {
-    agent_id: string
-    slug: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/{slug}/infer-tools'
-}
-
-export type PostAgentByAgentIdSkillsBySlugInferToolsResponses = {
-  200: SkillToolInferenceResult
-}
-
-export type PostAgentByAgentIdSkillsBySlugInferToolsResponse =
-  PostAgentByAgentIdSkillsBySlugInferToolsResponses[keyof PostAgentByAgentIdSkillsBySlugInferToolsResponses]
-
 export type GetAgentByAgentIdStatisticsSummaryData = {
   body?: never
   path: {
@@ -3225,6 +2928,51 @@ export type GetAgentByAgentIdStatisticsSummaryResponses = {
 
 export type GetAgentByAgentIdStatisticsSummaryResponse =
   GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
+
+export type PostAgentByAgentIdTextToAudioData = {
+  body: TextToSpeechPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/text-to-audio'
+}
+
+export type PostAgentByAgentIdTextToAudioErrors = {
+  400: unknown
+  403: unknown
+  404: unknown
+}
+
+export type PostAgentByAgentIdTextToAudioResponses = {
+  200: Blob | File
+}
+
+export type PostAgentByAgentIdTextToAudioResponse =
+  PostAgentByAgentIdTextToAudioResponses[keyof PostAgentByAgentIdTextToAudioResponses]
+
+export type GetAgentByAgentIdTextToAudioVoicesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    language: string
+  }
+  url: '/agent/{agent_id}/text-to-audio/voices'
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponses = {
+  200: TextToSpeechVoiceListResponse
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponse =
+  GetAgentByAgentIdTextToAudioVoicesResponses[keyof GetAgentByAgentIdTextToAudioVoicesResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

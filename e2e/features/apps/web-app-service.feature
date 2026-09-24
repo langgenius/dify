@@ -4,8 +4,7 @@ Feature: Manage Web App service
   Scenario: Disable and restore a published workflow Web App
     Given I am signed in as the default E2E admin
     And a new runnable workflow app has been published
-    When I navigate to the app overview page
-    And I open the app information panel
+    When I navigate to the app access point page
     Then the Web App should be in service
     When an anonymous visitor opens the Web App
     Then the published workflow Web App should be accessible

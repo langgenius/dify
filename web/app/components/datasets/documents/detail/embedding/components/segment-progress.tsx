@@ -10,7 +10,7 @@ type SegmentProgressProps = {
 
 const SegmentProgress: FC<SegmentProgressProps> = React.memo(
   ({ completedSegments, totalSegments, percent }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['datasetDocuments'])
 
     const completed = completedSegments ?? '--'
     const total = totalSegments ?? '--'

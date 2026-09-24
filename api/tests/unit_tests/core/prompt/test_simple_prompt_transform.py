@@ -6,11 +6,6 @@ import pytest
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.prompt_templates.advanced_prompt_templates import (
-    BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
-    BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG,
-    BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG,
-    BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG,
-    BAICHUAN_CONTEXT,
     CHAT_APP_CHAT_PROMPT_CONFIG,
     CHAT_APP_COMPLETION_PROMPT_CONFIG,
     COMPLETION_APP_CHAT_PROMPT_CONFIG,
@@ -32,31 +27,6 @@ def test_get_common_chat_app_prompt_template_with_pcqm():
     pre_prompt = "You are a helpful assistant."
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider="openai",
-        model="gpt-4",
-        pre_prompt=pre_prompt,
-        has_context=True,
-        query_in_prompt=True,
-        with_memory_prompt=True,
-    )
-    prompt_rules = prompt_template["prompt_rules"]
-    assert prompt_template["prompt_template"].template == (
-        prompt_rules["context_prompt"]
-        + pre_prompt
-        + "\n"
-        + prompt_rules["histories_prompt"]
-        + prompt_rules["query_prompt"]
-    )
-    assert prompt_template["special_variable_keys"] == ["#context#", "#histories#", "#query#"]
-
-
-def test_get_baichuan_chat_app_prompt_template_with_pcqm():
-    prompt_transform = SimplePromptTransform()
-    pre_prompt = "You are a helpful assistant."
-    prompt_template = prompt_transform.get_prompt_template(
-        app_mode=AppMode.CHAT,
-        provider="baichuan",
-        model="Baichuan2-53B",
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=True,
@@ -78,27 +48,6 @@ def test_get_common_completion_app_prompt_template_with_pcq():
     pre_prompt = "You are a helpful assistant."
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.WORKFLOW,
-        provider="openai",
-        model="gpt-4",
-        pre_prompt=pre_prompt,
-        has_context=True,
-        query_in_prompt=True,
-        with_memory_prompt=False,
-    )
-    prompt_rules = prompt_template["prompt_rules"]
-    assert prompt_template["prompt_template"].template == (
-        prompt_rules["context_prompt"] + pre_prompt + "\n" + prompt_rules["query_prompt"]
-    )
-    assert prompt_template["special_variable_keys"] == ["#context#", "#query#"]
-
-
-def test_get_baichuan_completion_app_prompt_template_with_pcq():
-    prompt_transform = SimplePromptTransform()
-    pre_prompt = "You are a helpful assistant."
-    prompt_template = prompt_transform.get_prompt_template(
-        app_mode=AppMode.WORKFLOW,
-        provider="baichuan",
-        model="Baichuan2-53B",
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=True,
@@ -116,8 +65,6 @@ def test_get_common_chat_app_prompt_template_with_q():
     pre_prompt = ""
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider="openai",
-        model="gpt-4",
         pre_prompt=pre_prompt,
         has_context=False,
         query_in_prompt=True,
@@ -133,8 +80,6 @@ def test_get_common_chat_app_prompt_template_with_cq():
     pre_prompt = ""
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider="openai",
-        model="gpt-4",
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=True,
@@ -152,8 +97,6 @@ def test_get_common_chat_app_prompt_template_with_p():
     pre_prompt = "you are {{name}}"
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider="openai",
-        model="gpt-4",
         pre_prompt=pre_prompt,
         has_context=False,
         query_in_prompt=False,
@@ -193,8 +136,6 @@ def test__get_chat_model_prompt_messages():
 
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider=model_config_mock.provider,
-        model=model_config_mock.model,
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=False,
@@ -240,8 +181,6 @@ def test__get_completion_model_prompt_messages():
 
     prompt_template = prompt_transform.get_prompt_template(
         app_mode=AppMode.CHAT,
-        provider=model_config_mock.provider,
-        model=model_config_mock.model,
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=True,
@@ -306,12 +245,9 @@ def test_get_prompt_dispatches_chat_and_completion():
 
 def test_get_prompt_str_and_rules_type_validation_errors():
     transform = SimplePromptTransform()
-    model_config = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config.provider = "openai"
-    model_config.model = "gpt-4"
-    valid_prompt_template = SimplePromptTransform().get_prompt_template(
-        AppMode.CHAT, "openai", "gpt-4", "", False, False
-    )["prompt_template"]
+    valid_prompt_template = SimplePromptTransform().get_prompt_template(AppMode.CHAT, "", False, False)[
+        "prompt_template"
+    ]
 
     bad_custom_keys = {
         "prompt_template": valid_prompt_template,
@@ -321,7 +257,7 @@ def test_get_prompt_str_and_rules_type_validation_errors():
     }
     transform.get_prompt_template = MagicMock(return_value=bad_custom_keys)
     with pytest.raises(TypeError, match="custom_variable_keys"):
-        transform._get_prompt_str_and_rules(AppMode.CHAT, model_config, "", {}, query=None, context=None)
+        transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
     bad_special_keys = {
         **bad_custom_keys,
@@ -330,7 +266,7 @@ def test_get_prompt_str_and_rules_type_validation_errors():
     }
     transform.get_prompt_template = MagicMock(return_value=bad_special_keys)
     with pytest.raises(TypeError, match="special_variable_keys"):
-        transform._get_prompt_str_and_rules(AppMode.CHAT, model_config, "", {}, query=None, context=None)
+        transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
     bad_prompt_template = {
         **bad_custom_keys,
@@ -340,7 +276,7 @@ def test_get_prompt_str_and_rules_type_validation_errors():
     }
     transform.get_prompt_template = MagicMock(return_value=bad_prompt_template)
     with pytest.raises(TypeError, match="PromptTemplateParser"):
-        transform._get_prompt_str_and_rules(AppMode.CHAT, model_config, "", {}, query=None, context=None)
+        transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
     bad_prompt_rules = {
         **bad_custom_keys,
@@ -351,7 +287,7 @@ def test_get_prompt_str_and_rules_type_validation_errors():
     }
     transform.get_prompt_template = MagicMock(return_value=bad_prompt_rules)
     with pytest.raises(TypeError, match="prompt_rules"):
-        transform._get_prompt_str_and_rules(AppMode.CHAT, model_config, "", {}, query=None, context=None)
+        transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
 
 def test_chat_model_prompt_messages_uses_prompt_when_query_empty():
@@ -419,23 +355,9 @@ def test_get_last_user_message_with_files_and_context_files():
     assert message.content[2].data == "hello"
 
 
-def test_prompt_file_name_branches():
-    transform = SimplePromptTransform()
-
-    assert transform._prompt_file_name(AppMode.CHAT, "openai", "gpt-4") == "common_chat"
-    assert transform._prompt_file_name(AppMode.COMPLETION, "openai", "gpt-4") == "common_completion"
-    assert transform._prompt_file_name(AppMode.COMPLETION, "baichuan", "Baichuan2") == "baichuan_completion"
-    assert transform._prompt_file_name(AppMode.CHAT, "huggingface_hub", "baichuan-13b") == "baichuan_chat"
-
-
 def test_advanced_prompt_templates_constants_are_importable():
     assert isinstance(CONTEXT, str)
-    assert isinstance(BAICHUAN_CONTEXT, str)
     assert "completion_prompt_config" in CHAT_APP_COMPLETION_PROMPT_CONFIG
     assert "chat_prompt_config" in CHAT_APP_CHAT_PROMPT_CONFIG
     assert "chat_prompt_config" in COMPLETION_APP_CHAT_PROMPT_CONFIG
     assert "completion_prompt_config" in COMPLETION_APP_COMPLETION_PROMPT_CONFIG
-    assert "completion_prompt_config" in BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG
-    assert "chat_prompt_config" in BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG
-    assert "chat_prompt_config" in BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG
-    assert "completion_prompt_config" in BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG

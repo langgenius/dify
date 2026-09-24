@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { PopoverContentProps } from '.'
 import * as React from 'react'
 import {
   createPopoverHandle,
@@ -151,13 +151,9 @@ export const Infotip: Story = {
     docs: {
       description: {
         story: [
-          'The **infotip** pattern from [Base UI](https://base-ui.com/react/components/tooltip#infotips): an info glyph (`?`, `(i)`) whose sole purpose is to reveal explanatory text. Use `Popover` with `openOnHover` on the trigger — never `Tooltip`.',
+          'An **infotip** uses an info icon to reveal explanatory text. Following the [Base UI infotip guidelines](https://base-ui.com/react/components/tooltip#infotips), use `Popover` with `openOnHover` on the trigger so touch and screen reader users can access the content.',
           '',
-          "Why not `Tooltip`? Tooltips are disabled on touch devices and not announced to screen readers; descriptive help text hidden in them is unreachable for those users. Why not `PreviewCard`? PreviewCard's a11y contract requires the trigger to already own a primary click destination, but an info glyph has no other purpose.",
-          '',
-          "Base UI rule of thumb: *\"If the trigger's purpose is to open the popup itself, it's a popover. If the trigger's purpose is unrelated to opening the popup, it's a tooltip.\"*",
-          '',
-          'Hover, tap, or focus the `?` icon to open. In the Dify app, reach for `@/app/components/base/infotip` (`<Infotip aria-label={...}>{helpText}</Infotip>`) which wraps this pattern with consistent delays (300/200), typography, and `aria-label` plumbing.',
+          'This example uses a named button trigger with a 300 ms hover delay and a 200 ms close delay.',
         ].join('\n'),
       },
     },
@@ -174,7 +170,7 @@ export const Infotip: Story = {
           render={
             <button
               type="button"
-              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <span
                 aria-hidden
@@ -185,7 +181,7 @@ export const Infotip: Story = {
         />
         <PopoverContent
           placement="top"
-          popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+          className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
         >
           Set which resource to use first when running models. The Trial quota will be used after
           the paid quota is exhausted.
@@ -195,7 +191,9 @@ export const Infotip: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
+type PopoverPlacement = NonNullable<PopoverContentProps['placement']>
+
+const PLACEMENTS: PopoverPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -211,7 +209,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<PopoverPlacement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -221,7 +219,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >

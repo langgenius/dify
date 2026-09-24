@@ -77,17 +77,6 @@ describe('ToolListTreeView', () => {
               }),
             ],
           },
-          {
-            kind: 'category',
-            category: 'data-source',
-            tools: [
-              createToolProvider({
-                id: 'data-source-provider',
-                type: 'local_file',
-                label: { en_US: 'Data Source Provider', zh_Hans: 'Data Source Provider' },
-              }),
-            ],
-          },
         ]}
         previewCardHandle={createPreviewCardHandle()}
         hasSearchText={false}
@@ -99,7 +88,6 @@ describe('ToolListTreeView', () => {
     expect(screen.getByText('workflow.tabs.customTool')).toBeInTheDocument()
     expect(screen.getByText('MCP')).toBeInTheDocument()
     expect(screen.getByText('workflow.tabs.workflowTool')).toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.sources')).toBeInTheDocument()
     expect(screen.getByText('Built In Provider')).toBeInTheDocument()
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()

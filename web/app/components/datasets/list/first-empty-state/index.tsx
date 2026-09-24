@@ -27,7 +27,7 @@ function DatasetFirstEmptyState({
   canConnectExternalDataset,
   canCreateDataset,
 }: DatasetFirstEmptyStateProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const createActions: EmptyCreateAction[] = canCreateDataset
     ? [

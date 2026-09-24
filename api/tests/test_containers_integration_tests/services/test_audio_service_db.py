@@ -156,7 +156,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         mock_model_manager = MagicMock()
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
-        with patch("services.audio_service.ModelManager.for_tenant", return_value=mock_model_manager):
+        with patch("services.audio_provider_gateway.ModelManager.for_tenant", return_value=mock_model_manager):
             result = AudioService.transcript_tts(
                 app_model=app,
                 session=db_session_with_containers,
@@ -168,7 +168,9 @@ class TestAudioServiceTranscriptTTSMessageLookup:
                 voice="en-US-Neural",
             )
 
-        assert result == b"audio from message"
+        assert result is not None
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio from message"
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello from message",
             voice="en-US-Neural",

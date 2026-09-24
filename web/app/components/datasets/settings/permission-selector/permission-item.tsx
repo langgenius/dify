@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { DatasetPermission } from '@/models/datasets'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
-import { RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type PermissionItemProps = {
   value: DatasetPermission

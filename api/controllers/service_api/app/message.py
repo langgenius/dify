@@ -1,15 +1,16 @@
 import logging
+from typing import Annotated
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_with_user
@@ -31,21 +32,24 @@ from services.message_service import MessageService
 logger = logging.getLogger(__name__)
 
 
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+
+
 class FeedbackListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number for pagination.")
     limit: int = Field(default=20, ge=1, le=101, description="Number of records per page.")
 
 
 class AppFeedbackResponse(ResponseModel):
-    id: str
-    app_id: str
-    conversation_id: str
-    message_id: str
+    id: UUIDString
+    app_id: UUIDString
+    conversation_id: UUIDString
+    message_id: UUIDString
     rating: str
     content: str | None = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: UUIDString | None = None
+    from_account_id: UUIDString | None = None
     created_at: str
     updated_at: str
 
@@ -97,7 +101,8 @@ class MessageListApi(Resource):
         service_api_ns.models[MessageInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(MessageListQuery)
+    def get(self, query_args: MessageListQuery, app_model: App, end_user: EndUser):
         """List messages in a conversation.
 
         Retrieves messages with pagination support using first_id.
@@ -106,7 +111,6 @@ class MessageListApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        query_args = MessageListQuery.model_validate(request.args.to_dict())
         conversation_id = query_args.conversation_id
         first_id = query_args.first_id or None
 
@@ -150,19 +154,19 @@ class MessageFeedbackApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Feedback submitted successfully",
+            400: "Bad request - invalid feedback payload",
             401: "Unauthorized - invalid API token",
             404: "Message not found",
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
         message_id_str = str(message_id)
-
-        payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
         try:
             MessageService.create_feedback(
@@ -207,12 +211,12 @@ class AppGetFeedbacksApi(Resource):
         service_api_ns.models[AppFeedbackListResponse.__name__],
     )
     @validate_app_token
-    def get(self, app_model: App):
+    @model_validate(FeedbackListQuery)
+    def get(self, query_args: FeedbackListQuery, app_model: App):
         """Get all feedbacks for the application.
 
         Returns paginated list of all feedback submitted for messages in this app.
         """
-        query_args = FeedbackListQuery.model_validate(request.args.to_dict())
         feedbacks = MessageService.get_all_messages_feedbacks(
             app_model, page=query_args.page, limit=query_args.limit, session=db.session()
         )

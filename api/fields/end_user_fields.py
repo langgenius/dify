@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import Field
+from pydantic import WithJsonSchema
 
 from fields.base import ResponseModel
+
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 
 
 class SimpleEndUser(ResponseModel):
@@ -15,20 +18,15 @@ class SimpleEndUser(ResponseModel):
 
 
 class EndUserDetail(ResponseModel):
-    """Full EndUser record for API responses.
+    """Full end-user detail returned by the Service API."""
 
-    Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
-    (always False). The database column is exposed as `_is_anonymous`, so this DTO maps
-    `is_anonymous` from `_is_anonymous` to return the stored value.
-    """
-
-    id: str
-    tenant_id: str
-    app_id: str | None = None
+    id: UUIDString
+    tenant_id: UUIDString
+    app_id: UUIDString | None = None
     type: str
     external_user_id: str | None = None
     name: str | None = None
-    is_anonymous: bool = Field(validation_alias="_is_anonymous")
+    is_anonymous: bool
     session_id: str
     created_at: datetime
     updated_at: datetime

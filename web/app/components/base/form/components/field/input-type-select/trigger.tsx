@@ -7,7 +7,7 @@ type TriggerProps = {
 }
 
 const Trigger = ({ option }: TriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (!option)
     return <span className="grow p-1">{t(($) => $['placeholder.select'], { ns: 'common' })}</span>

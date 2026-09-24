@@ -5,11 +5,11 @@ import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import TabSlider from '@/app/components/base/tab-slider-plain'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import ReasoningConfigForm from './reasoning-config-form'
 
@@ -20,14 +20,14 @@ type ToolSettingsPanelProps = {
   currType: TabType
   settingsFormSchemas: ToolFormSchema[]
   paramsFormSchemas: ToolFormSchema[]
-  settingsValue: ToolVarInputs
+  settingsValue: ResourceVarInputs
   showTabSlider: boolean
   userSettingsOnly: boolean
   reasoningConfigOnly: boolean
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   onCurrTypeChange: (type: TabType) => void
-  onSettingsFormChange: (v: ToolVarInputs) => void
+  onSettingsFormChange: (v: ResourceVarInputs) => void
   onParamsFormChange: (v: ReasoningConfigValue) => void
 }
 
@@ -35,7 +35,7 @@ type ToolSettingsPanelProps = {
  * Renders the settings/params tips section
  */
 function ParamsTips() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   return (
     <div className="pb-1">
       <div className="system-xs-regular text-text-tertiary">
@@ -65,7 +65,7 @@ export function ToolSettingsPanel({
   onSettingsFormChange,
   onParamsFormChange,
 }: ToolSettingsPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   // Check if panel should be shown
   const hasSettings = settingsFormSchemas.length > 0
@@ -74,84 +74,73 @@ export function ToolSettingsPanel({
 
   if ((!hasSettings && !hasParams) || !isTeamAuthorized) return null
 
+  const settingsForm = (
+    <div className="px-4 py-2">
+      <ToolForm
+        inPanel
+        readOnly={false}
+        nodeId={nodeId}
+        schema={settingsFormSchemas as CredentialFormSchema[]}
+        value={settingsValue}
+        onChange={onSettingsFormChange}
+      />
+    </div>
+  )
+  const paramsForm = (
+    <ReasoningConfigForm
+      value={(value?.parameters || {}) as ReasoningConfigValue}
+      onChange={onParamsFormChange}
+      schemas={paramsFormSchemas}
+      nodeOutputVars={nodeOutputVars}
+      availableNodes={availableNodes}
+      nodeId={nodeId}
+    />
+  )
+
   return (
     <>
-      <Divider className="my-1 w-full" />
-
-      {/* Tab slider - shown only when both settings and params exist */}
-      {nodeId && showTabSlider && (
-        <TabSlider
-          className="mt-1 shrink-0 px-4"
-          itemClassName="py-3"
-          noBorderBottom
-          smallItem
+      <Separator className="my-1 h-[0.5px]" />
+      {nodeId && showTabSlider ? (
+        <Tabs
           value={currType}
-          onChange={(v) => {
-            if (v === 'settings' || v === 'params') onCurrTypeChange(v)
+          onValueChange={(value) => {
+            if (value === 'settings' || value === 'params') onCurrTypeChange(value)
           }}
-          options={[
-            {
-              value: 'settings',
-              text: t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })!,
-            },
-            {
-              value: 'params',
-              text: t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })!,
-            },
-          ]}
-        />
-      )}
-
-      {/* Params tips when tab slider and params tab is active */}
-      {nodeId && showTabSlider && currType === 'params' && (
-        <div className="px-4 py-2">
-          <ParamsTips />
-        </div>
-      )}
-
-      {/* User settings only header */}
-      {userSettingsOnly && (
-        <div className="p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })}
-          </div>
-        </div>
-      )}
-
-      {/* Reasoning config only header */}
-      {nodeId && reasoningConfigOnly && (
-        <div className="mb-1 p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
-          </div>
-          <ParamsTips />
-        </div>
-      )}
-
-      {/* User settings form */}
-      {(currType === 'settings' || userSettingsOnly) && (
-        <div className="px-4 py-2">
-          <ToolForm
-            inPanel
-            readOnly={false}
-            nodeId={nodeId}
-            schema={settingsFormSchemas as CredentialFormSchema[]}
-            value={settingsValue}
-            onChange={onSettingsFormChange}
-          />
-        </div>
-      )}
-
-      {/* Reasoning config form */}
-      {nodeId && (currType === 'params' || reasoningConfigOnly) && (
-        <ReasoningConfigForm
-          value={(value?.parameters || {}) as ReasoningConfigValue}
-          onChange={onParamsFormChange}
-          schemas={paramsFormSchemas}
-          nodeOutputVars={nodeOutputVars}
-          availableNodes={availableNodes}
-          nodeId={nodeId}
-        />
+        >
+          <TabsList className="mt-1 px-4">
+            <TabsTab value="settings">
+              {t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })}
+            </TabsTab>
+            <TabsTab value="params">
+              {t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
+            </TabsTab>
+          </TabsList>
+          <TabsPanel value="settings">{settingsForm}</TabsPanel>
+          <TabsPanel value="params">
+            <div className="px-4 py-2">
+              <ParamsTips />
+            </div>
+            {paramsForm}
+          </TabsPanel>
+        </Tabs>
+      ) : (
+        <>
+          {userSettingsOnly && (
+            <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
+              {t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })}
+            </div>
+          )}
+          {nodeId && reasoningConfigOnly && (
+            <div className="mb-1 p-4 pb-1">
+              <div className="system-sm-semibold-uppercase text-text-primary">
+                {t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
+              </div>
+              <ParamsTips />
+            </div>
+          )}
+          {(currType === 'settings' || userSettingsOnly) && settingsForm}
+          {nodeId && (currType === 'params' || reasoningConfigOnly) && paramsForm}
+        </>
       )}
     </>
   )

@@ -1,7 +1,9 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { skipToken } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import ParamConfigContent from '../param-config-content'
@@ -11,30 +13,54 @@ let mockLanguages = [
   { value: 'zh-Hans', name: '中文', example: '你好' },
 ]
 
-let mockPathname = '/app/test-app-id/configuration'
+let mockParams: { appId?: string; agentId?: string } = { appId: 'test-app-id' }
 
 let mockVoiceItems: { value: string; name: string }[] | undefined = [
   { value: 'alloy', name: 'Alloy' },
   { value: 'echo', name: 'Echo' },
 ]
 
-const mockUseAppVoices = vi.fn((_appId: string, _language?: string) => ({
+type VoicesQueryOptions = {
+  enabled?: boolean
+  input:
+    | typeof skipToken
+    | {
+        params: { app_id: string } | { agent_id: string }
+        query: { language: string }
+      }
+}
+
+const mockVoicesQuery = vi.fn((_options: VoicesQueryOptions) => ({
   data: mockVoiceItems,
 }))
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
-  useParams: () => ({}),
-}))
+const mockGetAudioPlayer = vi.fn(() => ({ playAudio: vi.fn(), pauseAudio: vi.fn() }))
 
-vi.mock('@/i18n-config/language', () => ({
-  get languages() {
-    return mockLanguages
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({ getAudioPlayer: mockGetAudioPlayer }),
   },
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: (appId: string, language?: string) => mockUseAppVoices(appId, language),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: VoicesQueryOptions) => mockVoicesQuery(options),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () =>
+    mockParams.appId
+      ? `/app/${mockParams.appId}/configuration`
+      : mockParams.agentId
+        ? `/agents/${mockParams.agentId}/configure`
+        : '/configuration',
+  useParams: () => mockParams,
+}))
+
+vi.mock('@/i18n/language', () => ({
+  get languages() {
+    return mockLanguages
+  },
 }))
 
 const defaultFeatures: Features = {
@@ -66,9 +92,13 @@ const getLanguageSelect = () =>
 const getVoiceSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.voice/ })
 
 describe('ParamConfigContent', () => {
+  beforeAll(async () => {
+    await i18next.init({})
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPathname = '/app/test-app-id/configuration'
+    mockParams = { appId: 'test-app-id' }
     mockLanguages = [
       { value: 'en-US', name: 'English', example: 'Hello world' },
       { value: 'zh-Hans', name: '中文', example: '你好' },
@@ -112,7 +142,7 @@ describe('ParamConfigContent', () => {
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel)!.toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }),
+        screen.getByRole('button', { name: /voice\.voiceSettings\.language/ }),
       )!.toBeInTheDocument()
     })
 
@@ -177,6 +207,80 @@ describe('ParamConfigContent', () => {
 
   // User-triggered behavior and callbacks.
   describe('User Interactions', () => {
+    it('should audition the displayed fallback voice on an agent page', async () => {
+      const user = userEvent.setup()
+      mockParams = { agentId: 'agent-1' }
+      renderWithProvider(
+        {},
+        { text2speech: { ...defaultFeatures.text2speech, enabled: true, voice: 'removed-voice' } },
+      )
+
+      expect(getVoiceSelect()).toHaveTextContent('Alloy')
+      await user.click(screen.getByRole('button', { name: /play/i }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-1/text-to-audio',
+        false,
+        undefined,
+        'Hello world',
+        'alloy',
+        expect.any(Function),
+      )
+    })
+
+    it.each([
+      {
+        route: 'Chatflow',
+        params: { appId: 'test-app-id' },
+        requestParams: { app_id: 'test-app-id' },
+        operation: ['console', 'apps', 'byAppId', 'textToAudio', 'voices', 'get'],
+      },
+      {
+        route: 'Agent',
+        params: { agentId: 'test-agent-id' },
+        requestParams: { agent_id: 'test-agent-id' },
+        operation: ['console', 'agent', 'byAgentId', 'textToAudio', 'voices', 'get'],
+      },
+    ])(
+      'should load and select voices using the $route route ID',
+      async ({ params, requestParams, operation }) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        mockParams = params
+
+        renderWithProvider({ onChange })
+
+        expect(mockVoicesQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            queryKey: expect.arrayContaining([operation]),
+            input: {
+              params: requestParams,
+              query: { language: 'en-US' },
+            },
+          }),
+        )
+
+        await user.click(getVoiceSelect())
+        await user.click(await screen.findByRole('option', { name: 'Echo' }))
+
+        expect(getVoiceSelect()).toHaveTextContent('Echo')
+        expect(onChange).toHaveBeenCalled()
+
+        await user.click(getLanguageSelect())
+        await user.click(await screen.findByRole('option', { name: /voice\.language\.zhHans/ }))
+
+        expect(mockVoicesQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            queryKey: expect.arrayContaining([operation]),
+            input: {
+              params: requestParams,
+              query: { language: 'zh-Hans' },
+            },
+          }),
+        )
+      },
+    )
+
     it('should call onClose when close button is clicked', async () => {
       const onClose = vi.fn()
       renderWithProvider({ onClose })
@@ -331,12 +435,17 @@ describe('ParamConfigContent', () => {
       expect(getVoiceSelect()).toHaveAttribute('data-disabled')
     })
 
-    it('should call useAppVoices with empty appId when pathname has no app segment', () => {
-      mockPathname = '/configuration'
+    it('should disable the voices query when neither an app nor Agent ID is available', () => {
+      mockParams = {}
 
       renderWithProvider()
 
-      expect(mockUseAppVoices).toHaveBeenCalledWith('', 'en-US')
+      expect(mockVoicesQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: false,
+          input: skipToken,
+        }),
+      )
     })
 
     it('should render language text when selected language value is empty string', () => {

@@ -2,10 +2,13 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +22,8 @@ export type Item<T extends ItemValue = ItemValue> = {
 } & Record<string, unknown>
 
 type Props<T extends ItemValue> = {
+  id?: string
+  'aria-labelledby'?: string
   className?: string
   panelClassName?: string
   showLeftIcon?: boolean
@@ -31,6 +36,8 @@ type Props<T extends ItemValue> = {
 }
 
 function Chip<T extends ItemValue>({
+  id,
+  'aria-labelledby': ariaLabelledBy,
   className,
   panelClassName,
   showLeftIcon = true,
@@ -41,7 +48,7 @@ function Chip<T extends ItemValue>({
   onSelect,
   onClear,
 }: Props<T>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
@@ -64,7 +71,13 @@ function Chip<T extends ItemValue>({
     >
       <div className="relative w-fit max-w-full">
         <SelectTrigger
-          aria-label={triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })}
+          id={id}
+          aria-labelledby={ariaLabelledBy}
+          aria-label={
+            ariaLabelledBy
+              ? undefined
+              : triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })
+          }
           className={cn(
             'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue &&
@@ -117,22 +130,25 @@ function Chip<T extends ItemValue>({
             />
           </button>
         )}
-        <SelectContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName={cn(
-            'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
-            panelClassName,
-          )}
-          listClassName="max-h-72 p-1"
-        >
-          {items.map((item) => (
-            <SelectItem<T> key={item.value} value={item.value}>
-              <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              {showItemIndicator && <SelectItemIndicator />}
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup
+              className={cn(
+                'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
+                panelClassName,
+              )}
+            >
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem<T> key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    {showItemIndicator && <SelectItemIndicator />}
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

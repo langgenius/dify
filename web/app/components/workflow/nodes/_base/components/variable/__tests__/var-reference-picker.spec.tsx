@@ -117,6 +117,7 @@ describe('VarReferencePicker', () => {
 
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
 
+    await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
     fireEvent.click(await screen.findByText('answer'))
 
     expect(onChange).toHaveBeenCalledWith(

@@ -1,13 +1,13 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { APIRequestContext } from '@playwright/test'
-import type { ConsoleClientContext } from './playwright-fetch'
+import type { ConsoleClientContext } from './playwright-fetch.ts'
 import { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import { createORPCClient } from '@orpc/client'
 import { RequestValidationPlugin, ResponseValidationPlugin } from '@orpc/contract/plugins'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
-import { apiURL } from '../../test-env'
-import { createPlaywrightFetch } from './playwright-fetch'
+import { apiURL } from '../../test-env.ts'
+import { createPlaywrightFetch } from './playwright-fetch.ts'
 
 type ConsoleRequestContext = Pick<APIRequestContext, 'fetch' | 'storageState'>
 

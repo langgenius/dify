@@ -14,7 +14,7 @@ import { rosterQueryParamNames, rosterSortByQueryParser } from '../query-params'
 import { DEFAULT_ROSTER_SORT_BY, rosterSortOptions } from './roster-sort'
 
 export function RosterSortSelect() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [value, setValue] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const selectedOption =
     rosterSortOptions.find((option) => option.value === value) ??
@@ -40,12 +40,7 @@ export function RosterSortSelect() {
           </span>
         </span>
       </SelectTrigger>
-      <SelectContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="w-60"
-        listProps={{ 'aria-label': t(($) => $['roster.sort.optionsLabel']) }}
-      >
+      <SelectContent placement="bottom-start" sideOffset={4} className="w-60">
         {rosterSortOptions.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             <SelectItemText title={t(($) => $[option.labelKey])}>

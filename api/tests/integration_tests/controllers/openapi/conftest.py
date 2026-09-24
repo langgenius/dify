@@ -10,6 +10,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from constants.oauth_bearer import TokenType
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Account, App, OAuthAccessToken, Tenant, TenantAccountJoin
@@ -21,12 +24,12 @@ def _sha256(token: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def disable_enterprise(monkeypatch):
+def disable_enterprise(monkeypatch: pytest.MonkeyPatch):
     """Default to CE behaviour for /openapi/v1 tests. Tests that exercise the
     EE branch override this with their own monkeypatch in-test."""
     from configs import dify_config
 
-    monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
 
 @pytest.fixture
@@ -100,15 +103,21 @@ def mint_token(flask_app: Flask):
 @pytest.fixture
 def account_token(workspace_account, mint_token) -> str:
     account, _, _ = workspace_account
-    token = "dfoa_" + uuid.uuid4().hex
+    token = TokenType.OAUTH_ACCOUNT.prefix + uuid.uuid4().hex
     mint_token(
         token,
         account_id=account.id,
-        prefix="dfoa_",
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
         subject_email=account.email,
         subject_issuer="dify:account",
     )
     return token
+
+
+@pytest.fixture
+def auth_headers(flask_app: Flask, account_token: str) -> dict[str, str]:
+    """What every guarded request needs: the bearer, and the fingerprint of the catalog it was built from."""
+    return {"Authorization": f"Bearer {account_token}", CATALOG_HEADER: catalog_for(flask_app)[1]}
 
 
 @pytest.fixture(autouse=True)

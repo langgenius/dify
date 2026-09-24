@@ -14,7 +14,7 @@ const ShowAllSettings = ({ initialData, handleShowAllSettings }: ShowAllSettings
   withForm({
     defaultValues: initialData,
     render: function Render({ form }) {
-      const { t } = useTranslation()
+      const { t } = useTranslation(['appDebug'])
       const type = useStore(form.store, (state) => state.values.type)
 
       const hiddenFieldNames = useHiddenFieldNames(type)

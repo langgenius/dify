@@ -7,7 +7,7 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, NotRequired
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -46,8 +46,6 @@ logger = logging.getLogger(__name__)
 class WorkflowGeneratorArgsDict(TypedDict):
     inputs: dict[str, Any]
     files: list[Any]
-    _skip_prepare_user_inputs: bool
-    workflow_id: NotRequired[str]
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -103,7 +101,6 @@ def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDic
     return {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
-        "_skip_prepare_user_inputs": True,
     }
 
 
@@ -150,12 +147,8 @@ def _execute_workflow_common(
             # Execute workflow using WorkflowAppGenerator
             generator = WorkflowAppGenerator()
 
-            # Prepare args matching AppGenerateService.generate format
+            # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
-
-            # If workflow_id was specified, add it to args
-            if trigger_data.workflow_id:
-                args["workflow_id"] = str(trigger_data.workflow_id)
 
             pause_config = PauseStateLayerConfig(
                 session_factory=session_factory.get_session_maker(),

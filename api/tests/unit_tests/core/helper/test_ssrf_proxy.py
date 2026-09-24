@@ -1,4 +1,6 @@
 import gzip
+from collections.abc import Callable
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -6,6 +8,7 @@ import httpx
 import pytest
 
 from core.helper.ssrf_proxy import (
+    BACKOFF_FACTOR,
     SSRF_DEFAULT_MAX_RETRIES,
     ResponseTooLargeError,
     SSRFProxy,
@@ -115,7 +118,9 @@ def test_request_can_return_an_open_stream_the_caller_closes() -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exceed_max_retries(mock_get_client):
+def test_retry_exceed_max_retries(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    sleep = MagicMock()
+    monkeypatch.setattr("core.helper.ssrf_proxy.time", SimpleNamespace(sleep=sleep))
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -125,6 +130,10 @@ def test_retry_exceed_max_retries(mock_get_client):
     with pytest.raises(Exception) as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
+    assert mock_client.send.call_count == SSRF_DEFAULT_MAX_RETRIES
+    assert sleep.call_args_list == [
+        call(BACKOFF_FACTOR * 2**attempt) for attempt in range(SSRF_DEFAULT_MAX_RETRIES - 1)
+    ]
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -141,15 +150,19 @@ def test_force_list_response_returns_when_retries_disabled(mock_get_client):
     mock_client.send.assert_called_once()
 
 
-def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports():
+def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
+    config_overrides: Callable[..., None],
+):
+    config_overrides(
+        SSRF_PROXY_ALL_URL=None,
+        SSRF_PROXY_HTTP_URL="http://proxy.example.com:8080",
+        SSRF_PROXY_HTTPS_URL="http://proxy.example.com:8443",
+    )
     mock_client = MagicMock()
     http_transport = MagicMock()
     https_transport = MagicMock()
 
     with (
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL", None),
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy.example.com:8080"),
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTPS_URL", "http://proxy.example.com:8443"),
         patch("core.helper.ssrf_proxy.httpx.HTTPTransport", side_effect=[http_transport, https_transport]) as transport,
         patch("core.helper.ssrf_proxy.httpx.Client", return_value=mock_client) as client,
     ):
@@ -399,8 +412,9 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
     # The remediation hint must include a concrete example, otherwise users
     # still have to grep the squid config to figure out the syntax.
     assert "172.21.0.0/16" in msg
-    # And it must point to the issue so maintainers can find context.
-    assert "issues/38443" in msg
+    # And it must point to the dify issue so maintainers can find context
+    # (not some other project's tracker with a coincidentally matching number).
+    assert "https://github.com/langgenius/dify/issues/38443" in msg
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

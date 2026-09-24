@@ -41,7 +41,6 @@ from typing import Protocol, TypedDict
 
 from sqlalchemy.orm import Session
 
-from core.repositories.factory import WorkflowExecutionRepository
 from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowType
@@ -82,7 +81,7 @@ class WorkflowRunCleanupRef:
     created_at: datetime
 
 
-class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
+class APIWorkflowRunRepository(Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 

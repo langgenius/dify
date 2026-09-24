@@ -24,7 +24,7 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
   toast: {
     success: vi.fn(),
@@ -70,7 +70,7 @@ type HookCallbacks = {
   onHumanInputFormFilled: (filled: Record<string, unknown>) => void
   onHumanInputFormTimeout: (timeout: Record<string, unknown>) => void
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
-  onTTSChunk: (messageId: string, audio: string) => void
+  onTTSChunk: (messageId: string, audio: string, audioType?: string) => void
   onTTSEnd: (messageId: string, audio: string) => void
   onReasoning: (chunk: {
     data: { message_id?: string; reasoning: string; node_id?: string; is_final?: boolean }

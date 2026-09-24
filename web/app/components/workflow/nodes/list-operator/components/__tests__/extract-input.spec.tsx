@@ -98,7 +98,7 @@ describe('list-operator/extract-input', () => {
     expect(mockInput.mock.calls[0]![0]).toMatchObject({
       readOnly: false,
       value: '5',
-      placeholder: 'workflow.nodes.http.extractListPlaceholder',
+      placeholder: 'workflowIntegrations.nodes.http.extractListPlaceholder',
       nodesOutputVars: [
         {
           nodeId: 'number-node',

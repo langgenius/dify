@@ -1,6 +1,33 @@
+@property --simple-pie-chart-percentage {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
 .simplePieChart {
   border-radius: 50%;
+  background:
+    radial-gradient(closest-side, transparent 83%, var(--simple-pie-chart-stroke) 83%),
+    conic-gradient(
+      var(--simple-pie-chart-color) calc(var(--simple-pie-chart-percentage) * 1%),
+      #fff 0
+    );
+  animation: reveal var(--simple-pie-chart-duration) cubic-bezier(0.215, 0.61, 0.355, 1);
+  transition: --simple-pie-chart-percentage 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
   box-shadow:
     0 0 5px -3px rgb(from var(--simple-pie-chart-color) r g b / 0.1),
     0.5px 0.5px 3px 0 rgb(from var(--simple-pie-chart-color) r g b / 0.3);
+}
+
+@keyframes reveal {
+  from {
+    --simple-pie-chart-percentage: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .simplePieChart {
+    animation: none;
+    transition: none;
+  }
 }

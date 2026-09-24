@@ -108,33 +108,55 @@ class SavedMessageCreatePayload(BaseModel):
 
 # --- Workflow schemas ---
 
+
+def _workflow_input_file_variant(transfer_method: str, source: str) -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "type": {
+                "description": "File type.",
+                "enum": ["document", "image", "audio", "video", "custom"],
+                "type": "string",
+            },
+            "transfer_method": {
+                "description": (
+                    "Transfer method: `remote_url` for a file URL or persisted uploaded-file reference, "
+                    "`local_file` for an uploaded file."
+                ),
+                "enum": [transfer_method],
+                "type": "string",
+            },
+            "url": {
+                "description": "File URL when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "remote_url": {
+                "description": "Legacy alias of `url` when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "upload_file_id": {
+                "description": (
+                    "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API. "
+                    "Required for `local_file`; also accepted with `remote_url` for compatibility with persisted "
+                    "file references."
+                ),
+                "type": "string",
+            },
+        },
+        "required": ["type", "transfer_method", source],
+    }
+
+
 WORKFLOW_INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
     "type": "object",
-    "required": ["type", "transfer_method"],
-    "properties": {
-        "type": {
-            "description": "File type.",
-            "enum": ["document", "image", "audio", "video", "custom"],
-            "type": "string",
-        },
-        "transfer_method": {
-            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
-            "enum": ["remote_url", "local_file"],
-            "type": "string",
-        },
-        "url": {
-            "description": "File URL when `transfer_method` is `remote_url`.",
-            "format": "url",
-            "type": "string",
-        },
-        "upload_file_id": {
-            "description": (
-                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
-                "`transfer_method` is `local_file`."
-            ),
-            "type": "string",
-        },
-    },
+    "anyOf": [
+        _workflow_input_file_variant("remote_url", "url"),
+        _workflow_input_file_variant("remote_url", "remote_url"),
+        _workflow_input_file_variant("remote_url", "upload_file_id"),
+        _workflow_input_file_variant("local_file", "upload_file_id"),
+    ],
 }
 WORKFLOW_INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
     "anyOf": [{"items": WORKFLOW_INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]

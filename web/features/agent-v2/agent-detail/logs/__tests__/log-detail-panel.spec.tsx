@@ -39,7 +39,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mocks.toastError,
     success: mocks.toastSuccess,
@@ -52,7 +52,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

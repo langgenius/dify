@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -44,6 +45,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class MemberInvitePayload(BaseModel):
@@ -140,10 +142,10 @@ register_response_schema_models(
 )
 
 
-def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
+def _is_role_enabled(role: TenantAccountRole | str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
-    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
+    return dify_config.DATASET_OPERATOR_ENABLED
 
 
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> tuple[int, int]:
@@ -179,17 +181,17 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_accou
 
     features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
 
-    if dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         workspace_members = features.workspace_members
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
         if new_account_count > 0:
-            seats = FeatureService.get_license().seats
+            seats = SystemFeatureService.get_license().seats
             if not seats.is_available(new_account_count):
                 raise SeatsLimitExceeded()
         return
 
-    if dify_config.BILLING_ENABLED and features.billing.enabled is True:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         members = features.members
         current_member_count = _count_current_members(tenant_id)
         if 0 < members.limit < current_member_count + new_member_count:
@@ -252,7 +254,7 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
-        if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
+        if not _is_role_enabled(invitee_role):
             raise InvalidMemberRoleError()
 
         # Check workspace permission for member invitations
@@ -265,7 +267,10 @@ class MemberInviteEmailApi(Resource):
 
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
-            if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
+            if dify_config.DEPLOYMENT_EDITION in {
+                DeploymentEdition.CLOUD,
+                DeploymentEdition.ENTERPRISE,
+            }:
                 new_member_count, new_account_count = _count_new_member_invites(tenant_id, invitee_emails)
                 _check_member_invite_limits(tenant_id, new_member_count, new_account_count)
 
@@ -369,7 +374,7 @@ class MemberUpdateRoleApi(Resource):
             return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not _is_role_enabled(new_role, current_user.current_tenant.id):
+        if not _is_role_enabled(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         member = db.session.get(Account, str(member_id))
         if not member:

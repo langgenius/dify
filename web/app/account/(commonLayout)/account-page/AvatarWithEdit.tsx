@@ -7,24 +7,27 @@ import type { ImageFile } from '@/types/app'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
-import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
-import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
+import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
+import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
 type InputImageInfo =
   | { file: File }
   | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
-type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
-const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
-  const { t } = useTranslation()
+const AvatarWithEdit = (props: AvatarProps) => {
+  const { t } = useTranslation(['app', 'common'])
+  const { mutateAsync: updateProfile } = useMutation(
+    consoleQuery.account.profile.patch.mutationOptions(),
+  )
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
@@ -57,27 +60,25 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleSaveAvatar = useCallback(
     async (uploadedFileId: string) => {
       try {
-        await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
+        await updateProfile({ body: { avatar: uploadedFileId } })
         setIsShowAvatarPicker(false)
-        onSave?.()
         toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       } catch (e) {
         toast.error((e as Error).message)
       }
     },
-    [onSave, t],
+    [t, updateProfile],
   )
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
-      await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
+      await updateProfile({ body: { avatar: '' } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setIsShowDeleteConfirm(false)
-      onSave?.()
     } catch (e) {
       toast.error((e as Error).message)
     }
-  }, [onSave, t])
+  }, [t, updateProfile])
 
   const handleDeleteAvatarClick = useCallback(() => {
     setIsShowAvatarPicker(false)
@@ -106,12 +107,12 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       handleLocalFileUpload(inputImageInfo.file)
       return
     }
-    const blob = await getCroppedImg(
+    const blob = await createCroppedAvatarImage(
       inputImageInfo.tempUrl,
       inputImageInfo.croppedAreaPixels,
       inputImageInfo.fileName,
     )
-    const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
+    const file = createAvatarImageFile(blob, inputImageInfo.fileName)
     handleLocalFileUpload(file)
   }, [handleLocalFileUpload, inputImageInfo])
 
@@ -142,7 +143,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       >
         <DialogContent className="w-90.5! p-0!">
           <ImageInput onImageInput={handleImageInput} cropShape="round" />
-          <Divider className="m-0" />
+          <Separator decorative className="m-0 h-[0.5px]" />
 
           <div className="flex w-full items-center justify-center gap-2 p-3">
             {canDeleteAvatar && (
@@ -157,7 +158,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             <Button
               variant="primary"
               className="min-w-0 flex-1"
-              disabled={uploading || !inputImageInfo}
+              disabled={!inputImageInfo}
               loading={uploading}
               onClick={handleSelect}
             >

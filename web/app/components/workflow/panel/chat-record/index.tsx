@@ -6,7 +6,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { fetchConversationMessages } from '@/service/debug'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
@@ -95,7 +95,7 @@ const ChatRecord = () => {
     >
       {!fetched && (
         <div className="flex h-full items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       )}
       {fetched && (

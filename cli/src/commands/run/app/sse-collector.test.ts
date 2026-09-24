@@ -1,6 +1,6 @@
 import type { HttpClientError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector'
 
 const enc = new TextEncoder()

@@ -1,8 +1,6 @@
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -12,11 +10,13 @@ export { WeightedScoreEnum } from '@/models/datasets'
 export { RerankingModeEnum as HybridSearchModeEnum } from '@/models/datasets'
 export { RETRIEVE_METHOD as RetrievalSearchMethodEnum } from '@/types/app'
 
-export enum ChunkStructureEnum {
-  general = 'text_model',
-  parent_child = 'hierarchical_model',
-  question_answer = 'qa_model',
-}
+export const ChunkStructureEnum = {
+  general: 'text_model',
+  parent_child: 'hierarchical_model',
+  question_answer: 'qa_model',
+} as const
+
+export type ChunkStructureEnum = (typeof ChunkStructureEnum)[keyof typeof ChunkStructureEnum]
 
 export type RerankingModel = {
   reranking_provider_name: string
@@ -59,8 +59,8 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   embedding_model_provider?: string
   keyword_number: number
   retrieval_model: RetrievalSetting
-  _embeddingModelList?: Model[]
+  _embeddingModelList?: ProviderWithModelsResponse[]
   _embeddingProviderModelList?: ModelItem[]
-  _rerankModelList?: Model[]
+  _rerankModelList?: ProviderWithModelsResponse[]
   summary_index_setting?: SummaryIndexSetting
 }

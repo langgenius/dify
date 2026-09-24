@@ -16,7 +16,9 @@ describe('trigger-schedule/frequency-selector', () => {
       expect(trigger).toHaveAttribute('aria-expanded', 'true')
     })
 
-    await user.click(await screen.findByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+    await user.click(
+      await screen.findByText('workflowIntegrations.nodes.triggerSchedule.frequency.weekly'),
+    )
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith('weekly')

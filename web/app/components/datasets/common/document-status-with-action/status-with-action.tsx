@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -8,7 +9,6 @@ import {
   RiInformation2Fill,
 } from '@remixicon/react'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 
 type Status = 'success' | 'error' | 'warning' | 'info'
 type Props = Readonly<{
@@ -69,7 +69,7 @@ const StatusAction: FC<Props> = ({
         <div className="text-[13px] font-normal text-text-secondary">{description}</div>
         {onAction && actionText && (
           <>
-            <Divider type="vertical" className="h-4!" />
+            <Separator decorative orientation="vertical" className="mx-2 h-4" />
             <button
               type="button"
               disabled={disabled}

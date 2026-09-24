@@ -226,7 +226,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.error is None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            dataset.get_doc_form(session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify Redis cache cleanup
@@ -552,7 +554,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            dataset.get_doc_form(session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_different_doc_forms(
@@ -983,7 +987,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            dataset.get_doc_form(session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_tenant_isolation(
@@ -1057,7 +1063,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            dataset.get_doc_form(session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_comprehensive_integration(

@@ -144,13 +144,13 @@ html[data-theme='dark'] {
   );
   --color-tag-selector-mask-bg: linear-gradient(
     90deg,
-    rgba(34, 34, 37, 0) 0%,
-    rgba(34, 34, 37, 1) 100%
+    var(--color-components-card-bg-transparent) 0%,
+    var(--color-components-card-bg) 77.027%
   );
   --color-tag-selector-mask-hover-bg: linear-gradient(
     90deg,
-    rgba(39, 39, 43, 0) 0%,
-    rgba(39, 39, 43, 1) 100%
+    var(--color-components-card-bg-alt-transparent) 0%,
+    var(--color-components-card-bg-alt) 77.027%
   );
   --color-pipeline-template-card-hover-bg: linear-gradient(
     0deg,

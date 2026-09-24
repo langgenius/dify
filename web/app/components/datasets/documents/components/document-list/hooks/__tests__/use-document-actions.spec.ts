@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
 import { useDocumentActions } from '../use-document-actions'
 
@@ -27,7 +27,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,

@@ -105,6 +105,24 @@ describe('preprocessThinkTag', () => {
     expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
     expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
   })
+
+  it('closes a dangling <think> so the details block is well-formed', () => {
+    const input = '<think>planning the tool call'
+    const out = mod.preprocessThinkTag(input)
+
+    expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
+    expect(out).toContain('planning the tool call')
+  })
+
+  it('closes the previous think before a second unclosed <think>', () => {
+    const input = '<think>first pass\n<think>second pass\nreply'
+    const out = mod.preprocessThinkTag(input)
+
+    expect((out.match(/<details data-think=true>/g) || []).length).toBe(2)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(2)
+    expect(out.indexOf('first pass')).toBeLessThan(out.indexOf('[ENDTHINKFLAG]'))
+  })
 })
 
 describe('customUrlTransform', () => {

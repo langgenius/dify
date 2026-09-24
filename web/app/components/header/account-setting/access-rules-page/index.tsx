@@ -1,13 +1,13 @@
 'use client'
 
-import AppAccessRuleSection from './app-access-rule-section'
-import DatasetAccessRuleSection from './dataset-access-rule-section'
+import { ResourceAccessRuleSection } from './resource-access-rule-section'
 
 const AccessRulesPage = () => {
   return (
     <div className="flex flex-col gap-4">
-      <AppAccessRuleSection />
-      <DatasetAccessRuleSection />
+      <ResourceAccessRuleSection resourceType="app" />
+      <ResourceAccessRuleSection resourceType="dataset" />
+      <ResourceAccessRuleSection resourceType="agent" />
     </div>
   )
 }

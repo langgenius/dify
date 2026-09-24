@@ -71,8 +71,6 @@ Flag:
 
 ## React Flow
 
-For workflow React Flow components, keep this Dify-specific rule:
+Use [Dify invariants] for React Flow node/edge consumption and provider availability in RAG Pipe template rendering. Callback-only reads or mutations can use `useStoreApi`.
 
-- UI consumption should use React Flow hooks such as `useNodes` / `useEdges`.
-- Callback-only reads or mutations can use `useStoreApi`.
-- Node components under `web/app/components/workflow/nodes/[nodeName]/node.tsx` must not depend on workflow stores that are absent in RAG Pipe template rendering.
+[Dify invariants]: dify-invariants.md

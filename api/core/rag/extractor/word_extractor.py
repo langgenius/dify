@@ -131,8 +131,8 @@ class WordExtractor(BaseExtractor):
                         continue
                     try:
                         response = remote_fetcher.make_request("GET", url)
-                    except Exception as e:
-                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
+                    except Exception:
+                        logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))

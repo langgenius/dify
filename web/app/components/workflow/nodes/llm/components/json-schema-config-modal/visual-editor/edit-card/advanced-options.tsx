@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 export type AdvancedOptionsType = {
   enum: string
@@ -15,7 +15,7 @@ type AdvancedOptionsProps = {
 }
 
 const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
 
@@ -40,18 +40,18 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
       <div className="flex flex-col gap-y-1 px-2 py-1.5">
         <div className="flex w-full items-center gap-x-2">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflowModels' })}
           </span>
           <div className="grow">
-            <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />
+            <Separator decorative orientation="horizontal" className="my-0 bg-line-divider-bg" />
           </div>
         </div>
         <div className="flex flex-col">
           <div className="flex h-6 items-center system-xs-medium text-text-secondary">
-            {t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflowModels' })}
           </div>
           <Textarea
-            aria-label={t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflowModels' })}
             size="small"
             className="min-h-6"
             value={enumValue}

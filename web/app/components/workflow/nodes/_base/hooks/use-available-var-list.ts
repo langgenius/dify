@@ -31,7 +31,7 @@ const useAvailableVarList = (
     filterVar: () => true,
   },
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const snippetInputFields = useSnippetDraftStore((s) => s.inputFields)
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()

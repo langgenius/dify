@@ -1,5 +1,5 @@
 import type { TokenStore } from './token-store'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { detectTokenStore, getTokenStore } from './manager'
 
 function memStore(label: string): TokenStore & { _label: string } {

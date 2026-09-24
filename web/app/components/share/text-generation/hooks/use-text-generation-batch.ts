@@ -232,9 +232,10 @@ export const useTextGenerationBatch = ({
       const pendingTaskList = latestTaskList.filter((task) => task.status === TaskStatus.pending)
       const runTasksCount =
         1 +
-        latestTaskList.filter((task) =>
-          [TaskStatus.completed, TaskStatus.failed].includes(task.status),
-        ).length
+        latestTaskList.filter((task) => {
+          const finishedStatuses: readonly TaskStatus[] = [TaskStatus.completed, TaskStatus.failed]
+          return finishedStatuses.includes(task.status)
+        }).length
       const shouldStartNextGroup =
         currGroupNumRef.current !== runTasksCount &&
         pendingTaskList.length > 0 &&
@@ -271,9 +272,10 @@ export const useTextGenerationBatch = ({
   const allSuccessTaskList = allTaskList.filter((task) => task.status === TaskStatus.completed)
   const allFailedTaskList = allTaskList.filter((task) => task.status === TaskStatus.failed)
   const allTasksFinished = allTaskList.every((task) => task.status === TaskStatus.completed)
-  const allTasksRun = allTaskList.every((task) =>
-    [TaskStatus.completed, TaskStatus.failed].includes(task.status),
-  )
+  const allTasksRun = allTaskList.every((task) => {
+    const finishedStatuses: readonly TaskStatus[] = [TaskStatus.completed, TaskStatus.failed]
+    return finishedStatuses.includes(task.status)
+  })
 
   const exportRes = useMemo(() => {
     return allTaskList.map((task) => {

@@ -49,7 +49,7 @@ const WebsiteCrawl = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const docLink = useDocLink()
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)

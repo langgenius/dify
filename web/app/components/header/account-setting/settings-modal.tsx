@@ -1,8 +1,8 @@
 'use client'
 
 import type { SettingsDestination } from './query-params'
+import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
-import dynamic from '@/next/dynamic'
 import {
   isAccountSettingDestination,
   isIntegrationSettingDestination,

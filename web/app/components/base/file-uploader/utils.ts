@@ -18,7 +18,7 @@ import { FileAppearanceTypeEnum } from './types'
 export const getFileUploadErrorMessage = (
   error: any,
   defaultMessage: string,
-  t: TFunction,
+  t: TFunction<['common']>,
 ): string => {
   const errorCode = error?.response?.code
 

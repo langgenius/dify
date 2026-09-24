@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createEmailRecipient, hasEmailDelimiter, mergeEmailRecipients } from '../email-recipients'
 
 describe('email recipients', () => {

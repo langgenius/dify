@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import HeadersInput from '../headers-input'
 
 describe('HeadersInput', () => {
@@ -48,6 +48,10 @@ describe('HeadersInput', () => {
 
     it('should render header items', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerKey' })).toHaveLength(2)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerValue' })).toHaveLength(
+        2,
+      )
       expect(screen.getByDisplayValue('Authorization')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Bearer token123')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Content-Type')).toBeInTheDocument()
@@ -62,15 +66,19 @@ describe('HeadersInput', () => {
 
     it('should render delete buttons for each item when not readonly', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
-      // Should have delete buttons for each header
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      expect(deleteButtons.length).toBe(headersItems.length)
+      expect(
+        screen.getByRole('button', { name: 'common.operation.delete Authorization 1' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.operation.delete Content-Type 2' }),
+      ).toBeInTheDocument()
     })
 
     it('should not render delete buttons when readonly', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={true} />)
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      expect(deleteButtons.length).toBe(0)
+      expect(
+        screen.queryByRole('button', { name: /common\.operation\.delete/ }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render add button at bottom when not readonly', () => {
@@ -105,7 +113,7 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const keyInput = screen.getByDisplayValue('Header1')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
       fireEvent.change(keyInput, { target: { value: 'NewHeader' } })
 
       expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'NewHeader', value: 'Value1' }])
@@ -115,7 +123,7 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const valueInput = screen.getByDisplayValue('Value1')
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
       fireEvent.change(valueInput, { target: { value: 'NewValue' } })
 
       expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'Header1', value: 'NewValue' }])
@@ -125,13 +133,8 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const deleteButton = document
-        .querySelector('[class*="text-text-destructive"]')
-        ?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(onChange).toHaveBeenCalledWith([])
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete Header1 1' }))
+      expect(onChange).toHaveBeenCalledWith([])
     })
 
     it('should add new item when add button is clicked', () => {
@@ -180,16 +183,27 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      // Find all delete buttons and click the second one
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      const secondDeleteButton = deleteButtons[1]?.closest('button')
-      if (secondDeleteButton) {
-        fireEvent.click(secondDeleteButton)
-        expect(onChange).toHaveBeenCalledWith([
-          { id: '1', key: 'Header1', value: 'Value1' },
-          { id: '3', key: 'Header3', value: 'Value3' },
-        ])
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete Header2 2' }))
+      expect(onChange).toHaveBeenCalledWith([
+        { id: '1', key: 'Header1', value: 'Value1' },
+        { id: '3', key: 'Header3', value: 'Value3' },
+      ])
+    })
+
+    it('should distinguish delete actions for duplicate header keys', () => {
+      const onChange = vi.fn()
+      const duplicateHeaders = [
+        { id: '1', key: 'X-Header', value: 'Value1' },
+        { id: '2', key: 'X-Header', value: 'Value2' },
+      ]
+      render(<HeadersInput {...defaultProps} headersItems={duplicateHeaders} onChange={onChange} />)
+
+      expect(
+        screen.getByRole('button', { name: 'common.operation.delete X-Header 1' }),
+      ).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete X-Header 2' }))
+
+      expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'X-Header', value: 'Value1' }])
     })
   })
 
@@ -199,8 +213,8 @@ describe('HeadersInput', () => {
     it('should make inputs readonly when readonly is true', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={true} />)
 
-      const keyInput = screen.getByDisplayValue('ReadOnly')
-      const valueInput = screen.getByDisplayValue('Value')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
 
       expect(keyInput).toHaveAttribute('readonly')
       expect(valueInput).toHaveAttribute('readonly')
@@ -209,8 +223,8 @@ describe('HeadersInput', () => {
     it('should not make inputs readonly when readonly is false', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={false} />)
 
-      const keyInput = screen.getByDisplayValue('ReadOnly')
-      const valueInput = screen.getByDisplayValue('Value')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
 
       expect(keyInput).not.toHaveAttribute('readonly')
       expect(valueInput).not.toHaveAttribute('readonly')
@@ -219,11 +233,26 @@ describe('HeadersInput', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty key and value', () => {
-      const headersItems = [{ id: '1', key: '', value: '' }]
+      const headersItems = [
+        { id: '1', key: '', value: '' },
+        { id: '2', key: '', value: '' },
+      ]
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
 
-      const inputs = screen.getAllByRole('textbox')
-      expect(inputs.length).toBe(2)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerKey' })).toHaveLength(2)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerValue' })).toHaveLength(
+        2,
+      )
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.delete tools.mcp.modal.headerKey 1',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.delete tools.mcp.modal.headerKey 2',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should handle special characters in header key', () => {

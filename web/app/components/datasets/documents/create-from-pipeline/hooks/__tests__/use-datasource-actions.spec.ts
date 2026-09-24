@@ -3,7 +3,7 @@ import type { DataSourceNotionPageMap, NotionPage } from '@/models/common'
 import type { CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType } from '@/models/pipeline'
 import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
@@ -22,7 +22,9 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 describe('useDatasourceActions', () => {
   let store: ReturnType<typeof createDataSourceStore>
-  const defaultParams = () => ({
+  const defaultParams = (): Parameters<typeof useDatasourceActions>[0] & {
+    datasourceType: DatasourceType
+  } => ({
     datasource: {
       nodeId: 'node-1',
       nodeData: { provider_type: DatasourceType.localFile },

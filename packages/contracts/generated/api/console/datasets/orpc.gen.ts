@@ -125,6 +125,7 @@ import {
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
+  zPostDatasetsApiKeysBody,
   zPostDatasetsApiKeysResponse,
   zPostDatasetsBatchImportStatusByJobIdBody,
   zPostDatasetsBatchImportStatusByJobIdPath,
@@ -186,7 +187,7 @@ import {
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get dataset API base information
@@ -248,6 +249,7 @@ export const post = oc
     path: '/datasets/api-keys',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
 
 export const apiKeys = {
@@ -1697,8 +1699,6 @@ export const byDatasetId = {
 
 /**
  * Delete an API key for a dataset
- *
- * Delete an API key for a dataset
  */
 export const delete10 = oc
   .route({
@@ -1708,7 +1708,6 @@ export const delete10 = oc
     operationId: 'deleteDatasetsByResourceIdApiKeysByApiKeyId',
     path: '/datasets/{resource_id}/api-keys/{api_key_id}',
     successStatus: 204,
-    summary: 'Delete an API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
@@ -1720,8 +1719,6 @@ export const byApiKeyId2 = {
 
 /**
  * Get all API keys for a dataset
- *
- * Get all API keys for a dataset
  */
 export const get35 = oc
   .route({
@@ -1730,15 +1727,12 @@ export const get35 = oc
     method: 'GET',
     operationId: 'getDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
-    summary: 'Get all API keys for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
   .output(zGetDatasetsByResourceIdApiKeysResponse)
 
 /**
- * Create a new API key for a dataset
- *
  * Create a new API key for a dataset
  */
 export const post22 = oc
@@ -1749,7 +1743,6 @@ export const post22 = oc
     operationId: 'postDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))

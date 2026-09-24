@@ -1,14 +1,29 @@
 import type { CommandTree } from './registry'
-import { BaseError, unknownError } from '@/errors/base'
+import { BaseError, newError, unknownError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic } from '@/help/topics'
-import { formatCommandList, formatHelp, formatTopic, formatTopLevelHelp } from './help'
+import { hasBooleanFlag } from './flags'
+import {
+  formatCommandList,
+  formatHelp,
+  formatTopic,
+  formatTopLevelHelp,
+  isStructured,
+} from './help'
 import { stringifyOutput } from './output'
 import { collectCommands, findSuggestions, resolveCommand } from './registry'
+
+function exitWithUsageError(message: string, format: string): void {
+  const error = newError(ErrorCode.UsageInvalidFlag, message)
+  process.stderr.write(`${formatErrorForCli(error, { format, isErrTTY: process.stderr.isTTY })}\n`)
+  process.exit(error.exit())
+}
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {
     const format = sniffOutputFormat(argv)
+    const compact = hasBooleanFlag(argv, 'compact')
     // The command/topic path is the leading positional run; stop at the first
     // flag so output flags like `-o json` never leak into resolution.
     const helpArgv: string[] = []
@@ -19,12 +34,22 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       helpArgv.push(a)
     }
 
+    if (compact && helpArgv.length > 0) {
+      exitWithUsageError('--compact is only valid on top-level help', format)
+      return
+    }
+
+    if (compact && !isStructured(format)) {
+      exitWithUsageError('--compact requires -o json or -o yaml', format)
+      return
+    }
+
     if (helpArgv.length > 0) {
       const resolved = resolveCommand(tree, helpArgv)
 
       if (resolved) {
         const out = formatHelp(resolved.command, resolved.path.join(' '), format)
-        process.stdout.write(isStructuredFormat(format) ? out : `${out}\n`)
+        process.stdout.write(isStructured(format) ? out : `${out}\n`)
 
         return
       }
@@ -67,7 +92,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       process.exit(1)
     }
 
-    process.stdout.write(formatTopLevelHelp(tree, format))
+    process.stdout.write(formatTopLevelHelp(tree, format, { compact }))
 
     return
   }
@@ -124,8 +149,4 @@ export function sniffOutputFormat(argv: readonly string[]): string {
     if (t.startsWith('-o=')) return t.slice('-o='.length)
   }
   return ''
-}
-
-function isStructuredFormat(format: string): boolean {
-  return format === 'json' || format === 'yaml'
 }

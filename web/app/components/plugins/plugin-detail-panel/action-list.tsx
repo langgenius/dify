@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const ActionList = ({ detail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const providerBriefInfo = detail.declaration?.tool?.identity
   const providerKey = providerBriefInfo ? `${detail.plugin_id}/${providerBriefInfo.name}` : ''
   const { data: collectionList = [] } = useAllToolProviders()

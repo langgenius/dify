@@ -19,7 +19,7 @@ const nodeDefault: NodeDefault<TemplateTransformNodeType> = {
     template: '',
     variables: [],
   },
-  checkValid(payload: TemplateTransformNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: TemplateTransformNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { template, variables } = payload
 

@@ -1,6 +1,6 @@
 import type { Dependency, PluginDeclaration } from '../../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InstallStep, PluginCategoryEnum } from '../../../types'
 import InstallFromLocalPackage from '../index'
 
@@ -419,6 +419,9 @@ describe('InstallFromLocalPackage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('ready-to-install-package')).toBeInTheDocument()
         expect(screen.getByTestId('package-step')).toHaveTextContent('uploadFailed')
+        expect(
+          screen.getByRole('dialog', { name: 'plugin.installModal.uploadFailed' }),
+        ).toBeInTheDocument()
       })
     })
 

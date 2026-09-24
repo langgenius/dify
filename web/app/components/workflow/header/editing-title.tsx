@@ -5,7 +5,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 
 function EditingTitle() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)

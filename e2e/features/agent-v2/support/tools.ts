@@ -1,5 +1,5 @@
-import type { DifyWorld } from '../../support/world'
-import { splitToolDisplayName, splitToolResourceId } from './fixtures/tools'
+import type { DifyWorld } from '../../support/world.ts'
+import { splitToolDisplayName, splitToolResourceId } from './fixtures/tools.ts'
 
 export const getPreseededToolContract = (world: DifyWorld, resourceName: string) => {
   const resource = world.agentBuilder.fixtures.preseededResources[resourceName]

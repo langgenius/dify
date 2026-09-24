@@ -169,8 +169,8 @@ class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
 
-    Compatible with non cloud edition (billing disabled): all messages in the time range will be deleted.
-    If billing is enabled: only sandbox plan tenant messages are deleted (with whitelist and grace period support).
+    In self-hosted editions, all messages in the time range are deleted.
+    In the Cloud edition, only sandbox-plan tenant messages are deleted, with whitelist and grace-period support.
     """
 
     def __init__(

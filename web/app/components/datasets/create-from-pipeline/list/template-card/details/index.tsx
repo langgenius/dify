@@ -1,12 +1,12 @@
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Infotip } from '@/app/components/base/infotip'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
 import ChunkStructureCard from './chunk-structure-card'
@@ -20,7 +20,9 @@ type DetailsProps = {
 }
 
 const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
-  const { t } = useTranslation()
+  const structureLabelId = React.useId()
+
+  const { t } = useTranslation(['datasetPipeline'])
   const { data: pipelineTemplateInfo } = usePipelineTemplateById(
     {
       template_id: id,
@@ -40,7 +42,7 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
   const chunkStructureConfig = useChunkStructureConfig()
 
   if (!pipelineTemplateInfo) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   return (
@@ -96,14 +98,17 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
           <div className="flex h-6 items-center gap-x-0.5">
-            <span className="system-sm-semibold-uppercase text-text-secondary">
+            <span
+              id={structureLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
+            >
               {t(($) => $['details.structure'], { ns: 'datasetPipeline' })}
             </span>
-            <Infotip
-              aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
-              popupClassName="max-w-[240px]"
-            >
-              {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={structureLabelId} />
+              <InfotipContent aria-labelledby={structureLabelId} className="max-w-60">
+                {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />

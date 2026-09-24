@@ -1,11 +1,11 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, When } from '@cucumber/cucumber'
 import { zCreateAppPayload } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { syncMinimalWorkflowDraft } from '../../../support/api/workflows'
-import { waitForAppsConsole } from '../../../support/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { syncMinimalWorkflowDraft } from '../../../support/api/workflows.ts'
+import { waitForAppsConsole } from '../../../support/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 Given('a {string} app has been created via API', async function (this: DifyWorld, mode: string) {
   const appMode = zCreateAppPayload.shape.mode.parse(mode)
@@ -31,7 +31,7 @@ When('I open the app from the app list', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.goto('/apps')
   await waitForAppsConsole(page)
-  const appLink = page.getByRole('link', { name: appName, exact: true })
+  const appLink = page.getByRole('main').getByRole('link', { name: appName, exact: true })
   await expect(appLink).toBeVisible()
   await appLink.click()
 })

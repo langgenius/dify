@@ -25,8 +25,11 @@ const CredentialSelector = ({
   }, [credentials, currentCredentialId])
 
   useEffect(() => {
-    if (!currentCredential && credentials.length) onCredentialChange(credentials[0]!.id)
-  }, [currentCredential, credentials])
+    if (!currentCredential && credentials.length) {
+      const fallbackCredential = credentials.find((credential) => credential.is_default)
+      onCredentialChange((fallbackCredential ?? credentials[0]!).id)
+    }
+  }, [currentCredential, credentials, onCredentialChange])
 
   const handleCredentialChange = useCallback(
     (credentialId: string) => {
@@ -49,7 +52,7 @@ const CredentialSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <List
           currentCredentialId={currentCredentialId}

@@ -1,7 +1,7 @@
 import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
 import { getI18n } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Language dependency types

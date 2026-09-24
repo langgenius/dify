@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 // Get all supported locales from the i18n directory
-const I18N_DIR = path.join(__dirname, '../i18n')
+const I18N_DIR = path.join(__dirname, '../i18n/locales')
 const getSupportedLocales = (): string[] => {
   return fs
     .readdirSync(I18N_DIR)

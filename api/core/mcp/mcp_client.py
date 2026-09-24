@@ -76,6 +76,12 @@ class MCPClient:
                 self.connect_server(sse_client, "sse")
             except (MCPConnectionError, ValueError):
                 logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
+                # The SSE transport and ClientSession can already be entered when
+                # the handshake fails. Close that partial connection before
+                # opening the fallback so both transports are never live at once.
+                self._exit_stack.close()
+                self._exit_stack = ExitStack()
+                self._session = None
                 self.connect_server(streamablehttp_client, "mcp")
 
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:

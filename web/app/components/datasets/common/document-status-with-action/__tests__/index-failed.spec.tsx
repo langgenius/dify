@@ -1,6 +1,6 @@
 import type { ErrorDocsResponse } from '@/models/datasets'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { retryErrorDocs } from '@/service/datasets'
 import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import RetryButton from '../index-failed'

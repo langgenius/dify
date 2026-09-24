@@ -119,7 +119,7 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
 
     renderImportFromTool(<ImportFromTool onImport={handleImport} />)
 
-    await user.click(screen.getByText('workflow.nodes.parameterExtractor.importFromTool'))
+    await user.click(screen.getByText('workflowModels.nodes.parameterExtractor.importFromTool'))
     await user.click(await screen.findByText('Provider One'))
     await user.click(await screen.findByText('Search Tool'))
 
@@ -174,7 +174,7 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
 
       renderImportFromTool(<ImportFromTool onImport={handleImport} />)
 
-      await user.click(screen.getByText('workflow.nodes.parameterExtractor.importFromTool'))
+      await user.click(screen.getByText('workflowModels.nodes.parameterExtractor.importFromTool'))
       if (collectionType === CollectionType.custom) {
         await user.click(screen.getByRole('button', { name: 'workflow.tabs.customTool' }))
         await user.click(screen.getByText('Provider One'))

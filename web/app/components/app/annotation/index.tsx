@@ -5,22 +5,23 @@ import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import {
   addAnnotation,
   delAnnotation,
@@ -32,6 +33,7 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'
@@ -48,15 +50,27 @@ type Props = Readonly<{
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
-  const { plan, enableBilling } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: annotationQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.annotation_quota_limit,
+    }),
+  )
+  const isAnnotationQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+    deploymentEdition === 'CLOUD' &&
+    annotationQuota !== undefined &&
+    annotationQuota.limit > 0 &&
+    annotationQuota.size >= annotationQuota.limit
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = useState(0)
@@ -170,16 +184,21 @@ const Annotation: FC<Props> = (props) => {
                     'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2',
                   )}
                 >
-                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-communication-message-fast size-4 text-util-colors-indigo-indigo-600"
+                  />
                   <div className="system-sm-medium text-text-primary">
                     {t(($) => $.name, { ns: 'appAnnotation' })}
                   </div>
                   <Switch
                     key={controlRefreshSwitch}
                     checked={annotationConfig?.enabled ?? false}
+                    disabled={!annotationConfig?.enabled && isAnnotationQuotaUnavailable}
                     size="md"
                     onCheckedChange={async (value) => {
                       if (value) {
+                        if (isAnnotationQuotaUnavailable) return
                         if (isAnnotationFull) {
                           setIsShowAnnotationFullModal(true)
                           setControlRefreshSwitch(Date.now())
@@ -202,9 +221,17 @@ const Annotation: FC<Props> = (props) => {
                   {annotationConfig?.enabled && (
                     <div className="flex items-center pr-1 pl-1.5">
                       <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
-                      <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
-                      </ActionButton>
+                      <IconButton
+                        aria-label={t(($) => $['initSetup.configTitle'], {
+                          ns: 'appAnnotation',
+                        })}
+                        onClick={() => setIsShowEdit(true)}
+                      >
+                        <RiEqualizer2Line
+                          aria-hidden="true"
+                          className="size-4 text-text-tertiary"
+                        />
+                      </IconButton>
                     </div>
                   )}
                 </div>
@@ -223,7 +250,7 @@ const Annotation: FC<Props> = (props) => {
           </div>
         </Filter>
         {isLoading ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             list={list}

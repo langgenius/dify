@@ -40,8 +40,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type: string }) => <div data-testid="loading-app">{type}</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div role="progressbar" aria-label="Loading app" />,
 }))
 
 vi.mock('../hooks/use-text-generation-app-state', () => ({
@@ -170,7 +170,7 @@ describe('TextGeneration', () => {
 
     render(<TextGeneration />)
 
-    expect(screen.getByTestId('loading-app')).toHaveTextContent('app')
+    expect(screen.getByRole('progressbar', { name: 'Loading app' })).toBeInTheDocument()
   })
 
   it('should fall back to create mode for unsupported query params', () => {

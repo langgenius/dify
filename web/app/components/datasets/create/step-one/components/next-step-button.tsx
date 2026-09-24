@@ -13,7 +13,7 @@ type NextStepButtonProps = {
  * Reusable next step button component for dataset creation flow.
  */
 function NextStepButton({ disabled, onClick }: NextStepButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div className="flex max-w-160 justify-end gap-2">

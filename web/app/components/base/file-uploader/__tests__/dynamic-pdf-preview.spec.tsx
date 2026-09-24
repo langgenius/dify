@@ -6,7 +6,7 @@ type DynamicPdfPreviewProps = {
   onCancel: () => void
 }
 
-type DynamicLoader = () => Promise<unknown> | undefined
+type DynamicLoader = () => Promise<unknown>
 type DynamicOptions = {
   ssr?: boolean
 }
@@ -38,7 +38,7 @@ const mockDynamic = vi.hoisted(() =>
 
 const mockPdfPreview = vi.hoisted(() => vi.fn(() => null))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: mockDynamic,
 }))
 
@@ -78,25 +78,5 @@ describe('dynamic-pdf-preview', () => {
     const loadedModule = (await loaded) as { default: unknown }
     const pdfPreviewModule = await import('../pdf-preview')
     expect(loadedModule.default).toBe(pdfPreviewModule.default)
-  })
-
-  it('should return undefined when loader runs without window', () => {
-    const originalWindow = globalThis.window
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      writable: true,
-      value: undefined,
-    })
-
-    try {
-      const loaded = mockState.loader?.()
-      expect(loaded).toBeUndefined()
-    } finally {
-      Object.defineProperty(globalThis, 'window', {
-        configurable: true,
-        writable: true,
-        value: originalWindow,
-      })
-    }
   })
 })

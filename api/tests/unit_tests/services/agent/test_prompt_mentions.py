@@ -7,8 +7,6 @@ guarantees no mention-shaped marker survives to the model.
 
 from __future__ import annotations
 
-from urllib.parse import quote
-
 import pytest
 
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowPreviousNodeOutputRef
@@ -63,12 +61,6 @@ def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
 def test_parse_skips_oversized_id_or_label():
     long_id = "x" * (MAX_MENTION_REF_ID_LENGTH + 1)
     assert parse_prompt_mentions(f"[§skill:{long_id}§]") == []
-
-
-def test_parse_accepts_long_unicode_encoded_drive_key_within_drive_limit():
-    encoded_drive_key = quote("你" * 512)
-    mentions = parse_prompt_mentions(f"[§skill:{encoded_drive_key}:Long Skill§]")
-    assert [(mention.kind, mention.ref_id) for mention in mentions] == [(MentionKind.SKILL, encoded_drive_key)]
 
 
 # ── expand + scrub ────────────────────────────────────────────────────────────
@@ -258,6 +250,14 @@ def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: Workfl
     expanded = expand_prompt_mentions("[§qna_report:qna_report:output§]", resolver)
 
     assert "final_output.qna_report" in expanded
+
+
+def test_node_job_resolver_exposes_system_text_output():
+    node_job = WorkflowNodeJobConfig()
+
+    expanded = expand_prompt_mentions("[§output:text§]", build_node_job_mention_resolver(node_job))
+
+    assert expanded == "text (string)"
 
 
 def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():

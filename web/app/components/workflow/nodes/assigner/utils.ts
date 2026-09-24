@@ -2,7 +2,7 @@ import type { AssignerNodeOperation, AssignerNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export type OperationName = I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
+export type OperationName = I18nKeysByPrefix<'workflowLogic', 'nodes.assigner.operations.'>
 
 export type Item =
   | { value: 'divider'; name: 'divider' }

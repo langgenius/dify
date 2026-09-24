@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { atomWithResolvedSuspenseQuery } from './query-atoms'
 
 const createQueryClient = () =>

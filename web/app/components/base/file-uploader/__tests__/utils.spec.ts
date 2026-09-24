@@ -33,7 +33,7 @@ describe('file-uploader utils', () => {
     const createMockT = () =>
       withSelectorKey(
         (key: string, _options?: Record<string, unknown>) => key,
-      ) as unknown as TFunction
+      ) as unknown as TFunction<['common']>
 
     it('should return forbidden message when error code is forbidden', () => {
       const error = { response: { code: 'forbidden', message: 'Access denied' } }

@@ -1,9 +1,11 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import dify_vdb_tidb_on_qdrant.tidb_service as tidb_service_module
 import pytest
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
+from sqlalchemy.orm import Session
 
+from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
 
@@ -221,18 +223,34 @@ class TestBatchCreateEdgeCases:
             )
 
 
+def _persist_tidb_auth_binding(sqlite3_session: Session) -> TidbAuthBinding:
+    binding = TidbAuthBinding(
+        tenant_id=None,
+        cluster_id="c-1",
+        cluster_name="cluster-1",
+        active=False,
+        status=TidbAuthBindingStatus.CREATING,
+        account="root",
+        password="password",
+    )
+    sqlite3_session.add(binding)
+    sqlite3_session.commit()
+    return binding
+
+
+@pytest.mark.parametrize("sqlite3_session", [(TidbAuthBinding,)], indirect=True)
 class TestBatchUpdateTidbServerlessClusterStatus:
     """Verify that status updates only expose clusters after qdrant endpoint is ready."""
 
-    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
     @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
-    def test_sets_active_when_batch_response_contains_endpoint(self, mock_http, mock_db):
-        binding = SimpleNamespace(
-            cluster_id="c-1",
-            status=TidbAuthBindingStatus.CREATING,
-            account="root",
-            qdrant_endpoint=None,
-        )
+    def test_sets_active_when_batch_response_contains_endpoint(
+        self,
+        mock_http,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ):
+        binding = _persist_tidb_auth_binding(sqlite3_session)
+        monkeypatch.setattr(tidb_service_module.db, "session", sqlite3_session)
         mock_http.get.return_value = MagicMock(
             status_code=200,
             json=lambda: {
@@ -249,22 +267,24 @@ class TestBatchUpdateTidbServerlessClusterStatus:
 
         TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
 
-        assert binding.account == "pfx.root"
-        assert binding.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
-        assert binding.status == TidbAuthBindingStatus.ACTIVE
-        mock_db.session.add.assert_called_once_with(binding)
-        mock_db.session.commit.assert_called_once()
+        sqlite3_session.expire_all()
+        persisted = sqlite3_session.get(TidbAuthBinding, binding.id)
+        assert persisted is not None
+        assert persisted.account == "pfx.root"
+        assert persisted.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
+        assert persisted.status == TidbAuthBindingStatus.ACTIVE
 
     @patch.object(TidbService, "fetch_qdrant_endpoint", return_value="https://qdrant-gw.tidbcloud.com")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
     @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
-    def test_fetches_endpoint_when_batch_response_omits_it(self, mock_http, mock_db, mock_fetch_endpoint):
-        binding = SimpleNamespace(
-            cluster_id="c-1",
-            status=TidbAuthBindingStatus.CREATING,
-            account="root",
-            qdrant_endpoint=None,
-        )
+    def test_fetches_endpoint_when_batch_response_omits_it(
+        self,
+        mock_http,
+        mock_fetch_endpoint,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ):
+        binding = _persist_tidb_auth_binding(sqlite3_session)
+        monkeypatch.setattr(tidb_service_module.db, "session", sqlite3_session)
         mock_http.get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
@@ -272,23 +292,25 @@ class TestBatchUpdateTidbServerlessClusterStatus:
 
         TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
 
-        assert binding.account == "pfx.root"
-        assert binding.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
-        assert binding.status == TidbAuthBindingStatus.ACTIVE
+        sqlite3_session.expire_all()
+        persisted = sqlite3_session.get(TidbAuthBinding, binding.id)
+        assert persisted is not None
+        assert persisted.account == "pfx.root"
+        assert persisted.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
+        assert persisted.status == TidbAuthBindingStatus.ACTIVE
         mock_fetch_endpoint.assert_called_once_with("url", "pub", "priv", "c-1")
-        mock_db.session.add.assert_called_once_with(binding)
-        mock_db.session.commit.assert_called_once()
 
     @patch.object(TidbService, "fetch_qdrant_endpoint", return_value=None)
-    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
     @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
-    def test_keeps_creating_when_endpoint_is_not_ready(self, mock_http, mock_db, mock_fetch_endpoint):
-        binding = SimpleNamespace(
-            cluster_id="c-1",
-            status=TidbAuthBindingStatus.CREATING,
-            account="root",
-            qdrant_endpoint=None,
-        )
+    def test_keeps_creating_when_endpoint_is_not_ready(
+        self,
+        mock_http,
+        mock_fetch_endpoint,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ):
+        binding = _persist_tidb_auth_binding(sqlite3_session)
+        monkeypatch.setattr(tidb_service_module.db, "session", sqlite3_session)
         mock_http.get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
@@ -296,9 +318,10 @@ class TestBatchUpdateTidbServerlessClusterStatus:
 
         TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
 
-        assert binding.account == "pfx.root"
-        assert binding.qdrant_endpoint is None
-        assert binding.status == TidbAuthBindingStatus.CREATING
+        sqlite3_session.expire_all()
+        persisted = sqlite3_session.get(TidbAuthBinding, binding.id)
+        assert persisted is not None
+        assert persisted.account == "pfx.root"
+        assert persisted.qdrant_endpoint is None
+        assert persisted.status == TidbAuthBindingStatus.CREATING
         mock_fetch_endpoint.assert_called_once_with("url", "pub", "priv", "c-1")
-        mock_db.session.add.assert_called_once_with(binding)
-        mock_db.session.commit.assert_called_once()

@@ -39,7 +39,10 @@ func run() error {
 	}
 
 	// Build config
-	config := server.DefaultConfig()
+	config, err := server.DefaultConfig()
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
 	if *listen != "" {
 		config.Listen = *listen
 	}

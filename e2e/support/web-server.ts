@@ -1,5 +1,5 @@
-import type { ManagedProcess } from './process'
-import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process'
+import type { ManagedProcess } from './process.ts'
+import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process.ts'
 
 type WebServerStartOptions = {
   baseURL: string
@@ -61,7 +61,9 @@ export const startWebServer = async ({
     if (startupError) {
       await stopManagedProcess(activeProcess)
       activeProcess = undefined
-      throw startupError
+      throw startupError instanceof Error
+        ? startupError
+        : new Error('Web server startup failed with a non-Error value.', { cause: startupError })
     }
 
     try {

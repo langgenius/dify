@@ -1,9 +1,9 @@
-import type { TryAppSelection } from '@/types/try-app'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { noop } from 'es-toolkit/function'
 import { createContext } from 'use-context-selector'
 
 type Props = Readonly<{
-  openTryAppPanel: (selection: TryAppSelection) => void
+  openTryAppPanel: (app: RecommendedAppResponse) => void
 }>
 
 const AppListContext = createContext<Props>({

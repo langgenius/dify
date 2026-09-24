@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CommentsPanel from '../index'
 
 const mockHandleCommentIconClick = vi.hoisted(() => vi.fn())
@@ -11,6 +13,11 @@ const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const commentFixtures: WorkflowCommentList[] = [
   {
@@ -65,11 +72,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
     selector({
@@ -108,8 +110,8 @@ describe('CommentsPanel', () => {
     expect(screen.getByText('my open thread')).toBeInTheDocument()
     expect(screen.getByText('others resolved thread')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByText('workflow.comments.filter.onlyYourThreads'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
+    fireEvent.click(screen.getByText('workflowComments.comments.filter.onlyYourThreads'))
     expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
     expect(screen.getByText('my open thread')).toBeInTheDocument()
 
@@ -133,7 +135,7 @@ describe('CommentsPanel', () => {
   it('toggles show-resolved state from filter panel switch', () => {
     render(<CommentsPanel />)
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
     fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)

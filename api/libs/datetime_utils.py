@@ -17,11 +17,16 @@ class _NowFunction(Protocol):
 _now_func: _NowFunction = datetime.datetime.now
 
 
+def utc_now() -> datetime.datetime:
+    """Return a timezone-aware datetime representing the current UTC time."""
+    return _now_func(datetime.UTC)
+
+
 def naive_utc_now() -> datetime.datetime:
     """Return a naive datetime object (without timezone information)
     representing current UTC time.
     """
-    return _now_func(datetime.UTC).replace(tzinfo=None)
+    return utc_now().replace(tzinfo=None)
 
 
 def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:

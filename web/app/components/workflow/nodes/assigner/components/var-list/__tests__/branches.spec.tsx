@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../../types'
@@ -142,7 +142,8 @@ describe('assigner/var-list branches', () => {
     ])
   })
 
-  it('updates string and number constant inputs through the inline editors', () => {
+  it('updates string and number constant inputs through the inline editors', async () => {
+    const user = userEvent.setup()
     const { handleChange, rerender } = renderVarList({
       list: [
         createOperation({
@@ -155,9 +156,8 @@ describe('assigner/var-list branches', () => {
       getToAssignedVarType: () => VarType.number,
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '2' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'node-a.flag' }))
+    await user.type(screen.getByRole('textbox', { name: 'node-a.flag' }), '2')
 
     expect(handleChange).toHaveBeenLastCalledWith(
       [
@@ -167,7 +167,7 @@ describe('assigner/var-list branches', () => {
           value: 2,
         }),
       ],
-      2,
+      undefined,
     )
 
     rerender(
@@ -191,9 +191,8 @@ describe('assigner/var-list branches', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'updated' },
-    })
+    await user.tripleClick(screen.getByRole('textbox'))
+    await user.paste('updated')
 
     expect(handleChange).toHaveBeenLastCalledWith(
       [
@@ -203,11 +202,12 @@ describe('assigner/var-list branches', () => {
           value: 'updated',
         }),
       ],
-      'updated',
+      undefined,
     )
   })
 
-  it('updates numeric write-mode inputs through the dedicated number field', () => {
+  it('updates numeric write-mode inputs through the dedicated number field', async () => {
+    const user = userEvent.setup()
     const { handleChange } = renderVarList({
       list: [
         createOperation({
@@ -220,9 +220,8 @@ describe('assigner/var-list branches', () => {
       writeModeTypesNum: [WriteMode.increment],
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '5' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'node-a.flag' }))
+    await user.type(screen.getByRole('textbox', { name: 'node-a.flag' }), '5')
 
     expect(handleChange).toHaveBeenLastCalledWith(
       [
@@ -231,7 +230,7 @@ describe('assigner/var-list branches', () => {
           value: 5,
         }),
       ],
-      5,
+      undefined,
     )
   })
 })

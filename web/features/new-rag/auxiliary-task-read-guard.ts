@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskVersionIsAfter } from './document-model'
-
-export type AuxiliaryTaskReadGuard = ReturnType<typeof createAuxiliaryTaskReadGuard>
 
 type RefetchDocuments = (options: { cancelRefetch: true }) => Promise<{ error: unknown }>
 
@@ -45,8 +44,7 @@ export function useAuxiliaryTaskReadGuard({
   documentPermissionDenied: boolean
   refetchDocuments: RefetchDocuments
 }) {
-  const guardRef = useRef<AuxiliaryTaskReadGuard | null>(null)
-  if (!guardRef.current) guardRef.current = createAuxiliaryTaskReadGuard()
+  const guardRef = useRefWithInit(createAuxiliaryTaskReadGuard)
   const guard = guardRef.current
   const previousDocumentPermissionDeniedRef = useRef(documentPermissionDenied)
   const denialGenerationRef = useRef(0)

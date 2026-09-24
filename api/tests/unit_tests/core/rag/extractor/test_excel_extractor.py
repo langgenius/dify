@@ -9,6 +9,7 @@ import core.rag.extractor.excel_extractor as excel_module
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from models.base import TypeBase
 from models.model import UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -77,8 +78,7 @@ def _patch_image_persistence(monkeypatch: pytest.MonkeyPatch):
         saves.append((key, data))
 
     monkeypatch.setattr(excel_module.storage, "save", save)
-    monkeypatch.setattr(excel_module.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(excel_module.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     return saves
 
@@ -259,6 +259,21 @@ class TestExcelExtractor:
         assert len(docs) == 1
         assert docs[0].page_content == '"A":"x";"B":"1.0"'
         assert docs[0].metadata == {"source": "/tmp/sample.xls"}
+
+    def test_extract_xls_escapes_double_quotes_like_xlsx(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name):
+                return pd.DataFrame([{"note": 'he said "hi"', "plain": "text"}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"note":"he said \\"hi\\"";"plain":"text"'
 
     def test_extract_unsupported_extension_raises(self):
         extractor = ExcelExtractor("/tmp/sample.txt")

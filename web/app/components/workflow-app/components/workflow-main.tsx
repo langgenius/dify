@@ -4,6 +4,7 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +19,8 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
@@ -49,7 +50,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
@@ -73,23 +74,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     }),
     [reactFlow],
   )
-  const {
-    startCursorTracking,
-    stopCursorTracking,
-    onlineUsers,
-    cursors,
-    isConnected,
-    isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId || '', reactFlowStore)
-  const myUserId = useMemo(
-    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
-    [isCollaborationEnabled, isConnected],
-  )
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
-  )
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
@@ -99,6 +87,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         workspacePermissionKeys,
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const {
+    startCursorTracking,
+    stopCursorTracking,
+    onlineUsers,
+    cursors,
+    isConnected,
+    isEnabled: isCollaborationEnabled,
+  } = useCollaboration(appId || '', appACLCapabilities.canEdit, reactFlowStore)
+  const myUserId = useMemo(
+    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
+    [isCollaborationEnabled, isConnected],
+  )
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
 
   useEffect(() => {
@@ -315,6 +319,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
+        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
+
         // Handle features, variables etc.
         handleWorkflowDataUpdate(response)
 
@@ -333,6 +339,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
+    workflowStore,
   ])
 
   // The server directs this request to the selected saver. Do not gate it on the
@@ -410,7 +417,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(appACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -455,6 +462,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -498,6 +506,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

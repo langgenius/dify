@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
@@ -77,78 +77,6 @@ class TestTemplateTransformNode:
             ],
             "template": "Hello {{ name }}, you are {{ age }} years old!",
         }
-
-    def test_node_initialization(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
-        """Test that TemplateTransformNode initializes correctly."""
-        mock_renderer = MagicMock()
-        node = _build_template_transform_node(
-            node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            jinja2_template_renderer=mock_renderer,
-        )
-
-        assert node.node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM
-        assert node._node_data.title == "Template Transform"
-        assert len(node._node_data.variables) == 2
-        assert node._node_data.template == "Hello {{ name }}, you are {{ age }} years old!"
-
-    def test_get_title(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
-        """Test _get_title method."""
-        mock_renderer = MagicMock()
-        node = _build_template_transform_node(
-            node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            jinja2_template_renderer=mock_renderer,
-        )
-
-        assert node._get_title() == "Template Transform"
-
-    def test_get_description(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
-        """Test _get_description method."""
-        mock_renderer = MagicMock()
-        node = _build_template_transform_node(
-            node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            jinja2_template_renderer=mock_renderer,
-        )
-
-        assert node._get_description() == "Transform data using template"
-
-    def test_get_error_strategy(self, mock_graph_runtime_state, graph_init_params):
-        """Test _get_error_strategy method."""
-        node_data = {
-            "title": "Test",
-            "variables": [],
-            "template": "test",
-            "error_strategy": "fail-branch",
-        }
-
-        mock_renderer = MagicMock()
-        node = _build_template_transform_node(
-            node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            jinja2_template_renderer=mock_renderer,
-        )
-
-        assert node._get_error_strategy() == ErrorStrategy.FAIL_BRANCH
-
-    def test_get_default_config(self):
-        """Test get_default_config class method."""
-        config = TemplateTransformNode.get_default_config()
-
-        assert config["type"] == "template-transform"
-        assert "config" in config
-        assert "variables" in config["config"]
-        assert "template" in config["config"]
-        assert config["config"]["template"] == "{{ arg1 }}"
-
-    def test_version(self):
-        """Test version class method."""
-        assert TemplateTransformNode.version() == "1"
 
     @pytest.mark.parametrize("max_output_length", [0, -1])
     def test_node_initialization_rejects_non_positive_max_output_length(

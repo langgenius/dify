@@ -141,6 +141,17 @@ export const buildResultRequestData = ({
 
   promptConfig?.prompt_variables.forEach((variable) => {
     const value = processedInputs[variable.key]
+    if (variable.type === 'json_object' && typeof value === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(value)
+        if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed))
+          processedInputs[variable.key] = parsed
+      } catch {
+        // Preserve invalid input for backend validation.
+      }
+      return
+    }
+
     if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
       processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]!
       return

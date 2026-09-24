@@ -1,22 +1,22 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { zPostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { createE2EResourceName } from '../../../support/naming'
+import { createE2EResourceName } from '../../../support/naming.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
-import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+} from '../../agent-v2/support/agent-builder-resources.ts'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul.ts'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common.ts'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectProviderToolActionVisible,
   getCurrentAgentId,
   getPreseededAgent,
   openAgentKnowledgeRetrievalDialog,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string) => {
   const draft = await world
@@ -86,7 +86,7 @@ When(
     const copyName = createE2EResourceName('Agent', 'copy')
 
     await page.goto('/agents')
-    const card = page.getByRole('article', { name: agentName, exact: true })
+    const card = page.getByRole('listitem', { name: agentName, exact: true })
 
     await expect(card).toBeVisible({ timeout: 30_000 })
     await card.hover()
@@ -174,12 +174,12 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
   await expect(advancedSettings).toBeVisible()
   await expect(
-    advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+    advancedSettings.getByText('For power users, such as environment variables.'),
   ).toBeVisible()
 })
 
 Then(
-  'the duplicated Agent v2 should inherit the full-config fixture from {string}',
+  'the duplicated Agent v2 should inherit the full-config fixture from {string} without inheriting its publication state',
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
@@ -198,7 +198,8 @@ Then(
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(sourceSnapshot.activeConfigIsPublished)
+    expect(sourceSnapshot.activeConfigIsPublished).toBe(true)
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(false)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,

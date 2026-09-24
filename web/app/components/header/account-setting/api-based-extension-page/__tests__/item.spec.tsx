@@ -9,7 +9,7 @@ const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
   mockDeleteApiBasedExtension: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       byId: {
@@ -202,7 +202,7 @@ describe('Item Component', () => {
         t: withSelectorKey((key: string) => {
           if (key === 'operation.delete') return ''
           return `common.${key}`
-        }, 'common') as unknown as TFunction,
+        }, 'common') as unknown as TFunction<['common']>,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

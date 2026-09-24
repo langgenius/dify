@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 function Sort({ order, value, items, onSelect }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
 
   const triggerContent = useMemo(() => {
     return items.find((item) => item.value === value)?.name || ''
@@ -51,7 +51,7 @@ function Sort({ order, value, items, onSelect }: Props) {
           <DropdownMenuContent
             placement="bottom-start"
             sideOffset={4}
-            popupClassName="relative w-[240px] rounded-xl bg-components-panel-bg-blur p-0"
+            className="relative w-60 rounded-xl bg-components-panel-bg-blur p-0"
           >
             <DropdownMenuRadioGroup
               value={value}

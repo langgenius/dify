@@ -1,8 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { PluginInstallPermissionStore } from '../hooks/use-plugin-install-permission'
-import { use, useEffect, useRef } from 'react'
+import { use, useEffect, useState } from 'react'
 import {
   createPluginInstallPermissionStore,
   PluginInstallPermissionContext,
@@ -21,29 +20,23 @@ export const PluginInstallPermissionProvider = ({
   currentDifyVersion,
   children,
 }: PluginInstallPermissionProviderProps) => {
-  const storeRef = useRef<PluginInstallPermissionStore | null>(null)
-
-  if (!storeRef.current) {
-    storeRef.current = createPluginInstallPermissionStore({
+  const [store] = useState(() =>
+    createPluginInstallPermissionStore({
       canInstallPlugin,
       canUpdatePlugin,
       currentDifyVersion,
-    })
-  }
+    }),
+  )
 
   useEffect(() => {
-    storeRef.current?.getState().setPluginInstallPermission({
+    store.getState().setPluginInstallPermission({
       canInstallPlugin,
       canUpdatePlugin: canUpdatePlugin ?? canInstallPlugin,
       currentDifyVersion,
     })
-  }, [canInstallPlugin, canUpdatePlugin, currentDifyVersion])
+  }, [canInstallPlugin, canUpdatePlugin, currentDifyVersion, store])
 
-  return (
-    <PluginInstallPermissionContext value={storeRef.current}>
-      {children}
-    </PluginInstallPermissionContext>
-  )
+  return <PluginInstallPermissionContext value={store}>{children}</PluginInstallPermissionContext>
 }
 
 export const PluginInstallPermissionProviderGuard = ({

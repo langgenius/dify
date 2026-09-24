@@ -3,7 +3,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { useDocLink } from '@/context/i18n'
 
 export function Empty() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docLink = useDocLink()
 
   return (

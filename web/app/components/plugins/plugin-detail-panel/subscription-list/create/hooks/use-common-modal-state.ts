@@ -1,18 +1,17 @@
 'use client'
 import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
-import type { PluginTriggerTranslate } from './use-common-modal-state.helpers'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type {
   TriggerLogEntity,
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { toast } from '@/app/notifications'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
@@ -37,10 +36,12 @@ import {
 // Types
 // ============================================================================
 
-export enum ApiKeyStep {
-  Verify = 'verify',
-  Configuration = 'configuration',
-}
+export const ApiKeyStep = {
+  Verify: 'verify',
+  Configuration: 'configuration',
+} as const
+
+export type ApiKeyStep = (typeof ApiKeyStep)[keyof typeof ApiKeyStep]
 
 const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialType> = {
   [SupportedCreationMethods.APIKEY]: TriggerCredentialType.ApiKey,
@@ -105,11 +106,7 @@ export const useCommonModalState = ({
   builder,
   onClose,
 }: UseCommonModalStateParams): UseCommonModalStateReturn => {
-  const { t } = useTranslation()
-  const translatePluginTriggerKey = useCallback<PluginTriggerTranslate>(
-    (selector, options) => t(selector, options),
-    [t],
-  )
+  const { t } = useTranslation(['pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
@@ -185,7 +182,7 @@ export const useCommonModalState = ({
     provider: detail?.provider,
     subscriptionBuilder,
     setSubscriptionBuilder,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Cleanup debounced function
@@ -199,7 +196,7 @@ export const useCommonModalState = ({
     endpoint: subscriptionBuilder?.endpoint,
     isConfigurationStep: currentStep === ApiKeyStep.Configuration,
     subscriptionFormRef,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Handle manual properties change
@@ -332,9 +329,9 @@ export const useCommonModalState = ({
       isVerifyStep: currentStep === ApiKeyStep.Verify,
       isVerifyingCredentials,
       isBuilding,
-      t: translatePluginTriggerKey,
+      t,
     })
-  }, [currentStep, isVerifyingCredentials, isBuilding, translatePluginTriggerKey])
+  }, [currentStep, isVerifyingCredentials, isBuilding, t])
 
   return {
     currentStep,

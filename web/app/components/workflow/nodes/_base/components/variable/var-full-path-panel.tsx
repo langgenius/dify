@@ -31,7 +31,7 @@ const VarFullPathPanel: FC<Props> = ({ nodeName, path, varType, nodeType = Block
         properties: {},
       } as Field
       current = current.properties[name!] as {
-        type: Type.object
+        type: typeof Type.object
         properties: { [key: string]: Field }
         required: never[]
         additionalProperties: false

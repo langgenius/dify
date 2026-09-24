@@ -8,7 +8,7 @@ describe('GenerationPlan', () => {
   it('shows the planning state while the plan is null', () => {
     render(<GenerationPlan plan={null} />)
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent(/workflowGenerator\.phases\.planning/i)
+    expect(status.textContent).toMatch(/workflowGenerator\.phases\.planning/i)
     expect(status.parentElement).toHaveAttribute('aria-busy', 'true')
   })
 
@@ -31,7 +31,7 @@ describe('GenerationPlan', () => {
     expect(screen.getByText('URL Summarizer')).toBeInTheDocument()
     expect(screen.getByText('capture the URL')).toBeInTheDocument()
     expect(screen.getByText('summarize the page')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/workflowGenerator\.phases\.building/i)
+    expect(screen.getByRole('status').textContent).toMatch(/workflowGenerator\.phases\.building/i)
     // The planning-only state must be gone once a plan is present.
     expect(screen.queryByText(/workflowGenerator\.phases\.planning/i)).not.toBeInTheDocument()
   })

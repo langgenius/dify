@@ -1,17 +1,16 @@
 import type { SlashCommandHandler } from './types'
 import { getI18n } from 'react-i18next'
-import { defaultDocBaseUrl, getDocHomePath } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
 import { registerCommands, unregisterCommands } from './command-bus'
 
-// Documentation command dependency types - no external dependencies needed
-type DocDeps = Record<string, never>
+type DocDeps = {
+  getDocsHomeUrl: () => string
+}
 
-const getDocsHomeUrl = () => {
-  const i18n = getI18n()
-  const currentLocale = i18n.language
-  const docLanguage = getDocLanguage(currentLocale)
-  return `${defaultDocBaseUrl}/${docLanguage}${getDocHomePath()}`
+let getDocsHomeUrl: (() => string) | undefined
+
+const openDocsHome = () => {
+  const url = getDocsHomeUrl?.()
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 /**
@@ -24,7 +23,7 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
 
   // Direct execution function
   execute: () => {
-    window.open(getDocsHomeUrl(), '_blank', 'noopener,noreferrer')
+    openDocsHome()
   },
 
   search(args: string, locale: string = 'en') {
@@ -47,15 +46,17 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
     ]
   },
 
-  register(_deps: DocDeps) {
+  register(deps: DocDeps) {
+    getDocsHomeUrl = deps.getDocsHomeUrl
     registerCommands({
       'navigation.doc': async (_args) => {
-        window.open(getDocsHomeUrl(), '_blank', 'noopener,noreferrer')
+        openDocsHome()
       },
     })
   },
 
   unregister() {
+    getDocsHomeUrl = undefined
     unregisterCommands(['navigation.doc'])
   },
 }

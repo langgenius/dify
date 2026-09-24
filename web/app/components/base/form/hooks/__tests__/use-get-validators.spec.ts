@@ -8,6 +8,21 @@ vi.mock('@/hooks/use-i18n', () => ({
 }))
 
 describe('useGetValidators', () => {
+  it('accepts numeric zero but rejects a cleared required number field', () => {
+    const { result } = renderHook(() => useGetValidators())
+    const validators = result.current.getValidators({
+      name: 'amount',
+      label: 'Amount',
+      required: true,
+      type: FormTypeEnum.textNumber,
+    })
+
+    for (const validate of [validators?.onMount, validators?.onChange, validators?.onBlur]) {
+      expect(validate?.({ value: 0 })).toBeUndefined()
+      expect(validate?.({ value: null })).toContain('common.errorMsg.fieldRequired')
+    }
+  })
+
   it('should create required validators when field is required without custom validators', () => {
     const { result } = renderHook(() => useGetValidators())
     const validators = result.current.getValidators({

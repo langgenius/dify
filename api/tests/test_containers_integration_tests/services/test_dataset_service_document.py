@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models import Account
+from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
@@ -119,7 +120,7 @@ def current_user_mock():
     with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
         current_user.id = str(uuid4())
         current_user.current_tenant_id = str(uuid4())
-        current_user.current_role = None
+        current_user.current_role = TenantAccountRole.EDITOR
         yield current_user
 
 
@@ -142,7 +143,9 @@ def test_get_document_queries_by_dataset_and_document_id(db_session_with_contain
 def test_get_documents_by_ids_returns_empty_for_empty_input(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [], session=db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(
+        DatasetRefService.create_dataset_ref(dataset), [], session=db_session_with_containers
+    )
 
     assert result == []
 
@@ -157,7 +160,9 @@ def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers
         position=2,
     )
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id], db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(
+        DatasetRefService.create_dataset_ref(dataset), [doc_a.id, doc_b.id], db_session_with_containers
+    )
 
     assert {document.id for document in result} == {doc_a.id, doc_b.id}
 
@@ -319,7 +324,7 @@ def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_doc
         )
 
 
-def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_access(
+def test_get_upload_files_by_document_id_for_zip_download_hides_cross_tenant_documents(
     db_session_with_containers: Session,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
@@ -335,7 +340,7 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_a
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    with pytest.raises(Forbidden, match="No permission"):
+    with pytest.raises(NotFound, match="Document not found"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[document.id],
@@ -527,7 +532,7 @@ def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchive
     assert [document.id for document in result] == [available_document.id]
 
 
-def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db_session_with_containers: Session):
+def test_get_error_documents_by_dataset_ref_returns_error_and_paused_documents(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     error_document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -547,7 +552,8 @@ def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db
         indexing_status=IndexingStatus.COMPLETED,
     )
 
-    result = DocumentService.get_error_documents_by_dataset_id(dataset.id, session=db_session_with_containers)
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    result = DocumentService.get_error_documents_by_dataset_ref(dataset_ref, session=db_session_with_containers)
 
     assert {document.id for document in result} == {error_document.id, paused_document.id}
 
@@ -619,7 +625,12 @@ def test_delete_documents_ignores_empty_input(db_session_with_containers: Sessio
     dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
     with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
-        DocumentService.delete_documents(dataset_ref, [], dataset.doc_form, session=db_session_with_containers)
+        DocumentService.delete_documents(
+            dataset_ref,
+            [],
+            dataset.get_doc_form(session=db_session_with_containers),
+            session=db_session_with_containers,
+        )
 
     delay.assert_not_called()
 
@@ -657,7 +668,7 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
         DocumentService.delete_documents(
             dataset_ref,
             [document_a.id, document_b.id],
-            dataset.doc_form,
+            dataset.get_doc_form(session=db_session_with_containers),
             session=db_session_with_containers,
         )
 

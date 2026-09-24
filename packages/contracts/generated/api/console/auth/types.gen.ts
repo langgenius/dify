@@ -205,7 +205,9 @@ export type DeleteAuthPluginDatasourceByProviderIdCustomClientData = {
 }
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponses = {
-  200: SimpleResultResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponse =

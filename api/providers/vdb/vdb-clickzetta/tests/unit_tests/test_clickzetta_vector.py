@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_clickzetta_module():
@@ -220,7 +221,7 @@ def test_search_by_like_returns_documents_with_default_score(clickzetta_module):
 
 def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     factory = clickzetta_module.ClickzettaVectorFactory()
-    dataset = SimpleNamespace(id="dataset-1")
+    dataset = Dataset(id="dataset-1")
 
     monkeypatch.setattr(clickzetta_module.Dataset, "gen_collection_name_by_id", lambda _id: "COLLECTION")
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_USERNAME", "username")

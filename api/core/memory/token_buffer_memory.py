@@ -64,7 +64,9 @@ class TokenBufferMemory:
         """
         match self.conversation.mode:
             case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
-                file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
+                file_extra_config = FileUploadConfigManager.convert(
+                    self.conversation.model_config_with_session(session=db.session())
+                )
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
                 app = self.conversation.app
                 if not app:

@@ -1,19 +1,21 @@
-import type { Placement, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
-import type { CSSProperties, KeyboardEvent, MouseEventHandler } from 'react'
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
-  CommonNodeType,
-  NodeDefault,
-  OnNodeAdd,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
+  PopoverPopupProps,
+  PopoverPositionerProps,
+  PopoverProps,
+  PopoverTriggerProps,
+} from '@langgenius/dify-ui/popover'
+import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
+import type { CommonNodeType, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import type { TabType } from './types'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
   PopoverClose,
-  PopoverContent,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
@@ -28,15 +30,20 @@ import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
 import { BlockSelectorPanels } from './tabs'
 
-export type BlockSelectorProps = {
+export type BlockSelectorProps = Pick<
+  PopoverPositionerProps,
+  'alignOffset' | 'placement' | 'sideOffset'
+> & {
+  finalFocus?: PopoverPopupProps['finalFocus']
+  triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
-  onOpenChange?: (open: boolean) => void
+  onOpenChange?: (
+    open: boolean,
+    details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
+  ) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
   triggerStyle?: CSSProperties
   triggerClassName?: string
   triggerAriaLabel?: string
@@ -44,7 +51,7 @@ export type BlockSelectorProps = {
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   noBlocks?: boolean
   noTools?: boolean
   standalonePanel?: TabType
@@ -62,6 +69,8 @@ function BlockSelector({
   onSelect,
   trigger,
   triggerTooltip,
+  triggerRef,
+  finalFocus,
   placement = 'right',
   sideOffset,
   alignOffset,
@@ -84,16 +93,16 @@ function BlockSelector({
   snippetInsertPayload,
   isolateKeyboardEvents = false,
 }: BlockSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [localOpen, setLocalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
+    (newOpen: boolean, details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1]) => {
       if (newOpen && disabled) return
 
       setLocalOpen(newOpen)
-      if (onOpenChange) onOpenChange(newOpen)
+      if (onOpenChange) onOpenChange(newOpen, details)
     },
     [disabled, onOpenChange],
   )
@@ -123,6 +132,7 @@ function BlockSelector({
 
   const triggerControl = trigger ? (
     <PopoverTrigger
+      ref={triggerRef}
       aria-label={triggerAriaLabel}
       disabled={disabled}
       render={trigger}
@@ -130,20 +140,21 @@ function BlockSelector({
     />
   ) : (
     <PopoverTrigger
-      aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      ref={triggerRef}
       disabled={disabled}
       render={
-        <Button
+        <IconButton
+          aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
           variant="primary"
-          size="small"
-          className={cn('z-10 size-4 rounded-full p-0', triggerClassName)}
+          size="md"
+          className={cn('z-10 rounded-full', triggerClassName)}
           style={triggerStyle}
-        />
+        >
+          <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
+        </IconButton>
       }
       onClick={handleTrigger}
-    >
-      <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
-    </PopoverTrigger>
+    />
   )
   const triggerWithTooltip = triggerTooltip ? (
     <TipPopup title={triggerTooltip}>{triggerControl}</TipPopup>
@@ -154,49 +165,53 @@ function BlockSelector({
   return (
     <Popover modal="trap-focus" open={open} onOpenChange={handleOpenChange}>
       {triggerWithTooltip}
-      <PopoverContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        positionerProps={{ positionMethod: 'fixed' }}
-        popupClassName="border-none bg-transparent shadow-none"
-        popupProps={{
-          initialFocus: searchInputRef,
-          onClick: handlePopupClick,
-          ...(isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : {}),
-        }}
-      >
-        <PopoverTitle className="sr-only">
-          {t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        </PopoverTitle>
-        <div
-          className={cn(
-            'w-100 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            popupClassName,
-          )}
+      <PopoverPortal>
+        <PopoverPositioner
+          placement={placement}
+          sideOffset={sideOffset}
+          alignOffset={alignOffset}
+          positionMethod="fixed"
         >
-          <BlockSelectorContent
-            standalonePanel={standalonePanel}
-            searchInputRef={searchInputRef}
-            blocks={blocks}
-            onSelect={handleSelect}
-            onRequestClose={() => handleOpenChange(false)}
-            availableBlocksTypes={availableBlocksTypes}
-            dataSources={dataSources}
-            noBlocks={noBlocks}
-            noTools={noTools}
-            showStartTab={showStartTab}
-            defaultActiveTab={defaultActiveTab}
-            ignoreNodeIds={ignoreNodeIds}
-            forceEnableStartTab={forceEnableStartTab}
-            allowUserInputSelection={allowUserInputSelection}
-            snippetInsertPayload={snippetInsertPayload}
-          />
-        </div>
-        <PopoverClose className="sr-only" tabIndex={-1}>
-          {t(($) => $['operation.close'], { ns: 'common' })}
-        </PopoverClose>
-      </PopoverContent>
+          <PopoverPopup
+            initialFocus={searchInputRef}
+            finalFocus={finalFocus}
+            className="border-none bg-transparent shadow-none"
+            onClick={handlePopupClick}
+            onKeyDown={isolateKeyboardEvents ? handlePopupKeyDown : undefined}
+          >
+            <PopoverTitle className="sr-only">
+              {t(($) => $['common.addBlock'], { ns: 'workflow' })}
+            </PopoverTitle>
+            <div
+              className={cn(
+                'w-100 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+                popupClassName,
+              )}
+            >
+              <BlockSelectorContent
+                standalonePanel={standalonePanel}
+                searchInputRef={searchInputRef}
+                blocks={blocks}
+                onSelect={handleSelect}
+                onRequestClose={() => handleOpenChange(false)}
+                availableBlocksTypes={availableBlocksTypes}
+                dataSources={dataSources}
+                noBlocks={noBlocks}
+                noTools={noTools}
+                showStartTab={showStartTab}
+                defaultActiveTab={defaultActiveTab}
+                ignoreNodeIds={ignoreNodeIds}
+                forceEnableStartTab={forceEnableStartTab}
+                allowUserInputSelection={allowUserInputSelection}
+                snippetInsertPayload={snippetInsertPayload}
+              />
+            </div>
+            <PopoverClose className="sr-only" tabIndex={-1}>
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </PopoverClose>
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
     </Popover>
   )
 }
@@ -221,7 +236,7 @@ type BlockSelectorContentProps = Pick<
   searchInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-function BlockSelectorContent({
+export function BlockSelectorContent({
   allowUserInputSelection,
   availableBlocksTypes,
   blocks: blocksFromProps,
@@ -246,7 +261,7 @@ function BlockSelectorContent({
     if (blocksFromProps) return blocksFromProps
 
     return (availableNodesMetaData?.nodes ?? []).filter((block) => {
-      return ![
+      const excludedBlockTypes: readonly BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.StartPlaceholder,
         BlockEnum.DataSource,
@@ -254,7 +269,9 @@ function BlockSelectorContent({
         BlockEnum.IterationStart,
         BlockEnum.LoopStart,
         BlockEnum.DataSourceEmpty,
-      ].includes(block.metaData.type)
+      ]
+
+      return !excludedBlockTypes.includes(block.metaData.type)
     })
   }, [availableNodesMetaData?.nodes, blocksFromProps])
   const dataSources = dataSourcesFromProps ?? fallbackDataSources ?? []

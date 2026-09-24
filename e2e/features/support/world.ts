@@ -1,19 +1,15 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
 import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
-import type { AuthSessionMetadata } from '../../fixtures/auth'
-import type { ConsoleClient } from '../../support/api/console-client'
+import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
+import type { ConsoleClient } from '../../support/api/console-client.ts'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { request } from '@playwright/test'
-import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
-import { createConsoleClient } from '../../support/api/console-client'
-import { runCleanupTasks } from '../../support/cleanup'
-import { apiURL, baseURL, defaultLocale } from '../../test-env'
+import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth.ts'
+import { createConsoleClient } from '../../support/api/console-client.ts'
+import { runCleanupTasks } from '../../support/cleanup.ts'
+import { apiURL, baseURL, defaultLocale } from '../../test-env.ts'
 
 export type ScenarioCleanup = () => Promise<void> | void
-export type CreatedAgentDriveFile = {
-  agentId: string
-  key: string
-}
 export type CreatedAgentConfigFile = {
   agentId: string
   name: string
@@ -45,6 +41,12 @@ export type AgentBuilderSpeechToTextRequest = {
   path: string
   status: number
 }
+export type WorkflowPreviewFixture = {
+  appName: string
+  agentNodeId: string
+  failureEdgeId: string
+  routes: { edgeId: string; label: string }[]
+}
 
 export const createAgentBuilderWorldState = () => ({
   fixtures: {
@@ -71,6 +73,7 @@ export const createAgentBuilderWorldState = () => ({
   },
   workflow: {
     agentConsolePage: undefined as Page | undefined,
+    outputRouteSnippet: undefined as { id: string; name: string } | undefined,
     outputVariables: [] as AgentV2WorkflowOutputVariable[],
   },
 })
@@ -91,17 +94,18 @@ export class DifyWorld extends World {
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
+  createdSnippetIds: string[] = []
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentConfigFiles: CreatedAgentConfigFile[] = []
   createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
-  createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
   sharedAppPage: Page | undefined
+  workflowPreview: WorkflowPreviewFixture | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -109,6 +113,7 @@ export class DifyWorld extends World {
   }
 
   resetScenarioState() {
+    this.workflowPreview = undefined
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
@@ -116,11 +121,11 @@ export class DifyWorld extends World {
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
+    this.createdSnippetIds = []
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentConfigFiles = []
     this.createdAgentConfigSkills = []
-    this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
     this.agentBuilder = createAgentBuilderWorldState()
     this.scenarioCleanups = []

@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -30,7 +30,7 @@ import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const {
     appData,
     appParams,
@@ -210,7 +210,7 @@ const ChatWrapper = () => {
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
       if (appSourceType === AppSourceType.webApp && appData?.mode)
-        trackEvent('webapp_run', { app_mode: appData.mode })
+        trackWebAppEvent('webapp_run', { app_mode: appData.mode })
     },
     [
       currentConversationId,

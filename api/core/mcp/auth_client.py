@@ -39,7 +39,6 @@ class MCPClientWithAuthRetry(MCPClient):
         sse_read_timeout: float | None = None,
         provider_entity: MCPProviderEntity | None = None,
         authorization_code: str | None = None,
-        by_server_id: bool = False,
         forward_identity_active: bool = False,
     ):
         """
@@ -52,7 +51,6 @@ class MCPClientWithAuthRetry(MCPClient):
             sse_read_timeout: SSE read timeout
             provider_entity: Provider entity for authentication
             authorization_code: Optional authorization code for initial auth
-            by_server_id: Whether to look up provider by server ID
             forward_identity_active: If True, suppress the static-OAuth retry
                 on 401 — the forwarded identity must propagate as-is.
         """
@@ -60,7 +58,6 @@ class MCPClientWithAuthRetry(MCPClient):
 
         self.provider_entity = provider_entity
         self.authorization_code = authorization_code
-        self.by_server_id = by_server_id
         self.forward_identity_active = forward_identity_active
         self._has_retried = False
 
@@ -105,8 +102,8 @@ class MCPClientWithAuthRetry(MCPClient):
                 )
 
                 # Retrieve new tokens
-                self.provider_entity = mcp_service.get_provider_entity(
-                    self.provider_entity.id, self.provider_entity.tenant_id, by_server_id=self.by_server_id
+                self.provider_entity = mcp_service.get_provider_entity_by_server_identifier(
+                    server_identifier=self.provider_entity.server_identifier, tenant_id=self.provider_entity.tenant_id
                 )
 
             # Session is closed here, before we update headers

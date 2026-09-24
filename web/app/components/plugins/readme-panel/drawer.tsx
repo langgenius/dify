@@ -1,6 +1,6 @@
 'use client'
 
-import type { PluginDetail } from '../types'
+import type { ReadmePanelState } from './store'
 import {
   Drawer,
   DrawerBackdrop,
@@ -15,14 +15,14 @@ import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDrawerProps = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerId?: string
 }
 
 export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Drawer

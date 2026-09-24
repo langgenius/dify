@@ -13,7 +13,7 @@ type ProcessingProps = {
 }
 
 const Processing = ({ batchId, documents }: ProcessingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset?.id)
   const indexingType = useDatasetDetailContextWithSelector((s) => s.dataset?.indexing_technique)

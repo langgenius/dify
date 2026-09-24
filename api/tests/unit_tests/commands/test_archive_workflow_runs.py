@@ -365,7 +365,7 @@ def test_archive_workflow_runs_raises_click_exception_when_tenant_plan_fails(
         )
 
 
-def test_delete_archived_workflow_runs_keeps_single_page_behavior_without_all_pages(monkeypatch):
+def test_delete_archived_workflow_runs_keeps_single_page_behavior_without_all_pages(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [_delete_summary(processed=2, succeeded=2, next_catalog_id=_CURSOR_1)],
@@ -384,7 +384,7 @@ def test_delete_archived_workflow_runs_keeps_single_page_behavior_without_all_pa
     assert deleter.delete_batch.call_args.kwargs["limit"] == 2
 
 
-def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [
@@ -407,7 +407,9 @@ def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(monk
     ]
 
 
-def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_full_page(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_full_page(
+    monkeypatch: pytest.MonkeyPatch,
+):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [
@@ -426,7 +428,7 @@ def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_
     assert deleter.delete_batch.call_args_list[1].kwargs["after_catalog_id"] == _CURSOR_1
 
 
-def test_delete_archived_workflow_runs_all_pages_stops_at_first_failed_page(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_stops_at_first_failed_page(monkeypatch: pytest.MonkeyPatch):
     failed_result = BundleOperationResult(
         catalog_id=_CURSOR_2,
         bundle_id="bundle-failed",
@@ -455,7 +457,7 @@ def test_delete_archived_workflow_runs_all_pages_stops_at_first_failed_page(monk
     assert f"resume_after_catalog_id={_CURSOR_1}" in result.output
 
 
-def test_delete_archived_workflow_runs_all_pages_fails_when_cursor_does_not_advance(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_fails_when_cursor_does_not_advance(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [_delete_summary(processed=1, succeeded=1, next_catalog_id=None)],
@@ -471,7 +473,7 @@ def test_delete_archived_workflow_runs_all_pages_fails_when_cursor_does_not_adva
     assert "cursor did not advance" in result.output.lower()
 
 
-def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [
@@ -492,7 +494,9 @@ def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run
     ]
 
 
-def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(monkeypatch):
+def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(
+    monkeypatch: pytest.MonkeyPatch,
+):
     failed_result = BundleOperationResult(
         catalog_id=_CURSOR_2,
         bundle_id="bundle-failed",
@@ -535,7 +539,7 @@ def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_des
     assert f"destructive_retry_after_catalog_id={_CURSOR_0}" in result.output
 
 
-def test_delete_archived_workflow_runs_all_pages_starts_after_explicit_cursor(monkeypatch):
+def test_delete_archived_workflow_runs_all_pages_starts_after_explicit_cursor(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
 
     result = CliRunner().invoke(
@@ -577,7 +581,7 @@ def test_delete_archived_workflow_runs_rejects_invalid_run_shard_options(monkeyp
     deleter.delete_batch.assert_not_called()
 
 
-def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(monkeypatch):
+def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
 
     result = CliRunner().invoke(
@@ -605,7 +609,7 @@ def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(mon
     assert deleter.delete_batch.call_args.kwargs["shard"] == "03-of-16"
 
 
-def test_delete_archived_workflow_runs_rejects_mixed_catalog_shards_before_delete(monkeypatch):
+def test_delete_archived_workflow_runs_rejects_mixed_catalog_shards_before_delete(monkeypatch: pytest.MonkeyPatch):
     deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
     deleter.validate_catalog_shards.side_effect = ValueError("unexpected shards: 00-of-01")
 

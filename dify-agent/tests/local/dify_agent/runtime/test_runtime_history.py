@@ -1,7 +1,14 @@
 import asyncio
 
 import pytest
-from pydantic_ai.messages import ModelRequest, ModelResponse, SystemPromptPart, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 
 from agenton.compositor import Compositor, LayerNode
 from agenton_collections.layers.pydantic_ai import (
@@ -12,9 +19,8 @@ from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID
 from dify_agent.protocol.schemas import RunComposition, RunLayerSpec
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.history import (
-    append_successful_run_history,
-    build_run_message_history,
     get_history_layer,
+    replace_run_history,
     validate_history_layer_composition,
 )
 
@@ -89,63 +95,75 @@ def test_get_history_layer_returns_optional_active_history_layer() -> None:
     asyncio.run(scenario())
 
 
-def test_build_run_message_history_renders_current_system_prompts_before_stored_history() -> None:
-    stored_history = [
-        ModelRequest(parts=[UserPromptPart(content="old user")]),
-        ModelResponse(parts=[TextPart(content="old assistant")]),
+def test_replace_run_history_persists_full_history_without_instructions() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    history_layer.replace_messages([ModelRequest(parts=[UserPromptPart(content="stale")])])
+    messages = [
+        ModelRequest(
+            parts=[SystemPromptPart(content="Summary of previous conversation:\n\nsummary")],
+            instructions="current instructions",
+        ),
+        ModelRequest(parts=[UserPromptPart(content="new user")]),
+        ModelResponse(parts=[TextPart(content="new assistant")]),
     ]
 
-    async def scenario() -> None:
-        message_history = await build_run_message_history(
-            system_prompts=[lambda: "current system", lambda: "current suffix"],
-            stored_history=stored_history,
-        )
+    replace_run_history(history_layer, messages)
 
-        assert message_history is not None
-        assert isinstance(message_history[0], ModelRequest)
-        assert [part.content for part in message_history[0].parts] == ["current system", "current suffix"]
-        assert message_history[1:] == stored_history
-
-    asyncio.run(scenario())
-
-
-def test_build_run_message_history_returns_none_without_system_prompt_or_history() -> None:
-    async def scenario() -> None:
-        assert await build_run_message_history(system_prompts=[], stored_history=[]) is None
-
-    asyncio.run(scenario())
+    persisted = history_layer.message_history
+    assert len(persisted) == 3
+    persisted_request = persisted[0]
+    assert isinstance(persisted_request, ModelRequest)
+    assert persisted_request.instructions is None
+    assert persisted_request.parts == messages[0].parts
+    assert persisted[1:] == messages[1:]
+    source_request = messages[0]
+    assert isinstance(source_request, ModelRequest)
+    assert source_request.instructions == "current instructions"
 
 
-def test_build_run_message_history_renders_system_prompt_without_history_layer() -> None:
-    async def scenario() -> None:
-        message_history = await build_run_message_history(system_prompts=[lambda: "current system"], stored_history=[])
-
-        assert message_history is not None
-        assert len(message_history) == 1
-        assert isinstance(message_history[0], ModelRequest)
-        assert isinstance(message_history[0].parts[0], SystemPromptPart)
-        assert message_history[0].parts[0].content == "current system"
-
-    asyncio.run(scenario())
-
-
-def test_build_run_message_history_rejects_context_dependent_prompt_functions() -> None:
-    def unsupported_prompt(_ctx: object) -> str:
-        return "current system"
-
-    async def scenario() -> None:
-        with pytest.raises(ValueError, match="zero-argument system prompts"):
-            await build_run_message_history(system_prompts=[unsupported_prompt], stored_history=[])
-
-    asyncio.run(scenario())
-
-
-def test_append_successful_run_history_preserves_existing_message_order() -> None:
+def test_replace_run_history_marks_unexecuted_tool_calls_of_an_interrupted_run() -> None:
     history_layer = PydanticAIHistoryLayer()
-    stored_history = [ModelRequest(parts=[UserPromptPart(content="old user")])]
-    new_messages = [ModelResponse(parts=[TextPart(content="new assistant")])]
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="run a search")]),
+        ModelResponse(parts=[ToolCallPart(tool_name="search", args={}, tool_call_id="call-1")]),
+    ]
 
-    history_layer.replace_messages(stored_history)
-    append_successful_run_history(history_layer, new_messages)
+    replace_run_history(history_layer, messages, interrupted=True)
 
-    assert history_layer.message_history == [*stored_history, *new_messages]
+    persisted = history_layer.message_history
+    assert len(persisted) == 2
+    persisted_response = persisted[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "interrupted"
+    assert persisted_response.parts == messages[1].parts
+    source_response = messages[1]
+    assert isinstance(source_response, ModelResponse)
+    assert source_response.state == "complete"
+
+
+def test_replace_run_history_keeps_open_tool_calls_of_a_finished_run() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="ask me something")]),
+        ModelResponse(parts=[ToolCallPart(tool_name="ask_human", args={}, tool_call_id="call-1")]),
+    ]
+
+    replace_run_history(history_layer, messages)
+
+    persisted_response = history_layer.message_history[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "complete"
+
+
+def test_replace_run_history_leaves_an_interrupted_run_without_tool_calls_alone() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="hello")]),
+        ModelResponse(parts=[TextPart(content="partial")]),
+    ]
+
+    replace_run_history(history_layer, messages, interrupted=True)
+
+    persisted_response = history_layer.message_history[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "complete"

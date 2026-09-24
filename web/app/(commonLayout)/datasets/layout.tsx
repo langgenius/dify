@@ -2,7 +2,7 @@
 
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -52,7 +52,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
     if (shouldRedirectToDatasets) router.replace('/datasets')
   }, [shouldRedirectToDatasets, router])
 
-  if (isLoadingAccess || !currentWorkspaceId) return <Loading type="app" />
+  if (isLoadingAccess || !currentWorkspaceId) return <LoadingPlaceholder className="h-full" />
 
   if (shouldRedirectToDatasets) {
     return null

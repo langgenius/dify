@@ -18,13 +18,15 @@ import {
 import { useTranslation } from 'react-i18next'
 import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
-export enum TriggerType {
-  UserInput = 'user_input',
-  Schedule = 'schedule',
-  Webhook = 'webhook',
-  Plugin = 'plugin',
-  All = 'all',
-}
+export const TriggerType = {
+  UserInput: 'user_input',
+  Schedule: 'schedule',
+  Webhook: 'webhook',
+  Plugin: 'plugin',
+  All: 'all',
+} as const
+
+export type TriggerType = (typeof TriggerType)[keyof typeof TriggerType]
 
 export type TriggerOption = {
   id: string
@@ -92,7 +94,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
 // oxlint-disable-next-line eslint-react/no-forward-ref
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
   ({ options, onSelect, children }, ref) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const [open, setOpen] = useState(false)
     const shortcutMappings = useMemo(() => buildShortcutMappings(options), [options])
     const shortcutKeyById = useMemo(() => {
@@ -172,7 +174,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
           placement="bottom-start"
           sideOffset={8}
           alignOffset={-4}
-          popupClassName="w-[284px] p-1"
+          className="w-71 p-1"
         >
           <DropdownMenuGroup>
             <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">

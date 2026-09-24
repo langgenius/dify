@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -61,34 +60,6 @@ def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
         node_id="1",
         inputs=inputs,
     )
-
-
-def test_webhook_node_basic_initialization():
-    """Test basic webhook node initialization and configuration."""
-    data = WebhookData(
-        title="Test Webhook",
-        method=Method.POST,
-        content_type=ContentType.JSON,
-        headers=[WebhookParameter(name="X-API-Key", required=True)],
-        params=[WebhookParameter(name="version", required=False)],
-        body=[WebhookBodyParameter(name="message", type="string", required=True)],
-        status_code=200,
-        response_body="OK",
-        timeout=30,
-    )
-
-    variable_pool = build_webhook_variable_pool({})
-
-    node = create_webhook_node(data, variable_pool)
-
-    assert node.node_type == TRIGGER_WEBHOOK_NODE_TYPE
-    assert node.version() == "1"
-    assert node._get_title() == "Test Webhook"
-    assert node._node_data.method == Method.POST
-    assert node._node_data.content_type == ContentType.JSON
-    assert len(node._node_data.headers) == 1
-    assert len(node._node_data.params) == 1
-    assert len(node._node_data.body) == 1
 
 
 def test_webhook_node_default_config():

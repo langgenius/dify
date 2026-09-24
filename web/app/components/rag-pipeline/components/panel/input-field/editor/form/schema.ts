@@ -13,7 +13,7 @@ const SupportedFileTypes = z.enum(['image', 'document', 'video', 'audio', 'custo
 
 export const createInputFieldSchema = (
   type: PipelineInputVarType,
-  t: TFunction,
+  t: TFunction<['appDebug']>,
   options: SchemaOptions,
 ) => {
   const { maxFileUploadLimit } = options

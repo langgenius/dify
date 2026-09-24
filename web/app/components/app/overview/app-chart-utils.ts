@@ -10,8 +10,8 @@ type ChartType = 'messages' | 'conversations' | 'endUsers' | 'costs' | 'workflow
 
 export type ChartRow = {
   date: string
-  total_price?: number | string
-} & Record<string, number | string | undefined>
+  total_price?: number | string | null
+} & Record<string, number | string | null | undefined>
 
 type ChartConfig = {
   colorType: ColorType

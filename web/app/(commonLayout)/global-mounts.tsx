@@ -1,7 +1,8 @@
 'use client'
 
+import dynamic from 'next/dynamic'
+import { Pricing } from '@/app/components/billing/pricing'
 import { SettingsModal } from '@/app/components/header/account-setting/settings-modal'
-import dynamic from '@/next/dynamic'
 
 const InSiteMessageNotification = dynamic(
   () => import('@/app/components/app/in-site-message/notification'),
@@ -27,6 +28,7 @@ export function CommonLayoutGlobalMounts() {
       <GotoAnything />
       <WorkflowGeneratorMount />
       <SettingsModal />
+      <Pricing />
     </>
   )
 }

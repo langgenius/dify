@@ -1,6 +1,6 @@
 #!/bin/sh
 # install-local.sh — install difyctl from locally built standalone binaries.
-# Run via: pnpm install:local  (after `pnpm build:bin`)
+# Run via: pnpm install:local  (after `pnpm build:bin:local`)
 #
 # Consumes the raw, self-contained binaries emitted by scripts/release-build.sh
 # into dist/bin (difyctl-v<ver>-<os>-<arch>). No GitHub Release needed: build on
@@ -30,7 +30,7 @@ BINARY="$(ls "${ARTIFACT_DIR}"/difyctl-v*-${os}-${arch} 2>/dev/null | sort -V | 
 
 if [ -z "$BINARY" ]; then
   echo "no binary found for ${os}-${arch} in ${ARTIFACT_DIR:-<unset>}" >&2
-  echo "run: pnpm build:bin" >&2
+  echo "run: pnpm build:bin:local" >&2
   exit 1
 fi
 

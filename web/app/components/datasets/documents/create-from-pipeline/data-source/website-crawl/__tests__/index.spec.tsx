@@ -57,7 +57,18 @@ vi.mock('@/service/use-pipeline', () => ({
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
-const mockStoreState = {
+const mockStoreState: {
+  crawlResult: { data: CrawlResultItem[]; time_consuming: number | string } | undefined
+  step: CrawlStep
+  websitePages: CrawlResultItem[]
+  previewIndex: number
+  currentCredentialId: string
+  setWebsitePages: ReturnType<typeof vi.fn>
+  setCurrentWebsite: ReturnType<typeof vi.fn>
+  setPreviewIndex: ReturnType<typeof vi.fn>
+  setStep: ReturnType<typeof vi.fn>
+  setCrawlResult: ReturnType<typeof vi.fn>
+} = {
   crawlResult: undefined as
     | { data: CrawlResultItem[]; time_consuming: number | string }
     | undefined,

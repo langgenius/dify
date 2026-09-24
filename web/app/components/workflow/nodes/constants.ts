@@ -3,7 +3,7 @@ import { TransferMethod } from '@/types/app'
 
 type OptionItem = {
   value: string
-  i18nKey: I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+  i18nKey: I18nKeysByPrefix<'workflowLogic', 'nodes.ifElse.optionName.'>
 }
 
 export const FILE_TYPE_OPTIONS = [

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
-import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from '../index'
+import AppTypeSelector, { AppTypeLabel } from '../index'
 
 describe('AppTypeSelector', () => {
   beforeEach(() => {
@@ -125,29 +125,5 @@ describe('AppTypeLabel', () => {
   it('should render empty label for unknown type', () => {
     const { container } = render(<AppTypeLabel type={'unknown' as AppModeEnum} />)
     expect(container.textContent).toBe('')
-  })
-})
-
-describe('AppTypeIcon', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Covers icon rendering for each supported app type.
-  it.each([
-    [AppModeEnum.CHAT],
-    [AppModeEnum.AGENT_CHAT],
-    [AppModeEnum.COMPLETION],
-    [AppModeEnum.ADVANCED_CHAT],
-    [AppModeEnum.WORKFLOW],
-  ] as const)('should render icon for type %s', (type) => {
-    const { container } = render(<AppTypeIcon type={type} />)
-    expect(container.querySelector('svg')).toBeInTheDocument()
-  })
-
-  // Covers fallback behavior for unexpected app mode values.
-  it('should render nothing for unknown type', () => {
-    const { container } = render(<AppTypeIcon type={'unknown' as AppModeEnum} />)
-    expect(container.firstChild).toBeNull()
   })
 })

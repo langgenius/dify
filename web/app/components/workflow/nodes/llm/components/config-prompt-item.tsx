@@ -2,17 +2,17 @@
 import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, PromptItem, Variable } from '../../../types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
-const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflow'>> = {
+const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflowModels'>> = {
   [PromptRole.system]: ($) => $['nodes.llm.roleDescription.system'],
   [PromptRole.user]: ($) => $['nodes.llm.roleDescription.user'],
   [PromptRole.assistant]: ($) => $['nodes.llm.roleDescription.assistant'],
@@ -88,9 +88,9 @@ const ConfigPromptItem: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const roleDescription = payload.role
-    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
+    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflowModels' })
     : undefined
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
@@ -126,9 +126,12 @@ const ConfigPromptItem: FC<Props> = ({
             />
           )}
 
-          {roleDescription && (
-            <Infotip aria-label={roleDescription} popupClassName="w-[180px]">
-              {roleDescription}
+          {roleDescription && payload.role && (
+            <Infotip>
+              <InfotipTrigger aria-label={payload.role} />
+              <InfotipContent aria-label={payload.role} className="w-45">
+                {roleDescription}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

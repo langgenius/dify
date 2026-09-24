@@ -2,11 +2,12 @@ import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useLocale } from '#i18n'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
-import { useGetLanguage, useLocale } from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
@@ -19,6 +20,10 @@ import { createPlugin } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -180,7 +185,7 @@ describe('AllStartBlocks', () => {
     vi.clearAllMocks()
     enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseLocale.mockReturnValue('en_US')
+    mockUseLocale.mockReturnValue('en-US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
     mockUseAllTriggerPlugins.mockReturnValue(

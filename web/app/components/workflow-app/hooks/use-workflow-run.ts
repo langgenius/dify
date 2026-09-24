@@ -1,5 +1,5 @@
 import type { HandleRunOptions } from './use-workflow-run-utils'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'

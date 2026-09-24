@@ -3,8 +3,12 @@
 import json
 from uuid import uuid4
 
+import pytest
+
 from extensions.ext_redis import redis_client
 from services.enterprise.account_deletion_sync import _queue_task
+
+pytestmark = pytest.mark.usefixtures("set_up_containers_and_env")
 
 
 def test_queue_task_success() -> None:

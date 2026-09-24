@@ -1,6 +1,8 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+// import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowRightSLine,
@@ -11,8 +13,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// import { Button } from '@langgenius/dify-ui/button'
-import ActionButton from '@/app/components/base/action-button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
@@ -37,7 +37,7 @@ const Group = ({
   handleView,
   handleClear,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowDebug'])
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const toolIcon = useToolIcon(nodeData?.nodePayload)
@@ -47,9 +47,9 @@ const Group = ({
   const isSystem = varType === VarInInspectType.system
   const groupTitle =
     nodeData?.title ||
-    (isEnv && t(($) => $['debug.variableInspect.envNode'], { ns: 'workflow' })) ||
-    (isChatVar && t(($) => $['debug.variableInspect.chatNode'], { ns: 'workflow' })) ||
-    (isSystem && t(($) => $['debug.variableInspect.systemNode'], { ns: 'workflow' })) ||
+    (isEnv && t(($) => $['debug.variableInspect.envNode'], { ns: 'workflowDebug' })) ||
+    (isChatVar && t(($) => $['debug.variableInspect.chatNode'], { ns: 'workflowDebug' })) ||
+    (isSystem && t(($) => $['debug.variableInspect.systemNode'], { ns: 'workflowDebug' })) ||
     ''
 
   const visibleVarList = isEnv ? varList : varList.filter((v) => v.visible)
@@ -146,31 +146,33 @@ const Group = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    aria-label={t(($) => $['debug.variableInspect.view'], { ns: 'workflow' })}
+                  <IconButton
+                    aria-label={t(($) => $['debug.variableInspect.view'], { ns: 'workflowDebug' })}
                     onClick={handleView}
                   >
                     <RiFileList3Line className="size-4" aria-hidden />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.view'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.view'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    aria-label={t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
+                  <IconButton
+                    aria-label={t(($) => $['debug.variableInspect.clearNode'], {
+                      ns: 'workflowDebug',
+                    })}
                     onClick={handleClear}
                   >
                     <RiDeleteBinLine className="size-4" aria-hidden />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
           </div>

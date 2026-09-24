@@ -32,7 +32,18 @@ class TelemetryCase(StrEnum):
 
 
 class SignalType(StrEnum):
-    """Signal routing type for telemetry cases."""
+    """Signal routing type for telemetry cases.
+
+    TRACE:
+        The trace task builds a typed ``TraceInfo``, then dispatches it
+        to both third-party trace providers (Langfuse, LangSmith, …) and
+        ``EnterpriseOtelTrace``.
+
+    METRIC_LOG:
+        Used for lightweight signal-driven
+        counters (app created/deleted, feedback) that don't need the
+        full ``TraceInfo`` data model.
+    """
 
     TRACE = "trace"
     METRIC_LOG = "metric_log"

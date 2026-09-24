@@ -11,6 +11,7 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Base from '../base'
+import { serializeCodeEditorValue } from './utils'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
@@ -117,14 +118,7 @@ const CodeEditor: FC<Props> = ({
     setIsMounted(true)
   }
 
-  const outPutValue = (() => {
-    if (!isJSONStringifyBeauty) return value as string
-    try {
-      return JSON.stringify(value as object, null, 2)
-    } catch {
-      return value as string
-    }
-  })()
+  const outPutValue = serializeCodeEditorValue(value, isJSONStringifyBeauty)
 
   const theme = useMemo(() => {
     if (appTheme === Theme.light) return 'light'

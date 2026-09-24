@@ -1,7 +1,7 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { FileResponse, HumanInputFormValue } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import SubmittedFieldValues from '../submitted-field-values'

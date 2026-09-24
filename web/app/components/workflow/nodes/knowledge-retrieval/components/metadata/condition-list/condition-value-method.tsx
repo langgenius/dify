@@ -29,7 +29,7 @@ const ConditionValueMethod = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-28 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {options.map((option) => (

@@ -35,7 +35,7 @@ describe('TestRun header', () => {
   it('should render the title and reset preparing state on close', () => {
     render(<Header />)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('datasetPipeline.testRun.title')).toBeInTheDocument()
     expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
@@ -49,7 +49,7 @@ describe('TestRun header', () => {
     })
 
     render(<Header />)
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)

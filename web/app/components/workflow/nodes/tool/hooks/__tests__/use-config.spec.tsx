@@ -1,8 +1,8 @@
 import type { ToolNodeType } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType } from '../../types'
 import useConfig from '../use-config'
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
@@ -115,7 +115,7 @@ const currentToolWithoutDefaults = {
 }
 
 const createToolVarInput = (value: string) => ({
-  type: VarType.mixed,
+  type: VarKindType.mixed,
   value,
 })
 

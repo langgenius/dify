@@ -15,6 +15,7 @@ import services
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -31,11 +32,11 @@ from controllers.console.datasets.error import (
 )
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -190,7 +191,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -301,7 +302,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_ns.response(204, "Segments deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         # check dataset
@@ -341,7 +342,7 @@ class DatasetDocumentSegmentApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -412,10 +413,12 @@ class DatasetDocumentSegmentAddApi(Resource):
     @console_ns.response(200, "Segment created successfully", console_ns.models[SegmentDetailResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(SegmentCreatePayload)
     def post(
         self,
+        req_data: SegmentCreatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -455,8 +458,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        payload = SegmentCreatePayload.model_validate(console_ns.payload or {})
-        payload_dict = payload.model_dump(exclude_none=True)
+        payload_dict = req_data.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
         segment = type_cast(DocumentSegment, SegmentService.create_segment(payload_dict, document, dataset, session))
         summary = SummaryIndexService.get_segment_summary(
@@ -483,10 +485,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @console_ns.response(200, "Segment updated successfully", console_ns.models[SegmentDetailResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(SegmentUpdatePayload)
     def patch(
         self,
+        req_data: SegmentUpdatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -532,13 +536,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
-        payload = SegmentUpdatePayload.model_validate(console_ns.payload or {})
-        payload_dict = payload.model_dump(exclude_none=True)
+        payload_dict = req_data.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
 
         # Update segment (summary update with change detection is handled in SegmentService.update_segment)
         segment = SegmentService.update_segment(
-            SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)),
+            SegmentUpdateArgs.model_validate(req_data.model_dump(exclude_none=True)),
             segment,
             document,
             dataset,
@@ -563,7 +566,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @console_ns.response(204, "Segment deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(
         self,
@@ -614,10 +617,12 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(BatchImportPayload)
     def post(
         self,
+        req_data: BatchImportPayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -626,17 +631,20 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
+
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
+        document_ref = DatasetRefService.create_document_ref_from_id(
+            DatasetRefService.create_dataset_ref(dataset), document_id_str
+        )
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
         if not document:
             raise NotFound("Document not found.")
 
-        payload = BatchImportPayload.model_validate(console_ns.payload or {})
-        upload_file_id = payload.upload_file_id
+        upload_file_id = req_data.upload_file_id
 
         upload_file = session.scalar(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1))
         if not upload_file:
@@ -668,7 +676,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     def get(self, job_id=None, dataset_id: UUID | None = None, document_id: UUID | None = None):
         if job_id is None:
             raise NotFound("The job does not exist.")
@@ -695,10 +703,12 @@ class ChildChunkAddApi(Resource):
     @console_ns.response(200, "Child chunk created successfully", console_ns.models[ChildChunkDetailResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(ChildChunkCreatePayload)
     def post(
         self,
+        req_data: ChildChunkCreatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -742,8 +752,7 @@ class ChildChunkAddApi(Resource):
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
         try:
-            payload = ChildChunkCreatePayload.model_validate(console_ns.payload or {})
-            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
+            child_chunk = SegmentService.create_child_chunk(req_data.content, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
@@ -755,7 +764,7 @@ class ChildChunkAddApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         # check dataset
@@ -810,10 +819,12 @@ class ChildChunkAddApi(Resource):
     @console_ns.expect(console_ns.models[ChildChunkBatchUpdatePayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(ChildChunkBatchUpdatePayload)
     def patch(
         self,
+        req_data: ChildChunkBatchUpdatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -843,9 +854,8 @@ class ChildChunkAddApi(Resource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
-        payload = ChildChunkBatchUpdatePayload.model_validate(console_ns.payload or {})
         try:
-            child_chunks = SegmentService.update_child_chunks(payload.chunks, segment, document, dataset, session)
+            child_chunks = SegmentService.update_child_chunks(req_data.chunks, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkBatchUpdateResponse, {"data": child_chunks}), 200
@@ -863,7 +873,7 @@ class ChildChunkUpdateApi(Resource):
     @console_ns.response(204, "Child chunk deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(
         self,
@@ -916,10 +926,12 @@ class ChildChunkUpdateApi(Resource):
     @console_ns.response(200, "Child chunk updated successfully", console_ns.models[ChildChunkDetailResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
+    @model_validate(ChildChunkUpdatePayload)
     def patch(
         self,
+        req_data: ChildChunkUpdatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -955,9 +967,8 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Child chunk not found.")
         # validate args
         try:
-            payload = ChildChunkUpdatePayload.model_validate(console_ns.payload or {})
             child_chunk = SegmentService.update_child_chunk(
-                payload.content, child_chunk, segment, document, dataset, session
+                req_data.content, child_chunk, segment, document, dataset, session
             )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))

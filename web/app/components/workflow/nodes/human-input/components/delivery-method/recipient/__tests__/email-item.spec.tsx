@@ -23,7 +23,7 @@ describe('human-input/delivery-method/recipient/email-item', () => {
     )
 
     expect(screen.getByText('Owner')).toBeInTheDocument()
-    expect(screen.getByText('common.members.you')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.cursor-pointer') as SVGElement)
     expect(handleDelete).toHaveBeenCalledWith(

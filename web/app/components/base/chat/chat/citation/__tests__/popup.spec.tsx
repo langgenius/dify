@@ -380,7 +380,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toHaveTextContent(
+      expect(screen.getByRole('link', { name: /linkToDataset/i }).textContent).toMatch(
         /linkToDataset/i,
       )
     })

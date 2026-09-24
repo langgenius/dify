@@ -31,7 +31,7 @@ function VoiceInput({
   onStartError,
   target,
 }: VoiceInputProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const recorderRef = useRef<VoiceRecorder | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasContextRef = useRef<CanvasRenderingContext2D | null>(null)
@@ -249,11 +249,11 @@ function VoiceInput({
           </button>
         )}
         <div
+          role="timer"
           className={cn(
             'w-11.25 pl-1 text-xs font-medium',
             duration > 500 ? 'text-text-destructive' : 'text-text-secondary',
           )}
-          data-testid="voice-input-timer"
         >
           {`${minutes}:${seconds}`}
         </div>

@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Response
 from sqlalchemy import or_, select
@@ -75,8 +75,8 @@ class FeedbackService:
 
         if end_date:
             try:
-                end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-                stmt = stmt.where(MessageFeedback.created_at <= end_dt)
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                stmt = stmt.where(MessageFeedback.created_at < end_dt)
             except ValueError:
                 raise ValueError(f"Invalid end_date format: {end_date}. Use YYYY-MM-DD")
 

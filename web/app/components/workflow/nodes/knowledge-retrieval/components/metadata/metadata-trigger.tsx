@@ -13,7 +13,7 @@ const MetadataTrigger = ({
   selectedDatasetsLoaded,
   ...restProps
 }: MetadataShape) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 
@@ -41,7 +41,9 @@ const MetadataTrigger = ({
         render={
           <Button variant="secondary-accent" size="small">
             <RiFilter3Line className="size-3.5" />
-            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], { ns: 'workflow' })}
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], {
+              ns: 'workflowModels',
+            })}
             <div className="flex items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
               {metadataFilteringConditions?.conditions.length || 0}
             </div>
@@ -51,7 +53,7 @@ const MetadataTrigger = ({
       <PopoverContent
         placement="left"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <MetadataPanel
           metadataFilteringConditions={metadataFilteringConditions}

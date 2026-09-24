@@ -39,49 +39,59 @@ export type SingleRetrievalConfig = {
   model: ModelConfig
 }
 
-export enum LogicalOperator {
-  and = 'and',
-  or = 'or',
-}
+export const LogicalOperator = {
+  and: 'and',
+  or: 'or',
+} as const
 
-export enum ComparisonOperator {
-  contains = 'contains',
-  notContains = 'not contains',
-  startWith = 'start with',
-  endWith = 'end with',
-  is = 'is',
-  isNot = 'is not',
-  empty = 'empty',
-  notEmpty = 'not empty',
-  equal = '=',
-  notEqual = '≠',
-  largerThan = '>',
-  lessThan = '<',
-  largerThanOrEqual = '≥',
-  lessThanOrEqual = '≤',
-  isNull = 'is null',
-  isNotNull = 'is not null',
-  in = 'in',
-  notIn = 'not in',
-  allOf = 'all of',
-  exists = 'exists',
-  notExists = 'not exists',
-  before = 'before',
-  after = 'after',
-}
+export type LogicalOperator = (typeof LogicalOperator)[keyof typeof LogicalOperator]
 
-export enum MetadataFilteringModeEnum {
-  disabled = 'disabled',
-  automatic = 'automatic',
-  manual = 'manual',
-}
+export const ComparisonOperator = {
+  contains: 'contains',
+  notContains: 'not contains',
+  startWith: 'start with',
+  endWith: 'end with',
+  is: 'is',
+  isNot: 'is not',
+  empty: 'empty',
+  notEmpty: 'not empty',
+  equal: '=',
+  notEqual: '≠',
+  largerThan: '>',
+  lessThan: '<',
+  largerThanOrEqual: '≥',
+  lessThanOrEqual: '≤',
+  isNull: 'is null',
+  isNotNull: 'is not null',
+  in: 'in',
+  notIn: 'not in',
+  allOf: 'all of',
+  exists: 'exists',
+  notExists: 'not exists',
+  before: 'before',
+  after: 'after',
+} as const
 
-export enum MetadataFilteringVariableType {
-  string = 'string',
-  number = 'number',
-  time = 'time',
-  select = 'select',
-}
+export type ComparisonOperator = (typeof ComparisonOperator)[keyof typeof ComparisonOperator]
+
+export const MetadataFilteringModeEnum = {
+  disabled: 'disabled',
+  automatic: 'automatic',
+  manual: 'manual',
+} as const
+
+export type MetadataFilteringModeEnum =
+  (typeof MetadataFilteringModeEnum)[keyof typeof MetadataFilteringModeEnum]
+
+export const MetadataFilteringVariableType = {
+  string: 'string',
+  number: 'number',
+  time: 'time',
+  select: 'select',
+} as const
+
+export type MetadataFilteringVariableType =
+  (typeof MetadataFilteringVariableType)[keyof typeof MetadataFilteringVariableType]
 
 export type MetadataFilteringCondition = {
   id: string

@@ -23,14 +23,12 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -147,7 +145,7 @@ const ProviderConfigModal: FC<Props> = ({
   onSaved,
   onChosen,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
@@ -783,7 +781,10 @@ const ProviderConfigModal: FC<Props> = ({
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
                         })}
                       </span>
-                      <LinkExternal02 className="size-3" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-general-link-external-02 size-3"
+                      />
                     </a>
                     <div className="flex items-center">
                       {isEdit && (
@@ -796,7 +797,7 @@ const ProviderConfigModal: FC<Props> = ({
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </span>
                           </Button>
-                          <Divider type="vertical" className="mx-3 h-4.5" />
+                          <Separator orientation="vertical" className="mx-3 h-4.5" />
                         </>
                       )}
                       <Button
@@ -820,8 +821,11 @@ const ProviderConfigModal: FC<Props> = ({
                 </div>
                 <div className="border-t-[0.5px] border-divider-regular">
                   <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
-                    <Lock01 className="mr-1 size-3 text-text-tertiary" />
-                    {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
+                    <span
+                      aria-hidden
+                      className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+                    />
+                    {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
                     <a
                       className="mx-1 text-primary-600"
                       target="_blank"
@@ -830,7 +834,7 @@ const ProviderConfigModal: FC<Props> = ({
                     >
                       PKCS1_OAEP
                     </a>
-                    {t(($) => $['modelProvider.encrypted.back'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
                   </div>
                 </div>
               </div>

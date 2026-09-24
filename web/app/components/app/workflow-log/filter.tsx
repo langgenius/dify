@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
@@ -42,7 +42,7 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
@@ -61,11 +61,17 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
         items={[
-          { value: 'all', name: 'All' },
-          { value: 'succeeded', name: 'Success' },
-          { value: 'failed', name: 'Fail' },
-          { value: 'stopped', name: 'Stop' },
-          { value: 'partial-succeeded', name: 'Partial Success' },
+          { value: 'all', name: t(($) => $['status.all'], { ns: 'appLog' }) },
+          { value: 'succeeded', name: t(($) => $['status.succeeded'], { ns: 'appLog' }) },
+          { value: 'failed', name: t(($) => $['status.failed'], { ns: 'appLog' }) },
+          { value: 'stopped', name: t(($) => $['status.stopped'], { ns: 'appLog' }) },
+          {
+            value: 'partial-succeeded',
+            name: t(($) => $['status.partial-succeeded'], { ns: 'appLog' }),
+          },
+          { value: 'scheduled', name: t(($) => $['status.scheduled'], { ns: 'appLog' }) },
+          { value: 'running', name: t(($) => $['status.running'], { ns: 'appLog' }) },
+          { value: 'paused', name: t(($) => $['status.paused'], { ns: 'appLog' }) },
         ]}
       />
       <Chip
@@ -87,16 +93,13 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
         }))}
       />
-      <Input
-        wrapperClassName="w-[200px]"
-        showLeftIcon
-        showClearIcon
+      <SearchInput
+        className="w-50"
         value={queryParams.keyword ?? ''}
         placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
-        onChange={(e) => {
-          setQueryParams({ ...queryParams, keyword: e.target.value })
+        onValueChange={(value) => {
+          setQueryParams({ ...queryParams, keyword: value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
     </div>
   )

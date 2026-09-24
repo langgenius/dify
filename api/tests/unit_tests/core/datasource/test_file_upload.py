@@ -120,7 +120,6 @@ Run with coverage: pytest api/tests/unit_tests/core/datasource/test_file_upload.
 import hashlib  # For SHA3-256 hashing of file content
 import os  # For file path operations
 import uuid  # For generating unique identifiers
-from unittest.mock import Mock  # For mocking dependencies
 
 # Third-party imports
 import pytest  # Testing framework
@@ -686,12 +685,11 @@ class TestUserRoleHandling:
     def test_creator_role_detection_account(self):
         """Test creator role detection for Account user."""
         # Arrange
-        user = Mock()
-        user.__class__.__name__ = "Account"
-
-        # Act
         from models import Account
 
+        user = Account(name="Test User", email="user@example.com")
+
+        # Act
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
 
@@ -701,12 +699,17 @@ class TestUserRoleHandling:
     def test_creator_role_detection_end_user(self):
         """Test creator role detection for EndUser."""
         # Arrange
-        user = Mock()
-        user.__class__.__name__ = "EndUser"
+        from models import Account, EndUser
+        from models.model import EndUserType
+
+        user = EndUser(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            type=EndUserType.SERVICE_API,
+            session_id="session-1",
+        )
 
         # Act
-        from models import Account
-
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
 

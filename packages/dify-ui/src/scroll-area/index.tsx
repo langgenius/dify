@@ -2,9 +2,19 @@
 
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
-const ScrollArea = BaseScrollArea.Root
 type ScrollAreaProps = BaseScrollArea.Root.Props
+
+function ScrollArea({ className, ...props }: ScrollAreaProps) {
+  return (
+    <BaseScrollArea.Root
+      {...props}
+      data-dify-scroll-area=""
+      className={(state) => cn('isolate', resolveClassName(className, state))}
+    />
+  )
+}
 
 const ScrollAreaContent = BaseScrollArea.Content
 type ScrollAreaContentProps = BaseScrollArea.Content.Props
@@ -26,51 +36,52 @@ const scrollAreaThumbClassName = cn(
   'active:bg-state-base-handle-hover',
 )
 
-const scrollAreaViewportClassName = cn(
-  'size-full min-h-0 min-w-0',
-  'focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
-)
-
-const scrollAreaCornerClassName = 'bg-transparent'
-
-type ScrollAreaViewportProps = Omit<BaseScrollArea.Viewport.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaViewportProps = BaseScrollArea.Viewport.Props
 
 function ScrollAreaViewport({ className, ...props }: ScrollAreaViewportProps) {
   return (
-    <BaseScrollArea.Viewport className={cn(scrollAreaViewportClassName, className)} {...props} />
+    <BaseScrollArea.Viewport
+      {...props}
+      data-dify-scroll-area-viewport=""
+      className={(state) =>
+        cn('isolate size-full rounded-[inherit] outline-none', resolveClassName(className, state))
+      }
+    />
   )
 }
 
-type ScrollAreaScrollbarProps = Omit<BaseScrollArea.Scrollbar.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaScrollbarProps = BaseScrollArea.Scrollbar.Props
 
 function ScrollAreaScrollbar({ className, ...props }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
-      data-dify-scrollbar=""
-      className={cn(scrollAreaScrollbarClassName, className)}
+      {...props}
+      data-dify-scroll-area-scrollbar=""
+      className={(state) => cn(scrollAreaScrollbarClassName, resolveClassName(className, state))}
+    />
+  )
+}
+
+type ScrollAreaThumbProps = BaseScrollArea.Thumb.Props
+
+function ScrollAreaThumb({ className, ...props }: ScrollAreaThumbProps) {
+  return (
+    <BaseScrollArea.Thumb
+      className={(state) => cn(scrollAreaThumbClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type ScrollAreaThumbProps = Omit<BaseScrollArea.Thumb.Props, 'className'> & {
-  className?: string
-}
-
-function ScrollAreaThumb({ className, ...props }: ScrollAreaThumbProps) {
-  return <BaseScrollArea.Thumb className={cn(scrollAreaThumbClassName, className)} {...props} />
-}
-
-type ScrollAreaCornerProps = Omit<BaseScrollArea.Corner.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaCornerProps = BaseScrollArea.Corner.Props
 
 function ScrollAreaCorner({ className, ...props }: ScrollAreaCornerProps) {
-  return <BaseScrollArea.Corner className={cn(scrollAreaCornerClassName, className)} {...props} />
+  return (
+    <BaseScrollArea.Corner
+      className={(state) => cn('bg-transparent', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 export {

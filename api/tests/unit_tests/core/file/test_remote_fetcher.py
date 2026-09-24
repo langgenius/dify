@@ -2,7 +2,7 @@ import base64
 import hashlib
 import hmac
 import urllib.parse
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
@@ -120,11 +120,14 @@ def _signed_url(*, base_url: str, path: str, payload: str, secret: str = "test-s
     return f"{base_url}{path}?{query}"
 
 
-def _patch_file_fetcher_config(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(remote_fetcher.dify_config, "FILES_URL", "http://localhost:5001")
-    monkeypatch.setattr(remote_fetcher.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
-    monkeypatch.setattr(remote_fetcher.dify_config, "SECRET_KEY", "test-secret")
-    monkeypatch.setattr(remote_fetcher.dify_config, "FILES_ACCESS_TIMEOUT", 3600)
+@pytest.fixture(autouse=True)
+def _file_fetcher_config(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        FILES_URL="http://localhost:5001",
+        INTERNAL_FILES_URL="http://api:5001",
+        SECRET_KEY="test-secret",
+        FILES_ACCESS_TIMEOUT=3600,
+    )
     monkeypatch.setattr(remote_fetcher.time, "time", lambda: 1700000100)
 
 
@@ -141,7 +144,6 @@ def _patch_signer_times(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_get_signed_upload_file_url_reads_storage_without_ssrf(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"hello")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -165,7 +167,6 @@ def test_get_signed_upload_file_url_reads_storage_without_ssrf(monkeypatch: pyte
 def test_make_request_resolves_upload_preview_url_generated_by_signer(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     _patch_signer_times(monkeypatch)
     file_database.upload_file.key = "upload_files/tenant/image.png"
     file_database.upload_file.name = "image.png"
@@ -191,7 +192,6 @@ def test_make_request_resolves_upload_preview_url_generated_by_signer(
 def test_make_request_resolves_sign_tool_file_url_with_empty_extension(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     _patch_signer_times(monkeypatch)
     file_database.tool_file.file_key = "tools/tenant/no-extension"
     file_database.tool_file.name = "no-extension"
@@ -216,7 +216,6 @@ def test_make_request_resolves_sign_tool_file_url_with_empty_extension(
 def test_make_request_resolves_tool_manager_url_with_empty_extension(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     _patch_signer_times(monkeypatch)
     file_database.tool_file.file_key = "tools/tenant/manager-file"
     file_database.tool_file.name = "manager-file"
@@ -240,7 +239,6 @@ def test_make_request_resolves_tool_manager_url_with_empty_extension(
 def test_make_request_resolves_datasource_manager_url_with_empty_extension(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     _patch_signer_times(monkeypatch)
     file_database.datasource_upload_file.key = "datasources/tenant/no-extension"
     file_database.datasource_upload_file.name = "no-extension"
@@ -264,7 +262,6 @@ def test_make_request_resolves_datasource_manager_url_with_empty_extension(
 
 
 def test_head_signed_upload_file_url_returns_metadata_without_storage_content(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"hello")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -286,7 +283,6 @@ def test_head_signed_upload_file_url_returns_metadata_without_storage_content(mo
 
 
 def test_make_request_get_signed_upload_file_url_reads_storage_without_ssrf(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"hello")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -306,7 +302,6 @@ def test_make_request_get_signed_upload_file_url_reads_storage_without_ssrf(monk
 
 
 def test_make_request_head_signed_upload_file_url_returns_metadata_without_ssrf(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"hello")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -330,7 +325,6 @@ def test_make_request_head_signed_upload_file_url_returns_metadata_without_ssrf(
 def test_make_request_get_unsigned_dify_url_delegates_to_ssrf_proxy(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     url = f"http://localhost:5001/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce"
     proxy_response = httpx.Response(403, request=httpx.Request("GET", url))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
@@ -350,7 +344,6 @@ def test_make_request_get_unsigned_dify_url_delegates_to_ssrf_proxy(
 def test_make_request_post_signed_upload_file_url_delegates_to_ssrf_proxy(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     proxy_response = httpx.Response(201, request=httpx.Request("POST", f"http://localhost:5001/files/{UPLOAD_FILE_ID}"))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
     url = _signed_url(
@@ -374,7 +367,6 @@ def test_make_request_post_signed_upload_file_url_delegates_to_ssrf_proxy(
 def test_get_signed_image_preview_url_uses_image_preview_signature(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     file_database.upload_file.key = "upload_files/tenant/image.png"
     file_database.upload_file.name = "image.png"
     file_database.upload_file.mime_type = "image/png"
@@ -400,7 +392,6 @@ def test_get_signed_image_preview_url_uses_image_preview_signature(
 
 
 def test_image_preview_url_with_file_preview_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
     url = _signed_url(
@@ -420,7 +411,6 @@ def test_image_preview_url_with_file_preview_signature_delegates_to_ssrf_proxy(m
 
 
 def test_duplicate_signature_query_value_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = (
         _signed_url(
             base_url="http://localhost:5001",
@@ -443,7 +433,6 @@ def test_duplicate_signature_query_value_delegates_to_ssrf_proxy(monkeypatch: py
 
 
 def test_malformed_timestamp_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = _signed_url(
         base_url="http://localhost:5001",
         path=f"/files/{UPLOAD_FILE_ID}/file-preview",
@@ -463,7 +452,6 @@ def test_malformed_timestamp_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyP
 
 
 def test_expired_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     monkeypatch.setattr(remote_fetcher.time, "time", lambda: 1700004001)
     url = _signed_url(
         base_url="http://localhost:5001",
@@ -484,7 +472,6 @@ def test_expired_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPat
 
 
 def test_invalid_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
     url = f"http://localhost:5001/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=bad"
@@ -501,7 +488,6 @@ def test_invalid_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPat
 
 
 def test_host_mismatch_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = _signed_url(
         base_url="http://example.com",
         path=f"/files/{UPLOAD_FILE_ID}/file-preview",
@@ -521,7 +507,6 @@ def test_host_mismatch_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_unsupported_dify_path_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = _signed_url(
         base_url="http://localhost:5001",
         path=f"/files/{UPLOAD_FILE_ID}/not-preview",
@@ -542,7 +527,6 @@ def test_unsupported_dify_path_delegates_to_ssrf_proxy(monkeypatch: pytest.Monke
 
 
 def test_invalid_url_scheme_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = f"file:///tmp/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=ignored"
     proxy_response = httpx.Response(403, request=httpx.Request("GET", url))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
@@ -558,7 +542,6 @@ def test_invalid_url_scheme_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPa
 
 
 def test_invalid_url_port_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     url = f"http://localhost:invalid/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=ignored"
     proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://proxy.example/fallback"))
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
@@ -573,10 +556,10 @@ def test_invalid_url_port_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatc
     )
 
 
-def test_invalid_configured_file_origin_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
-    monkeypatch.setattr(remote_fetcher.dify_config, "FILES_URL", "")
-    monkeypatch.setattr(remote_fetcher.dify_config, "INTERNAL_FILES_URL", "file:///tmp/files")
+def test_invalid_configured_file_origin_delegates_to_ssrf_proxy(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(FILES_URL="", INTERNAL_FILES_URL="file:///tmp/files")
     url = _signed_url(
         base_url="http://localhost:5001",
         path=f"/files/{UPLOAD_FILE_ID}/file-preview",
@@ -598,7 +581,6 @@ def test_invalid_configured_file_origin_delegates_to_ssrf_proxy(monkeypatch: pyt
 def test_signed_upload_file_url_returns_404_when_record_missing(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     file_database.session.delete(file_database.upload_file)
     file_database.session.commit()
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -616,7 +598,6 @@ def test_signed_upload_file_url_returns_404_when_record_missing(
 
 
 def test_get_signed_tool_file_url_reads_storage_without_ssrf(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"result")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -638,7 +619,6 @@ def test_get_signed_tool_file_url_reads_storage_without_ssrf(monkeypatch: pytest
 def test_signed_tool_file_url_returns_404_when_record_missing(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     file_database.session.delete(file_database.tool_file)
     file_database.session.commit()
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -656,7 +636,6 @@ def test_signed_tool_file_url_returns_404_when_record_missing(
 
 
 def test_get_signed_datasource_file_url_reads_upload_storage_without_ssrf(monkeypatch: pytest.MonkeyPatch):
-    _patch_file_fetcher_config(monkeypatch)
     load_once = MagicMock(return_value=b"data")
     monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
@@ -677,7 +656,6 @@ def test_get_signed_datasource_file_url_reads_upload_storage_without_ssrf(monkey
 def test_get_signed_datasource_file_url_reads_tool_storage_when_upload_missing(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     file_database.session.delete(file_database.datasource_upload_file)
     datasource_tool_file = ToolFile(
         user_id=USER_ID,
@@ -713,7 +691,6 @@ def test_get_signed_datasource_file_url_reads_tool_storage_when_upload_missing(
 def test_signed_datasource_file_url_returns_404_when_records_missing(
     monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
 ):
-    _patch_file_fetcher_config(monkeypatch)
     file_database.session.delete(file_database.datasource_upload_file)
     file_database.session.commit()
     ssrf_make_request = _patch_ssrf_make_request(monkeypatch)

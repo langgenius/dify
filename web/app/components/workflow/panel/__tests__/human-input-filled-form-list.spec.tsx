@@ -45,8 +45,12 @@ describe('HumanInputFilledFormList', () => {
       'Approved by Alice',
     )
 
-    await user.click(screen.getAllByTestId('expand-icon')[0]!)
+    const collapseApproval = screen.getByRole('button', {
+      name: 'share.chat.collapse Approval',
+    })
+    await user.click(collapseApproval)
 
+    expect(collapseApproval).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(1)
   })
 })

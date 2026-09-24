@@ -18,6 +18,7 @@ const to24Hour = (hour12: string, period: Period) => {
 }
 
 const TimePicker = ({
+  id,
   value,
   timezone,
   placeholder,
@@ -26,13 +27,11 @@ const TimePicker = ({
   renderTrigger,
   title,
   minuteFilter,
-  popupClassName,
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
-  placement = 'bottom-start',
 }: TimePickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const [isOpen, setIsOpen] = useState(false)
   const isInitialRef = useRef(true)
 
@@ -202,6 +201,7 @@ const TimePicker = ({
 
     return (
       <input
+        id={id}
         className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden select-none placeholder:text-components-input-text-placeholder"
         readOnly
         value={open ? '' : displayValue}
@@ -268,10 +268,9 @@ const TimePicker = ({
         }}
       />
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={0}
-        className={popupClassName}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}

@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const Installed: FC<Props> = ({ list, installStatus, versionInfo, onCancel, isHideButton }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { getIconUrl } = useGetIcon()
   return (
     <>

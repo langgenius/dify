@@ -5,12 +5,14 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
 const mockSetEnvSecrets = vi.fn()
+const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
@@ -24,6 +26,7 @@ const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
+const mockUseCollaboration = vi.hoisted(() => vi.fn())
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -121,6 +124,7 @@ vi.mock('@/app/components/workflow/store', () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
+      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
     }),
   }),
 }))
@@ -135,14 +139,10 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
-  useCollaboration: () => ({
-    startCursorTracking: collaborationRuntime.startCursorTracking,
-    stopCursorTracking: collaborationRuntime.stopCursorTracking,
-    onlineUsers: collaborationRuntime.onlineUsers,
-    cursors: collaborationRuntime.cursors,
-    isConnected: collaborationRuntime.isConnected,
-    isEnabled: collaborationRuntime.isEnabled,
-  }),
+  useCollaboration: (...args: unknown[]) => {
+    mockUseCollaboration(...args)
+    return collaborationRuntime
+  },
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
@@ -590,9 +590,20 @@ describe('WorkflowMain', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  it('disables collaboration for view-only apps', () => {
+    useAppStore.setState({
+      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', false, expect.any(Object))
+  })
+
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'imported-hash',
       features: {
         file_upload: { enabled: true },
         opening_statement: 'hello',
@@ -632,6 +643,7 @@ describe('WorkflowMain', () => {
     await waitFor(() => {
       expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
       expect(mockSetFeatures).toHaveBeenCalled()
+      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
         nodes: [{ id: 'n-1' }],
         edges: [{ id: 'e-1' }],

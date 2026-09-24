@@ -1,5 +1,5 @@
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 import {
   SkeletonContainer,
   SkeletonPoint,
@@ -55,7 +55,11 @@ const EmbeddingSkeleton = () => {
             <CardSkelton />
             {index !== 9 && (
               <div className="w-full px-3">
-                <Divider type="horizontal" className="my-1 bg-divider-subtle" />
+                <Separator
+                  decorative
+                  orientation="horizontal"
+                  className="my-1 h-[0.5px] bg-divider-subtle"
+                />
               </div>
             )}
           </div>

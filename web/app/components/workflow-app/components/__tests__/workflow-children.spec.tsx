@@ -177,7 +177,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-panel', () => ({
   default: () => <div data-testid="workflow-panel">workflow-panel</div>,
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {
@@ -233,7 +233,7 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+vi.mock('@/app/components/app/export-confirm-modal', () => ({
   default: ({
     envList,
     onConfirm,

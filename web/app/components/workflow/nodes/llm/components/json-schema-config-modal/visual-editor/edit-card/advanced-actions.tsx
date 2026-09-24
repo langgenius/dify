@@ -13,7 +13,7 @@ type AdvancedActionsProps = {
 }
 
 export function AdvancedActions({ isConfirmDisabled, onCancel, onConfirm }: AdvancedActionsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   useHotkey(
     JSON_SCHEMA_CONFIRM_HOTKEY,

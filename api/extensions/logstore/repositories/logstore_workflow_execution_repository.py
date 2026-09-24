@@ -1,12 +1,12 @@
 import json
 import logging
-import os
 import time
 from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.repositories.factory import WorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -71,14 +71,12 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             triggered_from=triggered_from,
         )
 
-        # Control flag for dual-write (write to both LogStore and SQL database)
-        # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
+        self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
 
         # Control flag for whether to write the `graph` field to LogStore.
         # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
         # otherwise write an empty {} instead. Defaults to writing the `graph` field.
-        self._enable_put_graph_field = os.environ.get("LOGSTORE_ENABLE_PUT_GRAPH_FIELD", "true").lower() == "true"
+        self._enable_put_graph_field = dify_config.LOGSTORE_ENABLE_PUT_GRAPH_FIELD
 
     def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
         """

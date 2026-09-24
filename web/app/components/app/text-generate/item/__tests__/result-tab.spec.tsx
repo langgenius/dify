@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import ResultTab from '../result-tab'
 

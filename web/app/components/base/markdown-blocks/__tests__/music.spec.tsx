@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mockSetTune = vi.fn()
 const mockLoad = vi.fn()

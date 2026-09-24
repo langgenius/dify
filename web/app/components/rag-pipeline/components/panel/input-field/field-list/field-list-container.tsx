@@ -1,9 +1,9 @@
 import type { SortableItem } from './types'
 import type { InputVar } from '@/models/pipeline'
 import { cn } from '@langgenius/dify-ui/cn'
-import { isEqual } from 'es-toolkit/predicate'
 import { memo, useCallback, useMemo } from 'react'
 import { ReactSortable } from 'react-sortablejs'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import FieldItem from './field-item'
 
 type FieldListContainerProps = {
@@ -22,8 +22,17 @@ const FieldListContainer = ({
   onEditField,
   readonly,
 }: FieldListContainerProps) => {
+  const { items, getHandleProps, getItemKey, isSorting, announcement } = useKeyboardSortable({
+    items: inputFields,
+    onChange: (fields) =>
+      onListSortChange(
+        fields.map((field) => ({ ...field, id: field.variable, chosen: false, selected: false })),
+      ),
+    disabled: readonly,
+    getItemLabel: (item) => item.label || item.variable,
+  })
   const list = useMemo(() => {
-    return inputFields.map((content) => {
+    return items.map((content) => {
       return {
         id: content.variable,
         chosen: false,
@@ -31,37 +40,60 @@ const FieldListContainer = ({
         ...content,
       }
     })
-  }, [inputFields])
+  }, [items])
 
   const handleListSortChange = useCallback(
     (newList: SortableItem[]) => {
-      if (isEqual(newList, list)) return
+      if (
+        isSorting ||
+        (newList.length === inputFields.length &&
+          newList.every((item, index) => item.variable === inputFields[index]?.variable))
+      )
+        return
       onListSortChange(newList)
     },
-    [list, onListSortChange],
+    [isSorting, inputFields, onListSortChange],
   )
 
+  const moveField = (index: number, direction: -1 | 1) => {
+    if (readonly || isSorting) return
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= list.length) return
+    const reordered = [...list]
+    const [field] = reordered.splice(index, 1)
+    reordered.splice(nextIndex, 0, field!)
+    onListSortChange(reordered)
+  }
+
   return (
-    <ReactSortable<SortableItem>
-      className={cn(className)}
-      list={list}
-      setList={handleListSortChange}
-      handle=".handle"
-      ghostClass="opacity-50"
-      animation={150}
-      disabled={readonly}
-    >
-      {inputFields?.map((item, index) => (
-        <FieldItem
-          key={index}
-          index={index}
-          readonly={readonly}
-          payload={item}
-          onRemove={onRemoveField}
-          onClickEdit={onEditField}
-        />
-      ))}
-    </ReactSortable>
+    <>
+      {announcement}
+      <ReactSortable<SortableItem>
+        className={cn('nokey', className)}
+        list={list}
+        setList={handleListSortChange}
+        handle=".handle"
+        ghostClass="opacity-50"
+        animation={150}
+        disabled={readonly || isSorting}
+      >
+        {items.map((item, index) => (
+          <FieldItem
+            key={item.variable}
+            dragHandleProps={getHandleProps(index)}
+            index={getItemKey(index)}
+            readonly={readonly}
+            payload={item}
+            onRemove={onRemoveField}
+            onClickEdit={onEditField}
+            onMoveUp={!isSorting && index > 0 ? () => moveField(index, -1) : undefined}
+            onMoveDown={
+              !isSorting && index < items.length - 1 ? () => moveField(index, 1) : undefined
+            }
+          />
+        ))}
+      </ReactSortable>
+    </>
   )
 }
 

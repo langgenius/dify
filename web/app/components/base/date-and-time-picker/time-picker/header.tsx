@@ -5,7 +5,7 @@ type Props = Readonly<{
   title?: string
 }>
 const Header = ({ title }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['time'])
 
   return (
     <div className="flex flex-col border-b-[0.5px] border-divider-regular">

@@ -5,14 +5,14 @@ from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import (
@@ -22,11 +22,13 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console import console_ns
 from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import (
+    CurrentWorkspaceSummaryApi,
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
-    TenantApi,
     TenantInfoResponse,
     TenantListApi,
     WebappLogoWorkspaceApi,
@@ -36,14 +38,17 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from repositories.workspace_query_repository import WorkspaceQueryRepository
-from services import workspace_query_compat
+from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -61,24 +66,20 @@ def workspace_session(sqlite_engine: Engine) -> Iterator[scoped_session[Session]
 def workspace_plan_dependencies(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
     get_plan_bulk = MagicMock()
     get_features = MagicMock()
-    monkeypatch.setattr(workspace_query_compat.BillingService, "get_plan_bulk", get_plan_bulk)
-    monkeypatch.setattr(workspace_query_compat.FeatureService, "get_features", get_features)
+    monkeypatch.setattr(workspace_plan_gateway.BillingService, "get_plan_bulk", get_plan_bulk)
+    monkeypatch.setattr(workspace_plan_gateway.FeatureService, "get_features", get_features)
     return get_plan_bulk, get_features
 
 
 def configure_workspace_plans(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    enterprise_enabled: bool = False,
-    billing_enabled: bool = True,
     edition: DeploymentEdition = DeploymentEdition.CLOUD,
 ) -> None:
     monkeypatch.setattr(
-        workspace_query_compat,
+        workspace_plan_gateway,
         "dify_config",
         SimpleNamespace(
-            ENTERPRISE_ENABLED=enterprise_enabled,
-            BILLING_ENABLED=billing_enabled,
             DEPLOYMENT_EDITION=edition,
         ),
     )
@@ -200,17 +201,24 @@ class TestWorkspaceQueryRepository:
                 TenantAccountJoin(
                     tenant_id=earlier.id,
                     account_id="account-1",
+                    current=True,
                     last_opened_at=last_opened_at,
                 ),
                 TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
                 TenantAccountJoin(tenant_id=archived.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=archived.id, account_id="account-3"),
                 TenantAccountJoin(tenant_id=other_account.id, account_id="account-2"),
             ]
         )
         workspace_session.commit()
 
-        result = WorkspaceQueryRepository(workspace_session.session_factory).list_for_account("account-1")
+        repository = WorkspaceQueryRepository(workspace_session.session_factory)
+        result = repository.list_for_account("account-1")
+        membership_ids = repository.list_ids_for_account("account-1")
+        access_workspaces = repository.list_account_access_workspaces("account-1")
 
+        assert repository.has_active_for_account("account-1") is True
+        assert repository.has_active_for_account("missing-account") is False
         assert result == (
             WorkspaceRecord(
                 id=earlier.id,
@@ -227,9 +235,16 @@ class TestWorkspaceQueryRepository:
                 last_opened_at=None,
             ),
         )
+        assert set(membership_ids) == {earlier.id, later.id, archived.id}
+        access_by_id = {workspace.id: workspace for workspace in access_workspaces}
+        assert set(access_by_id) == {earlier.id, later.id, archived.id}
+        assert access_by_id[earlier.id].current is True
+        assert access_by_id[earlier.id].role == "normal"
+        assert repository.has_active_membership("account-1") is True
+        assert repository.has_active_membership("account-3") is False
 
 
-class TestLegacyWorkspacePlanGateway:
+class TestDeploymentWorkspacePlanGateway:
     def test_saas_uses_bulk_plans_and_feature_fallback(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -240,7 +255,7 @@ class TestLegacyWorkspacePlanGateway:
         get_plan_bulk.return_value = {"workspace-1": {"plan": CloudPlan.TEAM, "expiration_date": 0}}
         get_features.return_value = features_with_plan(CloudPlan.PROFESSIONAL)
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
 
         assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.PROFESSIONAL}
         get_plan_bulk.assert_called_once()
@@ -258,11 +273,13 @@ class TestLegacyWorkspacePlanGateway:
         get_plan_bulk.return_value = {}
         get_features.return_value = features_with_plan(CloudPlan.TEAM)
 
-        with caplog.at_level(logging.WARNING, logger=workspace_query_compat.__name__):
-            result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        with caplog.at_level(logging.WARNING, logger=workspace_plan_gateway.__name__):
+            result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(
+                ["workspace-1", "workspace-2"]
+            )
 
         assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.TEAM}
-        assert "get_plan_bulk returned empty result, falling back to legacy feature path" in caplog.messages
+        assert "get_plan_bulk returned empty result, falling back to FeatureService" in caplog.messages
 
     def test_non_saas_uses_features(
         self,
@@ -271,13 +288,12 @@ class TestLegacyWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            billing_enabled=False,
             edition=DeploymentEdition.COMMUNITY,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
         get_features.return_value = features_with_plan(CloudPlan.SANDBOX)
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1"])
 
         assert result == {"workspace-1": CloudPlan.SANDBOX}
         get_plan_bulk.assert_not_called()
@@ -290,13 +306,11 @@ class TestLegacyWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            enterprise_enabled=True,
-            billing_enabled=False,
             edition=DeploymentEdition.ENTERPRISE,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
 
         assert result == {"workspace-1": CloudPlan.SANDBOX, "workspace-2": CloudPlan.SANDBOX}
         get_plan_bulk.assert_not_called()
@@ -304,7 +318,7 @@ class TestLegacyWorkspacePlanGateway:
 
 
 class TestWorkspaceListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -313,12 +327,12 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["total"] == 1
         assert result["has_more"] is False
 
-    def test_get_has_next_true(self, app: Flask):
+    def test_get_has_next_true(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -327,71 +341,64 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["has_more"] is True
 
 
-class TestTenantApi:
-    def test_post_active_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
+def test_legacy_current_workspace_routes_are_not_registered():
+    urls = {url for _resource, resource_urls, _route_doc, _kwargs in console_ns.resources for url in resource_urls}
+
+    assert "/workspaces/current" not in urls
+    assert "/info" not in urls
+
+
+class TestCurrentWorkspaceSummaryApi:
+    def test_get_summary(self, app: Flask, sqlite_session: Session):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
         tenant = make_tenant()
         user = make_account_with_tenant(tenant)
+        session = sqlite_session
+        summary = {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": CloudPlan.SANDBOX,
+            "credits": 180,
+        }
+
         with (
-            app.test_request_context("/workspaces/current"),
+            app.test_request_context("/workspaces/current/summary"),
             patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
+                "controllers.console.workspace.workspace.WorkspaceService.get_current_workspace_summary",
+                return_value=summary,
+            ) as get_summary,
         ):
-            result, status = method(api, MagicMock(), user)
+            result, status = method(api, session, user)
+
         assert status == HTTPStatus.OK
-        assert result["id"] == "t1"
+        assert result == {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": "sandbox",
+            "credits": 180,
+        }
+        get_summary.assert_called_once_with(tenant, user.id, session=session)
 
-    def test_post_archived_with_switch(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        archived = make_tenant(status=TenantStatus.ARCHIVE)
-        new_tenant = make_tenant("new")
-        user = make_account_with_tenant(archived)
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[new_tenant]),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant") as switch_tenant,
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "new"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert result["id"] == "new"
-        switch_tenant.assert_called_once_with(user, new_tenant.id, session=ANY)
-
-    def test_post_archived_no_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        user = make_account_with_tenant(make_tenant(status=TenantStatus.ARCHIVE))
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[]),
-        ):
-            with pytest.raises(Unauthorized):
-                method(api, MagicMock(), user)
-
-    def test_post_info_path(self, app: Flask, caplog: pytest.LogCaptureFixture):
-        api = TenantApi()
-        method = unwrap(api.post)
-        tenant = make_tenant()
+    def test_get_archived_tenant_returns_conflict(self, app: Flask, sqlite_session: Session):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(status=TenantStatus.ARCHIVE)
         user = make_account_with_tenant(tenant)
-        with (
-            app.test_request_context("/info"),
-            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert "Deprecated URL /info was used." in caplog.messages
-        assert status == HTTPStatus.OK
+
+        with app.test_request_context("/workspaces/current/summary"):
+            with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
+                method(api, sqlite_session, user)
+
+        assert exc_info.value.code == HTTPStatus.CONFLICT
+        assert exc_info.value.error_code == "current_workspace_archived"
 
 
 class TestTenantInfoResponse:
@@ -439,7 +446,7 @@ class TestSwitchWorkspaceApi:
         assert result["result"] == "success"
         switch_tenant.assert_called_once_with(user, "t2", session=workspace_session)
 
-    def test_switch_not_linked(self, app: Flask):
+    def test_switch_not_linked(self, app: Flask, sqlite_session: Session):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
         payload = {"tenant_id": "bad"}
@@ -449,7 +456,7 @@ class TestSwitchWorkspaceApi:
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
         ):
             with pytest.raises(AccountNotLinkTenantError):
-                method(api, MagicMock(), user)
+                method(api, sqlite_session, user)
 
     def test_switch_tenant_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
@@ -465,6 +472,43 @@ class TestSwitchWorkspaceApi:
 
 
 class TestCustomConfigWorkspaceApi:
+    def test_get_workspace_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+
+        with app.test_request_context("/workspaces/custom-config"), pytest.raises(NotFound):
+            method(api, workspace_session, "missing")
+
+    def test_get_defaults(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with app.test_request_context("/workspaces/custom-config"):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {"remove_webapp_brand": False, "replace_webapp_logo": None}
+
+    def test_get_configured_brand(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={"remove_webapp_brand": True, "replace_webapp_logo": "logo-file-id"})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with (
+            app.test_request_context("/workspaces/custom-config"),
+            config_overrides_context(FILES_URL="https://files.example.com"),
+        ):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo",
+        }
+
     def test_post_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
@@ -540,8 +584,21 @@ class TestWebappLogoWorkspaceApi:
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         file = FileStorage(stream=BytesIO(b"data"), filename="logo.png", content_type="image/png")
-        upload = MagicMock(id="file1")
         user = make_account()
+        upload = UploadFile(
+            tenant_id="t1",
+            storage_type=StorageType.LOCAL,
+            key="logo.png",
+            name="logo.png",
+            size=4,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=user.id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        upload.id = "file1"
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.FileService") as fs,
@@ -615,20 +672,19 @@ class TestWorkspaceInfoApi:
                 ),
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            session.commit.side_effect = lambda: events.append("commit")
+            session = workspace_session()
+            event.listen(session, "after_commit", lambda _session: events.append("commit"))
             result = method(api, session, "t1")
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]
 
-    def test_no_current_tenant(self, app: Flask):
+    def test_no_current_tenant(self, app: Flask, sqlite_session: Session):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
         payload = {"name": "X"}
         with app.test_request_context("/workspaces/info", json=payload):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), None)
+                method(api, sqlite_session, None)
 
 
 class TestWorkspacePermissionApi:

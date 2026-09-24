@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 from sqlalchemy.exc import OperationalError
 
+from enums import DeploymentEdition
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     ArchiveResult,
@@ -281,12 +282,12 @@ class TestGenerateManifest:
 
 
 class TestFilterPaidTenants:
-    def test_all_tenants_paid_when_billing_disabled(self):
+    def test_all_tenants_paid_in_community_edition(self):
         archiver = WorkflowRunArchiver(days=90)
         tenant_ids = {"t1", "t2", "t3"}
 
         with patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg:
-            cfg.BILLING_ENABLED = False
+            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             result = archiver._filter_paid_tenants(tenant_ids)
 
         assert result == tenant_ids
@@ -295,7 +296,7 @@ class TestFilterPaidTenants:
         archiver = WorkflowRunArchiver(days=90)
 
         with patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg:
-            cfg.BILLING_ENABLED = True
+            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             result = archiver._filter_paid_tenants(set())
 
         assert result == set()
@@ -313,7 +314,7 @@ class TestFilterPaidTenants:
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg,
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.BillingService") as billing,
         ):
-            cfg.BILLING_ENABLED = True
+            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             billing.get_plan_bulk_with_cache.return_value = mock_bulk
             result = archiver._filter_paid_tenants({"t1", "t2", "t3"})
 
@@ -328,7 +329,7 @@ class TestFilterPaidTenants:
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg,
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.BillingService") as billing,
         ):
-            cfg.BILLING_ENABLED = True
+            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             billing.get_plan_bulk_with_cache.side_effect = RuntimeError("API down")
             result = archiver._filter_paid_tenants({"t1"})
 
@@ -341,7 +342,7 @@ class TestFilterPaidTenants:
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg,
             patch("services.retention.workflow_run.archive_paid_plan_workflow_run.BillingService") as billing,
         ):
-            cfg.BILLING_ENABLED = True
+            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             result = archiver._filter_paid_tenants({"t1", "t2", "t3"})
 
         billing.get_plan_bulk_with_cache.assert_not_called()

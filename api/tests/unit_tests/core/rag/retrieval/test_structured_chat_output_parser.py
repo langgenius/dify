@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
@@ -65,5 +67,10 @@ class TestStructuredChatOutputParser:
         parser = StructuredChatOutputParser()
         text = 'Action:\n```json\n{"action":"search","action_input": }\n```'
 
-        with pytest.raises(ValueError, match="Could not parse LLM output"):
+        with pytest.raises(ValueError, match="Could not parse LLM output") as exc_info:
             parser.parse(text)
+
+        # PEP 3134: the re-raised ValueError must chain the underlying parse failure
+        # (json.JSONDecodeError on the malformed JSON) so the original traceback is preserved.
+        assert exc_info.value.__cause__ is not None
+        assert isinstance(exc_info.value.__cause__, json.JSONDecodeError)

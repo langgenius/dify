@@ -265,7 +265,7 @@ import {
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyHeaders,
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyPath,
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const listKnowledgeSpaces = oc
   .route({

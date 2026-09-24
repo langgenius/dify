@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const MoreLikeThis = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
 

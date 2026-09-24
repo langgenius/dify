@@ -9,7 +9,7 @@ import s from './style.module.css'
 import Usage from './usage'
 
 const AnnotationFull: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <GridMask

@@ -59,9 +59,9 @@ export function createNodeDataFactory<T extends CommonNodeType & Record<string, 
 
 export function createTriggerNode(
   triggerType:
-    | BlockEnum.TriggerSchedule
-    | BlockEnum.TriggerWebhook
-    | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
+    | typeof BlockEnum.TriggerSchedule
+    | typeof BlockEnum.TriggerWebhook
+    | typeof BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
   overrides: Omit<Partial<Node>, 'data'> & {
     data?: Partial<CommonNodeType> & Record<string, unknown>
   } = {},

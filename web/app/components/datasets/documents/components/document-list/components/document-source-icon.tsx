@@ -30,7 +30,7 @@ const isOnlineDocument = (dataSourceType: DataSourceType | DatasourceType) => {
 }
 
 const isWebsiteCrawl = (dataSourceType: DataSourceType | DatasourceType) => {
-  return dataSourceType === DatasourceType.websiteCrawl || dataSourceType === DataSourceType.WEB
+  return dataSourceType === DatasourceType.websiteCrawl
 }
 
 const isOnlineDrive = (dataSourceType: DataSourceType | DatasourceType) => {

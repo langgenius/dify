@@ -16,7 +16,7 @@ type SettingContentProps = {
   onChange?: OnFeaturesChange
 }
 const SettingContent = ({ imageUpload, onClose, onChange }: SettingContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const featuresStore = useFeaturesStore()
   const file = useFeatures((state) => state.features.file)
   const fileSettingPayload = useMemo(() => {

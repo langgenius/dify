@@ -23,7 +23,7 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -69,12 +69,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => (
-    <div data-testid="chevron-right" className={props.className} />
-  ),
 }))
 
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
@@ -134,7 +128,7 @@ describe('AgentLogDetail', () => {
   ) => {
     const result = renderComponent(props)
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
     return result
   }
@@ -149,7 +143,7 @@ describe('AgentLogDetail', () => {
 
       renderComponent()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should display result panel after data loads', async () => {
@@ -245,7 +239,7 @@ describe('AgentLogDetail', () => {
       await waitFor(() => {
         expect(fetchAgentLogDetail).not.toHaveBeenCalled()
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should notify on API error', async () => {
@@ -264,7 +258,7 @@ describe('AgentLogDetail', () => {
       renderComponent()
 
       await waitFor(() => {
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       })
     })
 

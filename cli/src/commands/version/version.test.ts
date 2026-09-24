@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as info from '@/version/info'
 import * as probe from '@/version/probe'
 import Version, { COMPAT_FAIL_EXIT_CODE } from './index'

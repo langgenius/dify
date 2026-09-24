@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -8,17 +8,17 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { refreshUserProfileAtom, userProfileAtom } from '@/context/account-state'
-import { useLocale } from '@/context/i18n'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { timezones } from '@/utils/timezone'
 
 type SelectOption = {
@@ -43,17 +43,23 @@ const isThemeOption = (value: string): value is ThemeOption => {
 
 export default function PreferencePage() {
   const locale = useLocale()
-  const userProfile = useAtomValue(userProfileAtom)
-  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings'])
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter((item) => item.supported)
   const themeOptions: SelectOption[] = [
-    { value: 'system', name: t(($) => $['account.appearanceFollowSystem'], { ns: 'common' }) },
-    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'common' }) },
-    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'common' }) },
+    {
+      value: 'system',
+      name: t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' }),
+    },
+    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'accountSettings' }) },
+    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'accountSettings' }) },
   ]
   const selectedLanguage = languageOptions.find(
     (item) => item.value === (locale || userProfile.interface_language),
@@ -64,11 +70,9 @@ export default function PreferencePage() {
     if (isThemeOption(item.value)) setTheme(item.value)
   }
   const handleSelectLanguage = async (item: SelectOption) => {
-    const url = '/account/interface-language'
-    const bodyKey = 'interface_language'
     setEditing(true)
     try {
-      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      await updateProfile.mutateAsync({ body: { interface_language: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
@@ -79,13 +83,10 @@ export default function PreferencePage() {
     }
   }
   const handleSelectTimezone = async (item: TimezoneOption) => {
-    const url = '/account/timezone'
-    const bodyKey = 'timezone'
     setEditing(true)
     try {
-      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      await updateProfile.mutateAsync({ body: { timezone: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      refreshUserProfile()
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -96,7 +97,7 @@ export default function PreferencePage() {
     <>
       <div className="mb-6">
         <div className={titleClassName}>
-          {t(($) => $['account.appearanceLabel'], { ns: 'common' })}
+          {t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         </div>
         <Select
           value={selectedTheme?.value ?? 'system'}
@@ -107,7 +108,8 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedTheme?.name ?? t(($) => $['account.appearanceFollowSystem'], { ns: 'common' })}
+            {selectedTheme?.name ??
+              t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' })}
           </SelectTrigger>
           <SelectContent>
             {themeOptions.map((item) => (

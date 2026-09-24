@@ -5,9 +5,10 @@ from uuid import UUID
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import RBACPermission, rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
 from libs.helper import dump_response
 from libs.login import login_required
@@ -46,7 +47,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_tenant_id
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
     def post(
         self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID

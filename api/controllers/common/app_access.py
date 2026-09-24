@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 # the console and OpenAPI app-list endpoints.
 APP_LIST_PERMISSION_KEYS: frozenset[str] = frozenset({"app.preview", "app.acl.preview", "app.full_access"})
 
-# Workspace permission key that lets a caller see apps they maintain even when
-# those apps are not in their preview whitelist.
+# Workspace permission key that lets a caller see apps they maintain when the
+# app whitelist is unrestricted.
 _MANAGE_OWN_APPS_PERMISSION_KEY = "app.create_and_management"
 
 
@@ -33,7 +33,7 @@ class AppAccessFilter:
 
     ``accessible_app_ids`` of ``None`` means the caller can see every app in the
     workspace (unrestricted). Otherwise it is the exact set of app ids the
-    caller may preview; combined with ``can_manage_own_apps`` it also covers
+    caller may preview; combined with ``can_manage_own_apps`` it can also cover
     apps the caller maintains.
     """
 
@@ -100,11 +100,10 @@ def resolve_app_access_filter(
     if getattr(whitelist_scope, "unrestricted", False):
         accessible_app_ids = permission_app_ids
     else:
+        # A restricted app whitelist is the highest-priority visibility gate:
+        # default preview, per-app permission overrides, and own-app management
+        # must not expose apps outside this set.
         accessible_app_ids = set(whitelist_scope.resource_ids)
-        if permission_app_ids is not None:
-            accessible_app_ids |= permission_app_ids
-        elif has_default_preview:
-            # Default preview overrides the whitelist restriction.
-            accessible_app_ids = None
+        can_manage_own_apps = False
 
     return AppAccessFilter(accessible_app_ids=accessible_app_ids, can_manage_own_apps=can_manage_own_apps)

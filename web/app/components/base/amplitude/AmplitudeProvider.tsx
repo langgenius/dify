@@ -21,10 +21,12 @@ export function AmplitudeProvider({
       return
     }
 
-    ensureAmplitudeInitialized({
-      sessionReplaySampleRate,
-    })
     setAmplitudeOptOut(false)
+    void ensureAmplitudeInitialized({ sessionReplaySampleRate }).catch((error) => {
+      console.error('Amplitude initialization failed:', error)
+    })
+
+    return () => setAmplitudeOptOut(true)
   }, [active, consent, sessionReplaySampleRate])
 
   return null

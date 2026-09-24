@@ -10,7 +10,7 @@ type FileUploaderInChatInputProps = {
   readonly?: boolean
 }
 const FileUploaderInChatInput = ({ fileConfig, readonly }: FileUploaderInChatInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const renderTrigger = useCallback(() => {
     return (
       <button
