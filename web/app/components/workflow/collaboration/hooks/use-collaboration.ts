@@ -1,12 +1,7 @@
 import type { ReactFlowInstance } from 'reactflow'
-import type {
-  CollaborationState,
-  CursorPosition,
-  NodePanelPresenceMap,
-  OnlineUser,
-} from '../types/collaboration'
+import type { CollaborationState, NodePanelPresenceMap, OnlineUser } from '../types/collaboration'
 import { useAtomValue } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
@@ -14,7 +9,6 @@ import { CursorService } from '../services/cursor-service'
 type CollaborationViewState = {
   isConnected: boolean
   onlineUsers: OnlineUser[]
-  cursors: Record<string, CursorPosition>
   nodePanelPresence: NodePanelPresenceMap
   isLeader: boolean
 }
@@ -24,7 +18,6 @@ type ReactFlowStore = NonNullable<Parameters<typeof collaborationManager.connect
 const initialState: CollaborationViewState = {
   isConnected: false,
   onlineUsers: [],
-  cursors: {},
   nodePanelPresence: {},
   isLeader: false,
 }
@@ -81,12 +74,6 @@ export function useCollaboration(
       },
     )
 
-    const unsubscribeCursors = collaborationManager.onCursorUpdate(
-      (cursors: Record<string, CursorPosition>) => {
-        setState((prev) => ({ ...prev, cursors }))
-      },
-    )
-
     const unsubscribeUsers = collaborationManager.onOnlineUsersUpdate((users: OnlineUser[]) => {
       setState((prev) => ({ ...prev, onlineUsers: users }))
     })
@@ -104,7 +91,6 @@ export function useCollaboration(
     return () => {
       isUnmounted = true
       unsubscribeStateChange()
-      unsubscribeCursors()
       unsubscribeUsers()
       unsubscribeNodePanelPresence()
       unsubscribeLeaderChange()
@@ -123,13 +109,9 @@ export function useCollaboration(
     prevIsConnected.current = state.isConnected || false
   }, [state.isConnected])
 
-  const startCursorTracking = (
-    containerRef: React.RefObject<HTMLElement>,
-    reactFlowInstance?: ReactFlowInstance,
-  ) => {
-    if (!isCollaborationEnabled || !canEdit || !cursorServiceRef.current) return
-
-    if (cursorServiceRef.current) {
+  const startCursorTracking = useCallback(
+    (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
+      if (!isCollaborationEnabled || !canEdit || !cursorServiceRef.current) return
       cursorServiceRef.current.startTracking(
         containerRef,
         (position) => {
@@ -137,17 +119,17 @@ export function useCollaboration(
         },
         reactFlowInstance,
       )
-    }
-  }
+    },
+    [canEdit, isCollaborationEnabled],
+  )
 
-  const stopCursorTracking = () => {
+  const stopCursorTracking = useCallback(() => {
     cursorServiceRef.current?.stopTracking()
-  }
+  }, [])
 
   const result = {
     isConnected: state.isConnected || false,
     onlineUsers: state.onlineUsers || [],
-    cursors: state.cursors || {},
     nodePanelPresence: state.nodePanelPresence || {},
     isLeader: state.isLeader || false,
     leaderId: collaborationManager.getLeaderId(),

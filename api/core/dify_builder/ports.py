@@ -38,6 +38,7 @@ from core.dify_builder.models import (
     MutationIntent,
     NodeEvent,
     NodeOutput,
+    PublishResult,
     Risk,
     Run,
     Session,
@@ -188,7 +189,7 @@ class DifyPort(Protocol):
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
     ) -> Run: ...
 
-    def publish(self, app_id: str, actor: Actor) -> None: ...
+    def publish(self, app_id: str, actor: Actor) -> PublishResult: ...
 
     def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str) -> str: ...
 

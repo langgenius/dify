@@ -7,18 +7,18 @@ import DebugLogExport from '../debug-log-export'
 import { difyBuilderSessionViewAtom } from '../session/state'
 import { difyBuilderRuntimeAtom } from '../store'
 
-const view = {
+const view: SessionView = {
   session_id: 's1',
-  app_id: 'app-1',
   version: 3,
-  state: 'build.plan_approval',
-  entry_mode: 'build',
+  phase: 'plan',
   run_status: 'waiting_input',
   canvas_read_only: false,
   interrupted: false,
   conversation_last_seq: 1,
+  last_command_id: 'command-1',
+  actions: [],
   model: null,
-} as unknown as SessionView
+}
 
 const snapshot = {
   entries: [
@@ -29,7 +29,13 @@ const snapshot = {
       kind: 'action',
       payload: { action_id: 'approve_plan' },
     },
-    { seq: 2, ts: '2026-09-04T00:00:01.000Z', dir: 'in', kind: 'state', payload: {} },
+    {
+      seq: 2,
+      ts: '2026-09-04T00:00:01.000Z',
+      dir: 'in',
+      kind: 'command_finished',
+      payload: {},
+    },
   ],
   truncated: false,
 }

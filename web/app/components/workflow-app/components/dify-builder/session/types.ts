@@ -1,5 +1,5 @@
 import type {
-  CanvasEventData,
+  DifyBuilderCanvasEventData,
   DifyBuilderStreamEventResponse,
   DifyBuilderWorkflowEventData,
   RunStatus,
@@ -9,7 +9,7 @@ import type { ConversationItem } from '../types'
 export type SessionRunEvents = {
   onWorkflowEvent: (event: DifyBuilderWorkflowEventData) => void
   onStreamInterrupted: () => void
-  onCanvasEvent: (event: CanvasEventData) => void
+  onCanvasEvent: (event: DifyBuilderCanvasEventData) => void
   restoreRun: (sessionId: string, items: ConversationItem[]) => void
   finishCommand: () => void
   reset: () => void
@@ -27,14 +27,17 @@ export type SessionCommandOptions = {
 export type SessionStreamOutcome = {
   sessionId?: string
   sawCommandStarted: boolean
-  terminalEvent: 'state' | 'error' | null
+  terminalEvent: 'command_finished' | 'error' | null
   terminalError?: string
+  terminalErrorCode?: string
   terminalInterrupted?: boolean
   terminalRunStatus?: RunStatus
   transportError?: string
   transportStatus?: number
   observedVersion?: number
   commandStartedVersion?: number
-  observedCommitVersion?: number
+  conversationStartSeq?: number
+  commandId?: string
+  finishedCommandId?: string
   stateApplied?: boolean
 }

@@ -5,29 +5,18 @@ specs/2026-08-23-dify-builder-slice3-edit-design.md). Cards for a state are
 emitted by the handler transitioning INTO it; ``edit.test_affected_paths`` and
 ``edit.publish`` are working states that auto-advance. Publishing is separated
 from the review decision so its progress and side effect precede the terminal
-``edit.complete`` commit. Keeping the draft reaches that terminal directly.
+``edit.complete`` transition. Keeping the draft reaches that terminal directly.
 """
 
 import logging
 import uuid
 
-from core.dify_builder.changes import describe_changed_nodes, describe_proposed_nodes
 from core.dify_builder.contract import (
-    AssistantTurnItem,
-    ChallengeCard,
-    ChangeSetCard,
-    CheckpointCard,
     DecisionItem,
-    ErrorCard,
-    ExecutionProgress,
     FormCard,
     NoticeItem,
     PlanCard,
-    PublishCard,
-    SummaryCard,
-    SummaryRow,
     TestResultCard,
-    TestStat,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, ProposalWouldRunWrongError
 from core.dify_builder.handlers_fix import (
@@ -37,6 +26,7 @@ from core.dify_builder.handlers_fix import (
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
+    append_assistant,
     append_card,
     build_change_set,
     build_form_fields,
@@ -55,6 +45,7 @@ from core.dify_builder.handlers_fix import (
     repair_is_repeating,
     run_finished_without_output,
     start_schema,
+    test_failure_reason,
     testdata_form_fields,
     without_endpoint_values,
 )
@@ -84,8 +75,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     """(waiting) Entry state. On ``send_edit_goal`` read the existing graph,
     emit a read-only context summary, analyze impact into edit_rules + target
     nodes (highlighting them), and transition to edit.impact_analysis emitting
-    its form + challenge + change_set(preview). The canvas is read only here,
-    after the goal is sent (mock 02-edit.txt:3,9)."""
+    its form plus a streamed impact summary. The canvas is read only here after
+    the goal is sent (mock 02-edit.txt:3,9)."""
     kind = action_kind(turn)
     if kind != "send_edit_goal":
         return StepResult(next=PcState.EDIT_CAPABILITY_CHECK, context=fc)
@@ -128,63 +119,41 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     progress.activate("edit-prepare-impact")
-    summary_items = append_card(
-        fc,
-        SummaryCard(
-            variant="context",
-            title="Current workflow",
-            items=[f"Read {node_count} nodes", f"{edge_count} connections"],
-        ),
-    )
     form_items = append_card(
         fc,
         FormCard(
-            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
-        ),
-    )
-    challenge_items = append_card(
-        fc,
-        ChallengeCard(
-            title="High-impact rules",
-            body="These rules change branching and output; review before applying.",
-            tone="warning",
-        ),
-    )
-    change_set_items = append_card(
-        fc,
-        ChangeSetCard(
-            count=len(fc.edit_target_node_ids),
-            changes=[],
-            scope="configuration",
-            nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
+            variant="edit_rules",
+            title="Review the change rules",
+            description="Adjust any values before Builder applies the change plan.",
+            fields=build_form_fields(fc.form_fields),
+            values=dict(fc.edit_rules),
+            frozen=False,
         ),
     )
     execution = progress.finish()
-    turn_items = append_card(
+    target_text = ", ".join(fc.edit_target_node_ids) or "none identified"
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Here's the impact of your change.",
-            cards=["summary", "form", "challenge", "change_set"],
-        ),
+        f"I inspected {node_count} node(s) and {edge_count} connection(s). "
+        f"Affected nodes: {target_text}. These rules may change branching or output; review them before applying.",
+        execution=execution,
+        cards=["form"],
+        turn_id=progress.operation_id,
     )
     return StepResult(
         next=PcState.EDIT_IMPACT_ANALYSIS,
         context=fc,
-        items=[*summary_items, *form_items, *challenge_items, *change_set_items, *turn_items],
+        items=[*form_items, *turn_items],
     )
 
 
 def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_edit_rules`` merge the form payload, propose the
-    change plan, self-mint the pre-edit checkpoint (so the CheckpointCard at
-    plan_approval carries a real id -- mirrors Build's handle_resource_
-    recommendation), and transition to edit.plan_approval.
-
-    This is also where a stored engine refusal stops being true, because this
-    is where the rules it refused stop being the rules (see below)."""
+    change plan, self-mint the backend pre-edit checkpoint, and transition to
+    edit.plan_approval. A stored engine refusal is cleared when the submitted
+    rules change, because it no longer describes the next proposed edit."""
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
@@ -226,31 +195,26 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     progress.activate("edit-draft-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
-    fc.plan_version_tag = "v1"
 
     progress.activate("edit-create-checkpoint")
-    checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
+    mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Submitted edit rules"))
-    plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
-    checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
-    )
+    plan_items = append_card(fc, PlanCard(title="Change plan", items=list(fc.plan_items)))
     execution = progress.finish()
-    turn_items = append_card(
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Change plan ready for approval.",
-            cards=["plan", "checkpoint"],
-        ),
+        "The final change plan is ready for approval.",
+        execution=execution,
+        cards=["plan"],
+        turn_id=progress.operation_id,
     )
     return StepResult(
         next=PcState.EDIT_PLAN_APPROVAL,
         context=fc,
-        items=[*decision_items, *plan_items, *checkpoint_items, *turn_items],
+        items=[*decision_items, *plan_items, *turn_items],
     )
 
 
@@ -295,6 +259,7 @@ def _rejection_text(exc: Exception) -> str:
 
 
 def _change_not_applied(
+    env: Env,
     s: Session,
     fc: DifyBuilderContext,
     progress: ProgressReporter,
@@ -335,18 +300,10 @@ def _change_not_applied(
     fc.last_edit_rejection = rejection
     progress.fail_step(failed_step)
     execution = progress.finish(status="error")
-    error_items = append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
-    turn_items = append_card(
-        fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text=reply_text,
-            cards=["error"],
-        ),
+    turn_items = append_assistant(
+        env, s, fc, f"{title}: {body}\n{reply_text}", execution=execution, turn_id=progress.operation_id
     )
-    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=turn_items)
 
 
 def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, cancel_publish: bool) -> StepResult:
@@ -362,7 +319,6 @@ def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, 
     may edit nothing and resubmit -- so ``last_edit_rejection`` is left alone
     here and cleared by handle_impact_analysis if and when the submitted
     payload actually changes ``fc.edit_rules``."""
-    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     if cancel_publish:
         emit_canvas(env, "cancel_publish")
     for node_id in fc.edit_target_node_ids:
@@ -379,37 +335,19 @@ def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, 
             variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
         ),
     )
-    challenge_items = append_card(
+    target_text = ", ".join(fc.edit_target_node_ids) or "none identified"
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        ChallengeCard(
-            title="High-impact rules",
-            body="These rules change branching and output; review before applying.",
-            tone="warning",
-        ),
-    )
-    change_set_items = append_card(
-        fc,
-        ChangeSetCard(
-            count=len(fc.edit_target_node_ids),
-            changes=[],
-            scope="configuration",
-            nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
-        ),
-    )
-    turn_items = append_card(
-        fc,
-        AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id=str(s.current_state),
-            execution=ExecutionProgress(status="completed"),
-            reply_text="Let's adjust the change.",
-            cards=["form", "challenge", "change_set"],
-        ),
+        f"Let's adjust the change. Affected nodes: {target_text}. "
+        "The rules may change branching or output, so review them before applying.",
+        cards=["form"],
     )
     return StepResult(
         next=PcState.EDIT_IMPACT_ANALYSIS,
         context=fc,
-        items=[*decision_items, *form_items, *challenge_items, *change_set_items, *turn_items],
+        items=[*decision_items, *form_items, *turn_items],
     )
 
 
@@ -418,8 +356,8 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     applies: read the current graph, get the canned set_node_config intents,
     highlight the targets, apply once (on_canvas=None -- Edit narrates its own
     coarse apply_edit_plan rather than the Fix-flavored per-intent apply_error_
-    fix), emit the real change_set + checkpoint + assistant_turn, transition to
-    edit.apply_changes.
+    fix), summarize the applied changes in assistant text, and transition to
+    edit.apply_changes. The checkpoint stays backend-only.
 
     Naturally idempotent on loop-back re-approve: re-applying the same
     set_node_config value overwrites the node's data (no ValueError, unlike
@@ -472,6 +410,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         # with the reason on a card, and the reason goes into the next attempt.
         logger.warning("Dify Builder: edit proposal judged wrong before write for app %s: %s", s.app_id, exc)
         return _change_not_applied(
+            env,
             s,
             fc,
             progress,
@@ -504,6 +443,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         # Nothing was written; keep the change plan at its gate as a card.
         logger.warning("Dify Builder: edit rejected before write for app %s: %s", s.app_id, exc)
         return _change_not_applied(
+            env,
             s,
             fc,
             progress,
@@ -521,6 +461,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         # recovery, but not "can't start".
         logger.warning("Dify Builder: edit could not be applied for app %s: %s", s.app_id, exc)
         return _change_not_applied(
+            env,
             s,
             fc,
             progress,
@@ -541,34 +482,21 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
 
-    change_set_items = append_card(
-        fc,
-        ChangeSetCard(
-            count=len(changes),
-            changes=changes,
-            scope=scope,
-            nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
-        ),
-    )
-    checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=fc.checkpoint_id, label="Pre-edit checkpoint", created_at="")
-    )
     decision_items = append_card(fc, DecisionItem(text="Approved the change plan"))
     execution = progress.finish()
-    turn_items = append_card(
+    change_lines = "\n".join(f"- {change}" for change in changes) or "- No effective changes"
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Applied the changes to the canvas.",
-            cards=["change_set", "checkpoint"],
-        ),
+        f"Applied {len(changes)} change(s) to the canvas ({scope}).\n{change_lines}",
+        execution=execution,
+        turn_id=progress.operation_id,
     )
     return StepResult(
         next=PcState.EDIT_APPLY_CHANGES,
         context=fc,
-        items=[*change_set_items, *checkpoint_items, *decision_items, *turn_items],
+        items=[*decision_items, *turn_items],
     )
 
 
@@ -590,20 +518,19 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 fc,
                 FormCard(
                     variant="testdata",
+                    title="Provide test data",
+                    description="Review the inputs Builder will use for this run.",
                     fields=testdata_form_fields(start_schema(graph)),
                     values={},
                     frozen=False,
                 ),
             )
-            turn_items = append_card(
+            turn_items = append_assistant(
+                env,
+                s,
                 fc,
-                AssistantTurnItem(
-                    turn_id=str(uuid.uuid4()),
-                    stage_id=str(s.current_state),
-                    execution=ExecutionProgress(status="completed"),
-                    reply_text="Provide test inputs (or use mock data) to run the affected-path test.",
-                    cards=["form"],
-                ),
+                "Provide test inputs (or use mock data) to run the affected-path test.",
+                cards=["form"],
             )
             return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
@@ -712,32 +639,19 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         test_items = append_card(
             fc,
             TestResultCard(
-                title="Affected-path tests",
-                subtitle="Finished without output",
-                tone="error",
-                stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
-                run_ids=[run.id],
+                status="failed",
+                failure_reason=NO_OUTPUT_BODY,
                 dify_run_id=run.dify_run_id,
             ),
         )
-        error_items = append_card(
-            fc, ErrorCard(title="No output produced", body=NO_OUTPUT_BODY, tone="danger", node_id=run.culprit_node_id)
-        )
         execution = progress.finish()
-        turn_items = append_card(
-            fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text=NO_OUTPUT_REPLY,
-                cards=["test_result", "error"],
-            ),
+        turn_items = append_assistant(
+            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
         )
         return StepResult(
             next=PcState.EDIT_AWAIT_REPAIR,
             context=fc,
-            items=[*test_items, *error_items, *turn_items],
+            items=[*test_items, *turn_items],
             run=run,
             run_id_sink=[run.id],
         )
@@ -747,38 +661,25 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         test_items = append_card(
             fc,
             TestResultCard(
-                title="Affected-path tests",
-                subtitle="All checks passed",
-                tone="success",
-                stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
-                run_ids=[run.id],
+                status="succeeded",
                 dify_run_id=run.dify_run_id,
             ),
         )
         emit_canvas(env, "mark_review_ready")
-        summary_items = append_card(
-            fc,
-            SummaryCard(
-                variant="review",
-                title="Review",
-                items=["Applied the change plan", "Affected paths tested", "Tests passing"],
-            ),
-        )
         execution = progress.finish()
-        turn_items = append_card(
+        turn_items = append_assistant(
+            env,
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text="Tests passed; ready for review.",
-                cards=["test_result", "summary"],
-            ),
+            "Affected-path tests passed; the edit is ready for review.",
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.EDIT_REVIEW,
             context=fc,
-            items=[*test_items, *summary_items, *turn_items],
+            items=[*test_items, *turn_items],
             run=run,
             run_id_sink=[run.id],
         )
@@ -791,10 +692,10 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc.verify_run_id = run.id
             fc.diagnosis = None
             fc.staged_repair = []
-            stuck_items = append_card(
-                fc, ErrorCard(title="Test outcome unknown", body=UNKNOWN_OUTCOME_STUCK_BODY, tone="danger")
+            execution = progress.finish()
+            stuck_items = append_assistant(
+                env, s, fc, UNKNOWN_OUTCOME_STUCK_BODY, execution=execution, turn_id=progress.operation_id
             )
-            progress.finish()
             return StepResult(
                 next=PcState.EDIT_AWAIT_REPAIR,
                 context=fc,
@@ -802,8 +703,10 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 run=run,
                 run_id_sink=[run.id],
             )
-        notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
-        progress.finish()
+        execution = progress.finish()
+        notice_items = append_assistant(
+            env, s, fc, UNKNOWN_TEST_OUTCOME_NOTICE, execution=execution, turn_id=progress.operation_id
+        )
         return StepResult(
             next=PcState.EDIT_APPLY_CHANGES,
             context=fc,
@@ -827,11 +730,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         test_items = append_card(
             fc,
             TestResultCard(
-                title="Affected-path tests",
-                subtitle="Failed",
-                tone="error",
-                stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
-                run_ids=[run.id],
+                status="failed",
+                failure_reason=test_failure_reason(run),
                 dify_run_id=run.dify_run_id,
             ),
         )
@@ -839,21 +739,22 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc,
             FormCard(
                 variant="testdata",
+                title="Provide test data",
+                description="Review the inputs Builder will use for this run.",
                 fields=testdata_form_fields(start_schema(graph)),
                 values={},
                 frozen=False,
             ),
         )
         execution = progress.finish()
-        turn_items = append_card(
+        turn_items = append_assistant(
+            env,
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text="The run failed on its inputs — provide test data and retry.",
-                cards=["test_result", "form"],
-            ),
+            "The run failed on its inputs — provide test data and retry.",
+            execution=execution,
+            cards=["test_result", "form"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.EDIT_AWAIT_TESTDATA,
@@ -881,41 +782,25 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         test_items = append_card(
             fc,
             TestResultCard(
-                title="Affected-path tests",
-                subtitle="Failed",
-                tone="error",
-                stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
-                run_ids=[run.id],
+                status="failed",
+                failure_reason=model_error,
                 dify_run_id=run.dify_run_id,
             ),
         )
-        error_items = append_card(
-            fc,
-            ErrorCard(
-                title="Model not configured",
-                body=root_cause,
-                tone="danger",
-                node_id=fc.diagnosis.culprit_node_id,
-            ),
-        )
         execution = progress.finish()
-        turn_items = append_card(
+        turn_items = append_assistant(
+            env,
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text=(
-                    "The test failed because the workflow's model isn't configured. Configure it "
-                    "(or change the model), then re-run — this isn't a workflow-logic issue."
-                ),
-                cards=["test_result", "error"],
-            ),
+            root_cause,
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.EDIT_AWAIT_REPAIR,
             context=fc,
-            items=[*test_items, *error_items, *turn_items],
+            items=[*test_items, *turn_items],
             run=run,
             run_id_sink=[run.id],
         )
@@ -936,24 +821,25 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         # wrong thing. Stop and hand the decision back (no staged repair).
         fc.diagnosis = diagnosis
         fc.staged_repair = []
-        progress.finish()
-        stuck_items = append_card(
+        test_items = append_card(
+            fc, TestResultCard(status="failed", failure_reason=test_failure_reason(run), dify_run_id=run.dify_run_id)
+        )
+        execution = progress.finish()
+        stuck_items = append_assistant(
+            env,
+            s,
             fc,
-            ErrorCard(
-                title="Repeated failure",
-                body=(
-                    f"{diagnosis.root_cause or 'The run failed.'}\n\n"
-                    "The same error survived the last repairs, so I've stopped retrying. "
-                    "Edit the node directly and test again, or revert."
-                ),
-                tone="danger",
-                node_id=diagnosis.culprit_node_id,
-            ),
+            f"{diagnosis.root_cause or 'The run failed.'}\n\n"
+            "The same error survived the last repairs, so I've stopped retrying. "
+            "Edit the node directly and test again, or revert.",
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.EDIT_AWAIT_REPAIR,
             context=fc,
-            items=stuck_items,
+            items=[*test_items, *stuck_items],
             run=run,
             run_id_sink=[run.id],
         )
@@ -965,56 +851,33 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     test_items = append_card(
         fc,
         TestResultCard(
-            title="Affected-path tests",
-            subtitle="Failed",
-            tone="error",
-            stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
-            run_ids=[run.id],
+            status="failed",
+            failure_reason=test_failure_reason(run),
             dify_run_id=run.dify_run_id,
         ),
     )
-    error_items = append_card(
-        fc,
-        ErrorCard(
-            title="Test failed",
-            body=diagnosis.root_cause or "The run failed.",
-            tone="danger",
-            node_id=diagnosis.culprit_node_id,
-        ),
-    )
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
-    cs_items = (
-        append_card(
-            fc,
-            ChangeSetCard(
-                count=len(intents),
-                changes=proposed,
-                scope="configuration",
-                nodes=describe_proposed_nodes(intents, graph),
-            ),
-        )
-        if intents
-        else []
-    )
     execution = progress.finish()
-    turn_items = append_card(
+    proposal_text = "\n".join(f"- {change}" for change in proposed)
+    reply_text = diagnosis.root_cause or "The run failed."
+    reply_text += (
+        f"\n\nProposed fix:\n{proposal_text}"
+        if intents
+        else "\n\nNo safe automatic fix was found; edit the workflow or keep the draft."
+    )
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text=(
-                "Test failed — here's a proposed fix to review."
-                if intents
-                else "Test failed — no safe automatic fix; edit or keep draft."
-            ),
-            cards=["test_result", "error"] + (["change_set"] if intents else []),
-        ),
+        reply_text,
+        execution=execution,
+        cards=["test_result"],
+        turn_id=progress.operation_id,
     )
     return StepResult(
         next=PcState.EDIT_AWAIT_REPAIR,
         context=fc,
-        items=[*test_items, *error_items, *cs_items, *turn_items],
+        items=[*test_items, *turn_items],
         run=run,
         run_id_sink=[run.id],
     )
@@ -1065,6 +928,8 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
             )
             items = drop_unapplied_repair(
+                env,
+                s,
                 fc,
                 progress,
                 title="The workflow can't start",
@@ -1077,6 +942,8 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             # must not kill the session (ESQ1-271).
             logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
             items = drop_unapplied_repair(
+                env,
+                s,
                 fc,
                 progress,
                 title="Couldn't apply the fix",
@@ -1087,19 +954,19 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
         changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
-        cs_items = append_card(
-            fc,
-            ChangeSetCard(
-                count=len(changes),
-                changes=changes,
-                scope=scope,
-                nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
-            ),
-        )
         progress.activate("edit-prepare-retest")
         decision_items = append_card(fc, DecisionItem(text="Applied the fix; ready to retest"))
-        progress.finish()
-        return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc, items=[*cs_items, *decision_items])
+        execution = progress.finish()
+        change_lines = "\n".join(f"- {change}" for change in changes) or "- Repair applied"
+        turn_items = append_assistant(
+            env,
+            s,
+            fc,
+            f"Applied {len(changes)} repair change(s) ({scope}).\n{change_lines}",
+            execution=execution,
+            turn_id=progress.operation_id,
+        )
+        return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc, items=[*decision_items, *turn_items])
     if kind == "keep_draft":
         items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
         return StepResult(next=PcState.EDIT_REVIEW, context=fc, items=items)
@@ -1108,13 +975,6 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc)
-
-
-def _completion_rows(fc: DifyBuilderContext, status: str) -> list[SummaryRow]:
-    return [
-        SummaryRow(label="Change", value="; ".join(fc.plan_items) or "config edit"),
-        SummaryRow(label="Status", value=status),
-    ]
 
 
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -1129,10 +989,13 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     if kind == "keep_draft":
         emit_canvas(env, "cancel_publish")
         decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
-        summary_items = append_card(
-            fc, SummaryCard(variant="completion", title="Draft kept", rows=_completion_rows(fc, "Draft kept"))
+        turn_items = append_assistant(
+            env,
+            s,
+            fc,
+            f"Edit complete and kept as a draft. Changes: {'; '.join(fc.plan_items) or 'configuration edit'}.",
         )
-        return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *summary_items])
+        return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
         return _resume_adjusting(env, turn, s, fc, cancel_publish=True)
     if kind == "undo":  # revert
@@ -1152,14 +1015,18 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         steps=[("edit-publish-workflow", "Publish the updated workflow")],
     )
     progress.activate("edit-publish-workflow")
-    env.dify.publish(s.app_id, turn.actor)
+    published = env.dify.publish(s.app_id, turn.actor)
     emit_canvas(env, "publish_workflow")
-    publish_items = append_card(fc, PublishCard(version="2.1", badge="live"))
-    summary_items = append_card(
-        fc, SummaryCard(variant="completion", title="Edit published", rows=_completion_rows(fc, "Published"))
+    execution = progress.finish()
+    items = append_assistant(
+        env,
+        s,
+        fc,
+        f"Published workflow version {published.version_name} ({published.status}). Edit complete.",
+        execution=execution,
+        turn_id=progress.operation_id,
     )
-    progress.finish()
-    return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*publish_items, *summary_items])
+    return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=items)
 
 
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -1190,30 +1057,25 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
-    fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     fc.repair_attempts = 0
     fc.last_repair_error = ""
     fc.unknown_outcome_count = 0
     progress.activate("edit-create-checkpoint")
-    checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
-    plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
-    checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
-    )
+    mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
+    plan_items = append_card(fc, PlanCard(title="Change plan", items=list(fc.plan_items)))
     execution = progress.finish()
-    turn_items = append_card(
+    turn_items = append_assistant(
+        env,
+        s,
         fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Re-approve to apply the change.",
-            cards=["plan", "checkpoint"],
-        ),
+        "Re-approve to apply the change.",
+        execution=execution,
+        cards=["plan"],
+        turn_id=progress.operation_id,
     )
-    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items])
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *turn_items])
 
 
 def edit_registry() -> dict[PcState, Handler]:

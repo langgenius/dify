@@ -3,17 +3,22 @@ import type {
   CursorPosition,
   OnlineUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
+import { useEffect, useState } from 'react'
 import { useViewport } from 'reactflow'
+import { collaborationManager } from '../core/collaboration-manager'
 import { getUserColor } from '../utils/user-color'
 
 type UserCursorsProps = {
-  cursors: Record<string, CursorPosition>
+  visible: boolean
   myUserId: string | null
   onlineUsers: OnlineUser[]
 }
 
-const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) => {
+const UserCursors: FC<UserCursorsProps> = ({ visible, myUserId, onlineUsers }) => {
+  const [cursors, setCursors] = useState<Record<string, CursorPosition>>({})
   const viewport = useViewport()
+
+  useEffect(() => collaborationManager.onCursorUpdate(setCursors), [])
 
   const convertToScreenCoordinates = (cursor: CursorPosition) => {
     // Convert world coordinates to screen coordinates using current viewport
@@ -22,9 +27,11 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
 
     return { x: screenX, y: screenY }
   }
+  if (!visible) return null
+
   return (
     <>
-      {Object.entries(cursors || {}).map(([userId, cursor]) => {
+      {Object.entries(cursors).map(([userId, cursor]) => {
         if (userId === myUserId) return null
 
         const userInfo = onlineUsers.find((user) => user.user_id === userId)

@@ -94,6 +94,10 @@ PLAIN: frozenset[str] = frozenset(
         "Finished without output",
         "Test failed",
         "Validation",
+        "Review the requirements",
+        "Which resources should Builder use?",
+        "Provide test data",
+        "Review the change rules",
         # model-config-failure surface (build + edit)
         "The test failed because the workflow's model isn't configured. Configure it "
         "(or change the model), then re-run — this isn't a workflow-logic issue.",
@@ -133,6 +137,10 @@ PLAIN: frozenset[str] = frozenset(
         "Workflow",
         "I filled in typical requirements; edit and submit to adjust.",
         "These rules change branching and output; review before applying.",
+        "Adjust any values before Builder continues.",
+        "Recommended resources are selected by default.",
+        "Review the inputs Builder will use for this run.",
+        "Adjust any values before Builder applies the change plan.",
         "Tests passing",
         "Applied the change plan",
         "Affected paths tested",

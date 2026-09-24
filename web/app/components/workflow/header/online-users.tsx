@@ -1,6 +1,6 @@
 'use client'
 
-import type { OnlineUser } from '../collaboration/types/collaboration'
+import type { CursorPosition, OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { queryOptions, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
@@ -28,10 +28,19 @@ const OnlineUsers = () => {
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
-    cursors,
     isConnected,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId, canEdit)
+  const cursorsRef = useRef<Record<string, CursorPosition>>({})
+  useEffect(() => {
+    if (!isCollaborationEnabled) {
+      cursorsRef.current = {}
+      return
+    }
+    return collaborationManager.onCursorUpdate((cursors) => {
+      cursorsRef.current = cursors
+    })
+  }, [isCollaborationEnabled])
   const { data: currentUser } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: ({ profile: { id, name, avatar_url } }) => ({ id, name, avatarUrl: avatar_url }),
@@ -84,7 +93,7 @@ const OnlineUsers = () => {
 
   // Function to jump to user's cursor position
   const jumpToUserCursor = (userId: string) => {
-    const cursor = cursors[userId]
+    const cursor = cursorsRef.current[userId]
     if (!cursor) return
 
     // Convert world coordinates to center the view on the cursor

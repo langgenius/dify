@@ -414,6 +414,9 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     _assert_event_stream(response)
     assert calls == ["authorize", "subscribe", "view"]
     assert stream.call_args.kwargs["expect_advance"] is True
+    assert stream.call_args.kwargs["emit_command_started"] is False
+    assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
+    assert stream.call_args.kwargs["command_id"] == ""
 
 
 def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
@@ -429,6 +432,8 @@ def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
 
     _assert_event_stream(response)
     assert stream.call_args.kwargs["expect_advance"] is False
+    assert stream.call_args.kwargs["emit_command_started"] is False
+    assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
 
 
 def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):

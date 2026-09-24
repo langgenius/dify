@@ -41,10 +41,10 @@ describe('useDifyBuilderSessionController trace capture', () => {
   })
 
   it('captures outbound commands and inbound frames in order', async () => {
-    const started = createSessionView({ version: 1, state: 'build.capability_check' })
+    const started = createSessionView({ version: 1, phase: 'understand' })
     const terminal = createSessionView({
       version: 2,
-      state: 'build.plan_approval',
+      phase: 'plan',
       run_status: 'waiting_input',
     })
     clientMocks.create.mockResolvedValue(
@@ -53,10 +53,8 @@ describe('useDifyBuilderSessionController trace capture', () => {
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'operation-1',
-            stage_id: 'build.plan_approval',
             at_version: 1,
             revision: 1,
             event: 'focus_workflow',
@@ -77,7 +75,7 @@ describe('useDifyBuilderSessionController trace capture', () => {
     const kinds = entries.map((entry) => `${entry.dir}:${entry.kind}`)
     expect(kinds).toContain('in:command_started')
     expect(kinds).toContain('in:canvas')
-    expect(kinds).toContain('in:state')
+    expect(kinds).toContain('in:command_finished')
     // seq is strictly increasing
     expect(entries.map((entry) => entry.seq)).toEqual(
       [...entries.map((entry) => entry.seq)].sort((left, right) => left - right),
@@ -90,7 +88,6 @@ describe('useDifyBuilderSessionController trace capture', () => {
         stateEvent(
           createSessionView({
             version: 1,
-            state: 'failed',
             run_status: 'failed',
           }),
         ),
@@ -116,7 +113,6 @@ describe('useDifyBuilderSessionController trace capture', () => {
             createSessionView({
               session_id: 'session-1',
               version: 1,
-              state: 'failed',
               run_status: 'failed',
             }),
           ),
@@ -128,7 +124,6 @@ describe('useDifyBuilderSessionController trace capture', () => {
             createSessionView({
               session_id: 'session-2',
               version: 1,
-              state: 'failed',
               run_status: 'failed',
             }),
           ),

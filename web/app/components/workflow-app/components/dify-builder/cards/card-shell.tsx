@@ -68,7 +68,9 @@ export const DifyBuilderCard = ({
         {(meta || status) && (
           <span className="flex min-w-0 shrink-0 items-center gap-2">
             {meta && (
-              <span className="max-w-33 truncate system-xs-regular text-text-tertiary">{meta}</span>
+              <span title={meta} className="max-w-33 truncate system-xs-regular text-text-tertiary">
+                {meta}
+              </span>
             )}
             {status && (
               <span

@@ -18,6 +18,7 @@ import { createSocket } from '@/app/components/workflow/collaboration/core/__tes
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'

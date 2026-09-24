@@ -1,11 +1,12 @@
 import type { DifyBuilderRuntime } from '../store'
-import type { SessionView } from '../types'
+import type { ConversationItem, SessionView } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -19,7 +20,9 @@ import {
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
+  difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderLocalInteractionResponseAtom,
   difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
@@ -41,13 +44,12 @@ const builderModel = {
 } satisfies NonNullable<SessionView['model']>
 
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
-  app_id: 'app-1',
   canvas_read_only: false,
   conversation_last_seq: -1,
   interrupted: false,
+  phase: 'understand',
   run_status: 'complete',
   session_id: 'session-1',
-  state: 'complete',
   version: 1,
   ...overrides,
 })
@@ -113,13 +115,14 @@ describe('Dify Builder store', () => {
       payload: { fields: [], values: {}, variant: 'testdata' as const },
       seq: 1,
     }
+    store.set(difyBuilderConversationAtom, [card])
 
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         version: 2,
@@ -132,7 +135,7 @@ describe('Dify Builder store', () => {
       createSessionView({
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 2,
         },
         version: 2,
@@ -188,8 +191,6 @@ describe('Dify Builder store', () => {
       store.set(
         difyBuilderSessionViewAtom,
         createSessionView({
-          entry_mode: 'build',
-          state: runStatus === 'waiting_input' ? 'build.goal_analysis' : 'build.plan_approval',
           run_status: runStatus,
         }),
       )
@@ -318,7 +319,7 @@ describe('Dify Builder store', () => {
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({
-        app_revision: { observed: 'old', current: 'new', conflicted: true },
+        app_revision: { current: 'new', conflicted: true },
         run_status: 'waiting_confirmation',
       }),
     )
@@ -353,10 +354,7 @@ describe('Dify Builder store', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
 
     expect(
       await store.set(difyBuilderStartPromptAtom, {
@@ -365,6 +363,35 @@ describe('Dify Builder store', () => {
       }),
     ).toBe(true)
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
+  })
+
+  it('shows a new-session prompt while session creation is in flight', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishStarting!: (started: boolean) => void
+    runtime.session.startBuild = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishStarting = resolve
+        }),
+    )
+    store.set(difyBuilderRuntimeAtom, runtime)
+
+    const starting = store.set(difyBuilderStartPromptAtom, {
+      text: 'Build an expense assistant',
+      model: builderModel,
+    })
+
+    expect(store.get(difyBuilderLocalUserMessageAtom)).toMatchObject({
+      afterSequence: -1,
+      localId: expect.any(String),
+      sessionId: null,
+      text: 'Build an expense assistant',
+    })
+    expect(store.get(difyBuilderHasSessionAtom)).toBe(true)
+
+    finishStarting(true)
+    expect(await starting).toBe(true)
   })
 
   it('clears the submitted draft immediately and preserves a newer draft while sending', async () => {
@@ -378,10 +405,7 @@ describe('Dify Builder store', () => {
         }),
     )
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
     store.set(difyBuilderDraftAtom, 'First draft')
 
     const sending = store.set(difyBuilderSendDraftAtom, builderModel)
@@ -401,10 +425,7 @@ describe('Dify Builder store', () => {
     const runtime = createRuntime(vi.fn(async () => true))
     runtime.session.sendMessage = vi.fn(async () => false)
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
     store.set(difyBuilderDraftAtom, 'Retry this message')
 
     expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
@@ -446,6 +467,7 @@ describe('Dify Builder store', () => {
 
       expect(await sending).toBe(false)
       expect(store.get(difyBuilderDraftAtom)).toBe(newerDraft || 'Build an expense assistant')
+      expect(store.get(difyBuilderLocalUserMessageAtom)).toBeNull()
     },
   )
 
@@ -475,6 +497,162 @@ describe('Dify Builder store', () => {
       }),
     ).toBe(false)
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
+  })
+
+  it('publishes a choice response optimistically while the action is running', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        conversation_last_seq: 4,
+        decision: {
+          title: 'Is this workflow plan ready to apply?',
+          options: [{ id: 'approve_plan', label: 'Approve plan' }],
+        },
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm', {
+      option_id: 'approve_plan',
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toMatchObject({
+      afterSequence: 4,
+      baseVersion: 1,
+      sessionId: 'session-1',
+      item: {
+        at_version: 2,
+        kind: 'interaction_response',
+        payload: {
+          interaction_kind: 'choice',
+          question: 'Is this workflow plan ready to apply?',
+          answer: 'Approve plan',
+          submitted_data: { option_id: 'approve_plan' },
+        },
+        seq: 5,
+      },
+    })
+    finishAction(true)
+    expect(await submission).toBe(true)
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toBeNull()
+  })
+
+  it('formats submitted form values for the optimistic conversation response', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        fields: [
+          { key: 'topic', label: 'Topic', type: 'text-input' },
+          { key: 'enabled', label: 'Enabled', type: 'bool' },
+        ],
+        title: 'Provide test data',
+        values: {},
+        variant: 'testdata',
+      },
+      seq: 0,
+    }
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(difyBuilderConversationAtom, [card])
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'provide_testdata', {
+      mode: 'provide',
+      inputs: { enabled: true, topic: 'AI agents' },
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+      interaction_kind: 'form',
+      question: 'Provide test data',
+      fields: [
+        { key: 'topic', label: 'Topic', value: 'AI agents', display_value: 'AI agents' },
+        { key: 'enabled', label: 'Enabled', value: true, display_value: 'Yes' },
+      ],
+      submitted_data: { enabled: true, topic: 'AI agents' },
+    })
+    finishAction(true)
+    await submission
+  })
+
+  it('uses selected resource labels in the optimistic conversation response', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
+      at_version: 1,
+      kind: 'resource_select',
+      payload: {
+        recommended: [
+          {
+            id: 'knowledge',
+            kind: 'knowledge',
+            label: 'Support knowledge base',
+            meta: 'Dataset',
+            readiness: 'ready',
+          },
+          {
+            id: 'slack',
+            kind: 'tool',
+            label: 'Slack',
+            meta: 'Tool',
+            readiness: 'ready',
+          },
+        ],
+        title: 'Choose resources',
+      },
+      seq: 0,
+    }
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(difyBuilderConversationAtom, [card])
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'confirm_resources',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm_resources', {
+      resource_ids: ['slack'],
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+      interaction_kind: 'resource',
+      question: 'Choose resources',
+      answer: 'Slack',
+      submitted_data: { resource_ids: ['slack'] },
+    })
+    finishAction(true)
+    await submission
   })
 
   it('builds recheck payloads from the latest checklist atom value', async () => {

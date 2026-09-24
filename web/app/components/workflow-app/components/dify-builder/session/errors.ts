@@ -60,8 +60,7 @@ export const requestErrorMessage = async (error: unknown): Promise<string> => {
 export const streamErrorMessage = (
   data: Extract<DifyBuilderStreamEventResponse, { event: 'error' }>['data'],
 ) => {
-  if (typeof data.error === 'string') return data.error
-  if (typeof data.message === 'string') return data.message
+  if (data.message) return data.message
   if (typeof data.code === 'string') return data.code
   return 'Builder command failed.'
 }

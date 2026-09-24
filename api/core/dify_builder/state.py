@@ -44,13 +44,11 @@ class PcState(StrEnum):
     BUILD_AWAIT_REPAIR = "build.await_repair"
     BUILD_REVIEW = "build.review"
     BUILD_PUBLISH = "build.publish"
-    BUILD_GOVERNANCE_FEEDBACK = "build.governance_feedback"
-    BUILD_AWAIT_LEARNING = "build.await_learning"
     BUILD_COMPLETE = "build.complete"
     BUILD_REVERTED = "build.reverted"
 
     # Edit (spec §7.2). ``edit.publish`` is a working state so the publish
-    # side effect is observable before the terminal ``edit.complete`` commit.
+    # side effect is observable before the terminal ``edit.complete`` transition.
     EDIT_CAPABILITY_CHECK = "edit.capability_check"
     EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
     EDIT_PLAN_APPROVAL = "edit.plan_approval"
@@ -66,6 +64,7 @@ class PcState(StrEnum):
 
 _WORKING = frozenset(
     {
+        PcState.BUILD_CAPABILITY_CHECK,
         PcState.FIX_DIAGNOSE,
         PcState.FIX_PROPOSE,
         PcState.FIX_APPLY,
@@ -82,7 +81,6 @@ _WORKING = frozenset(
         PcState.BUILD_INITIAL_PLAN,
         PcState.BUILD_TEST_AND_REPAIR,
         PcState.BUILD_PUBLISH,
-        PcState.BUILD_GOVERNANCE_FEEDBACK,
         PcState.EDIT_TEST_AFFECTED_PATHS,
         PcState.EDIT_PUBLISH,
     }
@@ -97,7 +95,6 @@ _WAITING = frozenset(
         PcState.CHECKLIST_AWAIT_RECHECK,
         # Build/Edit: awaits user, including executing->waiting_confirmation
         # states classified by where they come to rest (spec §7).
-        PcState.BUILD_CAPABILITY_CHECK,
         PcState.BUILD_GOAL_ANALYSIS,
         PcState.BUILD_RESOURCE_RECOMMENDATION,
         PcState.BUILD_PLAN_APPROVAL,
@@ -105,7 +102,6 @@ _WAITING = frozenset(
         PcState.BUILD_AWAIT_TESTDATA,
         PcState.BUILD_AWAIT_REPAIR,
         PcState.BUILD_REVIEW,
-        PcState.BUILD_AWAIT_LEARNING,
         PcState.BUILD_REVERTED,
         PcState.EDIT_CAPABILITY_CHECK,
         PcState.EDIT_IMPACT_ANALYSIS,

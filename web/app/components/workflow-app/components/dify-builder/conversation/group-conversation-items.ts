@@ -9,7 +9,12 @@ export type DifyBuilderConversationGroup =
       invalidated: boolean
     }
 
-const STANDALONE_KINDS = new Set<ConversationItem['kind']>(['user', 'decision', 'notice'])
+const STANDALONE_KINDS = new Set<ConversationItem['kind']>([
+  'user',
+  'decision',
+  'interaction_response',
+  'notice',
+])
 
 const hasMatchingSuffix = (pendingCards: ConversationItem[], attachedKinds: string[]) => {
   if (attachedKinds.length === 0 || attachedKinds.length > pendingCards.length) return false
@@ -22,6 +27,17 @@ export const groupConversationItems = (
 ): DifyBuilderConversationGroup[] => {
   const groups: DifyBuilderConversationGroup[] = []
   let pendingCards: ConversationItem[] = []
+  // A handler can allocate its output before the runner appends the durable
+  // response. They share one CAS version, so present the user's submission
+  // first even when its storage sequence is later.
+  const orderedItems = [...items].sort((left, right) => {
+    if (left.at_version === right.at_version) {
+      const responseOrder =
+        Number(right.kind === 'interaction_response') - Number(left.kind === 'interaction_response')
+      if (responseOrder !== 0) return responseOrder
+    }
+    return left.seq - right.seq
+  })
 
   const flushPendingCards = () => {
     groups.push(
@@ -34,7 +50,7 @@ export const groupConversationItems = (
     pendingCards = []
   }
 
-  for (const item of items) {
+  for (const item of orderedItems) {
     if (item.kind === 'assistant_turn') {
       const attachedKinds = item.payload.cards ?? []
       if (!hasMatchingSuffix(pendingCards, attachedKinds)) {

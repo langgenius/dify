@@ -23,13 +23,14 @@ export const StreamingAssistantTurn = ({
   const streamingTurn = useAtomValue(difyBuilderStreamingTurnAtom)
   const activityCount = liveExecution?.execution.activities?.length ?? 0
   const reasoningText = reasoning?.text ?? ''
+  const hasReasoning = Boolean(reasoningText.trim())
   const replyText = streamingTurn?.replyText ?? ''
 
   useEffect(() => {
-    if (activityCount > 0 || reasoningText || replyText) onContentChange?.()
-  }, [activityCount, onContentChange, reasoningText, replyText])
+    if (activityCount > 0 || hasReasoning || replyText) onContentChange?.()
+  }, [activityCount, hasReasoning, onContentChange, replyText])
 
-  if (activityCount === 0 && !reasoningText && !replyText) {
+  if (activityCount === 0 && !hasReasoning && !replyText) {
     if (!busy) return null
     return (
       <article>
@@ -56,7 +57,7 @@ export const StreamingAssistantTurn = ({
         </span>
       )}
       {activityCount > 0 ? <ExecutionProgress execution={liveExecution?.execution} /> : null}
-      <Thinking text={reasoningText} isStreaming />
+      <Thinking text={reasoningText} isStreaming onVisibleContentChange={onContentChange} />
       {replyText ? <AssistantReply text={replyText} /> : null}
     </article>
   )

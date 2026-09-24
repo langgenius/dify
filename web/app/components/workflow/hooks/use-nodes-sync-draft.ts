@@ -7,6 +7,7 @@ import { useNodesReadOnly } from './use-workflow'
 export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore((s) => s.debouncedSyncWorkflowDraft)
+  const markWorkflowDraftDirty = useStore((s) => s.markWorkflowDraftDirty)
   const doSyncWorkflowDraft = useHooksStore((s) => s.doSyncWorkflowDraft)
   const syncWorkflowDraftWhenPageClose = useHooksStore((s) => s.syncWorkflowDraftWhenPageClose)
 
@@ -14,11 +15,12 @@ export const useNodesSyncDraft = () => {
     (sync?: boolean, notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
       if (getNodesReadOnly()) return
 
+      markWorkflowDraftDirty()
       if (sync) return doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
 
       debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
     },
-    [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly],
+    [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly, markWorkflowDraftDirty],
   )
 
   return {

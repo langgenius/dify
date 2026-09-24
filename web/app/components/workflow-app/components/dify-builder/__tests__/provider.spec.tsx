@@ -135,13 +135,12 @@ const Probe = () => {
         onClick={() => {
           setActiveSessionId('session-1')
           setSessionView({
-            app_id: 'app-1',
             canvas_read_only: true,
             conversation_last_seq: -1,
             interrupted: false,
+            phase: 'understand',
             run_status: 'processing',
             session_id: 'session-1',
-            state: 'fix.diagnose',
             version: 1,
           })
         }}
@@ -155,15 +154,12 @@ const Probe = () => {
         type="button"
         onClick={() =>
           setSessionView({
-            app_id: 'app-1',
             canvas_read_only: false,
             conversation_last_seq: -1,
-            entry_mode: 'fix_checklist',
             interrupted: false,
             phase: 'test',
             run_status: 'waiting_input',
             session_id: 'session-1',
-            state: 'checklist.await_recheck',
             version: 2,
           })
         }
@@ -189,7 +185,6 @@ const Probe = () => {
             operation_id: 'operation-1',
             revision: 1,
             session_id: 'session-1',
-            stage_id: 'fix.diagnose',
           })
         }
       >
@@ -204,7 +199,6 @@ const Probe = () => {
             operation_id: 'operation-1',
             revision: 2,
             session_id: 'session-1',
-            stage_id: 'fix.diagnose',
           })
         }
       >
