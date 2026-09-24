@@ -87,6 +87,7 @@ class TestUseProxyContext:
 
         stored = {"user_id": "u1", "tenant_id": "t1", "plugin_id": "p1", "provider": "github"}
         redis_client.get.return_value = json.dumps(stored).encode()
+        redis_client.delete.reset_mock()
 
         result = OAuthProxyService.use_proxy_context("valid-id")
 
