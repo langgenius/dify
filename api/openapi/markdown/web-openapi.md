@@ -398,6 +398,7 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 | 400 | Bad request - invalid submission data |  |
+| 403 | Not a designated approver |  |
 | 404 | Form not found |  |
 | 412 | Form already submitted or expired |  |
 | 429 | Too many requests |  |
