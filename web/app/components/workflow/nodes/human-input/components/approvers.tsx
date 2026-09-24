@@ -30,8 +30,12 @@ const Approvers = ({ value, onChange, readOnly }: Props) => {
     if (!value) return
     onChange({
       ...value,
-      member_ids: recipients.flatMap((item) => item.type === 'member' && item.user_id ? [item.user_id] : []),
-      emails: recipients.flatMap((item) => item.type === 'external' && item.email ? [item.email] : []),
+      member_ids: recipients.flatMap((item) =>
+        item.type === 'member' && item.user_id ? [item.user_id] : [],
+      ),
+      emails: recipients.flatMap((item) =>
+        item.type === 'external' && item.email ? [item.email] : [],
+      ),
     })
   }
 
@@ -45,7 +49,9 @@ const Approvers = ({ value, onChange, readOnly }: Props) => {
           id={enabledId}
           checked={!!value}
           disabled={readOnly}
-          onCheckedChange={(checked) => onChange(checked ? { member_ids: [], emails: [], roles: [] } : null)}
+          onCheckedChange={(checked) =>
+            onChange(checked ? { member_ids: [], emails: [], roles: [] } : null)
+          }
         />
       </div>
       {value && (
@@ -55,9 +61,12 @@ const Approvers = ({ value, onChange, readOnly }: Props) => {
           </p>
           <EmailInput
             email=""
-            inputLabel={t(($) => $['nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.title'], {
-              ns: 'workflowHumanInput',
-            })}
+            inputLabel={t(
+              ($) => $['nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.title'],
+              {
+                ns: 'workflowHumanInput',
+              },
+            )}
             value={selected}
             list={accounts}
             disabled={readOnly}
@@ -69,11 +78,15 @@ const Approvers = ({ value, onChange, readOnly }: Props) => {
               if (!value.emails.includes(email))
                 updateRecipients([...selected, { type: 'external', email }])
             }}
-            onDelete={(recipient) => updateRecipients(selected.filter((item) => (
-              recipient.type === 'member'
-                ? item.user_id !== recipient.user_id
-                : item.email !== recipient.email
-            )))}
+            onDelete={(recipient) =>
+              updateRecipients(
+                selected.filter((item) =>
+                  recipient.type === 'member'
+                    ? item.user_id !== recipient.user_id
+                    : item.email !== recipient.email,
+                ),
+              )
+            }
           />
           <fieldset disabled={readOnly}>
             <legend className="mb-1 system-xs-medium text-text-secondary">
@@ -81,16 +94,21 @@ const Approvers = ({ value, onChange, readOnly }: Props) => {
             </legend>
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               {roles.map((role) => (
-                <label key={role} className="flex items-center gap-1 system-xs-regular text-text-secondary">
+                <label
+                  key={role}
+                  className="flex items-center gap-1 system-xs-regular text-text-secondary"
+                >
                   <input
                     type="checkbox"
                     checked={value.roles.includes(role)}
-                    onChange={(event) => onChange({
-                      ...value,
-                      roles: event.target.checked
-                        ? [...value.roles, role]
-                        : value.roles.filter((selectedRole) => selectedRole !== role),
-                    })}
+                    onChange={(event) =>
+                      onChange({
+                        ...value,
+                        roles: event.target.checked
+                          ? [...value.roles, role]
+                          : value.roles.filter((selectedRole) => selectedRole !== role),
+                      })
+                    }
                   />
                   {t(($) => $[`${prefix}.role.${role}`], { ns: 'workflowHumanInput' })}
                 </label>

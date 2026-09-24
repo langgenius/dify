@@ -80,7 +80,11 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
       const { member_ids, emails, roles } = payload.approvers
       if (!member_ids.length && !emails.length && !roles.length)
         errorMessages = t(($) => $[`${i18nPrefix}.approversRequired`], { ns: 'workflow' })
-      else if (payload.delivery_methods.some(method => method.enabled && method.type === DeliveryMethodType.WebApp))
+      else if (
+        payload.delivery_methods.some(
+          (method) => method.enabled && method.type === DeliveryMethodType.WebApp,
+        )
+      )
         errorMessages = t(($) => $[`${i18nPrefix}.approversWebAppUnsupported`], { ns: 'workflow' })
     }
 

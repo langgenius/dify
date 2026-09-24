@@ -26,7 +26,16 @@ type Props = Readonly<{
   inputLabel?: string
 }>
 
-const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false, inputLabel }: Props) => {
+const EmailInput = ({
+  email,
+  value,
+  list,
+  onDelete,
+  onSelect,
+  onAdd,
+  disabled = false,
+  inputLabel,
+}: Props) => {
   const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)

@@ -106,11 +106,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         onChange={handleDeliveryMethodChange}
         readonly={readOnly}
       />
-      <Approvers
-        value={inputs.approvers}
-        onChange={handleApproversChange}
-        readOnly={readOnly}
-      />
+      <Approvers value={inputs.approvers} onChange={handleApproversChange} readOnly={readOnly} />
       <div className="px-4 py-2">
         <Separator className="my-0 bg-divider-subtle" />
       </div>

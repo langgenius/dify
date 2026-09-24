@@ -5090,6 +5090,8 @@ export default interface Resources {
     'nodes.end.output.variable': 'output variable'
     'nodes.http.api': 'API'
     'nodes.http.binaryFileVariable': 'Binary File Variable'
+    'nodes.humanInput.errorMsg.approversRequired': 'Select at least one approver'
+    'nodes.humanInput.errorMsg.approversWebAppUnsupported': 'Restricted approval cannot use Web App delivery'
     'nodes.humanInput.errorMsg.duplicateActionId': 'Duplicate action ID found in user actions'
     'nodes.humanInput.errorMsg.emailConfigIncomplete': 'Please complete the Email delivery method configuration'
     'nodes.humanInput.errorMsg.emptyActionId': 'Action ID cannot be empty'
@@ -5561,6 +5563,14 @@ export default interface Resources {
     'versionHistory.title': 'Versions'
   }
   workflowHumanInput: {
+    'nodes.humanInput.approvers.description': 'Only selected members, email recipients, or workspace roles may submit. Public Web App delivery is unavailable.'
+    'nodes.humanInput.approvers.role.admin': 'Admin'
+    'nodes.humanInput.approvers.role.dataset_operator': 'Dataset operator'
+    'nodes.humanInput.approvers.role.editor': 'Editor'
+    'nodes.humanInput.approvers.role.normal': 'Member'
+    'nodes.humanInput.approvers.role.owner': 'Owner'
+    'nodes.humanInput.approvers.roles': 'Workspace roles'
+    'nodes.humanInput.approvers.title': 'Approvers'
     'nodes.humanInput.deliveryMethod.added': 'Added'
     'nodes.humanInput.deliveryMethod.contactTip1': 'Missing a delivery method you need?'
     'nodes.humanInput.deliveryMethod.contactTip2': 'Tell us at <email>support@dify.ai</email>.'
