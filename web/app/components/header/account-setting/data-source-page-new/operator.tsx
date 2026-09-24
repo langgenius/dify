@@ -52,7 +52,7 @@ const Operator = ({
           <IconButton
             ref={triggerRef}
             size="lg"
-            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            aria-label={`${t(($) => $['operation.more'], { ns: 'common' })} ${credentialItem.name}`}
             className="data-popup-open:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />

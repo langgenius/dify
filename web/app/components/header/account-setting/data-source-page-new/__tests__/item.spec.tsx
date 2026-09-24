@@ -84,7 +84,9 @@ describe('Item Component', () => {
 
         await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
+          expect(
+            screen.getByRole('button', { name: 'common.operation.more Test Credential' }),
+          ).toHaveFocus()
         })
       },
     )
