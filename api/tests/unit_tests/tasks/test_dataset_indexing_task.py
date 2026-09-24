@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -28,6 +29,8 @@ from tasks.document_indexing_task import (
     priority_document_indexing_task,
 )
 from tests.unit_tests.config_override import apply_config_overrides, config_overrides_context
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -61,7 +64,7 @@ def mock_redis() -> MagicMock:
 def indexing_runner(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     runner = MagicMock()
     runner_class = MagicMock(return_value=runner)
-    monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+    monkeypatch.setattr(application_services(), "create_indexing_runner", runner_class)
     runner._constructor_mock = runner_class
     return runner
 
@@ -277,7 +280,7 @@ class TestDocumentIndexing:
     ) -> None:
         get_features = _patch_features(monkeypatch, _features())
         runner_class = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+        monkeypatch.setattr(application_services(), "create_indexing_runner", runner_class)
 
         _document_indexing(dataset_id, document_ids)
 

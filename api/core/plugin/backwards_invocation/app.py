@@ -6,11 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db.session_factory import create_session
@@ -126,6 +124,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke chat app
         """
+        from extensions.ext_application_services import application_services
+
         match app.mode:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app)
@@ -137,21 +137,25 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     state_owner_user_id=workflow.created_by,
                 )
 
-                return AdvancedChatAppGenerator().generate(
-                    app_model=app,
-                    workflow=workflow,
-                    user=user,
-                    args={
-                        "inputs": inputs,
-                        "query": query,
-                        "files": files,
-                        "conversation_id": conversation_id,
-                    },
-                    invoke_from=InvokeFrom.SERVICE_API,
-                    workflow_run_id=str(uuid.uuid4()),
-                    streaming=stream,
-                    pause_state_config=pause_config,
-                    session=session,
+                return (
+                    application_services()
+                    .create_advanced_chat_app_generator()
+                    .generate(
+                        app_model=app,
+                        workflow=workflow,
+                        user=user,
+                        args={
+                            "inputs": inputs,
+                            "query": query,
+                            "files": files,
+                            "conversation_id": conversation_id,
+                        },
+                        invoke_from=InvokeFrom.SERVICE_API,
+                        workflow_run_id=str(uuid.uuid4()),
+                        streaming=stream,
+                        pause_state_config=pause_config,
+                        session=session,
+                    )
                 )
             case AppMode.AGENT_CHAT:
                 return AgentChatAppGenerator().generate(
@@ -197,20 +201,26 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke workflow app
         """
+        from extensions.ext_application_services import application_services
+
         pause_config = PauseStateLayerConfig(
             session_factory=db.engine,
             state_owner_user_id=workflow.created_by,
         )
 
-        return WorkflowAppGenerator().generate(
-            app_model=app,
-            workflow=workflow,
-            user=user,
-            args={"inputs": inputs, "files": files},
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=stream,
-            call_depth=1,
-            pause_state_config=pause_config,
+        return (
+            application_services()
+            .create_workflow_app_generator()
+            .generate(
+                app_model=app,
+                workflow=workflow,
+                user=user,
+                args={"inputs": inputs, "files": files},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=stream,
+                call_depth=1,
+                pause_state_config=pause_config,
+            )
         )
 
     @classmethod

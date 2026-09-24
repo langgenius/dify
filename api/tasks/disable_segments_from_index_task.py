@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
@@ -24,6 +23,8 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
     Usage: disable_segments_from_index_task.delay(segment_ids, dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -41,7 +42,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
             return
         # sync index processor
-        index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
+        index_processor = application_services().index_processors.create(dataset_document.doc_form)
 
         segments = session.scalars(
             select(DocumentSegment).where(

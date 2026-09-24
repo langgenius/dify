@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -30,7 +29,9 @@ from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatas
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
+    SQLAlchemyWorkflowNodeExecutionWriteRepository,
+)
 from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
@@ -578,6 +579,8 @@ class RagPipelineService:
         """
         Run draft workflow node
         """
+        from extensions.ext_application_services import application_services
+
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
         if not draft_workflow:
@@ -595,6 +598,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                index_processor=application_services().knowledge_index,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
@@ -620,14 +624,15 @@ class RagPipelineService:
 
         # Create repository and save the node execution
 
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=application_services().file_uploads,
         )
-        repository.save(workflow_node_execution)
+        repository.writer.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
@@ -644,6 +649,7 @@ class RagPipelineService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=account,
+                file_uploads=application_services().file_uploads,
             )
             draft_var_saver.save(
                 process_data=workflow_node_execution.process_data,
@@ -1365,6 +1371,7 @@ class RagPipelineService:
         """
         Set datasource variables
         """
+        from extensions.ext_application_services import application_services
 
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
@@ -1391,6 +1398,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                index_processor=application_services().knowledge_index,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs={},
@@ -1415,12 +1423,13 @@ class RagPipelineService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = SQLAlchemyWorkflowNodeExecutionWriteRepository(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=application_services().file_uploads,
         )
         repository.save(workflow_node_execution)
 
@@ -1437,6 +1446,7 @@ class RagPipelineService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=current_user,
+                file_uploads=application_services().file_uploads,
             )
             draft_var_saver.save(
                 process_data=workflow_node_execution.process_data,
@@ -1503,6 +1513,8 @@ class RagPipelineService:
         """
         Retry error document
         """
+        from extensions.ext_application_services import application_services
+
         document_pipeline_execution_log = self._session.scalar(
             select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.document_id == document.id).limit(1)
         )
@@ -1515,7 +1527,7 @@ class RagPipelineService:
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
             raise ValueError("Workflow not found")
-        PipelineGenerator().generate(
+        application_services().create_pipeline_generator().generate(
             session=self._session,
             pipeline=pipeline,
             workflow=workflow,

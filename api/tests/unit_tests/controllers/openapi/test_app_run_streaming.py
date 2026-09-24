@@ -161,11 +161,13 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
 def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: Flask, monkeypatch: pytest.MonkeyPatch):
     generate_mock = _generate_stub(monkeypatch, [])
     upload_service = Mock()
-    upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+    upload_service.upload_file_for_actor.side_effect = lambda **kw: SimpleNamespace(
         id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
     )
     monkeypatch.setattr(
-        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+        sys.modules["controllers.openapi._files"],
+        "application_services",
+        lambda: SimpleNamespace(file_uploads=upload_service),
     )
     body = CompletionRunPayload(
         inputs={},
@@ -182,7 +184,7 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: F
         api.post.__handler__(api, _ctx(AppMode.COMPLETION, session), app_id=_TEST_APP_ID, body=body)
 
     # The read transaction ends before the first object-storage write (api/AGENTS.md).
-    assert [call[0] for call in order.mock_calls][:2] == ["session.commit", "uploads.upload_file"]
+    assert [call[0] for call in order.mock_calls][:2] == ["session.commit", "uploads.upload_file_for_actor"]
     args = generate_mock.call_args.kwargs["args"]
     assert args["inputs"]["doc"] == {
         "transfer_method": "local_file",

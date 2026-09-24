@@ -73,7 +73,6 @@ ignore_imports =
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.external_knowledge_service
     core.rag.index_processor.index_processor -> services.vector_space_admission_service
-    core.rag.index_processor.index_processor_base -> services.file_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.account_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.summary_index_service
     core.rag.index_processor.processor.parent_child_index_processor -> services.account_service
@@ -83,8 +82,7 @@ ignore_imports =
     core.rag.retrieval.dataset_retrieval -> services.feature_service
     core.rag.summary_index.summary_index -> services.summary_index_service
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
+    core.repositories.sqlalchemy_workflow_node_execution_write_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
     core.workflow.nodes.agent.message_transformer -> services
@@ -801,3 +799,37 @@ forbidden_modules =
     services.audio_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:file-upload-boundary]
+name = Shared file operations do not depend on transport or persistence implementations
+type = forbidden
+source_modules =
+    services.file_upload_service
+    services.file_service
+forbidden_modules =
+    controllers
+    extensions
+    factories
+    repositories
+    flask
+    sqlalchemy
+    werkzeug
+    models.model
+    models.account
+
+[importlinter:contract:file-upload-ports-boundary]
+name = Core upload values and ports do not depend on application or persistence implementations
+type = forbidden
+source_modules =
+    core.file.uploads
+forbidden_modules =
+    controllers
+    extensions
+    factories
+    repositories
+    services
+    flask
+    sqlalchemy
+    werkzeug
+    models.model
+    models.account

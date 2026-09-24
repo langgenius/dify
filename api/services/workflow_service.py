@@ -1152,6 +1152,8 @@ class WorkflowService:
         """
         Run draft workflow node
         """
+        from extensions.ext_application_services import application_services
+
         files = files or []
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
@@ -1212,6 +1214,7 @@ class WorkflowService:
             enclosing_node_id = None
 
         run = WorkflowEntry.single_step_run(
+            index_processor=application_services().knowledge_index,
             workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,
@@ -1232,14 +1235,15 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=application_services().file_uploads,
         )
-        repository.save(node_execution)
+        repository.writer.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
         if workflow_node_execution is None:
@@ -1258,6 +1262,7 @@ class WorkflowService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=node_execution.id,
                 user=account,
+                file_uploads=application_services().file_uploads,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
 
@@ -1348,6 +1353,8 @@ class WorkflowService:
             inputs: Values used to fill missing upstream variables referenced in form_content.
             action: Selected action ID.
         """
+        from extensions.ext_application_services import application_services
+
         draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
@@ -1409,6 +1416,7 @@ class WorkflowService:
                 node_execution_id=str(uuid.uuid4()),
                 user=account,
                 enclosing_node_id=enclosing_node_id,
+                file_uploads=application_services().file_uploads,
             )
             draft_var_saver.save(outputs=outputs, process_data={})
 

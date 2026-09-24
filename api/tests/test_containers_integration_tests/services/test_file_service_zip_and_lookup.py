@@ -8,20 +8,20 @@ Covers:
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any
+from unittest.mock import MagicMock
 from uuid import uuid4
 from zipfile import ZipFile
 
-import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-import services.file_service as file_service_module
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_service import FileService
+from repositories.file_repository import SQLAlchemyFileRepository
+from services.file_service import FileArchiveEntry, FileStorage
+from tests.file_service_test_utils import make_file_service
 
 
 def _create_upload_file(db_session: Session, *, tenant_id: str, key: str, name: str) -> UploadFile:
@@ -43,23 +43,24 @@ def _create_upload_file(db_session: Session, *, tenant_id: str, key: str, name: 
     return upload_file
 
 
-def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names() -> None:
     """Ensure ZIP entry names are safe and unique while preserving extensions."""
-    upload_files: list[Any] = [
-        SimpleNamespace(name="a/b.txt", key="k1"),
-        SimpleNamespace(name="c/b.txt", key="k2"),
-        SimpleNamespace(name="../b.txt", key="k3"),
+    upload_files: list[FileArchiveEntry] = [
+        FileArchiveEntry(name="a/b.txt", key="k1"),
+        FileArchiveEntry(name="c/b.txt", key="k2"),
+        FileArchiveEntry(name="../b.txt", key="k3"),
     ]
 
     data_by_key: dict[str, list[bytes]] = {"k1": [b"one"], "k2": [b"two"], "k3": [b"three"]}
 
-    def _load(key: str, stream: bool = True) -> list[bytes]:
-        assert stream is True
-        return data_by_key[key]
+    def _load(key: str) -> Generator[bytes, None, None]:
+        yield from data_by_key[key]
 
-    monkeypatch.setattr(file_service_module.storage, "load", _load)
+    storage = MagicMock(spec=FileStorage)
+    storage.load_stream.side_effect = _load
+    file_service = make_file_service(sessionmaker(), storage=storage)
 
-    with FileService.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp:
+    with file_service.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp:
         with ZipFile(tmp, mode="r") as zf:
             assert zf.namelist() == ["b.txt", "b (1).txt", "b (2).txt"]
             assert zf.read("b.txt") == b"one"
@@ -69,7 +70,7 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
 
 def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers: Session) -> None:
     """Ensure empty input returns an empty mapping without hitting the database."""
-    assert FileService.get_upload_files_by_ids(str(uuid4()), [], session=db_session_with_containers) == {}
+    assert SQLAlchemyFileRepository.get_upload_files_by_ids(str(uuid4()), [], session=db_session_with_containers) == {}
 
 
 def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_containers: Session) -> None:
@@ -78,7 +79,7 @@ def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_contai
     file1 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k1", name="file1.txt")
     file2 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k2", name="file2.txt")
 
-    result = FileService.get_upload_files_by_ids(
+    result = SQLAlchemyFileRepository.get_upload_files_by_ids(
         tenant_id, [file1.id, file1.id, file2.id], session=db_session_with_containers
     )
 
@@ -94,6 +95,6 @@ def test_get_upload_files_by_ids_filters_by_tenant(db_session_with_containers: S
     file_a = _create_upload_file(db_session_with_containers, tenant_id=tenant_a, key="ka", name="a.txt")
     _create_upload_file(db_session_with_containers, tenant_id=tenant_b, key="kb", name="b.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_a, [file_a.id], session=db_session_with_containers)
+    result = SQLAlchemyFileRepository.get_upload_files_by_ids(tenant_a, [file_a.id], session=db_session_with_containers)
 
     assert set(result.keys()) == {file_a.id}

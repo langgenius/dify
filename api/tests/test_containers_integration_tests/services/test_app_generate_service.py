@@ -36,6 +36,14 @@ class TestAppGenerateService:
             ) as mock_advanced_chat_generator,
             patch("services.app_generate_service.WorkflowAppGenerator", autospec=True) as mock_workflow_generator,
             patch(
+                "extensions.ext_application_services.ApplicationServices.create_advanced_chat_app_generator",
+                side_effect=lambda: mock_advanced_chat_generator(),
+            ),
+            patch(
+                "extensions.ext_application_services.ApplicationServices.create_workflow_app_generator",
+                side_effect=lambda: mock_workflow_generator(),
+            ),
+            patch(
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
             patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,

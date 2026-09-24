@@ -31,13 +31,13 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.entities import Rule
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
@@ -62,7 +62,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
-from services.file_service import FileService
+from services.file_service import FileArchiveEntry
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
@@ -766,7 +766,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
                 )
 
-                indexing_runner = IndexingRunner()
+                indexing_runner = application_services().create_indexing_runner()
 
                 try:
                     estimate_response = indexing_runner.indexing_estimate(
@@ -905,7 +905,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
 
                 case _:
                     raise ValueError("Data source type not support")
-            indexing_runner = IndexingRunner()
+            indexing_runner = application_services().create_indexing_runner()
             try:
                 response = indexing_runner.indexing_estimate(
                     tenant_id=current_tenant_id,
@@ -1208,9 +1208,13 @@ class DocumentBatchDownloadZipApi(DocumentResource):
             session=session,
         )
 
-        # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
+        # Pass detached file metadata to ZIP packing; keep response and cleanup in the route.
         with ExitStack() as stack:
-            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            zip_path = stack.enter_context(
+                application_services().files.build_upload_files_zip_tempfile(
+                    upload_files=[FileArchiveEntry(name=file.name, key=file.key) for file in upload_files]
+                )
+            )
             response = send_file(
                 zip_path,
                 mimetype="application/zip",

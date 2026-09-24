@@ -12,6 +12,7 @@ from controllers.openapi._errors import InvalidFilePart
 from controllers.openapi._files import merge_files
 from factories.file_factory.validation import is_file_valid_with_config
 from graphon.file import FileTransferMethod, FileType, FileUploadConfig
+from models import EndUser
 
 _DOCUMENT_VARIABLE_CONFIG = FileUploadConfig(
     allowed_file_types=[FileType.DOCUMENT],
@@ -27,16 +28,20 @@ def _fs(name: str, mimetype: str) -> FileStorage:
 @pytest.fixture(autouse=True)
 def uploads(monkeypatch: pytest.MonkeyPatch) -> Mock:
     service = Mock()
-    service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+    service.upload_file_for_actor.side_effect = lambda **kw: SimpleNamespace(
         id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
     )
-    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(files=service))
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(file_uploads=service))
     return service
 
 
 def test_parts_become_mappings_the_core_file_factory_accepts() -> None:
     original = {"q": "hi"}
-    inputs = merge_files(original, {"doc": _fs("r.pdf", "application/pdf"), "pages": [_fs("1.png", "image/png")]}, None)
+    inputs = merge_files(
+        original,
+        {"doc": _fs("r.pdf", "application/pdf"), "pages": [_fs("1.png", "image/png")]},
+        EndUser(id="end-user-1", tenant_id="tenant-1"),
+    )
     assert original == {"q": "hi"}
     assert inputs == {
         "q": "hi",
@@ -53,4 +58,8 @@ def test_parts_become_mappings_the_core_file_factory_accepts() -> None:
 
 def test_a_name_given_in_both_inputs_and_files_is_refused() -> None:
     with pytest.raises(InvalidFilePart, match="doc"):
-        merge_files({"doc": "https://x/a.pdf"}, {"doc": _fs("a.pdf", "application/pdf")}, None)
+        merge_files(
+            {"doc": "https://x/a.pdf"},
+            {"doc": _fs("a.pdf", "application/pdf")},
+            EndUser(id="end-user-1", tenant_id="tenant-1"),
+        )

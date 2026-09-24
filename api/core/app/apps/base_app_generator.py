@@ -14,6 +14,7 @@ from core.app.apps.draft_variable_saver import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.file.uploads import FileUploadWriter
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -39,6 +40,7 @@ class _DebuggerDraftVariableSaver:
         self,
         *,
         account: Account,
+        file_uploads: FileUploadWriter,
         tenant_id: str,
         app_id: str,
         node_id: str,
@@ -47,6 +49,7 @@ class _DebuggerDraftVariableSaver:
         enclosing_node_id: str | None = None,
     ) -> None:
         self._account = account
+        self._file_uploads = file_uploads
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
@@ -65,6 +68,7 @@ class _DebuggerDraftVariableSaver:
                 node_execution_id=self._node_execution_id,
                 enclosing_node_id=self._enclosing_node_id,
                 user=self._account,
+                file_uploads=self._file_uploads,
             ).save(process_data, outputs)
 
 
@@ -334,6 +338,7 @@ class BaseAppGenerator:
         account: Account | EndUser,
         *,
         tenant_id: str,
+        file_uploads: FileUploadWriter,
     ) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
@@ -347,6 +352,7 @@ class BaseAppGenerator:
             ) -> DraftVariableSaver:
                 return _DebuggerDraftVariableSaver(
                     account=account,
+                    file_uploads=file_uploads,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     node_id=node_id,

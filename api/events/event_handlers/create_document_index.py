@@ -6,7 +6,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError
 from events.document_index_event import document_index_created
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
@@ -17,11 +17,13 @@ logger = logging.getLogger(__name__)
 
 @document_index_created.connect
 def handle(sender, **kwargs):
+    from extensions.ext_application_services import application_services
+
     dataset_id = sender
     document_ids = kwargs.get("document_ids", [])
     start_at = time.perf_counter()
     try:
-        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+        indexing_runner = application_services().create_indexing_runner(enforce_vector_space_admission=True)
         with session_factory.create_session() as session:
             documents = []
             for document_id in document_ids:

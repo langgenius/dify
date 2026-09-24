@@ -12,9 +12,11 @@ from controllers.common.errors import (
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from core.file.uploads import FileUploadActor
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.helper import dump_response
+from models.enums import CreatorUserRole
 from models.model import App, EndUser
 
 register_response_schema_models(web_ns, FileResponse)
@@ -79,11 +81,12 @@ class FileApi(WebApiResource):
             source = None
 
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file_for_actor(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=end_user,
+                actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                resource_tenant_id=end_user.tenant_id,
                 source="datasets" if source == "datasets" else None,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

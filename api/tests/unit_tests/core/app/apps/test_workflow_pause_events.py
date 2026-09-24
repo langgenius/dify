@@ -12,6 +12,11 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from core.workflow.nodes.human_input.entities import (
     ParagraphInputConfig,
     SelectInputConfig,
@@ -116,7 +121,9 @@ def _build_runner():
         system_user_id="sys-user",
         root_node_id=None,
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
         graph_engine_layers=(),
         graph_runtime_state=None,
     )

@@ -36,6 +36,7 @@ from core.app.entities.queue_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
@@ -166,11 +167,14 @@ class WorkflowBasedAppRunner:
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         app_id: str,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-    ):
+        index_processor: IndexProcessor | None = None,
+    ) -> None:
         self._queue_manager = queue_manager
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        # None supports graphs without Knowledge Index nodes.
+        self._index_processor = index_processor
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -218,6 +222,7 @@ class WorkflowBasedAppRunner:
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
+            index_processor=self._index_processor,
         )
 
         if root_node_id is None:
@@ -383,6 +388,7 @@ class WorkflowBasedAppRunner:
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
+            index_processor=self._index_processor,
         )
 
         target_node_config = None

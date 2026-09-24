@@ -1,6 +1,6 @@
 import hashlib
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import FrozenInstanceError, dataclass
 from datetime import datetime
 
 import httpx
@@ -8,12 +8,14 @@ import pytest
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.file import remote_fetcher
-from extensions.ext_storage import storage
+from core.file.uploads import FileUploadActor, FileUploadResult
 from graphon.file import helpers as file_helpers
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_service import FileService, FileUploadActor, FileUploadResult
+from repositories.file_repository import SQLAlchemyFileRepository
+from services.file_upload_service import FileUploadService
 from services.remote_file_service import RemoteFileService
 
 _TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -22,8 +24,20 @@ _REMOTE_URL = "https://example.com/report.txt"
 
 
 @dataclass
+class _UploadStorage:
+    stored: dict[str, bytes]
+    active_transactions: set[Connection]
+    io_events: list[str]
+
+    def save(self, key: str, content: bytes) -> None:
+        assert not self.active_transactions
+        self.io_events.append("storage")
+        self.stored[key] = content
+
+
+@dataclass
 class _UploadHarness:
-    files: FileService
+    uploads: FileUploadService
     stored: dict[str, bytes]
     active_transactions: set[Connection]
     io_events: list[str]
@@ -36,11 +50,24 @@ def upload_harness(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[_UploadHarness]:
+    saved = _UploadStorage(stored={}, active_transactions=set(), io_events=[])
+
+    def signed_url(upload_file_id: str) -> str:
+        assert not saved.active_transactions
+        saved.io_events.append("sign")
+        return f"https://files.example.com/{upload_file_id}?sign=test"
+
+    uploads = FileUploadService(
+        uploads=SQLAlchemyFileRepository(session_factory=sqlite_session_factory),
+        storage=saved,
+        storage_type=dify_config.STORAGE_TYPE,
+        sign_file_url=signed_url,
+    )
     harness = _UploadHarness(
-        files=FileService(session_factory=sqlite_session_factory),
-        stored={},
-        active_transactions=set(),
-        io_events=[],
+        uploads=uploads,
+        stored=saved.stored,
+        active_transactions=saved.active_transactions,
+        io_events=saved.io_events,
         database_events=[],
     )
 
@@ -52,20 +79,9 @@ def upload_harness(
         harness.active_transactions.remove(connection)
         harness.database_events.append("end")
 
-    def save(key: str, content: bytes) -> None:
-        assert not harness.active_transactions
-        harness.io_events.append("storage")
-        harness.stored[key] = content
-
-    def signed_url(upload_file_id: str) -> str:
-        assert not harness.active_transactions
-        harness.io_events.append("sign")
-        return f"https://files.example.com/{upload_file_id}?sign=test"
-
     event.listen(sqlite_engine, "begin", begin)
     event.listen(sqlite_engine, "commit", end)
     event.listen(sqlite_engine, "rollback", end)
-    monkeypatch.setattr(storage, "save", save)
     monkeypatch.setattr(file_helpers, "get_signed_file_url", signed_url)
     try:
         yield harness
@@ -86,7 +102,7 @@ def test_actor_upload_preserves_owner_creator_and_source_url_without_extra_queri
     actor = FileUploadActor(id=_ACTOR_ID, creator_role=role)
     content = "文件内容".encode()
 
-    result = upload_harness.files.upload_file_for_actor(
+    result = upload_harness.uploads.upload_file_for_actor(
         actor=actor,
         resource_tenant_id=_TENANT_ID,
         filename="report.TXT",
@@ -117,6 +133,13 @@ def test_actor_upload_preserves_owner_creator_and_source_url_without_extra_queri
         assert persisted.source_url == source_url
         assert persisted.hash == hashlib.sha3_256(content).hexdigest()
         assert persisted.key.startswith(f"upload_files/{_TENANT_ID}/")
+        assert result.key == persisted.key
+        assert result.storage_type == persisted.storage_type.value
+        assert result.created_by_role == role
+        assert result.hash == persisted.hash
+        assert result.used is False
+        assert result.used_by is None
+        assert result.used_at is None
         assert upload_harness.stored == {persisted.key: content}
 
 
@@ -145,7 +168,7 @@ def test_remote_actor_upload_fetches_before_transaction_and_retains_original_url
 
     monkeypatch.setattr(remote_fetcher, "make_request", make_request)
 
-    result = RemoteFileService(files=upload_harness.files).upload_from_url(
+    result = RemoteFileService(files=upload_harness.uploads).upload_from_url(
         url=_REMOTE_URL, user=actor, tenant_id=_TENANT_ID
     )
 
@@ -182,7 +205,7 @@ def test_same_actor_can_upload_to_separately_admitted_tenants(
     tenant_ids = (_TENANT_ID, "33333333-3333-3333-3333-333333333333")
 
     results = [
-        upload_harness.files.upload_file_for_actor(
+        upload_harness.uploads.upload_file_for_actor(
             actor=actor,
             resource_tenant_id=tenant_id,
             filename="report.txt",
@@ -205,11 +228,9 @@ def test_same_actor_can_upload_to_separately_admitted_tenants(
             assert upload_harness.stored[persisted.key] == tenant_id.encode()
 
 
-@pytest.mark.parametrize("remote", [False, True], ids=["local", "remote"])
-def test_actor_upload_without_target_tenant_fails_before_external_io(
+def test_remote_actor_upload_without_target_tenant_fails_before_external_io(
     upload_harness: _UploadHarness,
     monkeypatch: pytest.MonkeyPatch,
-    remote: bool,
 ) -> None:
     actor = FileUploadActor(id=_ACTOR_ID, creator_role=CreatorUserRole.ACCOUNT)
 
@@ -218,15 +239,40 @@ def test_actor_upload_without_target_tenant_fails_before_external_io(
 
     monkeypatch.setattr(remote_fetcher, "make_request", unexpected_request)
 
-    if remote:
-        with pytest.raises(TypeError, match="tenant_id"):
-            RemoteFileService(files=upload_harness.files).upload_from_url(url=_REMOTE_URL, user=actor)
-    else:
-        with pytest.raises(TypeError, match="tenant_id"):
-            upload_harness.files.upload_file(
-                filename="report.txt", content=b"file content", mimetype="text/plain", user=actor
-            )
+    with pytest.raises(TypeError, match="tenant_id"):
+        RemoteFileService(files=upload_harness.uploads).upload_from_url(url=_REMOTE_URL, user=actor)
 
     assert upload_harness.io_events == []
     assert upload_harness.database_events == []
     assert upload_harness.stored == {}
+
+
+@pytest.mark.parametrize("source_url", ["", _REMOTE_URL])
+def test_upload_returns_immutable_metadata_without_reloading_row(
+    upload_harness: _UploadHarness,
+    sqlite_session_factory: sessionmaker[Session],
+    source_url: str,
+) -> None:
+    actor = FileUploadActor(id=_ACTOR_ID, creator_role=CreatorUserRole.ACCOUNT)
+    upload = upload_harness.uploads.upload_file_for_actor(
+        actor=actor,
+        resource_tenant_id=_TENANT_ID,
+        filename="report.txt",
+        content=b"file content",
+        mimetype="text/plain",
+        source_url=source_url,
+    )
+
+    assert isinstance(upload, FileUploadResult)
+    assert upload.source_url == (source_url or f"https://files.example.com/{upload.id}?sign=test")
+    assert upload_harness.database_events == ["begin", "end"]
+    with sqlite_session_factory() as session:
+        stored = session.get(UploadFile, upload.id)
+        assert stored is not None
+        # Signing decorates the detached return after persistence, matching the
+        # old method; the initial stored source stays the original URL or empty.
+        assert stored.source_url == source_url
+        assert stored.used is False
+
+    with pytest.raises(FrozenInstanceError):
+        setattr(upload, "used", True)  # noqa: B010 - Exercise dataclass immutability at runtime.

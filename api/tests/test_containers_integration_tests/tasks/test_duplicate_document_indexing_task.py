@@ -37,10 +37,12 @@ class TestDuplicateDocumentIndexingTasks:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.duplicate_document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+            patch(
+                "extensions.ext_application_services.ApplicationServices.create_indexing_runner"
+            ) as mock_indexing_runner,
             patch("tasks.duplicate_document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
             patch(
-                "tasks.duplicate_document_indexing_task.IndexProcessorFactory", autospec=True
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
             ) as mock_index_processor_factory,
         ):
             # Setup mock indexing runner
@@ -51,7 +53,7 @@ class TestDuplicateDocumentIndexingTasks:
             # Setup mock index processor factory
             mock_processor = MagicMock()
             mock_processor.clean = MagicMock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_index_processor_factory.return_value = mock_processor
 
             yield {
                 "indexing_runner": mock_indexing_runner,

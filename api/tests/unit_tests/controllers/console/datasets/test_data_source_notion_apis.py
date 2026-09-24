@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -21,10 +21,13 @@ from controllers.console.datasets.data_source import (
 )
 from controllers.console.wraps import RBACPermission
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from models import Account, Dataset, Document
 from models.dataset import DataSourceType
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 from tests.unit_tests.model_factories import make_dataset, make_document
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 def _dataset() -> Dataset:
@@ -96,9 +99,12 @@ class TestDataSourceNotionIndexingEstimateApi:
             patch(
                 "controllers.console.datasets.data_source.DocumentService.estimate_args_validate",
             ),
-            patch(
-                "controllers.console.datasets.data_source.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(
+                    indexing_estimate=Mock(return_value=MagicMock(model_dump=lambda: {"total_pages": 1}))
+                ),
             ),
         ):
             response, status = method(api, NotionEstimatePayload.model_validate(payload), sqlite_session, "tenant-1")

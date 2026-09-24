@@ -463,15 +463,14 @@ class TestTencentDataTrace:
         monkeypatch.setattr("dify_trace_tencent.tencent_trace.db", database)
         monkeypatch.setattr("models.account.db", database)
 
-        with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
+        with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionQueryRepository") as mock_repo:
             mock_repo.return_value.get_by_workflow_execution.return_value = []
             results = tencent_data_trace._get_workflow_node_executions(trace_info)
 
         assert results == []
-        service_account = mock_repo.call_args.kwargs["user"]
-        assert isinstance(service_account, Account)
-        assert service_account.id == account.id
+        assert set(mock_repo.call_args.kwargs) == {"session_factory", "tenant_id", "app_id"}
         assert mock_repo.call_args.kwargs["tenant_id"] == tenant.id
+        assert mock_repo.call_args.kwargs["app_id"] == app.id
 
     @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
     def test_get_workflow_node_executions_no_app_id(

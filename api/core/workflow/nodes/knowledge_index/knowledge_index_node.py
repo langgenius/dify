@@ -41,6 +41,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        index_processor: IndexProcessor,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -48,7 +49,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self.index_processor = IndexProcessor()
+        self.index_processor = index_processor
         self.summary_index_service = SummaryIndex()
 
     @override

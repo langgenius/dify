@@ -11,10 +11,8 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -209,31 +207,41 @@ class _AppRunner:
         pause_state_config: PauseStateLayerConfig,
         session: Session,
     ):
+        from extensions.ext_application_services import application_services
+
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator().generate(
-                app_model=app,
-                workflow=workflow,
-                user=user,
-                args=exec_params.args,
-                invoke_from=exec_params.invoke_from,
-                streaming=exec_params.streaming,
-                workflow_run_id=exec_params.workflow_run_id,
-                pause_state_config=pause_state_config,
-                session=session,
+            return (
+                application_services()
+                .create_advanced_chat_app_generator()
+                .generate(
+                    app_model=app,
+                    workflow=workflow,
+                    user=user,
+                    args=exec_params.args,
+                    invoke_from=exec_params.invoke_from,
+                    streaming=exec_params.streaming,
+                    workflow_run_id=exec_params.workflow_run_id,
+                    pause_state_config=pause_state_config,
+                    session=session,
+                )
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator().generate(
-                app_model=app,
-                workflow=workflow,
-                user=user,
-                args=exec_params.args,
-                invoke_from=exec_params.invoke_from,
-                streaming=exec_params.streaming,
-                call_depth=exec_params.call_depth,
-                root_node_id=exec_params.root_node_id,
-                workflow_run_id=exec_params.workflow_run_id,
-                pause_state_config=pause_state_config,
+            return (
+                application_services()
+                .create_workflow_app_generator()
+                .generate(
+                    app_model=app,
+                    workflow=workflow,
+                    user=user,
+                    args=exec_params.args,
+                    invoke_from=exec_params.invoke_from,
+                    streaming=exec_params.streaming,
+                    call_depth=exec_params.call_depth,
+                    root_node_id=exec_params.root_node_id,
+                    workflow_run_id=exec_params.workflow_run_id,
+                    pause_state_config=pause_state_config,
+                )
             )
 
         logger.error("Unsupported app mode for execution: %s", exec_params.app_mode)
@@ -625,6 +633,8 @@ def _resume_advanced_chat(
     workflow_run: WorkflowRun,
     session: Session,
 ) -> None:
+    from extensions.ext_application_services import application_services
+
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
     try:
@@ -639,15 +649,16 @@ def _resume_advanced_chat(
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        file_uploads=application_services().file_uploads,
     )
 
-    generator = AdvancedChatAppGenerator()
+    generator = application_services().create_advanced_chat_app_generator()
 
     try:
         response = generator.resume(
@@ -658,7 +669,7 @@ def _resume_advanced_chat(
             message=message,
             application_generate_entity=resumed_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
@@ -694,6 +705,8 @@ def _resume_workflow(
     workflow_run_repo,
     pause_entity,
 ) -> None:
+    from extensions.ext_application_services import application_services
+
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
     try:
@@ -708,15 +721,16 @@ def _resume_workflow(
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        file_uploads=application_services().file_uploads,
     )
 
-    generator = WorkflowAppGenerator()
+    generator = application_services().create_workflow_app_generator()
 
     try:
         response = generator.resume(
@@ -726,7 +740,7 @@ def _resume_workflow(
             application_generate_entity=resumed_generate_entity,
             graph_runtime_state=graph_runtime_state,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
         )

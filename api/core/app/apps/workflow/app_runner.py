@@ -20,7 +20,7 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepositories
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
@@ -57,7 +57,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         system_user_id: str,
         root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -73,7 +73,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._sys_user_id = system_user_id
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_node_execution_repositories = workflow_node_execution_repositories
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
@@ -205,7 +205,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 graph_data=self._workflow.graph_dict,
             ),
             workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            workflow_node_execution_writer=self._workflow_node_execution_repositories.writer,
+            workflow_node_execution_query=self._workflow_node_execution_repositories.query,
             trace_manager=self.application_generate_entity.trace_manager,
         )
 

@@ -1,9 +1,10 @@
 import io
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
@@ -21,11 +22,13 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
+from core.file.uploads import FileUploadActor, FileUploadResult
+from extensions.storage.storage_type import StorageType
 from machinery.context import RequestContext
-from models import Account
+from models import Account, Tenant
 from models.account import AccountStatus, TenantAccountRole
-from models.model import UploadFile
-from tests.unit_tests.model_factories import make_upload_file
+from models.enums import CreatorUserRole
+from services.errors.file import FileNotExistsError
 
 
 def unwrap(func):
@@ -37,13 +40,24 @@ def unwrap(func):
     return func
 
 
-def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
-    return make_upload_file(
-        file_id=file_id,
+def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> FileUploadResult:
+    return FileUploadResult(
+        id=file_id,
         tenant_id="tenant-123",
+        storage_type=StorageType.LOCAL,
         key=f"upload/{file_id}/test.txt",
+        name="test.txt",
         size=size,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-123",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+        used_by=None,
+        used_at=None,
+        hash=None,
+        source_url="",
     )
 
 
@@ -82,6 +96,9 @@ def mock_current_user():
     user = Account(name="Test User", email="user-1@example.com", status=AccountStatus.ACTIVE)
     user.id = "user-1"
     user.role = TenantAccountRole.OWNER
+    tenant = Tenant(name="Test")
+    tenant.id = "tenant-123"
+    user._current_tenant = tenant
     return user
 
 
@@ -116,6 +133,12 @@ class TestFileApiGet:
         assert "batch_count_limit" in data
         get_knowledge_file_size_limit.assert_called_once_with("tenant-1")
         assert data["skill_file_size_limit"] == dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT
+
+
+@pytest.fixture
+def mock_file_uploads():
+    with patch("controllers.console.files.application_services") as services:
+        yield services.return_value.file_uploads
 
 
 class TestFileApiPost:
@@ -171,11 +194,11 @@ class TestFileApiPost:
             with pytest.raises(Forbidden):
                 post_method(api, mock_current_user)
 
-    def test_successful_upload(self, app: Flask, mock_account_context, mock_file_service):
+    def test_successful_upload(self, app: Flask, mock_account_context, mock_file_uploads):
         api = FileApi()
         post_method = unwrap(api.post)
 
-        mock_file_service.upload_file.return_value = _upload_file()
+        mock_file_uploads.upload_file_for_actor.return_value = _upload_file()
 
         data = {
             "file": (io.BytesIO(b"hello"), "test.txt"),
@@ -187,19 +210,19 @@ class TestFileApiPost:
         assert status == 201
         assert response["id"] == "file-id-123"
         assert response["name"] == "test.txt"
-        mock_file_service.upload_file.assert_called_once_with(
+        mock_file_uploads.upload_file_for_actor.assert_called_once_with(
             filename="test.txt",
             content=b"hello",
             mimetype="text/plain",
-            user=mock_account_context,
-            tenant_id=None,
+            actor=FileUploadActor(id=mock_account_context.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id="tenant-123",
             source=None,
             default_file_size_limit=None,
         )
 
-    def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
+    def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_uploads):
         upload_file = _upload_file()
-        mock_file_service.upload_file.return_value = upload_file
+        mock_file_uploads.upload_file_for_actor.return_value = upload_file
 
         with app.test_request_context(
             method="POST",
@@ -211,16 +234,16 @@ class TestFileApiPost:
             )
 
         assert result is upload_file
-        assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+        assert mock_file_uploads.upload_file_for_actor.call_args.kwargs["resource_tenant_id"] == "app-tenant-id"
 
     def test_dataset_source_from_query_uses_knowledge_limit(
         self,
         app: Flask,
         mock_account_context,
-        mock_file_service,
+        mock_file_uploads,
     ):
         upload_file = _upload_file()
-        mock_file_service.upload_file.return_value = upload_file
+        mock_file_uploads.upload_file_for_actor.return_value = upload_file
 
         with (
             app.test_request_context(
@@ -236,16 +259,16 @@ class TestFileApiPost:
             result = upload_file_from_request(current_user=mock_account_context)
 
         assert result is upload_file
-        assert mock_file_service.upload_file.call_args.kwargs["source"] == "datasets"
-        assert mock_file_service.upload_file.call_args.kwargs["default_file_size_limit"] == 50
+        assert mock_file_uploads.upload_file_for_actor.call_args.kwargs["source"] == "datasets"
+        assert mock_file_uploads.upload_file_for_actor.call_args.kwargs["default_file_size_limit"] == 50
         get_knowledge_file_size_limit.assert_called_once_with(mock_account_context.current_tenant_id)
 
-    def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
+    def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_uploads):
         """Test that invalid source parameter gets normalized to None"""
         api = FileApi()
         post_method = unwrap(api.post)
 
-        mock_file_service.upload_file.return_value = _upload_file(file_id="file-id-456", size=512)
+        mock_file_uploads.upload_file_for_actor.return_value = _upload_file(file_id="file-id-456", size=512)
 
         data = {
             "file": (io.BytesIO(b"content"), "test.txt"),
@@ -257,19 +280,19 @@ class TestFileApiPost:
 
         assert status == 201
         assert response["id"] == "file-id-456"
-        # Verify that FileService was called with source=None
-        mock_file_service.upload_file.assert_called_once()
-        call_kwargs = mock_file_service.upload_file.call_args[1]
+        # Verify that FileUploadService was called with source=None
+        mock_file_uploads.upload_file_for_actor.assert_called_once()
+        call_kwargs = mock_file_uploads.upload_file_for_actor.call_args[1]
         assert call_kwargs["source"] is None
 
-    def test_file_too_large_error(self, app: Flask, mock_account_context, mock_file_service):
+    def test_file_too_large_error(self, app: Flask, mock_account_context, mock_file_uploads):
         api = FileApi()
         post_method = unwrap(api.post)
 
         from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 
         error = ServiceFileTooLargeError("File is too large")
-        mock_file_service.upload_file.side_effect = error
+        mock_file_uploads.upload_file_for_actor.side_effect = error
 
         data = {
             "file": (io.BytesIO(b"x" * 1000000), "big.txt"),
@@ -281,14 +304,14 @@ class TestFileApiPost:
 
         assert error_info.value.__cause__ is error
 
-    def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
+    def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_uploads):
         api = FileApi()
         post_method = unwrap(api.post)
 
         from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
         error = ServiceUnsupportedFileTypeError()
-        mock_file_service.upload_file.side_effect = error
+        mock_file_uploads.upload_file_for_actor.side_effect = error
 
         data = {
             "file": (io.BytesIO(b"x"), "bad.exe"),
@@ -300,14 +323,14 @@ class TestFileApiPost:
 
         assert error_info.value.__cause__ is error
 
-    def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
+    def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_uploads):
         api = FileApi()
         post_method = unwrap(api.post)
 
         from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 
         error = ServiceBlockedFileExtensionError("File extension is blocked")
-        mock_file_service.upload_file.side_effect = error
+        mock_file_uploads.upload_file_for_actor.side_effect = error
 
         data = {
             "file": (io.BytesIO(b"x"), "blocked.txt"),
@@ -332,6 +355,18 @@ class TestFilePreviewApi:
 
         assert result == {"content": "preview text"}
         mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
+
+    def test_missing_preview_maps_service_error_to_http_404(self, app: Flask, mock_file_service):
+        error = FileNotExistsError("File not found")
+        mock_file_service.get_file_preview.side_effect = error
+        api = FilePreviewApi()
+
+        with app.test_request_context(), pytest.raises(NotFound) as exc_info:
+            unwrap(api.get)(api, _request_context(workspace_id="tenant-123"), "missing-id")
+
+        assert exc_info.value.code == 404
+        assert exc_info.value.description == "File not found"
+        assert exc_info.value.__cause__ is error
 
 
 class TestFileSupportTypeApi:

@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from unittest.mock import Mock
 
 import psycopg2.errors
 import pytest
@@ -10,8 +11,9 @@ from sqlalchemy import Engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.sqlalchemy_workflow_node_execution_repository import (
-    SQLAlchemyWorkflowNodeExecutionRepository,
+from core.file.uploads import FileUploadWriter
+from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
+    SQLAlchemyWorkflowNodeExecutionWriteRepository,
 )
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -61,8 +63,9 @@ def _account() -> Account:
 
 
 @pytest.fixture
-def repository(conflict_database: ConflictDatabase) -> SQLAlchemyWorkflowNodeExecutionRepository:
-    return SQLAlchemyWorkflowNodeExecutionRepository(
+def repository(conflict_database: ConflictDatabase) -> SQLAlchemyWorkflowNodeExecutionWriteRepository:
+    return SQLAlchemyWorkflowNodeExecutionWriteRepository(
+        file_uploads=Mock(spec=FileUploadWriter),
         session_factory=conflict_database.session_factory,
         tenant_id="test-tenant-id",
         user=_account(),
@@ -130,7 +133,7 @@ class TestWorkflowNodeExecutionConflictHandling:
 
     def test_save_with_duplicate_key_retries_with_new_uuid(
         self,
-        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        repository: SQLAlchemyWorkflowNodeExecutionWriteRepository,
         conflict_database: ConflictDatabase,
     ) -> None:
         execution = _execution(execution_id="original-id")
@@ -149,7 +152,7 @@ class TestWorkflowNodeExecutionConflictHandling:
 
     def test_save_with_existing_record_updates_instead_of_insert(
         self,
-        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        repository: SQLAlchemyWorkflowNodeExecutionWriteRepository,
         conflict_database: ConflictDatabase,
     ) -> None:
         execution = _execution(execution_id="existing-id")
@@ -166,7 +169,7 @@ class TestWorkflowNodeExecutionConflictHandling:
 
     def test_save_exceeds_max_retries_raises_error(
         self,
-        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        repository: SQLAlchemyWorkflowNodeExecutionWriteRepository,
         conflict_database: ConflictDatabase,
     ) -> None:
         execution = _execution(execution_id="test-id")
@@ -181,7 +184,7 @@ class TestWorkflowNodeExecutionConflictHandling:
 
     def test_save_non_duplicate_integrity_error_raises_immediately(
         self,
-        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        repository: SQLAlchemyWorkflowNodeExecutionWriteRepository,
         conflict_database: ConflictDatabase,
     ) -> None:
         execution = _execution(execution_id="test-id")

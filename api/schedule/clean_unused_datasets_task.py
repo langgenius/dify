@@ -9,7 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError
 import app
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.pagination import paginate_query
@@ -25,6 +24,8 @@ class CleanupConfig(TypedDict):
 
 @app.celery.task(queue="dataset")
 def clean_unused_datasets_task():
+    from extensions.ext_application_services import application_services
+
     click.echo(click.style("Start clean unused datasets indexes.", fg="green"))
     start_at = time.perf_counter()
 
@@ -139,9 +140,9 @@ def clean_unused_datasets_task():
                                             session.add(dataset_auto_disable_log)
 
                                     # Remove index
-                                    index_processor = IndexProcessorFactory(
+                                    index_processor = application_services().index_processors.create(
                                         dataset.get_doc_form(session=session)
-                                    ).init_index_processor()
+                                    )
                                     index_processor.clean(dataset, None, session=session)
 
                                     # Update document

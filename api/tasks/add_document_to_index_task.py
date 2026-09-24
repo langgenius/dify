@@ -8,7 +8,6 @@ from sqlalchemy import delete, select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -27,6 +26,8 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -102,7 +103,7 @@ def add_document_to_index_task(dataset_document_id: str):
                 documents.append(document)
 
             index_type = dataset.get_doc_form(session=session)
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            index_processor = application_services().index_processors.create(index_type)
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
             # delete auto disable log

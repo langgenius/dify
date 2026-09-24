@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from types import ModuleType, SimpleNamespace
 from typing import Any
+from unittest.mock import Mock
 
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -12,6 +13,12 @@ import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.uploads import FileUploadWriter
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from core.workflow import node_factory as node_factory_module
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
@@ -288,7 +295,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator()
+    generator = wf_app_gen_module.WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]
@@ -308,7 +315,9 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         ),
         graph_runtime_state=resumed_state,
         workflow_execution_repository=SimpleNamespace(),
-        workflow_node_execution_repository=SimpleNamespace(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=Mock(spec=WorkflowNodeExecutionWriter), query=Mock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     assert paused_nodes + resumed_nodes == baseline_nodes
@@ -332,7 +341,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator()
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]
@@ -354,7 +363,9 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
             trace_manager=SimpleNamespace(),
         ),
         workflow_execution_repository=SimpleNamespace(),
-        workflow_node_execution_repository=SimpleNamespace(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=Mock(spec=WorkflowNodeExecutionWriter), query=Mock(spec=WorkflowNodeExecutionQuery)
+        ),
         graph_runtime_state=resumed_state,
     )
 

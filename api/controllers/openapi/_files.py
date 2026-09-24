@@ -24,9 +24,12 @@ from werkzeug.exceptions import BadRequest
 import services
 from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
+from core.file.uploads import FileUploadActor, FileUploadResult
 from extensions.ext_application_services import application_services
 from graphon.file import FileTransferMethod, standardize_file_type
-from models.model import UploadFile
+from libs.helper import extract_tenant_id
+from models import Account, EndUser
+from models.enums import CreatorUserRole
 
 FileMapping = dict[str, Any]
 
@@ -41,17 +44,21 @@ def end_read_transaction(session: Session) -> None:
     session.commit()
 
 
-def upload(part: FileStorage, caller: Any) -> UploadFile:
+def upload(part: FileStorage, caller: Account | EndUser) -> FileUploadResult:
     if not part.mimetype:
         raise UnsupportedFileTypeError()
     if not part.filename:
         raise FilenameNotExists()
     try:
-        return application_services().files.upload_file(
+        return application_services().file_uploads.upload_file_for_actor(
             filename=part.filename,
             content=part.stream.read(),
             mimetype=part.mimetype,
-            user=caller,
+            actor=FileUploadActor(
+                id=caller.id,
+                creator_role=CreatorUserRole.ACCOUNT if isinstance(caller, Account) else CreatorUserRole.END_USER,
+            ),
+            resource_tenant_id=extract_tenant_id(caller) or "",
         )
     except services.errors.file.FileTooLargeError as exc:
         raise FileTooLargeError(exc.description) from exc
@@ -63,7 +70,7 @@ def upload(part: FileStorage, caller: Any) -> UploadFile:
         raise BadRequest(str(exc)) from exc
 
 
-def _mapping(part: FileStorage, caller: Any) -> FileMapping:
+def _mapping(part: FileStorage, caller: Account | EndUser) -> FileMapping:
     uploaded = upload(part, caller)
     return {
         "transfer_method": FileTransferMethod.LOCAL_FILE,
@@ -72,14 +79,14 @@ def _mapping(part: FileStorage, caller: Any) -> FileMapping:
     }
 
 
-def materialize(value: FileStorage | list[FileStorage], caller: Any) -> FileMapping | list[FileMapping]:
+def materialize(value: FileStorage | list[FileStorage], caller: Account | EndUser) -> FileMapping | list[FileMapping]:
     if isinstance(value, list):
         return [_mapping(part, caller) for part in value]
     return _mapping(value, caller)
 
 
 def merge_files(
-    inputs: Mapping[str, Any], files: Mapping[str, FileStorage | list[FileStorage]] | None, caller: Any
+    inputs: Mapping[str, Any], files: Mapping[str, FileStorage | list[FileStorage]] | None, caller: Account | EndUser
 ) -> dict[str, Any]:
     merged = dict(inputs)
     for name, value in (files or {}).items():

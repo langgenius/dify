@@ -455,10 +455,11 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = ["node1"]
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr(aliyun_trace_module, "DifyCoreRepositoryFactory", mock_factory)
 
     result = trace_instance.get_workflow_node_executions(trace_info)
+    assert "file_uploads" not in mock_factory.create_workflow_node_execution_query.call_args.kwargs
     assert result == ["node1"]
     repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id=trace_info.workflow_run_id)
 

@@ -119,9 +119,6 @@ class TestOpenApiWorkflowEventsApi:
 
     def _bind_generators(self, monkeypatch: pytest.MonkeyPatch) -> None:
         module = sys.modules["controllers.openapi.workflow_events"]
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
@@ -243,13 +240,10 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
 
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter(["event: a\n\n", "event: b\n\n"])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
         msg_gen_mock = Mock()
-        msg_gen_mock.retrieve_events.return_value = iter([])
+        msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
-        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter([])))
+        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter(["a", "b"])))
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
@@ -268,9 +262,6 @@ class TestOpenApiWorkflowEventsApi:
     ):
         module = sys.modules["controllers.openapi.workflow_events"]
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)

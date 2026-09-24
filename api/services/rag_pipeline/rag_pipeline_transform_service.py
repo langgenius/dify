@@ -19,9 +19,9 @@ from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
 from models.workflow import Workflow, WorkflowType
+from repositories.file_repository import SQLAlchemyFileRepository
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.file_service import FileService
 from services.plugin.plugin_migration import PluginMigration
 
 logger = logging.getLogger(__name__)
@@ -360,9 +360,9 @@ class RagPipelineTransformService:
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
                     file_id = str(file_id)
-                    file = FileService.get_upload_files_by_ids(dataset.tenant_id, [file_id], session=session).get(
-                        file_id
-                    )
+                    file = SQLAlchemyFileRepository.get_upload_files_by_ids(
+                        dataset.tenant_id, [file_id], session=session
+                    ).get(file_id)
                     if file:
                         document.data_source_type = DataSourceType.LOCAL_FILE
                         data_source_info = json.dumps(

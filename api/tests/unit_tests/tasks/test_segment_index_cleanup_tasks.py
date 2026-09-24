@@ -9,6 +9,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -16,6 +17,8 @@ from models.model import UploadFile
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -92,14 +95,14 @@ def test_disable_segment_commits_index_cleanup(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.disable_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch(
             "services.summary_index_service.SummaryIndexService.disable_summaries_for_segments",
             disable_summaries,
         ),
         patch("tasks.disable_segment_from_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = processor
+        processor_factory.return_value = processor
         disable_segment_from_index_task.run(segment.id)
 
     assert phase_events == ["clean", "commit", "summary"]
@@ -121,14 +124,14 @@ def test_disable_segments_commits_index_cleanup(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch(
             "services.summary_index_service.SummaryIndexService.disable_summaries_for_segments",
             disable_summaries,
         ),
         patch("tasks.disable_segments_from_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = processor
+        processor_factory.return_value = processor
         disable_segments_from_index_task.run([segment.id], dataset.id, document.id)
 
     assert phase_events == ["clean", "commit", "summary"]
@@ -149,9 +152,9 @@ def test_delete_segment_commits_index_cleanup_without_attachments(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
     ):
-        processor_factory.return_value.init_index_processor.return_value = processor
+        processor_factory.return_value = processor
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
     assert phase_events == ["clean", "commit"]
@@ -190,7 +193,7 @@ def test_delete_segment_removes_attachment_blobs_from_storage(
     binding_id = binding.id
 
     with (
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
     ):
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
@@ -255,12 +258,12 @@ def test_delete_segment_preserves_attachment_shared_by_another_segment(
     shared_binding_id = shared_binding.id
 
     with (
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
     ):
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
-    processor = processor_factory.return_value.init_index_processor.return_value
+    processor = processor_factory.return_value
     assert processor.clean.call_count == 1
     assert processor.clean.call_args.args[1] == ["node-1"]
     assert processor.clean.call_args.kwargs["with_keywords"] is True
@@ -305,7 +308,7 @@ def test_delete_segment_keeps_database_cleanup_when_attachment_storage_delete_fa
     binding_id = binding.id
 
     with (
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch(
             "tasks.delete_segment_from_index_task.storage.delete",
             side_effect=RuntimeError("storage unavailable"),

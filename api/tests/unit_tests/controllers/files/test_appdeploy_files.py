@@ -42,6 +42,7 @@ from services.entities.file_grant_entities import FileGrantContext, FileGrantSco
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
+from tests.file_service_test_utils import make_file_service, make_file_upload_service
 from tests.unit_tests.file_grant_test_utils import issue_file_grant
 
 CONTROLLER_MODULE = "controllers.files.appdeploy_files"
@@ -106,7 +107,12 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
 
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database_client = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=database_client,
+        file_service=make_file_service(session_factory=database_client),
+        file_uploads=make_file_upload_service(session_factory=database_client),
+    )
     services = SimpleNamespace(file_grants=service)
     with (
         patch(f"{CONTROLLER_MODULE}.application_services", return_value=services),
@@ -161,7 +167,7 @@ def _content_token(*, file_id: str, kind: FileKind, expires_in: int = 300) -> st
 
 
 def _stub_upload_file(**overrides: object) -> SimpleNamespace:
-    """Stand in for the ``upload_files`` row ``FileService`` hands back."""
+    """Stand in for the ``upload_files`` row ``FileUploadService`` hands back."""
 
     return SimpleNamespace(
         **{
@@ -218,7 +224,7 @@ def test_upload_stores_the_file_for_the_grant_end_user(
 ) -> None:
     with (
         patch.object(file_gateway, "store_upload", wraps=file_gateway.store_upload) as store_upload,
-        patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()),
+        patch.object(file_gateway._file_uploads, "upload_file_for_actor", return_value=_stub_upload_file()),
     ):
         with app.test_request_context(
             "/files/appdeploy/upload",
@@ -241,8 +247,8 @@ def test_upload_answers_in_dify_s_own_upload_shape(
     """A client moving off ``POST /v1/files/upload`` must not meet a second shape."""
 
     with patch.object(
-        file_gateway._file_service,
-        "upload_file",
+        file_gateway._file_uploads,
+        "upload_file_for_actor",
         return_value=_stub_upload_file(created_by=end_user.id),
     ):
         with app.test_request_context(
@@ -277,7 +283,7 @@ def test_upload_answers_in_dify_s_own_upload_shape(
 def test_upload_carries_every_key_dify_s_web_client_reads(
     app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
 ) -> None:
-    with patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()):
+    with patch.object(file_gateway._file_uploads, "upload_file_for_actor", return_value=_stub_upload_file()):
         with app.test_request_context(
             "/files/appdeploy/upload",
             method="POST",
@@ -390,7 +396,9 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
             "fetch",
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ) as fetch,
-        patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()) as upload_file,
+        patch.object(
+            file_gateway._file_uploads, "upload_file_for_actor", return_value=_stub_upload_file()
+        ) as upload_file,
     ):
         with app.test_request_context(
             "/files/appdeploy/remote-upload",
@@ -408,7 +416,7 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
     kwargs = upload_file.call_args.kwargs
     assert kwargs["source_url"] == url
     assert kwargs["content"] == b"pdf-bytes"
-    assert kwargs["user"].id == end_user.id
+    assert kwargs["actor"].id == end_user.id
 
 
 def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
@@ -424,8 +432,8 @@ def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ),
         patch.object(
-            file_gateway._file_service,
-            "upload_file",
+            file_gateway._file_uploads,
+            "upload_file_for_actor",
             return_value=_stub_upload_file(source_url=url),
         ),
     ):

@@ -8,7 +8,6 @@ from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
@@ -37,6 +36,8 @@ def batch_clean_document_task(
 
     Usage: batch_clean_document_task.delay(document_ids, dataset_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()
     if not doc_form:
@@ -97,7 +98,7 @@ def batch_clean_document_task(
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
-                        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                        index_processor = application_services().index_processors.create(doc_form)
                         index_processor.clean(
                             dataset,
                             index_node_ids,

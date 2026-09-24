@@ -13,9 +13,11 @@ import jwt
 from pydantic import ValidationError
 
 from core.file import remote_fetcher
+from core.file.uploads import FileUploadActor
 from core.helper import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from extensions.ext_storage import Storage
+from models.enums import CreatorUserRole
 from models.model import EndUser
 from services.entities.file_grant_entities import (
     FileContent,
@@ -32,6 +34,7 @@ from services.entities.file_grant_entities import (
 from services.errors.file import FileTooLargeError
 from services.errors.file_grant import EndUserNotFoundError
 from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 
 FILE_GRANT_AUDIENCE = "dify-files"
 FILE_CONTENT_AUDIENCE = "dify-files-content"
@@ -145,12 +148,14 @@ class FileGrantFileGateway:
         load_end_user: Callable[[FileGrantContext], EndUser | None],
         subject_exists: Callable[[FileGrantContext], bool],
         file_service: FileService,
+        file_uploads: FileUploadService,
         tool_files: ToolFileManager,
         storage: Storage,
     ) -> None:
         self._load_end_user = load_end_user
         self._subject_exists = subject_exists
         self._file_service = file_service
+        self._file_uploads = file_uploads
         self._tool_files = tool_files
         self._storage = storage
 
@@ -165,7 +170,7 @@ class FileGrantFileGateway:
         if not self._subject_exists(context):
             raise EndUserNotFoundError(context.end_user_id)
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        limit = FileService.file_size_limit(extension=extension)
+        limit = FileUploadService.file_size_limit(extension=extension)
         content = stream.read(limit + 1)
         if len(content) > limit:
             raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
@@ -188,11 +193,12 @@ class FileGrantFileGateway:
         end_user = self._load_end_user(context)
         if end_user is None:
             raise EndUserNotFoundError(context.end_user_id)
-        upload = self._file_service.upload_file(
+        upload = self._file_uploads.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=end_user,
+            actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            resource_tenant_id=context.tenant_id,
             source_url=source_url,
         )
         return StoredUpload(
@@ -216,7 +222,7 @@ class FileGrantFileGateway:
         mimetype: str,
     ) -> StoredProducedFile:
         extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
-        limit = FileService.file_size_limit(extension=extension)
+        limit = FileUploadService.file_size_limit(extension=extension)
         content = stream.read(limit + 1)
         if len(content) > limit:
             raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
@@ -262,7 +268,7 @@ class FileGrantRemoteFileGateway:
                 return None
 
             filename, extension, mimetype = self._file_info(metadata)
-            limit = FileService.file_size_limit(extension=extension)
+            limit = FileUploadService.file_size_limit(extension=extension)
             declared_size = self._declared_size(metadata)
             if declared_size is not None and declared_size > limit:
                 metadata.close()

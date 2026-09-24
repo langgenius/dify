@@ -2,7 +2,7 @@
 Unit tests for WorkflowNodeExecution truncation functionality.
 
 Tests the truncation and offloading logic for large inputs and outputs
-in the SQLAlchemyWorkflowNodeExecutionRepository.
+in the SQLAlchemyWorkflowNodeExecutionQueryRepository.
 """
 
 import json
@@ -14,15 +14,15 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.repositories.sqlalchemy_workflow_node_execution_repository import (
-    SQLAlchemyWorkflowNodeExecutionRepository,
+from core.repositories.sqlalchemy_workflow_node_execution_query_repository import (
+    SQLAlchemyWorkflowNodeExecutionQueryRepository,
 )
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
 from graphon.enums import BuiltinNodeTypes
-from models import Account, Tenant, WorkflowNodeExecutionTriggeredFrom
+from models import Account, Tenant
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
@@ -131,17 +131,15 @@ def create_offload(type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload:
     )
 
 
-class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
-    """Test class for truncation functionality in SQLAlchemyWorkflowNodeExecutionRepository."""
+class TestSQLAlchemyWorkflowNodeExecutionQueryRepositoryTruncation:
+    """Test class for truncation functionality in SQLAlchemyWorkflowNodeExecutionQueryRepository."""
 
-    def create_repository(self, sqlite_engine: Engine) -> SQLAlchemyWorkflowNodeExecutionRepository:
+    def create_repository(self, sqlite_engine: Engine) -> SQLAlchemyWorkflowNodeExecutionQueryRepository:
         """Create a repository backed by the test's isolated SQLite engine."""
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = SQLAlchemyWorkflowNodeExecutionQueryRepository(
             session_factory=sqlite_engine,
             tenant_id="test-tenant-id",
-            user=mock_user(),
             app_id="test-app-id",
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
         with repository._session_factory() as session:
             assert isinstance(session, Session)

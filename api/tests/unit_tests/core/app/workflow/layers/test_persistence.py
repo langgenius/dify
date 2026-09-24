@@ -25,7 +25,8 @@ def _build_layer() -> WorkflowPersistenceLayer:
             graph_data={},
         ),
         workflow_execution_repository=Mock(),
-        workflow_node_execution_repository=Mock(),
+        workflow_node_execution_writer=Mock(),
+        workflow_node_execution_query=Mock(),
     )
 
 

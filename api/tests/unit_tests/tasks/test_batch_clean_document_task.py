@@ -6,11 +6,14 @@ import pytest
 from sqlalchemy.orm import Session
 
 import tasks.batch_clean_document_task as task_module
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -53,7 +56,7 @@ def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
     ):
         batch_clean_document_task(
@@ -63,7 +66,7 @@ def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple
             file_ids=[],
         )
 
-    processor_factory.return_value.init_index_processor.return_value.clean.assert_called_once()
+    processor_factory.return_value.clean.assert_called_once()
     schedule_refresh.assert_called_once_with(tenant_id)
 
 
@@ -72,12 +75,10 @@ def test_failed_vector_cleanup_does_not_schedule_billing_refresh(cleanup_rows: t
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
     ):
-        processor_factory.return_value.init_index_processor.return_value.clean.side_effect = RuntimeError(
-            "vector cleanup failed"
-        )
+        processor_factory.return_value.clean.side_effect = RuntimeError("vector cleanup failed")
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset_id,
@@ -119,7 +120,7 @@ def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, s
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory"),
+        patch.object(application_services().index_processors, "create"),
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
         patch("tasks.batch_clean_document_task.storage.delete") as storage_delete,
     ):

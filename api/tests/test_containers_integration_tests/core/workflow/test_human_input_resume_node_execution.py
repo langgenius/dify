@@ -5,14 +5,19 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_query_repository import (
+    SQLAlchemyWorkflowNodeExecutionQueryRepository,
+)
+from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
+    SQLAlchemyWorkflowNodeExecutionWriteRepository,
+)
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -35,6 +40,7 @@ from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccou
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from tests.file_service_test_utils import make_file_upload_service
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -265,15 +271,17 @@ class TestHumanInputResumeNodeExecutionIntegration:
             workflow_execution_id=execution_id,
             user_id=self.account.id,
         )
+        session_factory = sessionmaker(bind=self.session.get_bind(), expire_on_commit=False)
         execution_repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=self.session.get_bind(),
+            session_factory=session_factory,
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
-        node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=self.session.get_bind(),
+        node_execution_repo = SQLAlchemyWorkflowNodeExecutionWriteRepository(
+            session_factory=session_factory,
+            file_uploads=make_file_upload_service(session_factory),
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
@@ -288,7 +296,12 @@ class TestHumanInputResumeNodeExecutionIntegration:
                 graph_data=self.workflow.graph_dict,
             ),
             workflow_execution_repository=execution_repo,
-            workflow_node_execution_repository=node_execution_repo,
+            workflow_node_execution_writer=node_execution_repo,
+            workflow_node_execution_query=SQLAlchemyWorkflowNodeExecutionQueryRepository(
+                session_factory=session_factory,
+                tenant_id=self.tenant.id,
+                app_id=self.app.id,
+            ),
         )
 
     def _run_graph(self, graph: Graph, runtime_state: GraphRuntimeState, execution_id: str) -> None:

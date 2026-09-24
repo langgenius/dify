@@ -21,13 +21,13 @@ from controllers.common.schema import JsonResponseWithStatus, register_response_
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate, with_current_user
+from core.file.uploads import FileUploadActor
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
-from services.file_service import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )

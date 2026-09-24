@@ -10,7 +10,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
@@ -54,6 +54,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     Usage: _document_indexing(dataset_id, document_ids)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -107,7 +109,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False
     try:
-        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+        indexing_runner = application_services().create_indexing_runner(enforce_vector_space_admission=True)
         with session_factory.create_session() as session:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:

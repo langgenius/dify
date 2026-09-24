@@ -7,8 +7,6 @@ from sqlalchemy import delete, select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.indexing_runner import IndexingRunner
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -31,6 +29,8 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
 
     Usage: retry_document_indexing_task.delay(dataset_id, document_ids, user_id)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
     with session_factory.create_session() as session:
         try:
@@ -84,7 +84,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     return
                 try:
                     # clean old data
-                    index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+                    index_processor = application_services().index_processors.create(document.doc_form)
 
                     segments = session.scalars(
                         select(DocumentSegment).where(DocumentSegment.document_id == document_id)
@@ -117,7 +117,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                             rag_pipeline_service = RagPipelineService(rag_session)
                             rag_pipeline_service.retry_error_document(dataset, document, user)
                     else:
-                        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+                        indexing_runner = application_services().create_indexing_runner(
+                            enforce_vector_space_admission=True
+                        )
                         indexing_runner.run([document], session)
                     session.commit()
                     redis_client.delete(retry_indexing_cache_key)

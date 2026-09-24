@@ -16,15 +16,15 @@ class TestDocumentIndexingUpdateTask:
     @pytest.fixture
     def mock_external_dependencies(self):
         """Patch external collaborators used by the update task.
-        - IndexProcessorFactory.init_index_processor().clean(...)
+        - IndexProcessorFactory.create(...).clean(...)
         - IndexingRunner.run([...])
         """
         with (
-            patch("tasks.document_indexing_update_task.IndexProcessorFactory", autospec=True) as mock_factory,
-            patch("tasks.document_indexing_update_task.IndexingRunner", autospec=True) as mock_runner,
+            patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory,
+            patch("extensions.ext_application_services.ApplicationServices.create_indexing_runner") as mock_runner,
         ):
             processor_instance = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = processor_instance
+            mock_factory.return_value = processor_instance
 
             runner_instance = mock_runner.return_value
             yield {

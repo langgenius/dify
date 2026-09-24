@@ -41,11 +41,12 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.file.uploads import FileUploadWriter
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepositories
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.filters import ResponseStreamFilter
@@ -73,6 +74,9 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
+        self._file_uploads = file_uploads
+
     _dialogue_count: int
 
     @overload
@@ -248,12 +252,15 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
             # Create workflow node execution repository
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=session_factory,
-                tenant_id=app_model.tenant_id,
-                user=user,
-                app_id=application_generate_entity.app_config.app_id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_node_execution_repositories = (
+                DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
+                    session_factory=session_factory,
+                    tenant_id=app_model.tenant_id,
+                    user=user,
+                    app_id=application_generate_entity.app_config.app_id,
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                    file_uploads=self._file_uploads,
+                )
             )
 
             return self._generate(
@@ -262,7 +269,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 application_generate_entity=application_generate_entity,
                 workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
+                workflow_node_execution_repositories=workflow_node_execution_repositories,
                 conversation=conversation,
                 stream=streaming,
                 pause_state_config=pause_state_config,
@@ -280,7 +287,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         session: Session,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         graph_runtime_state: GraphRuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -307,7 +314,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=application_generate_entity.invoke_from,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             conversation=conversation,
             message=message,
             stream=application_generate_entity.stream,
@@ -383,12 +390,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -405,7 +413,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             conversation=None,
             stream=streaming,
             variable_loader=var_loader,
@@ -476,12 +484,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -498,7 +507,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             conversation=None,
             stream=streaming,
             variable_loader=var_loader,
@@ -514,7 +523,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         session: Session,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         conversation: Conversation | None = None,
         message: Message | None = None,
         stream: bool = True,
@@ -533,7 +542,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param application_generate_entity: application generate entity
         :param session: database session supplied by the caller
         :param workflow_execution_repository: repository for workflow execution
-        :param workflow_node_execution_repository: repository for workflow node execution
+        :param workflow_node_execution_repositories: repository for workflow node execution
         :param conversation: conversation
         :param stream: is stream
         """
@@ -600,7 +609,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "context": context,
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
-                    "workflow_node_execution_repository": workflow_node_execution_repository,
+                    "workflow_node_execution_repositories": workflow_node_execution_repositories,
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
@@ -629,6 +638,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                         invoke_from,
                         account=user,
                         tenant_id=application_generate_entity.app_config.tenant_id,
+                        file_uploads=self._file_uploads,
                     ),
                 )
                 converted_response = AdvancedChatAppGenerateResponseConverter.convert(
@@ -655,7 +665,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -721,7 +731,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 system_user_id=system_user_id,
                 app=app,
                 workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
+                workflow_node_execution_repositories=workflow_node_execution_repositories,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,

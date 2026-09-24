@@ -1,400 +1,116 @@
+"""File operations over detached metadata and injected storage/extraction ports."""
+
 import base64
-import hashlib
 import os
 import posixpath
-import uuid
-from collections.abc import Generator, Sequence  # Changed Iterator to Generator
-from contextlib import contextmanager, suppress
+from collections.abc import Generator, Sequence
+from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass
-from datetime import datetime
 from tempfile import NamedTemporaryFile
-from typing import Literal
+from typing import Protocol
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
-
 from configs import dify_config
-from constants import (
-    AUDIO_EXTENSIONS,
-    DOCUMENT_EXTENSIONS,
-    IMAGE_EXTENSIONS,
-    VIDEO_EXTENSIONS,
-)
-from core.rag.extractor.extract_processor import ExtractProcessor
+from constants import DOCUMENT_EXTENSIONS
+from core.file.uploads import FileUploadResult
 from enums import DeploymentEdition
-from extensions.ext_storage import storage
-from extensions.storage.storage_type import StorageType
-from graphon.file import helpers as file_helpers
-from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
-from models import Account
-from models.enums import CreatorUserRole
-from models.model import EndUser, UploadFile
-
-from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
+from services.errors.file import FileNotExistsError, UnsupportedFileTypeError
+from services.file_upload_service import FileUploadUrlSigner
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
+class FileRepository(Protocol):
+    def get(self, *, file_id: str, tenant_id: str | None = None) -> FileUploadResult | None:
+        """Return metadata, or None when missing. No tenant filter is for trusted internal IDs only."""
+        ...
+
+    def delete(self, *, file: FileUploadResult) -> None:
+        """Delete the exact metadata record after its stored content has been removed."""
+        ...
+
+
+class FileStorage(Protocol):
+    def load_once(self, filename: str) -> bytes: ...
+
+    def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
+
+    def delete(self, filename: str) -> None: ...
+
+    def generate_presigned_url(self, filename: str, *, expires_in: int, content_type: str | None = None) -> str: ...
+
+
+class FileTextExtractor(Protocol):
+    def __call__(self, *, file: FileUploadResult) -> str: ...
+
+
 @dataclass(frozen=True, slots=True)
-class FileUploadActor:
-    """Creator identity, independent of the tenant receiving the upload."""
-
-    id: str
-    creator_role: CreatorUserRole
-
-
-@dataclass(frozen=True, slots=True)
-class FileUploadResult:
-    id: str
+class FileArchiveEntry:
     name: str
-    size: int
-    extension: str
-    mime_type: str
-    created_by: str
-    created_at: datetime
-    tenant_id: str
-    source_url: str
+    key: str
 
 
 class FileService:
-    _session_maker: sessionmaker[Session]
-
-    def __init__(self, session_factory: sessionmaker | Engine | None = None):
-        match session_factory:
-            case Engine():
-                self._session_maker = sessionmaker(bind=session_factory)
-            case sessionmaker():
-                self._session_maker = session_factory
-            case _:
-                raise AssertionError("must be a sessionmaker or an Engine.")
-
-    def upload_file(
+    def __init__(
         self,
         *,
-        filename: str,
-        content: bytes,
-        mimetype: str,
-        user: Account | EndUser | FileUploadActor,
-        tenant_id: str | None = None,
-        source: Literal["datasets"] | None = None,
-        source_url: str = "",
-        default_file_size_limit: int | None = None,
-    ) -> UploadFile:
-        """Persist a file with the given creator and resource tenant.
+        files: FileRepository,
+        storage: FileStorage,
+        storage_type: str,
+        extract_text: FileTextExtractor,
+        sign_file_url: FileUploadUrlSigner,
+    ) -> None:
+        self._files: FileRepository = files
+        self._storage: FileStorage = storage
+        self._storage_type: str = storage_type
+        self._extract_text: FileTextExtractor = extract_text
+        self._sign_file_url: FileUploadUrlSigner = sign_file_url
 
-        For Account or EndUser, tenant_id=None (including when omitted) uses
-        the account's current workspace or the end user's tenant. An explicit
-        tenant_id takes precedence. FileUploadActor carries no tenant, so it
-        requires an explicit tenant_id.
-
-        default_file_size_limit is the non-media limit in MiB; None uses
-        dify_config.UPLOAD_FILE_SIZE_LIMIT, and 0 permits only empty files.
-        Images, video and audio always use their dedicated configured limits.
-        """
-        if isinstance(user, FileUploadActor) and tenant_id is None:
-            raise TypeError("tenant_id is required when uploading with FileUploadActor")
-
-        # get file extension
-        extension = os.path.splitext(filename)[1].lstrip(".").lower()
-
-        # Only reject path separators here. The original filename is stored as metadata,
-        # while the storage key is UUID-based.
-        if any(c in filename for c in ["/", "\\"]):
-            raise ValueError("Filename contains invalid characters")
-
-        if len(filename) > 200:
-            filename = filename.split(".")[0][:200] + "." + extension
-
-        # check if extension is in blacklist
-        if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
-            raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
-
-        if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        # get file size
-        file_size = len(content)
-
-        # check if the file size is exceeded
-        if not FileService.is_file_size_within_limit(
-            extension=extension,
-            file_size=file_size,
-            default_file_size_limit=default_file_size_limit,
-        ):
-            raise FileTooLargeError
-
-        # generate file key
-        file_uuid = str(uuid.uuid4())
-
-        if isinstance(user, FileUploadActor):
-            resource_tenant_id = tenant_id
-            creator_role = user.creator_role
-        else:
-            resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
-            creator_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
-
-        file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
-
-        # save file to storage
-        storage.save(file_key, content)
-
-        # save file to db
-        upload_file = UploadFile(
-            tenant_id=resource_tenant_id or "",
-            storage_type=StorageType(dify_config.STORAGE_TYPE),
-            key=file_key,
-            name=filename,
-            size=file_size,
-            extension=extension,
-            mime_type=mimetype,
-            created_by_role=creator_role,
-            created_by=user.id,
-            created_at=naive_utc_now(),
-            used=False,
-            hash=hashlib.sha3_256(content).hexdigest(),
-            source_url=source_url,
-        )
-
-        with self._session_maker(expire_on_commit=False) as session:
-            session.add(upload_file)
-            session.commit()
-
-        if not upload_file.source_url:
-            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
-
-        return upload_file
-
-    def upload_file_for_actor(
-        self,
-        *,
-        actor: FileUploadActor,
-        resource_tenant_id: str,
-        filename: str,
-        content: bytes,
-        mimetype: str,
-        source: Literal["datasets"] | None = None,
-        source_url: str = "",
-        default_file_size_limit: int | None = None,
-    ) -> FileUploadResult:
-        """Upload into the explicitly admitted tenant and return detached values.
-
-        default_file_size_limit overrides the non-media limit in MiB, including
-        0 for empty files only. None uses dify_config.UPLOAD_FILE_SIZE_LIMIT.
-        Images, video and audio retain their dedicated configured limits.
-        """
-        upload_file = self.upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=actor,
-            tenant_id=resource_tenant_id,
-            source=source,
-            source_url=source_url,
-            default_file_size_limit=default_file_size_limit,
-        )
-        return FileUploadResult(
-            id=upload_file.id,
-            name=upload_file.name,
-            size=upload_file.size,
-            extension=upload_file.extension,
-            mime_type=upload_file.mime_type,
-            created_by=upload_file.created_by,
-            created_at=upload_file.created_at,
-            tenant_id=upload_file.tenant_id,
-            source_url=upload_file.source_url,
-        )
-
-    @staticmethod
-    def is_file_size_within_limit(
-        *,
-        extension: str,
-        file_size: int,
-        default_file_size_limit: int | None = None,
-    ) -> bool:
-        return file_size <= FileService.file_size_limit(
-            extension=extension,
-            default_file_size_limit=default_file_size_limit,
-        )
-
-    @staticmethod
-    def file_size_limit(
-        *,
-        extension: str,
-        default_file_size_limit: int | None = None,
-    ) -> int:
-        """Return the size an extension is allowed, in bytes.
-
-        default_file_size_limit is a non-media override in MiB. None uses
-        dify_config.UPLOAD_FILE_SIZE_LIMIT; 0 allows only empty files.
-        Images, video and audio use their dedicated limits regardless of this
-        override.
-        """
-
-        if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
-        elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
-        elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
-        else:
-            # Context-specific uploads may override the default limit without changing media-specific limits.
-            file_size_limit = (
-                default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT
-            )
-
-        return file_size_limit * 1024 * 1024
+    def _get_file(self, *, file_id: str, tenant_id: str | None = None) -> FileUploadResult:
+        file = self._files.get(file_id=file_id, tenant_id=tenant_id)
+        if file is None:
+            raise FileNotExistsError("File not found")
+        return file
 
     def get_file_base64(self, file_id: str) -> str:
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-            if not upload_file:
-                raise NotFound("File not found")
-            upload_file_key = upload_file.key
-
-        blob = storage.load_once(upload_file_key)
-        return base64.b64encode(blob).decode()
+        file = self._get_file(file_id=file_id)
+        return base64.b64encode(self._storage.load_once(file.key)).decode()
 
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
         """Generate a direct storage URL for a tenant-owned upload file."""
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
-            if upload_file is None:
-                raise NotFound("File not found")
-
-            file_key = upload_file.key
-            content_type = upload_file.mime_type
-
-        return storage.generate_presigned_url(
-            file_key,
-            expires_in=dify_config.FILES_ACCESS_TIMEOUT,
-            content_type=content_type,
+        file = self._get_file(file_id=file_id, tenant_id=tenant_id)
+        return self._storage.generate_presigned_url(
+            file.key, expires_in=dify_config.FILES_ACCESS_TIMEOUT, content_type=file.mime_type
         )
 
     def get_icon_url(self, file_id: str, tenant_id: str) -> str:
         try:
-            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-                StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-            ):
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and self._storage_type == "s3":
                 return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
-            with self._session_maker(expire_on_commit=False) as session:
-                upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
-            if upload_file is None:
-                raise NotFound("File not found")
-        except NotFound as exc:
+            self._get_file(file_id=file_id, tenant_id=tenant_id)
+        except FileNotExistsError as exc:
             raise FileNotExistsError("File reference not found") from exc
-        return file_helpers.get_signed_file_url(upload_file_id=file_id)
-
-    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
-        if len(text_name) > 200:
-            text_name = text_name[:200]
-        # user uuid as file name
-        file_uuid = str(uuid.uuid4())
-        file_key = "upload_files/" + tenant_id + "/" + file_uuid + ".txt"
-        content = text.encode("utf-8")
-
-        # save file to storage
-        storage.save(file_key, content)
-
-        # save file to db
-        upload_file = UploadFile(
-            tenant_id=tenant_id,
-            storage_type=StorageType(dify_config.STORAGE_TYPE),
-            key=file_key,
-            name=text_name,
-            size=len(content),
-            extension="txt",
-            mime_type="text/plain",
-            created_by=user_id,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_at=naive_utc_now(),
-            used=True,
-            used_by=user_id,
-            used_at=naive_utc_now(),
-        )
-
-        with self._session_maker(expire_on_commit=False) as session:
-            session.add(upload_file)
-            session.commit()
-
-        return upload_file
+        return self._sign_file_url(upload_file_id=file_id)
 
     def get_file_preview(self, file_id: str, tenant_id: str) -> str:
-        """
-        Return a short text preview extracted from a document file.
-        """
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(
-                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
-            )
-
-        if not upload_file:
-            raise NotFound("File not found")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in DOCUMENT_EXTENSIONS:
+        """Return a short text preview extracted after the metadata query has closed."""
+        file = self._get_file(file_id=file_id, tenant_id=tenant_id)
+        if file.extension.lower() not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
-
-        text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
-        return text[0:PREVIEW_WORDS_LIMIT] if text else ""
+        text = self._extract_text(file=file)
+        return text[:PREVIEW_WORDS_LIMIT] if text else ""
 
     def get_file_content(self, file_id: str) -> str:
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+        file = self._get_file(file_id=file_id)
+        return self._storage.load_once(file.key).decode("utf-8")
 
-        if not upload_file:
-            raise NotFound("File not found")
-        content = storage.load(upload_file.key)
-
-        return content.decode("utf-8")
-
-    def delete_file(self, file_id: str):
-        with self._session_maker() as session, session.begin():
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id))
-
-            if not upload_file:
-                return
-            storage.delete(upload_file.key)
-            session.delete(upload_file)
-
-    @staticmethod
-    def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:
-        return session.scalar(
-            select(UploadFile)
-            .where(
-                UploadFile.tenant_id == tenant_id,
-                UploadFile.id == upload_file_id,
-            )
-            .limit(1)
-        )
-
-    @staticmethod
-    def get_upload_files_by_ids(
-        tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
-    ) -> dict[str, UploadFile]:
-        """
-        Fetch `UploadFile` rows for a tenant in a single batch query.
-
-        This is a generic `UploadFile` lookup helper (not dataset/document specific), so it lives in `FileService`.
-        """
-        if not upload_file_ids:
-            return {}
-
-        # Normalize and deduplicate ids before using them in the IN clause.
-        upload_file_id_list: list[str] = [str(upload_file_id) for upload_file_id in upload_file_ids]
-        unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
-
-        # Fetch upload files in one query for efficient batch access.
-        upload_files: Sequence[UploadFile] = session.scalars(
-            select(UploadFile).where(
-                UploadFile.tenant_id == tenant_id,
-                UploadFile.id.in_(unique_upload_file_ids),
-            )
-        ).all()
-        return {str(upload_file.id): upload_file for upload_file in upload_files}
+    def delete_file(self, file_id: str) -> None:
+        file = self._files.get(file_id=file_id)
+        if file is None:
+            return
+        # Storage failure leaves metadata intact. No database transaction spans storage I/O.
+        self._storage.delete(file.key)
+        self._files.delete(file=file)
 
     @staticmethod
     def _sanitize_zip_entry_name(name: str) -> str:
@@ -404,8 +120,7 @@ class FileService:
         We keep this conservative: the upload flow already rejects `/` and `\\`, but older rows (or imported data)
         could still contain unsafe names.
         """
-        # Drop any directory components and prevent empty names. ZIP names are always POSIX-style, so split on
-        # `/` explicitly rather than through `os.path`, whose separators differ on Windows hosts.
+        # ZIP entry paths use forward slashes on every host platform.
         base = posixpath.basename(name).strip() or "file"
 
         # ZIP uses forward slashes as separators; remove any residual separator characters.
@@ -429,14 +144,12 @@ class FileService:
                 return candidate
             suffix += 1
 
-    @staticmethod
     @contextmanager
     def build_upload_files_zip_tempfile(
-        *,
-        upload_files: Sequence[UploadFile],
-    ) -> Generator[str, None, None]:  # Changed from Iterator[str]
+        self, *, upload_files: Sequence[FileArchiveEntry]
+    ) -> Generator[str, None, None]:
         """
-        Build a ZIP from `UploadFile`s and yield a tempfile path.
+        Build a ZIP from file names and storage keys and yield a tempfile path.
 
         We yield a path (rather than an open file handle) to avoid "read of closed file" issues when Flask/Werkzeug
         streams responses. The caller is expected to keep this context open until the response is fully sent, then
@@ -457,8 +170,11 @@ class FileService:
                         used_names.add(arcname)
 
                         # Stream file bytes from storage into the ZIP entry.
-                        with zf.open(arcname, "w") as entry:
-                            for chunk in storage.load(upload_file.key, stream=True):
+                        with (
+                            zf.open(arcname, "w") as entry,
+                            closing(self._storage.load_stream(upload_file.key)) as chunks,
+                        ):
+                            for chunk in chunks:
                                 entry.write(chunk)
 
                 # Flush so `send_file(path, ...)` can re-open it safely on all platforms.

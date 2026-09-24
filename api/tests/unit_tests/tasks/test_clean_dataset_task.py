@@ -22,6 +22,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.dataset import (
@@ -39,6 +40,8 @@ from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, I
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from tasks.clean_dataset_task import clean_dataset_task
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 # ============================================================================
 # Fixtures
@@ -103,16 +106,13 @@ def mock_storage() -> Iterator[MagicMock]:
 @pytest.fixture
 def mock_index_processor_factory() -> Iterator[dict[str, MagicMock]]:
     """Mock IndexProcessorFactory."""
-    with patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_factory:
+    with patch.object(application_services().index_processors, "create", autospec=True) as mock_factory:
         mock_processor = MagicMock()
         mock_processor.clean.return_value = None
-        mock_factory_instance = MagicMock()
-        mock_factory_instance.init_index_processor.return_value = mock_processor
-        mock_factory.return_value = mock_factory_instance
+        mock_factory.return_value = mock_processor
 
         yield {
             "factory": mock_factory,
-            "factory_instance": mock_factory_instance,
             "processor": mock_processor,
         }
 

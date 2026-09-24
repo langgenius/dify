@@ -35,6 +35,8 @@ class PipelineGenerateService:
         :param streaming: streaming
         :return:
         """
+        from extensions.ext_application_services import application_services
+
         try:
             workflow = cls._get_workflow(pipeline, invoke_from, session)
             if original_document_id := args.get("original_document_id"):
@@ -45,7 +47,9 @@ class PipelineGenerateService:
                 document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
                 cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
-                PipelineGenerator().generate(
+                application_services()
+                .create_pipeline_generator()
+                .generate(
                     session=session,
                     pipeline=pipeline,
                     workflow=workflow,
@@ -73,9 +77,13 @@ class PipelineGenerateService:
     def generate_single_iteration(
         cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
     ):
+        from extensions.ext_application_services import application_services
+
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_iteration_generate(
+            application_services()
+            .create_pipeline_generator()
+            .single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,
@@ -90,9 +98,13 @@ class PipelineGenerateService:
     def generate_single_loop(
         cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
     ):
+        from extensions.ext_application_services import application_services
+
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_loop_generate(
+            application_services()
+            .create_pipeline_generator()
+            .single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,

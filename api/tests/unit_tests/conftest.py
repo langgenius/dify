@@ -2,6 +2,7 @@ import os
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +18,11 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
+
+if TYPE_CHECKING:
+    from core.rag.index_processor.index_processor import IndexProcessor
+    from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+    from services.file_upload_service import FileUploadService
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -239,3 +245,71 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
+
+
+@pytest.fixture
+def file_uploads(sqlite_session_factory: sessionmaker[Session]) -> "FileUploadService":
+    from services.file_upload_service import FileUploadStorage
+    from tests.file_service_test_utils import make_file_upload_service
+
+    return make_file_upload_service(
+        sqlite_session_factory,
+        storage=MagicMock(spec=FileUploadStorage),
+        sign_file_url=lambda *, upload_file_id: f"/files/{upload_file_id}",
+    )
+
+
+@pytest.fixture
+def index_processors(file_uploads: "FileUploadService") -> "IndexProcessorFactory":
+    from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+
+    return IndexProcessorFactory(file_uploads=file_uploads)
+
+
+@pytest.fixture
+def knowledge_index(index_processors: "IndexProcessorFactory") -> "IndexProcessor":
+    from core.rag.index_processor.index_processor import IndexProcessor
+
+    return IndexProcessor(index_processors=index_processors)
+
+
+@pytest.fixture
+def file_upload_services(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    file_uploads: "FileUploadService",
+    index_processors: "IndexProcessorFactory",
+    knowledge_index: "IndexProcessor",
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from functools import partial
+    from types import SimpleNamespace
+
+    from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+    from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from core.indexing_runner import IndexingRunner
+    from services.file_service import FileStorage
+    from tests.file_service_test_utils import make_file_service
+
+    files = make_file_service(
+        sqlite_session_factory,
+        storage=MagicMock(spec=FileStorage),
+        sign_file_url=lambda *, upload_file_id: f"/files/{upload_file_id}",
+    )
+    monkeypatch.setitem(
+        app.extensions,
+        "application_services",
+        SimpleNamespace(
+            file_uploads=file_uploads,
+            files=files,
+            index_processors=index_processors,
+            knowledge_index=knowledge_index,
+            create_indexing_runner=partial(IndexingRunner, index_processors=index_processors),
+            create_advanced_chat_app_generator=partial(AdvancedChatAppGenerator, file_uploads=file_uploads),
+            create_workflow_app_generator=partial(WorkflowAppGenerator, file_uploads=file_uploads),
+            create_pipeline_generator=partial(
+                PipelineGenerator, files=file_uploads, file_uploads=file_uploads, index_processor=knowledge_index
+            ),
+        ),
+    )

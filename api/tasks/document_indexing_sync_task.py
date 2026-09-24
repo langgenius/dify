@@ -7,9 +7,8 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError
 from core.rag.extractor.notion_extractor import NotionExtractor
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
@@ -27,6 +26,8 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
     tenant_id = None
@@ -112,7 +113,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Document {document_id} content changed, starting sync", fg="green"))
 
     try:
-        indexing_runner = IndexingRunner()
+        indexing_runner = application_services().create_indexing_runner()
         with session_factory.create_session() as session:
             document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not document:
@@ -124,7 +125,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             session.commit()
             if dataset:
                 try:
-                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    index_processor = application_services().index_processors.create(index_type)
                     index_processor.clean(
                         dataset,
                         index_node_ids,

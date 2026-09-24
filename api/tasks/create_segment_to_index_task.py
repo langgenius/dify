@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -24,6 +23,8 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
     :param keywords:
     Usage: create_segment_to_index_task.delay(segment_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start create segment to index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -77,7 +78,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
                 return
 
             index_type = dataset.get_doc_form(session=session)
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            index_processor = application_services().index_processors.create(index_type)
             index_processor.load(dataset, [document], session=session)
 
             # update segment to completed

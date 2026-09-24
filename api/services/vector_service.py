@@ -12,7 +12,6 @@ from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
@@ -35,6 +34,8 @@ class VectorService:
         session: Session,
     ):
         """Create vector records for document segments using the caller's active DB session."""
+        from extensions.ext_application_services import application_services
+
         documents: list[Document] = []
         multimodal_documents: list[AttachmentDocument] = []
 
@@ -105,7 +106,7 @@ class VectorService:
                         },
                     )
                     multimodal_documents.append(multimodal_document)
-        index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
+        index_processor: BaseIndexProcessor = application_services().index_processors.create(doc_form)
 
         if len(documents) > 0:
             index_processor.load(
@@ -162,7 +163,9 @@ class VectorService:
         session: Session,
     ):
         """Generate child chunks and persist them with the caller's active DB session."""
-        index_processor = IndexProcessorFactory(dataset.get_doc_form(session=session)).init_index_processor()
+        from extensions.ext_application_services import application_services
+
+        index_processor = application_services().index_processors.create(dataset.get_doc_form(session=session))
         assert segment.index_node_id
         if regenerate:
             # delete child chunks

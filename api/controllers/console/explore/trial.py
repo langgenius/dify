@@ -68,6 +68,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.file.uploads import FileUploadActor
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
@@ -105,7 +106,6 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.file_service import FileUploadActor
 from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (

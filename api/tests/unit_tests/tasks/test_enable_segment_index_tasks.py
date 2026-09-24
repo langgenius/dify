@@ -8,10 +8,13 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -92,14 +95,14 @@ def test_enable_segment_commits_index_rows_after_loading(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.enable_segment_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch(
             "services.summary_index_service.SummaryIndexService.enable_summaries_for_segments",
             enable_summaries,
         ),
         patch("tasks.enable_segment_to_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = index_processor
+        processor_factory.return_value = index_processor
         enable_segment_to_index_task.run(segment.id)
 
     assert phase_events == ["load", "commit", "summary"]
@@ -125,11 +128,11 @@ def test_enable_segment_rolls_back_before_error_compensation(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.enable_segment_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("services.summary_index_service.SummaryIndexService.enable_summaries_for_segments") as enable_summaries,
         patch("tasks.enable_segment_to_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = index_processor
+        processor_factory.return_value = index_processor
         enable_segment_to_index_task.run(segment.id)
 
     sqlite_session.expire_all()
@@ -155,14 +158,14 @@ def test_enable_segments_commits_index_rows_after_loading(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch(
             "services.summary_index_service.SummaryIndexService.enable_summaries_for_segments",
             enable_summaries,
         ),
         patch("tasks.enable_segments_to_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = index_processor
+        processor_factory.return_value = index_processor
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
     assert phase_events == ["load", "commit", "summary"]
@@ -188,11 +191,11 @@ def test_enable_segments_rolls_back_before_error_compensation(
 
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch.object(application_services().index_processors, "create") as processor_factory,
         patch("services.summary_index_service.SummaryIndexService.enable_summaries_for_segments") as enable_summaries,
         patch("tasks.enable_segments_to_index_task.redis_client.delete"),
     ):
-        processor_factory.return_value.init_index_processor.return_value = index_processor
+        processor_factory.return_value = index_processor
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
     sqlite_session.expire_all()

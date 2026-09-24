@@ -24,6 +24,12 @@ from sqlalchemy.orm import Session
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from graphon.graph_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DocumentCreatedFrom
@@ -117,22 +123,25 @@ def _build_app_generate_entity() -> SimpleNamespace:
 
 
 @pytest.fixture
-def runner():
+def runner(knowledge_index: IndexProcessor):
     app_generate_entity = _build_app_generate_entity()
     queue_manager = MagicMock()
     variable_loader = MagicMock()
     workflow = _workflow()
     workflow_execution_repository = MagicMock()
-    workflow_node_execution_repository = MagicMock()
+    workflow_node_execution_repositories = WorkflowNodeExecutionRepositories(
+        writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+    )
 
     return PipelineRunner(
+        index_processor=knowledge_index,
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=variable_loader,
         workflow=workflow,
         system_user_id="sys",
         workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_node_execution_repositories=workflow_node_execution_repositories,
     )
 
 
@@ -214,20 +223,23 @@ def test_update_document_status_skips_without_document_ref(runner, sqlite_engine
     assert checkouts == 0
 
 
-def test_run_pipeline_not_found():
+def test_run_pipeline_not_found(knowledge_index: IndexProcessor):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
     runner = PipelineRunner(
+        index_processor=knowledge_index,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     with pytest.raises(ValueError):
@@ -299,7 +311,7 @@ def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boun
     runner.get_workflow.assert_not_called()
 
 
-def test_run_workflow_not_initialized(sqlite_session: Session):
+def test_run_workflow_not_initialized(sqlite_session: Session, knowledge_index: IndexProcessor):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = _pipeline()
@@ -309,19 +321,22 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
     sqlite_session.commit()
 
     runner = PipelineRunner(
+        index_processor=knowledge_index,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
     with pytest.raises(ValueError):
         runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session):
+def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, knowledge_index: IndexProcessor):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = MagicMock()
 
@@ -330,13 +345,16 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     document_ref = module.DatasetRefService.create_document_ref_from_id(dataset_ref, "doc")
 
     runner = PipelineRunner(
+        index_processor=knowledge_index,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
@@ -359,7 +377,9 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     runner._handle_event.assert_called()
 
 
-def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_normal_path_builds_graph(
+    mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine, knowledge_index: IndexProcessor
+):
     app_generate_entity = _build_app_generate_entity()
 
     events = []
@@ -381,13 +401,16 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
     )
 
     runner = PipelineRunner(
+        index_processor=knowledge_index,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)

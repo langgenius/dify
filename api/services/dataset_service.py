@@ -64,6 +64,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from repositories.file_repository import SQLAlchemyFileRepository
 from repositories.knowledge import dataset_api_key_bindings
 from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
@@ -88,7 +89,6 @@ from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
-from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccess
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService
@@ -1857,7 +1857,9 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id], session=session)
+        upload_files_by_id = SQLAlchemyFileRepository.get_upload_files_by_ids(
+            document.tenant_id, [upload_file_id], session=session
+        )
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1896,7 +1898,9 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids, session=session)
+        upload_files_by_id = SQLAlchemyFileRepository.get_upload_files_by_ids(
+            tenant_id, upload_file_ids, session=session
+        )
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")

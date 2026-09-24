@@ -1,21 +1,20 @@
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import override
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.file.uploads import FileUploadWriter
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
-from models.account import Account
+from models.account import Account, Tenant
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
@@ -108,8 +107,8 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
 
 class TestBaseIndexProcessor:
     @pytest.fixture
-    def processor(self) -> _ForwardingBaseIndexProcessor:
-        return _ForwardingBaseIndexProcessor()
+    def processor(self, file_uploads: FileUploadWriter) -> _ForwardingBaseIndexProcessor:
+        return _ForwardingBaseIndexProcessor(file_uploads=file_uploads)
 
     def test_abstract_methods_raise_not_implemented(
         self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
@@ -256,7 +255,7 @@ class TestBaseIndexProcessor:
         assert files == []
 
     def test_download_image_success_with_filename_from_content_disposition(
-        self, processor: _ForwardingBaseIndexProcessor, sqlite_engine: Engine
+        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
     ) -> None:
         response = Mock()
         response.headers = {
@@ -266,21 +265,19 @@ class TestBaseIndexProcessor:
         }
         response.raise_for_status.return_value = None
         response.iter_bytes.return_value = [b"data"]
-        upload_result = _upload(upload_id=str(uuid4()), name="test-image.png")
+        account = Account(name="Uploader", email="uploader@example.com")
+        account._current_tenant = Tenant(name="Tenant")
 
-        with (
-            patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
-            patch(
-                "core.rag.index_processor.index_processor_base.db",
-                SimpleNamespace(engine=sqlite_engine),
-            ),
-            patch("services.file_service.FileService") as mock_file_service,
-        ):
-            mock_file_service.return_value.upload_file.return_value = upload_result
-            upload_id = processor._download_image("https://example.com/test.png", current_user=_account())
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
+            upload_id = processor._download_image("https://example.com/test.png", current_user=account)
 
-        assert upload_id == upload_result.id
-        mock_file_service.return_value.upload_file.assert_called_once()
+        assert upload_id is not None
+        upload = sqlite_session.get(UploadFile, upload_id)
+        assert upload is not None
+        assert upload.name == "test-image.png"
+        assert upload.created_by == account.id
+        assert upload.tenant_id == account.current_tenant_id
+        assert upload.size == 4
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
         too_large = Mock()
@@ -336,7 +333,7 @@ class TestBaseIndexProcessor:
         assert processor._download_tool_file(str(uuid4()), current_user=_account(), session=sqlite_session) is None
 
     def test_download_tool_file_uploads_file_when_found(
-        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session, sqlite_engine: Engine
+        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
     ) -> None:
         tool_file = ToolFile(
             user_id=str(uuid4()),
@@ -349,19 +346,19 @@ class TestBaseIndexProcessor:
         )
         sqlite_session.add(tool_file)
         sqlite_session.commit()
-        upload_result = _upload(upload_id=str(uuid4()), name="tool.png")
+        account = Account(name="Uploader", email="uploader@example.com")
+        account._current_tenant = Tenant(name="Tenant")
 
-        with (
-            patch(
-                "core.rag.index_processor.index_processor_base.db",
-                SimpleNamespace(engine=sqlite_engine),
-            ),
-            patch("core.rag.index_processor.index_processor_base.storage.load_once", return_value=b"blob") as mock_load,
-            patch("services.file_service.FileService") as mock_file_service,
-        ):
-            mock_file_service.return_value.upload_file.return_value = upload_result
-            result = processor._download_tool_file(tool_file.id, current_user=_account(), session=sqlite_session)
+        with patch(
+            "core.rag.index_processor.index_processor_base.storage.load_once", return_value=b"blob"
+        ) as mock_load:
+            result = processor._download_tool_file(tool_file.id, current_user=account, session=sqlite_session)
 
-        assert result == upload_result.id
+        assert result is not None
         mock_load.assert_called_once_with("k1")
-        mock_file_service.return_value.upload_file.assert_called_once()
+        upload = sqlite_session.get(UploadFile, result)
+        assert upload is not None
+        assert upload.name == "tool.png"
+        assert upload.created_by == account.id
+        assert upload.tenant_id == account.current_tenant_id
+        assert upload.size == 4

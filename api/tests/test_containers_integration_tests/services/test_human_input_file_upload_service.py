@@ -64,7 +64,7 @@ def test_issue_upload_token_returns_expiration_with_default_session_expiry(
     service = HumanInputFileUploadService(
         uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=sessionmaker(bind=db.engine)),
         workflow_run_repository=MagicMock(),
-        files=MagicMock(),
+        file_uploads=MagicMock(),
         remote_files=MagicMock(),
     )
 

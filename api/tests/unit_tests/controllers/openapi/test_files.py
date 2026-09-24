@@ -15,8 +15,10 @@ from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.files import AppFileUploadApi
+from core.file.uploads import FileUploadActor
 from libs.exception import BaseHTTPException
-from models import Account
+from models import Account, Tenant
+from models.enums import CreatorUserRole
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
@@ -25,7 +27,14 @@ from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedF
 def _caller() -> Account:
     caller = Account(name="Uploader", email="uploader@example.com")
     caller.id = "account-1"
+    tenant = Tenant(name="Test")
+    tenant.id = "tenant-1"
+    caller._current_tenant = tenant
     return caller
+
+
+def _context(caller: Account) -> SimpleNamespace:
+    return SimpleNamespace(caller=caller, subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT))
 
 
 def _upload_result() -> SimpleNamespace:
@@ -46,13 +55,13 @@ def _file_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from controllers.openapi import _files as module
 
     service = Mock()
-    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(files=service))
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(file_uploads=service))
     return service
 
 
 def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _file_service(monkeypatch)
-    service.upload_file.return_value = _upload_result()
+    service.upload_file_for_actor.return_value = _upload_result()
     caller = _caller()
 
     with app.test_request_context(
@@ -65,11 +74,12 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
         result = api.post.__handler__(api, SimpleNamespace(caller=caller, session=Mock()), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
-    service.upload_file.assert_called_once_with(
+    service.upload_file_for_actor.assert_called_once_with(
         filename="note.txt",
         content=b"hello",
         mimetype="text/plain",
-        user=caller,
+        actor=FileUploadActor(id=caller.id, creator_role=CreatorUserRole.ACCOUNT),
+        resource_tenant_id="tenant-1",
     )
 
 
@@ -103,7 +113,7 @@ def test_upload_preserves_specific_file_errors(
     message: str,
 ) -> None:
     service = _file_service(monkeypatch)
-    service.upload_file.side_effect = service_error
+    service.upload_file_for_actor.side_effect = service_error
 
     with app.test_request_context(
         "/openapi/v1/apps/app-1/files",
@@ -124,7 +134,7 @@ def test_upload_preserves_specific_file_errors(
 def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _file_service(monkeypatch)
     service_error = ValueError("Filename contains invalid characters")
-    service.upload_file.side_effect = service_error
+    service.upload_file_for_actor.side_effect = service_error
 
     with app.test_request_context(
         "/openapi/v1/apps/app-1/files",

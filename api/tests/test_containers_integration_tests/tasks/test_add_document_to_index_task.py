@@ -21,12 +21,12 @@ class TestAddDocumentToIndexTask:
         """Mock setup for external service dependencies."""
         with (
             patch(
-                "tasks.add_document_to_index_task.IndexProcessorFactory", autospec=True
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
             ) as mock_index_processor_factory,
         ):
             # Setup mock index processor
             mock_processor = MagicMock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_index_processor_factory.return_value = mock_processor
 
             yield {
                 "index_processor_factory": mock_index_processor_factory,

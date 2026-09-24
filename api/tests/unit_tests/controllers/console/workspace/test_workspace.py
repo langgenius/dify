@@ -38,13 +38,13 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
+from core.file.uploads import FileUploadActor, FileUploadResult
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from models.enums import CreatorUserRole
-from models.model import UploadFile
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
@@ -585,7 +585,8 @@ class TestWebappLogoWorkspaceApi:
         method = unwrap(api.post)
         file = FileStorage(stream=BytesIO(b"data"), filename="logo.png", content_type="image/png")
         user = make_account()
-        upload = UploadFile(
+        upload = FileUploadResult(
+            id="file1",
             tenant_id="t1",
             storage_type=StorageType.LOCAL,
             key="logo.png",
@@ -597,16 +598,24 @@ class TestWebappLogoWorkspaceApi:
             created_by=user.id,
             created_at=naive_utc_now(),
             used=False,
+            used_by=None,
+            used_at=None,
+            hash=None,
+            source_url="",
         )
-        upload.id = "file1"
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
+            patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.return_value = upload
+            services_provider.return_value.file_uploads.upload_file_for_actor.return_value = upload
             result, status = method(api, user)
+        services_provider.return_value.file_uploads.upload_file_for_actor.assert_called_once_with(
+            filename="logo.png",
+            content=b"data",
+            mimetype="image/png",
+            actor=FileUploadActor(id=user.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=user.current_tenant_id or "",
+        )
         assert status == HTTPStatus.CREATED
         assert result == {"id": "file1"}
         assert WorkspaceLogoUploadResponse.model_validate(result).model_dump(mode="json") == {"id": "file1"}
@@ -627,11 +636,11 @@ class TestWebappLogoWorkspaceApi:
         user = make_account()
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
+            patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.side_effect = services.errors.file.FileTooLargeError("too big")
+            services_provider.return_value.file_uploads.upload_file_for_actor.side_effect = (
+                services.errors.file.FileTooLargeError("too big")
+            )
             with pytest.raises(FileTooLargeError):
                 method(api, user)
 
@@ -642,11 +651,11 @@ class TestWebappLogoWorkspaceApi:
         user = make_account()
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
+            patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.side_effect = services.errors.file.UnsupportedFileTypeError()
+            services_provider.return_value.file_uploads.upload_file_for_actor.side_effect = (
+                services.errors.file.UnsupportedFileTypeError()
+            )
             with pytest.raises(UnsupportedFileTypeError):
                 method(api, user)
 
@@ -663,8 +672,6 @@ class TestWorkspaceInfoApi:
         events = []
         with (
             app.test_request_context("/workspaces/info", json=payload),
-            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
-            patch("controllers.console.workspace.workspace.db.session", workspace_session),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
                 side_effect=lambda *args, **kwargs: (

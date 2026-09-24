@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat import app_runner as app_runner_module
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from factories import variable_factory
 from graphon.variables import SegmentType
 from models import App, Conversation, ConversationVariable, Message
@@ -55,7 +60,9 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
         system_user_id="44444444-4444-4444-4444-444444444444",
         app=App(id=APP_ID, tenant_id=workflow.tenant_id),
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
 

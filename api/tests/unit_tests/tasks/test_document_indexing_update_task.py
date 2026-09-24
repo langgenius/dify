@@ -14,11 +14,14 @@ from sqlalchemy.orm import Session
 import tasks.document_indexing_update_task as task_module
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from tasks.document_indexing_update_task import document_indexing_update_task
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -35,11 +38,11 @@ def task_harness(
     )
     runner = MagicMock()
     processor = MagicMock()
-    monkeypatch.setattr(task_module, "IndexingRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(application_services(), "create_indexing_runner", MagicMock(return_value=runner))
     monkeypatch.setattr(
-        task_module,
-        "IndexProcessorFactory",
-        MagicMock(return_value=MagicMock(init_index_processor=MagicMock(return_value=processor))),
+        application_services().index_processors,
+        "create",
+        MagicMock(return_value=processor),
     )
     return runner, processor
 

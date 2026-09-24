@@ -45,11 +45,11 @@ class TestCreateSegmentToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.create_segment_to_index_task.IndexProcessorFactory", autospec=True) as mock_factory,
+            patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory,
         ):
             # Setup default mock returns
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             yield {
                 "index_processor_factory": mock_factory,

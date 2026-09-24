@@ -7,7 +7,7 @@ from extensions.storage.storage_type import StorageType
 from models.account import Tenant
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.file_repository import SQLAlchemyFileRepository
 from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError, UploadFileDeliveryRecord
 
 WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"
@@ -42,8 +42,8 @@ def _workspace(*, workspace_id: str = WORKSPACE_ID, logo_file_id: str | None = N
     return workspace
 
 
-def _repository(session_factory: sessionmaker[Session]) -> UploadFileDeliveryQueryRepository:
-    return UploadFileDeliveryQueryRepository(session_factory=session_factory)
+def _repository(session_factory: sessionmaker[Session]) -> SQLAlchemyFileRepository:
+    return SQLAlchemyFileRepository(session_factory=session_factory)
 
 
 def test_get_by_id_returns_detached_record(

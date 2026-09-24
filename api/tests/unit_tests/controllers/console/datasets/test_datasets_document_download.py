@@ -14,11 +14,13 @@ from collections import UserDict
 from datetime import UTC, datetime
 from inspect import unwrap
 from io import BytesIO
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 from zipfile import ZipFile
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from extensions.storage.storage_type import StorageType
@@ -26,6 +28,9 @@ from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from repositories.file_repository import SQLAlchemyFileRepository
+from services.file_service import FileStorage
+from tests.file_service_test_utils import make_file_service
 
 
 @pytest.fixture
@@ -161,11 +166,13 @@ def _wire_common_success_mocks(
         lambda *_args, **_kwargs: document if document.tenant_id == "tenant-123" else None,
     )
 
-    # Mock UploadFile lookup via FileService batch helper.
+    # Mock tenant-scoped UploadFile lookup.
     upload_files_by_id: dict[str, object] = {}
     if upload_file_exists and upload_file_id is not None:
         upload_files_by_id[upload_file_id] = _upload_file(file_id=upload_file_id)
-    monkeypatch.setattr(module.FileService, "get_upload_files_by_ids", lambda *_args, **_kwargs: upload_files_by_id)
+    monkeypatch.setattr(
+        SQLAlchemyFileRepository, "get_upload_files_by_ids", lambda *_args, **_kwargs: upload_files_by_id
+    )
 
     # Mock signing helper so the returned URL is deterministic.
     monkeypatch.setattr(dataset_service_module.file_helpers, "get_signed_file_url", lambda **_kwargs: signed_url)
@@ -215,7 +222,7 @@ def test_batch_download_zip_returns_send_file(
         lambda *_args, **_kwargs: [doc1, doc2],
     )
     monkeypatch.setattr(
-        datasets_document_module.FileService,
+        SQLAlchemyFileRepository,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
             "file-1": _upload_file(file_id="file-1", name="a.txt", key="k1"),
@@ -224,9 +231,10 @@ def test_batch_download_zip_returns_send_file(
     )
 
     # Mock storage streaming content.
-    import services.file_service as file_service_module
-
-    monkeypatch.setattr(file_service_module.storage, "load", lambda _key, stream=True: [b"hello"])
+    storage = MagicMock(spec=FileStorage)
+    storage.load_stream.side_effect = lambda _key: (chunk for chunk in [b"hello"])
+    files = make_file_service(sessionmaker(), storage=storage)
+    monkeypatch.setattr(datasets_document_module, "application_services", lambda: SimpleNamespace(files=files))
 
     # Replace send_file used by the controller to avoid a real Flask response object.
     monkeypatch.setattr(datasets_document_module, "send_file", _mock_send_file)
@@ -280,7 +288,7 @@ def test_batch_download_zip_response_is_openable_zip(
         lambda *_args, **_kwargs: [doc1, doc2],
     )
     monkeypatch.setattr(
-        datasets_document_module.FileService,
+        SQLAlchemyFileRepository,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
             "file-1": _upload_file(file_id="file-1", name="a.txt", key="k1"),
@@ -289,11 +297,10 @@ def test_batch_download_zip_response_is_openable_zip(
     )
 
     # Stream distinct bytes per key so we can verify both ZIP entries.
-    import services.file_service as file_service_module
-
-    monkeypatch.setattr(
-        file_service_module.storage, "load", lambda key, stream=True: [b"one"] if key == "k1" else [b"two"]
-    )
+    storage = MagicMock(spec=FileStorage)
+    storage.load_stream.side_effect = lambda key: (chunk for chunk in [b"one" if key == "k1" else b"two"])
+    files = make_file_service(sessionmaker(), storage=storage)
+    monkeypatch.setattr(datasets_document_module, "application_services", lambda: SimpleNamespace(files=files))
 
     # Act
     with app.test_request_context(

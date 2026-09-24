@@ -10,6 +10,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.file.uploads import FileUploadWriter
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
@@ -33,8 +34,8 @@ class TestParagraphIndexProcessor:
         self.session_factory = sqlite_session_factory
 
     @pytest.fixture
-    def processor(self) -> ParagraphIndexProcessor:
-        return ParagraphIndexProcessor()
+    def processor(self, file_uploads: FileUploadWriter) -> ParagraphIndexProcessor:
+        return ParagraphIndexProcessor(file_uploads=file_uploads)
 
     @pytest.fixture
     def dataset(self) -> Dataset:

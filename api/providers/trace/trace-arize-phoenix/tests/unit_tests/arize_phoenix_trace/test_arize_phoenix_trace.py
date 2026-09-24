@@ -794,7 +794,7 @@ def test_trace_exception(trace_instance):
 def test_workflow_trace_full(mock_repo_factory, trace_instance):
     info = _make_workflow_info()
     repo = MagicMock()
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     node1 = MagicMock()
     node1.node_type = "llm"
@@ -818,6 +818,7 @@ def test_workflow_trace_full(mock_repo_factory, trace_instance):
     with patch.object(trace_instance, "get_service_account_with_tenant"):
         trace_instance.workflow_trace(info)
 
+    assert "file_uploads" not in mock_repo_factory.create_workflow_node_execution_query.call_args.kwargs
     assert trace_instance.tracer.start_span.call_count >= 2
 
 
@@ -861,7 +862,7 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(mock_
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     root_carrier = {}
     root_context = object()
@@ -905,7 +906,7 @@ def test_workflow_trace_uses_workflow_run_id_for_root_span_and_populates_root_in
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
@@ -930,7 +931,7 @@ def test_workflow_trace_propagates_workflow_error_to_root_span(
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -956,7 +957,7 @@ def test_workflow_trace_falls_back_to_dify_name_when_workflow_run_id_is_blank(
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
@@ -981,7 +982,7 @@ def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_n
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     parent_carrier = {}
     parent_context = object()
@@ -1027,7 +1028,7 @@ def test_workflow_trace_uses_published_parent_node_context_for_nested_workflow(
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
     stored_carrier = '{"traceparent":"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"}'
     trace_instance._mock_redis_client.get.return_value = stored_carrier
     parent_context = object()
@@ -1068,7 +1069,7 @@ def test_workflow_trace_raises_pending_parent_error_when_parent_node_context_is_
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
     trace_instance._mock_redis_client.get.return_value = None
 
     with (
@@ -1107,7 +1108,7 @@ def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
     trace_instance._mock_redis_client.get.return_value = None
 
     parent_carrier = {}
@@ -1158,7 +1159,7 @@ def test_workflow_trace_still_retries_when_parent_app_can_publish_parent_context
     )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
     trace_instance._mock_redis_client.get.return_value = None
 
     with (
@@ -1203,7 +1204,7 @@ def test_workflow_trace_uses_parent_workflow_run_id_for_workflow_and_nodes_when_
     node_execution.id = "node-1"
     node_execution.error = None
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
@@ -1227,7 +1228,7 @@ def test_workflow_trace_falls_back_to_node_type_when_node_title_is_blank(mock_re
         title=" ",
     )
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
@@ -1262,7 +1263,7 @@ def test_workflow_trace_prefers_workflow_graph_node_title_over_execution_title(m
         title="2",
     )
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     with patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()):
         trace_instance.workflow_trace(info)
@@ -1294,7 +1295,7 @@ def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_r
         node_type="tool",
     )
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     parent_carrier = {}
     parent_context = object()
@@ -1339,7 +1340,7 @@ def test_workflow_trace_publishes_tool_node_parent_span_context_to_redis(
         node_type="tool",
     )
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1393,7 +1394,7 @@ def test_workflow_trace_cleans_up_tool_span_when_parent_context_publish_fails(
         node_type="tool",
     )
     repo.get_by_workflow_execution.return_value = [node_execution]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1450,7 +1451,7 @@ def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(mock_r
         node_type="tool",
     )
     repo.get_by_workflow_execution.return_value = [second_node, first_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1508,7 +1509,7 @@ def test_workflow_trace_parents_structured_start_nodes_to_enclosing_structure_sp
         **structured_kwargs,
     )
     repo.get_by_workflow_execution.return_value = [start_node, enclosing_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1589,7 +1590,7 @@ def test_workflow_trace_keeps_duplicate_body_node_children_under_enclosing_struc
         repeated_body_node_2,
         enclosing_node,
     ]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1639,7 +1640,7 @@ def test_workflow_trace_records_exception_node_event_without_failing_root_span(m
         metadata={"error_strategy": "fail-branch"},
     )
     repo.get_by_workflow_execution.return_value = [handled_error_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     root_span = MagicMock(name="root-span")
     workflow_span = MagicMock(name="workflow-span")
@@ -1693,7 +1694,7 @@ def test_workflow_trace_groups_loop_iteration_children_under_wrapper_spans(mock_
         metadata={"loop_id": "loop-node-1", "loop_index": 1},
     )
     repo.get_by_workflow_execution.return_value = [loop_node, first_body_node, second_body_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1778,7 +1779,7 @@ def test_workflow_trace_finalizes_loop_wrapper_with_child_time_bounds_and_error_
         metadata={"loop_id": "loop-node-1", "loop_index": 0},
     )
     repo.get_by_workflow_execution.return_value = [loop_node, first_body_node, failed_body_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"
@@ -1851,7 +1852,7 @@ def test_workflow_trace_falls_back_to_workflow_span_for_parallel_like_ambiguous_
         parallel_id="parallel-2",
     )
     repo.get_by_workflow_execution.return_value = [child_node, first_parallel_node, second_parallel_node]
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_repo_factory.create_workflow_node_execution_query.return_value = repo
 
     workflow_span = MagicMock(name="workflow-span")
     workflow_span._context_label = "workflow"

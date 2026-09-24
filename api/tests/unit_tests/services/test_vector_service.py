@@ -14,12 +14,15 @@ from sqlalchemy.orm import Session
 
 import services.vector_service as vector_service_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode
 from services.vector_service import VectorService
 from tests.unit_tests.model_factories import make_upload_file
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @dataclass(frozen=True)
@@ -150,8 +153,8 @@ def test_create_segments_vector_regular_indexing_loads_documents_and_keywords(
 
     index_processor = MagicMock(name="index_processor")
     factory_instance = MagicMock(name="IndexProcessorFactory-instance")
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.create_segments_vector(
         [["k1"]], [segment], dataset, IndexStructureType.PARAGRAPH_INDEX, session=sqlite_session
@@ -180,8 +183,8 @@ def test_create_segments_vector_regular_indexing_loads_multimodal_documents(
 
     index_processor = MagicMock(name="index_processor")
     factory_instance = MagicMock(name="IndexProcessorFactory-instance")
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.create_segments_vector(
         [["k1"]], [segment], dataset, IndexStructureType.PARAGRAPH_INDEX, session=sqlite_session
@@ -207,8 +210,8 @@ def test_create_segments_vector_with_no_segments_does_not_load(
     dataset = _make_dataset()
     index_processor = MagicMock(name="index_processor")
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.create_segments_vector(None, [], dataset, IndexStructureType.PARAGRAPH_INDEX, session=sqlite_session)
     index_processor.load.assert_not_called()
@@ -278,8 +281,8 @@ def test_create_segments_vector_parent_child_calls_generate_child_chunks_with_ex
 
     index_processor = MagicMock()
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.create_segments_vector(
         None,
@@ -321,8 +324,8 @@ def test_create_segments_vector_parent_child_uses_default_embedding_model_when_p
 
     index_processor = MagicMock()
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.create_segments_vector(
         None,
@@ -346,8 +349,8 @@ def test_create_segments_vector_parent_child_missing_document_logs_warning_and_c
 
     index_processor = MagicMock()
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     with caplog.at_level(logging.WARNING, logger="services.vector_service"):
         VectorService.create_segments_vector(
@@ -487,8 +490,8 @@ def test_generate_child_chunks_regenerate_cleans_then_saves_children(
     index_processor = MagicMock()
     index_processor.transform.return_value = transformed
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.generate_child_chunks(
         segment=segment,
@@ -535,8 +538,8 @@ def test_generate_child_chunks_flushes_even_when_no_children(
     index_processor = MagicMock()
     index_processor.transform.return_value = [_ParentDocStub(children=[])]
     factory_instance = MagicMock()
-    factory_instance.init_index_processor.return_value = index_processor
-    monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
+    factory_instance.create.return_value = index_processor
+    monkeypatch.setattr(application_services().index_processors, "create", factory_instance.create)
 
     VectorService.generate_child_chunks(
         segment=segment,

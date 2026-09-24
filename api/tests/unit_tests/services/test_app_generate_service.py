@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
+from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
 from models.enums import AppStatus, CreatorUserRole
@@ -38,6 +39,8 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 # ---------------------------------------------------------------------------
@@ -480,10 +483,7 @@ class TestGenerate(_RealSessionTest):
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
-        )
+        mocker.patch.object(application_services(), "create_advanced_chat_app_generator", return_value=gen_instance)
 
         result = AppGenerateService.generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
@@ -1086,10 +1086,7 @@ class TestGetResponseGenerator:
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([{"event": "started"}])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
-        )
+        mocker.patch.object(application_services(), "create_advanced_chat_app_generator", return_value=gen_instance)
 
         result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
         gen_instance.retrieve_events.assert_called_once()
@@ -1102,10 +1099,7 @@ class TestGetResponseGenerator:
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
-        )
+        mocker.patch.object(application_services(), "create_advanced_chat_app_generator", return_value=gen_instance)
 
         result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
         # current impl falls through the TODO and still creates a generator

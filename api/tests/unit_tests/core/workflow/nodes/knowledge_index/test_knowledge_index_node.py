@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
@@ -53,14 +54,9 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor(mocker: MockerFixture):
-    """Create mock IndexProcessorProtocol."""
-    mock_processor = Mock(spec=IndexProcessorProtocol)
-    mocker.patch(
-        "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
-        return_value=mock_processor,
-    )
-    return mock_processor
+def mock_index_processor():
+    """Provide the node's indexing dependency directly."""
+    return Mock(spec=IndexProcessorProtocol)
 
 
 @pytest.fixture
@@ -102,6 +98,7 @@ def _build_node(
     node_data: KnowledgeIndexNodeData | dict[str, object],
     graph_init_params,
     graph_runtime_state,
+    index_processor: IndexProcessor,
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
@@ -112,6 +109,7 @@ def _build_node(
         ),
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
+        index_processor=index_processor,
     )
 
 
@@ -141,6 +139,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act & Assert
@@ -174,6 +173,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act & Assert
@@ -210,6 +210,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -266,6 +267,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -329,6 +331,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -380,6 +383,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -437,6 +441,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -495,6 +500,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -534,6 +540,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -578,6 +585,7 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act
@@ -619,6 +627,7 @@ class TestInvokeKnowledgeIndex:
             node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
         )
 
         # Act

@@ -13,15 +13,13 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
-from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account
-from models.enums import CreatorUserRole, DraftVariableType
+from models.enums import DraftVariableType
 from models.model import UploadFile
 from models.workflow import (
     Workflow,
@@ -30,6 +28,7 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     is_system_variable_editable,
 )
+from services.file_upload_service import FileUploadService
 from services.variable_truncator import TruncationResult
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
@@ -50,12 +49,13 @@ class TestDraftVariableSaver:
         suffix = secrets.token_hex(6)
         return f"test_app_id_{suffix}"
 
-    def test__should_variable_be_visible(self, sqlite_session: Session):
+    def test__should_variable_be_visible(self, sqlite_session: Session, file_uploads: FileUploadService):
         mock_user = Account(name="test", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id="test_node_id",
@@ -66,7 +66,7 @@ class TestDraftVariableSaver:
         assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") == False
         assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") == True
 
-    def test__normalize_variable_for_start_node(self, sqlite_session: Session):
+    def test__normalize_variable_for_start_node(self, sqlite_session: Session, file_uploads: FileUploadService):
         @dataclasses.dataclass(frozen=True)
         class TestCase:
             name: str
@@ -119,6 +119,7 @@ class TestDraftVariableSaver:
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id=_NODE_ID,
@@ -132,11 +133,14 @@ class TestDraftVariableSaver:
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
 
-    def test_build_variables_from_start_mapping_rebuilds_system_files(self, sqlite_session: Session):
+    def test_build_variables_from_start_mapping_rebuilds_system_files(
+        self, sqlite_session: Session, file_uploads: FileUploadService
+    ):
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="tenant-1",
             app_id=self._get_test_app_id(),
             node_id="start",
@@ -171,7 +175,7 @@ class TestDraftVariableSaver:
         rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture
-    def draft_saver(self, sqlite_session: Session):
+    def draft_saver(self, sqlite_session: Session, file_uploads: FileUploadService):
         """Create DraftVariableSaver instance with user context."""
         # Create a mock user
         mock_user = Account(name="Test Account", email="test@example.com")
@@ -179,6 +183,7 @@ class TestDraftVariableSaver:
 
         return DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
@@ -221,11 +226,14 @@ class TestDraftVariableSaver:
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
 
-    def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
+    def test_try_offload_large_variable_uses_resource_tenant(
+        self, sqlite_session: Session, file_uploads: FileUploadService
+    ):
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="app-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
@@ -233,40 +241,27 @@ class TestDraftVariableSaver:
             node_execution_id="test-execution-id",
             user=mock_user,
         )
-        upload_file = UploadFile(
-            tenant_id="app-tenant-id",
-            storage_type=StorageType.LOCAL,
-            key="workflow/draft-variable.txt",
-            name="draft-variable.txt",
-            size=11,
-            extension="txt",
-            mime_type="text/plain",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=mock_user.id,
-            created_at=naive_utc_now(),
-            used=True,
-        )
-        sqlite_session.add(upload_file)
-        sqlite_session.commit()
         truncation_result = TruncationResult(result=StringSegment(value="..."), truncated=True)
 
         with (
             patch(
                 "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
             ),
-            patch("services.workflow_draft_variable_service.FileService") as file_service_class,
         ):
-            file_service_class.return_value.upload_file.return_value = upload_file
             result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
 
         assert result is not None
         _, variable_file = result
-        assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
         assert variable_file.tenant_id == "app-tenant-id"
         sqlite_session.expire_all()
+        persisted_file = sqlite_session.get(UploadFile, variable_file.upload_file_id)
+        assert persisted_file is not None
+        assert persisted_file.tenant_id == "app-tenant-id"
+        assert persisted_file.created_by == mock_user.id
+        assert persisted_file.key.startswith("upload_files/app-tenant-id/")
         stored_variable_file = sqlite_session.get(WorkflowDraftVariableFile, variable_file.id)
         assert stored_variable_file is not None
-        assert stored_variable_file.upload_file_id == upload_file.id
+        assert stored_variable_file.upload_file_id == persisted_file.id
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
@@ -282,7 +277,7 @@ class TestDraftVariableSaver:
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(
-        self, mock_batch_upsert, sqlite_session: Session
+        self, mock_batch_upsert, sqlite_session: Session, file_uploads: FileUploadService
     ):
         """Start node should persist common `sys.*` variables, not only `sys.files`."""
         mock_user = Account(name="Test Account", email="test@example.com")
@@ -291,6 +286,7 @@ class TestDraftVariableSaver:
 
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",
@@ -319,13 +315,16 @@ class TestDraftVariableSaver:
         }
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
-    def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert, sqlite_session: Session):
+    def test_start_node_save_normalizes_reserved_prefix_outputs(
+        self, mock_batch_upsert, sqlite_session: Session, file_uploads: FileUploadService
+    ):
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         mock_user.tenant_id = "test-tenant-id"
 
         saver = DraftVariableSaver(
             session=sqlite_session,
+            file_uploads=file_uploads,
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",

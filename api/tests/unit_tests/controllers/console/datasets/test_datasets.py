@@ -4,7 +4,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 
 import pytest
 from flask import Flask
@@ -48,6 +48,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.application_services.knowledge import build_dataset_api_key_service
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from fields.dataset_fields import build_dataset_detail_prefetch
 from machinery.context import RequestContext
@@ -59,6 +60,8 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture(autouse=True)
@@ -1156,9 +1159,10 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=1, preview=[]),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(return_value=IndexingEstimate(total_segments=1, preview=[]))),
             ),
             patch("controllers.console.datasets.datasets.enforce_rbac_checks", create=True) as enforce_checks,
         ):
@@ -1188,7 +1192,11 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch("controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", return_value=mock_response),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(return_value=mock_response)),
+            ),
         ):
             response, status = method(
                 api,
@@ -1237,9 +1245,10 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=LLMBadRequestError(),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(side_effect=LLMBadRequestError())),
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
@@ -1263,9 +1272,10 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=ProviderTokenNotInitError("token missing"),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(side_effect=ProviderTokenNotInitError("token missing"))),
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
@@ -1289,8 +1299,10 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", side_effect=Exception("boom")
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(side_effect=Exception("boom"))),
             ),
         ):
             with pytest.raises(IndexingEstimateError):

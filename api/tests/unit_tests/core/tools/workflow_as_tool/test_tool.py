@@ -32,6 +32,8 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
 APP_ID = "00000000-0000-0000-0000-000000000003"

@@ -19,7 +19,11 @@ from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, Work
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.factory import (
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionWriter,
+)
 from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
@@ -89,14 +93,16 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_writer: WorkflowNodeExecutionWriter,
+        workflow_node_execution_query: WorkflowNodeExecutionQuery,
         trace_manager: TraceQueueManager | None = None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_node_execution_writer = workflow_node_execution_writer
+        self._workflow_node_execution_query = workflow_node_execution_query
         self._trace_manager = trace_manager
 
         self._workflow_execution: WorkflowExecution | None = None
@@ -164,7 +170,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
         if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
-            node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)
+            node_executions = self._workflow_node_execution_query.get_by_workflow_execution(execution_id)
             self._node_execution_cache = {execution.id: execution for execution in node_executions}
             self._node_sequence = max((execution.index for execution in node_executions), default=0)
 
@@ -248,9 +254,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._node_execution_cache[event.id] = domain_execution
         if event.node_type == BuiltinNodeTypes.AGENT and event.node_version == "2":
-            self._workflow_node_execution_repository.save_synchronously(domain_execution)
+            self._workflow_node_execution_writer.save_synchronously(domain_execution)
         else:
-            self._workflow_node_execution_repository.save(domain_execution)
+            self._workflow_node_execution_writer.save(domain_execution)
 
         snapshot = _NodeRuntimeSnapshot(
             node_id=event.node_id,
@@ -268,8 +274,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         domain_execution.status = WorkflowNodeExecutionStatus.RETRY
         domain_execution.error = event.error
         self._append_retry_history(domain_execution, event)
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_writer.save(domain_execution)
+        self._workflow_node_execution_writer.save_execution_data(domain_execution)
         _inspector_publish_node_changed(
             workflow_run_id=self._get_workflow_execution().id_,
             node_id=domain_execution.node_id,
@@ -460,8 +466,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 domain_execution.process_data,
             )
 
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_writer.save(domain_execution)
+        self._workflow_node_execution_writer.save_execution_data(domain_execution)
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         now = naive_utc_now()
@@ -471,7 +477,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 execution.error = error_message
                 execution.finished_at = now
                 execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
-                self._workflow_node_execution_repository.save(execution)
+                self._workflow_node_execution_writer.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
         if not self._trace_manager:

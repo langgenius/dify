@@ -13,6 +13,11 @@ from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
 from models.workflow import Workflow, WorkflowType
 
@@ -98,7 +103,9 @@ def build_runner(sqlite_session: Session):
         system_user_id=str(uuid4()),
         app=app,
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     return runner

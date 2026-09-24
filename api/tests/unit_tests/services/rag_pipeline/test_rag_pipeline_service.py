@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.repositories.factory import WorkflowNodeExecutionQuery, WorkflowNodeExecutionRepositories
+from extensions.ext_application_services import application_services
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -979,6 +981,7 @@ def test_get_datasource_plugins_success(
 # --- retry_error_document ---
 
 
+@pytest.mark.usefixtures("file_upload_services")
 def test_retry_error_document_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1004,7 +1007,7 @@ def test_retry_error_document_success(
 
     # Mock PipelineGenerator
     mock_gen_instance = mocker.Mock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.PipelineGenerator", return_value=mock_gen_instance)
+    mocker.patch.object(application_services(), "create_pipeline_generator", return_value=mock_gen_instance)
 
     # 2. Run test
     user = mocker.Mock()
@@ -1017,6 +1020,7 @@ def test_retry_error_document_success(
 # --- set_datasource_variables ---
 
 
+@pytest.mark.usefixtures("file_upload_services")
 def test_set_datasource_variables_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1045,7 +1049,7 @@ def test_set_datasource_variables_success(
     # Mock Repository
     mock_repo_instance = mocker.Mock()
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository",
+        "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionWriteRepository",
         return_value=mock_repo_instance,
     )
     # Repository._to_db_model is also called
@@ -1165,6 +1169,7 @@ def test_run_draft_workflow_node_raises_when_workflow_missing(
         rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
 
 
+@pytest.mark.usefixtures("file_upload_services")
 def test_run_draft_workflow_node_seeds_llm_environment_variable(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1199,8 +1204,8 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
 
     repo = mocker.Mock()
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        return_value=repo,
+        "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
+        return_value=WorkflowNodeExecutionRepositories(writer=repo, query=mocker.Mock(spec=WorkflowNodeExecutionQuery)),
     )
     rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
         get_execution_by_id=mocker.Mock(return_value="db")
@@ -1220,6 +1225,7 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
     }
 
 
+@pytest.mark.usefixtures("file_upload_services")
 def test_run_draft_workflow_node_saves_execution_and_variables(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1235,8 +1241,8 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
 
     repo = mocker.Mock()
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        return_value=repo,
+        "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
+        return_value=WorkflowNodeExecutionRepositories(writer=repo, query=mocker.Mock(spec=WorkflowNodeExecutionQuery)),
     )
     rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
         get_execution_by_id=mocker.Mock(return_value="db")

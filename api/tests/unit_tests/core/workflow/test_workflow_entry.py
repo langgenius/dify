@@ -2,9 +2,13 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from flask import has_app_context
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.system_variables import build_system_variables, default_system_variables
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -17,6 +21,7 @@ from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_workflow
 
 
 @pytest.fixture(autouse=True)
@@ -48,6 +53,49 @@ def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
         return SimpleNamespace(status_code=200, headers=headers)
 
     monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", fake_head)
+
+
+class TestKnowledgeIndexSingleStepWithoutAppContext:
+    @pytest.fixture(autouse=True)
+    def _provide_app_context(self) -> None:
+        """Override the suite's Flask context for the explicit-dependency path."""
+
+    def test_single_step_constructs_real_node_with_injected_index_processor(
+        self, knowledge_index: IndexProcessor
+    ) -> None:
+        assert not has_app_context()
+        workflow = make_workflow(
+            workflow_id="workflow-id",
+            graph={
+                "nodes": [
+                    {
+                        "id": "index-node",
+                        "data": {
+                            "type": KNOWLEDGE_INDEX_NODE_TYPE,
+                            "title": "Knowledge Index",
+                            "chunk_structure": "text_model",
+                            "index_chunk_variable_selector": ["source", "chunks"],
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        )
+        variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
+
+        node, events = WorkflowEntry.single_step_run(
+            workflow=workflow,
+            node_id="index-node",
+            user_id="user-id",
+            user_inputs={},
+            variable_pool=variable_pool,
+            index_processor=knowledge_index,
+        )
+
+        assert isinstance(node, KnowledgeIndexNode)
+        assert node.index_processor is knowledge_index
+        assert node.graph_runtime_state.variable_pool is variable_pool
+        events.close()
 
 
 class TestWorkflowEntry:

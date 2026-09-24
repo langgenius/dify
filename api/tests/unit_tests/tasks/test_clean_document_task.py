@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.ext_application_services import application_services
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -34,7 +35,10 @@ SQLITE_MODELS = (
     DatasetMetadataBinding,
 )
 
-pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
+pytestmark = [
+    pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
+    pytest.mark.usefixtures("file_upload_services"),
+]
 
 
 @pytest.fixture
@@ -73,16 +77,13 @@ def mock_storage():
 @pytest.fixture
 def mock_index_processor_factory():
     """Mock the vector/index boundary so cleanup behavior is deterministic."""
-    with patch("tasks.clean_document_task.IndexProcessorFactory", autospec=True) as factory_cls:
+    with patch.object(application_services().index_processors, "create", autospec=True) as factory_cls:
         processor = MagicMock()
         processor.clean.return_value = None
-        factory_instance = MagicMock()
-        factory_instance.init_index_processor.return_value = processor
-        factory_cls.return_value = factory_instance
+        factory_cls.return_value = processor
 
         yield {
             "factory_cls": factory_cls,
-            "factory_instance": factory_instance,
             "processor": processor,
         }
 

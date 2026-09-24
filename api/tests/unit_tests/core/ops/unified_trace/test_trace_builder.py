@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from flask import Flask
 
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -337,11 +338,11 @@ def test_nested_workflow_exposes_typed_external_parent() -> None:
     assert trace.external_parent.parent_node_execution_id == "outer-tool"
 
 
-def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_repository_loader_scopes_repository_without_application_services(monkeypatch: pytest.MonkeyPatch) -> None:
     repository = MagicMock()
     repository.get_by_workflow_execution.return_value = [node_execution()]
     factory = MagicMock()
-    factory.create_workflow_node_execution_repository.return_value = repository
+    factory.create_workflow_node_execution_query.return_value = repository
     monkeypatch.setattr("core.ops.unified_trace.trace_builder.DifyCoreRepositoryFactory", factory)
     monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", MagicMock(engine="engine"))
     account = MagicMock()
@@ -349,14 +350,18 @@ def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.Monkey
     loader = RepositoryWorkflowExecutionLoader(get_account)
     info = workflow_info()
 
-    result = loader(info)
+    app = Flask(__name__)
+    with app.app_context():
+        assert "application_services" not in app.extensions
+        result = loader(info)
 
     assert len(result) == 1
     get_account.assert_called_once_with("app-1")
-    factory.create_workflow_node_execution_repository.assert_called_once()
-    call = factory.create_workflow_node_execution_repository.call_args.kwargs
+    factory.create_workflow_node_execution_query.assert_called_once()
+    call = factory.create_workflow_node_execution_query.call_args.kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["app_id"] == "app-1"
+    assert "file_uploads" not in call
     repository.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1")
 
 

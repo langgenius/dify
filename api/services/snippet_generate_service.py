@@ -156,6 +156,8 @@ class SnippetGenerateService:
         :return: Blocking response mapping or SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
+        from extensions.ext_application_services import application_services
+
         snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
@@ -167,14 +169,18 @@ class SnippetGenerateService:
         # Adapt snippet to App-like interface for WorkflowAppGenerator
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
-            app_model=app_proxy,
-            workflow=workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            streaming=streaming,
-            call_depth=0,
+        response = (
+            application_services()
+            .create_workflow_app_generator()
+            .generate(
+                app_model=app_proxy,
+                workflow=workflow,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                streaming=streaming,
+                call_depth=0,
+            )
         )
 
         return WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
@@ -202,6 +208,8 @@ class SnippetGenerateService:
         :return: Blocking response mapping with workflow outputs
         :raises ValueError: If the snippet has no published workflow
         """
+        from extensions.ext_application_services import application_services
+
         snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_published_workflow(snippet)
         if not workflow:
@@ -212,14 +220,18 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
-            app_model=app_proxy,
-            workflow=workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            streaming=False,
-            call_depth=0,
+        response = (
+            application_services()
+            .create_workflow_app_generator()
+            .generate(
+                app_model=app_proxy,
+                workflow=workflow,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                streaming=False,
+                call_depth=0,
+            )
         )
         return response
 
@@ -395,6 +407,8 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
+        from extensions.ext_application_services import application_services
+
         snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
@@ -404,7 +418,9 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_iteration_generate(
+                application_services()
+                .create_workflow_app_generator()
+                .single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
@@ -442,6 +458,8 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
+        from extensions.ext_application_services import application_services
+
         snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
@@ -451,7 +469,9 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_loop_generate(
+                application_services()
+                .create_workflow_app_generator()
+                .single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,

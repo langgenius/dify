@@ -16,6 +16,8 @@ from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 class _Chunk(BaseModel):
     value: int
@@ -295,7 +297,7 @@ class TestPluginAppBackwardsInvocation:
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.AdvancedChatAppGenerator.generate",
+            "core.app.apps.advanced_chat.app_generator.AdvancedChatAppGenerator.generate",
             return_value={"result": "ok"},
         )
         session = self.session
@@ -358,7 +360,7 @@ class TestPluginAppBackwardsInvocation:
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.WorkflowAppGenerator.generate",
+            "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
             return_value={"result": "ok"},
         )
 

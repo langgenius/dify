@@ -34,7 +34,6 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
@@ -990,7 +989,7 @@ class DatasetIndexingEstimateApi(Resource):
                     extract_settings.append(extract_setting)
             case _:
                 raise ValueError("Data source type not support")
-        indexing_runner = IndexingRunner()
+        indexing_runner = application_services().create_indexing_runner()
         try:
             response = indexing_runner.indexing_estimate(
                 tenant_id=current_tenant_id,

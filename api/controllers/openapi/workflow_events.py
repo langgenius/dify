@@ -32,11 +32,9 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.openapi.human_input_form import with_form_hints
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
@@ -124,19 +122,13 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            else:
-                generator = WorkflowAppGenerator()
-
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause
             terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
 
             def _generate_stream_events():
                 if include_state_snapshot:
-                    return generator.convert_to_event_stream(
+                    return BaseAppGenerator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
                             workflow_run=workflow_run_entity,
@@ -147,7 +139,7 @@ class OpenApiWorkflowEventsApi(Resource):
                             close_on_pause=not continue_on_pause,
                         )
                     )
-                return generator.convert_to_event_stream(
+                return BaseAppGenerator.convert_to_event_stream(
                     msg_generator.retrieve_events(
                         app_mode,
                         workflow_run_entity.id,
