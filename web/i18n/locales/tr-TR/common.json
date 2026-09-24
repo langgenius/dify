@@ -236,7 +236,7 @@
   "placeholder.search": "Ara...",
   "placeholder.select": "Lütfen seçin",
   "promptEditor.context.item.title": "Bağlam",
-  "promptEditor.context.modal.add": "Bağlam Ekle",
+  "promptEditor.context.modal.add": "Bağlam Ekle ",
   "promptEditor.context.modal.footer": "Bağlamları aşağıdaki Bağlam bölümünde yönetebilirsiniz.",
   "promptEditor.context.modal.title": "Bağlamda {{num}} Bilgi",
   "promptEditor.history.item.title": "Konuşma Geçmişi",
