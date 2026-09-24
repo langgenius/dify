@@ -474,6 +474,154 @@ def test_yaml_export_remains_available(monkeypatch: pytest.MonkeyPatch, mode: Ap
     ) == {"data": "app: {}"}
 
 
+def test_template_url_uses_package_import_and_preserves_overrides(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(RBAC_ENABLED=False)
+    importer = Mock()
+    importer.import_package_url.return_value = RosterAgentPackageImportResult(
+        app_id="app-1", agent_id="agent-1", warnings=[]
+    )
+    monkeypatch.setattr(import_module, "RosterAgentPackageImporter", lambda: importer)
+    api = import_module.AppImportApi()
+    account = _account()
+    with app.test_request_context(
+        "/console/api/apps/imports",
+        method="POST",
+        json={
+            "mode": "ifpkg-url",
+            "package_url": "https://example.com/agent.ifpkg",
+            "name": "My Agent",
+        },
+    ):
+        data, status = unwrap(api.post)(api, account)
+    assert status == 200
+    assert data["app_mode"] == "agent"
+    assert data["app_id"] == "app-1"
+    importer.import_package_url.assert_called_once_with(
+        url="https://example.com/agent.ifpkg",
+        tenant_id="tenant-1",
+        account=account,
+        name="My Agent",
+        description=None,
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+
+
+@pytest.mark.parametrize("denied", [RBACPermission.AGENT_CREATE, RBACPermission.AGENT_IMPORT_EXPORT_DSL])
+@pytest.mark.parametrize("mode", ["ifpkg-url", "template"])
+def test_template_url_checks_permissions_before_download(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    denied: RBACPermission,
+    mode: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    account = _account()
+    monkeypatch.setattr("controllers.common.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(
+        "controllers.common.rbac.checks.RBACService.CheckAccess.check",
+        lambda *_args, **kwargs: kwargs["scene"] != denied,
+    )
+    importer = Mock()
+    monkeypatch.setattr(import_module, "RosterAgentPackageImporter", importer)
+    services = Mock()
+    monkeypatch.setattr(import_module, "application_services", services)
+    with (
+        app.test_request_context(
+            "/console/api/apps/imports",
+            method="POST",
+            json={
+                "mode": mode,
+                "package_url": "https://example.com/agent.ifpkg",
+            },
+        ),
+        pytest.raises(Forbidden),
+    ):
+        unwrap(import_module.AppImportApi.post)(import_module.AppImportApi(), account)
+    importer.assert_not_called()
+    services.assert_not_called()
+
+
+@pytest.mark.parametrize("available", [True, False])
+def test_local_template_import_resolves_source_before_creation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    available: bool,
+) -> None:
+    from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
+
+    config_overrides(RBAC_ENABLED=False)
+    app_id = "11111111-1111-4111-8111-111111111111"
+    version_id = UUID("22222222-2222-4222-8222-222222222222")
+    source = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
+    sources, exporter, importer = Mock(), Mock(), Mock()
+    sources.get_package_source.return_value = source if available else None
+    importer.import_template.return_value = RosterAgentPackageImportResult(
+        app_id="new-app", agent_id="new-agent", warnings=[]
+    )
+    monkeypatch.setattr(import_module, "RosterAgentPackageImporter", lambda: importer)
+    packages = RecommendedAppPackageService(sources=sources, exporter=exporter)
+    monkeypatch.setattr(
+        import_module, "application_services", lambda: SimpleNamespace(recommended_app_packages=packages)
+    )
+    account = _account()
+    with app.test_request_context(
+        "/console/api/apps/imports",
+        method="POST",
+        json={
+            "mode": "template",
+            "template_id": app_id,
+            "version_id": str(version_id),
+            "name": "My Agent",
+        },
+    ):
+        if available:
+            data, status = unwrap(import_module.AppImportApi.post)(import_module.AppImportApi(), account)
+            assert status == 200
+            assert data["app_id"] == "new-app"
+            importer.import_template.assert_called_once_with(
+                source=source,
+                tenant_id="tenant-1",
+                account=account,
+                name="My Agent",
+                description=None,
+                icon_type=None,
+                icon=None,
+                icon_background=None,
+            )
+        else:
+            with pytest.raises(import_module.RecommendedAppNotFoundHttpError):
+                unwrap(import_module.AppImportApi.post)(import_module.AppImportApi(), account)
+            importer.import_template.assert_not_called()
+    sources.get_package_source.assert_called_once_with(app_id, version_id)
+    exporter.export.assert_not_called()
+
+
+@pytest.mark.parametrize("extra", [{"app_id": "existing"}, {"yaml_content": "app: {}"}, {"package_url": ""}])
+def test_template_url_rejects_ambiguous_sources(
+    app: Flask, config_overrides: Callable[..., None], extra: dict[str, str]
+) -> None:
+    config_overrides(RBAC_ENABLED=False)
+    with (
+        app.test_request_context(
+            "/console/api/apps/imports",
+            method="POST",
+            json={
+                "mode": "ifpkg-url",
+                "package_url": "https://example.com/agent.ifpkg",
+                **extra,
+            },
+        ),
+        pytest.raises(InvalidRosterAgentPackageError),
+    ):
+        unwrap(import_module.AppImportApi.post)(import_module.AppImportApi(), _account())
+
+
 def test_ordinary_package_import_checks_app_permission(
     app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:

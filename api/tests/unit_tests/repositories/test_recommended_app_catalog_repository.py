@@ -1,12 +1,16 @@
 import json
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from sqlalchemy import event
+import pytest
+from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
+from models.account import Tenant, TenantStatus
+from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -64,6 +68,67 @@ def _add_catalog_app(
         )
     session.commit()
     return app
+
+
+@pytest.mark.parametrize("unavailable", [None, "private", "unlisted", "unpublished", "foreign-snapshot", "archived"])
+def test_agent_package_link_only_exposes_current_public_version(
+    sqlite_session_factory: sessionmaker[Session],
+    unavailable: str | None,
+) -> None:
+    agent_id, version_id = str(uuid4()), str(uuid4())
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session)
+        app.mode = AppMode.AGENT
+        app.is_public = unavailable != "private"
+        tenant = Tenant(name="Source workspace")
+        tenant.id = app.tenant_id
+        tenant.status = TenantStatus.ARCHIVE if unavailable == "archived" else TenantStatus.NORMAL
+        agent = Agent(
+            id=agent_id,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            name="Template",
+            scope="roster",
+            source="agent_app",
+            active_config_snapshot_id=version_id,
+            active_config_is_published=False,
+        )
+        snapshot = AgentConfigSnapshot(
+            id=version_id,
+            tenant_id=str(uuid4()) if unavailable == "foreign-snapshot" else app.tenant_id,
+            agent_id=agent_id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        revision = AgentConfigRevision(
+            tenant_id=app.tenant_id,
+            agent_id=agent_id,
+            current_snapshot_id=version_id,
+            revision=1,
+            operation=AgentConfigRevisionOperation.IMPORT_PACKAGE
+            if unavailable == "unpublished"
+            else AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
+        session.add_all([tenant, agent, snapshot, revision])
+        if unavailable == "unlisted":
+            for entry in session.scalars(select(RecommendedApp).where(RecommendedApp.app_id == app.id)):
+                entry.is_listed = False
+        session.commit()
+
+    repository = _repository(sqlite_session_factory)
+    source = repository.get_package_source(app.id, UUID(version_id))
+    detail = repository.get_detail(app.id)
+    assert repository.get_package_source(app.id, uuid4()) is None
+    if unavailable:
+        assert source is None
+        assert detail is None or detail.version_id is None
+    else:
+        assert source is not None
+        assert source.agent_id == agent_id
+        assert detail is not None
+        assert detail.export_data == ""
+        assert detail.package_url is None
+        assert detail.version_id == version_id
 
 
 def _redis() -> MagicMock:

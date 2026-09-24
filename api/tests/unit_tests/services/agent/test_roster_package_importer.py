@@ -5,7 +5,10 @@ import io
 import json
 import zipfile
 from collections.abc import Callable, Generator
+from typing import override
+from uuid import UUID, uuid4
 
+import httpx
 import pytest
 import yaml
 from sqlalchemy import event, func, select
@@ -16,7 +19,12 @@ from werkzeug.exceptions import Forbidden
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models import Account
-from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
+from models.account import (
+    Tenant,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+    TenantPluginPermission,
+)
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -33,6 +41,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.base import Base, TypeBase
 from models.model import App, AppModelConfig, InstalledApp, Site, UploadFile
 from models.tools import ToolFile
+from services.agent import roster_package_importer as importer_module
 from services.agent.dsl_entities import (
     AgentPackage,
     AgentPackageMetadata,
@@ -55,10 +64,13 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageManifest,
     RosterAgentPackageSkill,
 )
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
+from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.app_service import AppService
 from services.file_service import FileService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.recommended_app_package_service import RecommendedAgentPackageSource
 
 
 class _MemoryStorage:
@@ -286,6 +298,174 @@ def test_damaged_ordinary_file_still_rejects_package() -> None:
             source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
         )
     assert storage.save_count == 0
+
+
+def test_template_url_imports_archive_and_overrides_metadata(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    response = httpx.Response(
+        200, stream=httpx.ByteStream(_package()), request=httpx.Request("GET", "https://example.com/agent.ifpkg")
+    )
+    monkeypatch.setattr("services.app_import_source.remote_fetcher.make_request", lambda *_args, **_kwargs: response)
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    storage = _MemoryStorage()
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package_url(
+        url="https://example.com/agent.ifpkg",
+        tenant_id="tenant-1",
+        account=_account(),
+        name="My Template Agent",
+        description="",
+        icon_type="emoji",
+        icon="R",
+        icon_background="#123456",
+    )
+    assert response.is_closed
+    assert storage.save_count > 0
+    with sqlite_session_factory() as session:
+        app = session.get(App, result.app_id)
+        agent = session.get(Agent, result.agent_id)
+        assert app is not None
+        assert agent is not None
+        assert app.name == agent.name == "My Template Agent"
+        assert app.icon == agent.icon == "R"
+        assert app.description == agent.description == ""
+        assert not agent.active_config_is_published
+
+
+@pytest.mark.parametrize("case", ["size", "invalid"])
+def test_template_url_rejects_failed_or_unsafe_download_before_writes(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], case: str
+) -> None:
+    config_overrides(AGENT_PACKAGE_MAX_BYTES=4)
+
+    class OversizedDownload(httpx.SyncByteStream):
+        @override
+        def __iter__(self) -> Generator[bytes, None, None]:
+            yield b"x" * (2 * 1024 * 1024)
+            pytest.fail("An oversized Agent package must stop downloading before reading the tail")
+
+    response = httpx.Response(
+        200,
+        stream=OversizedDownload() if case == "size" else httpx.ByteStream(b"junk"),
+        request=httpx.Request("GET", "https://example.com/agent.ifpkg"),
+    )
+    monkeypatch.setattr("services.app_import_source.remote_fetcher.make_request", lambda *_args, **_kwargs: response)
+    storage = _MemoryStorage()
+    with pytest.raises(RosterAgentPackageTooLargeError if case == "size" else InvalidRosterAgentPackageError):
+        RosterAgentPackageImporter(storage_backend=storage).import_package_url(
+            url="https://example.com/agent.ifpkg",
+            tenant_id="tenant-1",
+            account=_account(),
+        )
+    assert storage.save_count == 0
+    assert response.is_closed
+
+
+def test_template_url_rejects_embedded_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unexpected_request(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Invalid URL must not be fetched")
+
+    monkeypatch.setattr("services.app_import_source.remote_fetcher.make_request", unexpected_request)
+    with pytest.raises(InvalidRosterAgentPackageError):
+        RosterAgentPackageImporter(storage_backend=_MemoryStorage()).import_package_url(
+            url="https://user:password@example.com/agent.ifpkg",
+            tenant_id="tenant-1",
+            account=_account(),
+        )
+
+
+def test_package_icon_override_rejects_foreign_file_before_staging() -> None:
+    storage = _MemoryStorage()
+    with pytest.raises(InvalidRosterAgentPackageError, match="current workspace"):
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_package()),
+            tenant_id="tenant-1",
+            account=_account(),
+            icon_type="image",
+            icon="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        )
+    assert storage.save_count == 0
+
+
+def test_local_template_copies_published_resources_without_outer_archive(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    storage = _MemoryStorage()
+    importer = RosterAgentPackageImporter(storage_backend=storage)
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    original = importer.import_package(source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account())
+    account = _account()
+    target = Tenant(name="Target workspace")
+    target.id = str(uuid4())
+    with sqlite_session_factory() as session:
+        draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == original.agent_id))
+        assert draft is not None
+        snapshot = AgentConfigSnapshot(
+            tenant_id="tenant-1",
+            agent_id=original.agent_id,
+            version=2,
+            config_snapshot=AgentSoulConfig.model_validate(draft.config_snapshot_dict),
+        )
+        session.add(snapshot)
+        session.flush()
+        version_id = UUID(snapshot.id)
+        agent = session.get(Agent, original.agent_id)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        session.add(
+            AgentConfigRevision(
+                tenant_id="tenant-1",
+                agent_id=agent.id,
+                current_snapshot_id=snapshot.id,
+                revision=2,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            )
+        )
+        original_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        draft.config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "unpublished"}})
+        session.commit()
+
+    def unexpected_archive(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Local templates must not use HTTP or outer package serialization")
+
+    monkeypatch.setattr(RosterAgentPackageExporter, "export", unexpected_archive)
+    monkeypatch.setattr(RosterAgentPackageReader, "read", unexpected_archive)
+    monkeypatch.setattr("services.app_import_source.remote_fetcher.make_request", unexpected_archive)
+    monkeypatch.setattr(
+        importer_module,
+        "RosterAgentPackageExporter",
+        lambda: RosterAgentPackageExporter(
+            storage_backend=storage,
+            dependency_provider=lambda *_args: [],
+        ),
+    )
+    result = importer.import_template(
+        source=RecommendedAgentPackageSource("tenant-1", original.agent_id, version_id),
+        tenant_id=target.id,
+        account=account,
+        name="Local copy",
+    )
+    assert result.warnings == []
+    with sqlite_session_factory() as session:
+        app = session.get(App, result.app_id)
+        assert app is not None
+        assert app.tenant_id == target.id
+        assert app.name == "Local copy"
+        copied_agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert copied_agent is not None
+        copied_draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == copied_agent.id))
+        assert copied_draft is not None
+        copied = AgentSoulConfig.model_validate(copied_draft.config_snapshot_dict)
+        assert copied.prompt.system_prompt == "Imported prompt"
+        assert {item.name for item in copied.config_skills} == {"config-skill", "workspace-skill"}
+        original_ids = {item.file_id for item in [*original_soul.config_skills, *original_soul.config_files]}
+        for item in [*copied.config_skills, *copied.config_files]:
+            assert item.file_id not in original_ids
+            row = session.get(UploadFile if item.file_kind == "upload_file" else ToolFile, item.file_id)
+            assert row is not None
+            assert row.tenant_id == target.id
+            assert row.key in storage.files if isinstance(row, UploadFile) else row.file_key in storage.files
 
 
 def test_import_rejects_multiple_apps_before_writes() -> None:
@@ -702,7 +882,7 @@ def test_import_preserves_error_mapping(
     def fail(**_kwargs) -> None:
         raise failure
 
-    monkeypatch.setattr(importer._resources, "materialize", fail)
+    monkeypatch.setattr(importer._resources, "materialize_resources", fail)
     with pytest.raises(expected) as caught:
         importer.import_package(source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account())
     if isinstance(failure, expected):

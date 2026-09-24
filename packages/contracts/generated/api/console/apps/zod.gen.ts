@@ -13,6 +13,9 @@ export const zAppImportPayload = z.object({
   icon_type: z.string().nullish(),
   mode: z.string(),
   name: z.string().nullish(),
+  package_url: z.string().nullish(),
+  template_id: z.uuid().nullish(),
+  version_id: z.uuid().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
 })
