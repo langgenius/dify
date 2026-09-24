@@ -44,10 +44,6 @@ vi.mock('../card/base/download-count', () => ({
   ),
 }))
 
-vi.mock('../card/base/title', () => ({
-  default: ({ title }: { title: string }) => <div data-testid="title">{title}</div>,
-}))
-
 const deploymentState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
@@ -97,21 +93,26 @@ describe('ProviderCard', () => {
   it('renders provider information, tags, and detail link', () => {
     renderProviderCard()
 
-    expect(screen.getByTestId('title')).toHaveTextContent('Provider One')
+    expect(screen.getByRole('article', { name: 'Provider One' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Provider One' })).toBeInTheDocument()
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByTestId('download-count')).toHaveTextContent('123')
     expect(screen.getByTestId('description')).toHaveTextContent('Provider description')
     expect(screen.getByText('search')).toBeInTheDocument()
     expect(screen.getByText('rag')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /plugin.detailPanel.operation.detail/i }),
+      screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail Provider One' }),
     ).toHaveAttribute('href', '/marketplace/dify/provider-one?language=en-US&theme=system')
   })
 
   it('opens and closes the install modal', () => {
     renderProviderCard()
 
-    fireEvent.click(screen.getByRole('button', { name: /plugin.detailPanel.operation.install/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'plugin.detailPanel.operation.install Provider One',
+      }),
+    )
     expect(screen.getByTestId('install-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('close-install-modal'))

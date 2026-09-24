@@ -1,183 +1,40 @@
-from __future__ import annotations
+"""App request contracts and serialization of materialized response data."""
 
-import builtins
 import json
-import sys
-from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
-from importlib import util
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
+import yaml
 from flask import Flask
-from flask.views import MethodView
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 
+from controllers.console.app import app as controller
+from fields import app_fields
+from fields.app_model_config_response import AppModelConfigResponse
+from libs.pagination import PaginatedResult
 from models.account import Account
 from models.enums import CustomizeTokenStrategy, TagType
 from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding
 from models.workflow import Workflow, WorkflowType
-from services.app_service import RecentAppListItem
-
-# kombu references MethodView as a global when importing celery/kombu pools.
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+from repositories.app.response import app_record
+from services.app_service import AppResponseView
 
 
-class _ConsoleModule(ModuleType):
-    console_ns: object
-    api: object | None
-    bp: object | None
-    app: ModuleType
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
-
-@pytest.fixture(scope="module")
+@pytest.fixture
 def app_module():
-    module_name = "controllers.console.app.app"
-    root = Path(__file__).resolve().parents[5]
-    module_path = root / "controllers" / "console" / "app" / "app.py"
+    return controller
 
-    class _StubNamespace:
-        def __init__(self):
-            self.models: dict[str, object] = {}
-            self.payload = None
 
-        def schema_model(self, name, schema):
-            self.models[name] = schema
-            return schema
-
-        def model(self, name, model_dict=None, **kwargs):
-            """Register a model with the namespace (flask-restx compatibility)."""
-            if model_dict is not None:
-                self.models[name] = model_dict
-            return model_dict
-
-        def _decorator(self, obj):
-            return obj
-
-        def doc(self, *args, **kwargs):
-            return self._decorator
-
-        def expect(self, *args, **kwargs):
-            return self._decorator
-
-        def response(self, *args, **kwargs):
-            return self._decorator
-
-        def route(self, *args, **kwargs):
-            def decorator(obj):
-                return obj
-
-            return decorator
-
-    stub_namespace = _StubNamespace()
-
-    original_modules: dict[str, ModuleType | None] = {
-        "controllers.console": sys.modules.get("controllers.console"),
-        "controllers.console.app": sys.modules.get("controllers.console.app"),
-        "controllers.common.schema": sys.modules.get("controllers.common.schema"),
-        module_name: sys.modules.get(module_name),
-    }
-    stubbed_modules: list[tuple[str, ModuleType | None]] = []
-
-    console_module = _ConsoleModule("controllers.console")
-    console_module.__path__ = [str(root / "controllers" / "console")]
-    console_module.console_ns = stub_namespace
-    console_module.api = None
-    console_module.bp = None
-    sys.modules["controllers.console"] = console_module
-
-    app_package = ModuleType("controllers.console.app")
-    app_package.__path__ = [str(root / "controllers" / "console" / "app")]
-    sys.modules["controllers.console.app"] = app_package
-    console_module.app = app_package
-
-    def _stub_module(name: str, attrs: dict[str, object]) -> None:
-        original = sys.modules.get(name)
-        module = ModuleType(name)
-        for key, value in attrs.items():
-            setattr(module, key, value)
-        sys.modules[name] = module
-        stubbed_modules.append((name, original))
-
-    class _OpsTraceManager:
-        @staticmethod
-        def get_app_tracing_config(app_id: str) -> dict[str, object]:
-            return {}
-
-        @staticmethod
-        def update_app_tracing_config(app_id: str, **kwargs) -> None:
-            return None
-
-    _stub_module(
-        "core.ops.ops_trace_manager",
-        {
-            "OpsTraceManager": _OpsTraceManager,
-            "TraceQueueManager": object,
-            "TraceTask": object,
-            "TracingProviderConfigEntry": dict,
-            "provider_config_map": {},
-        },
+@pytest.fixture
+def app_models(monkeypatch):
+    monkeypatch.setattr(
+        app_fields, "build_icon_url", lambda kind, icon: f"signed:{icon}" if kind == IconType.IMAGE else None
     )
-
-    spec = util.spec_from_file_location(module_name, module_path)
-    assert spec is not None
-    module = util.module_from_spec(spec)
-    sys.modules[module_name] = module
-
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-
-    try:
-        yield module
-    finally:
-        for name, original in reversed(stubbed_modules):
-            if original is not None:
-                sys.modules[name] = original
-            else:
-                sys.modules.pop(name, None)
-        for name, original in original_modules.items():
-            if original is not None:
-                sys.modules[name] = original
-            else:
-                sys.modules.pop(name, None)
-
-
-@pytest.fixture(scope="module")
-def app_models(app_module):
-    return SimpleNamespace(
-        AppDetailWithSite=app_module.AppDetailWithSite,
-        AppPagination=app_module.AppPagination,
-        AppPartial=app_module.AppPartial,
-    )
-
-
-@pytest.fixture(autouse=True)
-def patch_signed_url(monkeypatch: pytest.MonkeyPatch, app_module: ModuleType) -> None:
-    """Ensure icon URL generation uses a deterministic helper for tests."""
-
-    def _fake_build_icon_url(_icon_type, key: str | None) -> str | None:
-        if key is None:
-            return None
-        icon_type = str(_icon_type).lower()
-        if icon_type != "image":
-            return None
-        return f"signed:{key}"
-
-    monkeypatch.setattr(app_module, "build_icon_url", _fake_build_icon_url)
+    return app_fields
 
 
 def _ts(hour: int = 12) -> datetime:
@@ -432,9 +289,8 @@ def test_app_partial_serialization_uses_aliases(app_models, sqlite_session: Sess
     app_obj.description = "Prompt snippet"
 
     serialized = AppPartial.model_validate(
-        app_obj,
+        replace(app_record(app_obj, session=sqlite_session), permission_keys=app_obj.permission_keys),
         from_attributes=True,
-        context={"session": sqlite_session},
     ).model_dump(mode="json")
 
     assert serialized["description"] == "Prompt snippet"
@@ -455,7 +311,6 @@ def test_app_detail_with_site_includes_nested_serialization(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ):
-    AppDetailWithSite = app_models.AppDetailWithSite
     app_obj = _persist_response_graph(sqlite_session)
     app_obj.name = "Detailed App"
     app_obj.description = "Desc"
@@ -470,14 +325,19 @@ def test_app_detail_with_site_includes_nested_serialization(
     assert model_config is not None
     model_config.opening_statement = "hi"
     model_config.retriever_resource = json.dumps({"enabled": True})
-    monkeypatch.setattr("services.app_service.load_annotation_reply_config", lambda _session, _app_id: {})
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
 
     with app.test_request_context("/"):
-        serialized = AppDetailWithSite.model_validate(
-            app_obj,
-            from_attributes=True,
-            context={"session": sqlite_session},
-        ).model_dump(mode="json")
+        response = controller._app_detail_response(
+            replace(
+                app_record(app_obj, session=sqlite_session, projection="detail-with-site"),
+                permission_keys=app_obj.permission_keys,
+            ),
+        )
+        assert isinstance(response, app_models.AppDetailWithSite)
+        serialized = response.model_dump(mode="json")
 
     assert serialized["icon_url"] == "signed:detail-icon"
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
@@ -491,7 +351,7 @@ def test_app_detail_with_site_includes_nested_serialization(
 
 
 def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
-    app_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     app_obj = _persist_response_graph(sqlite_session)
     decoy_tenant_id = "00000000-0000-0000-0000-000000000002"
@@ -509,10 +369,15 @@ def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
         ]
     )
     sqlite_session.commit()
-    load_annotation_reply = MagicMock(return_value={"enabled": False})
+    calls = []
+
+    def load_annotation_reply(session, app_id):
+        calls.append((session, app_id))
+        return {"enabled": False}
+
     monkeypatch.setattr("services.app_service.load_annotation_reply_config", load_annotation_reply)
 
-    view = app_module.AppResponseView(app_obj, session=sqlite_session)
+    view = AppResponseView(app_obj, session=sqlite_session)
     site = view.site
     workflow = view.workflow
     model_config = view.app_model_config
@@ -529,7 +394,7 @@ def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
     assert view.author_name == "Creator"
     assert model_config is not None
     assert model_config.annotation_reply_dict == {"enabled": False}
-    load_annotation_reply.assert_called_once_with(sqlite_session, APP_ID)
+    assert calls == [(sqlite_session, APP_ID)]
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session: Session):
@@ -549,18 +414,16 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session
         icon="🙂",
         created_at=_ts(16),
     )
-    pagination = SimpleNamespace(
+    pagination = PaginatedResult(
         page=2,
         per_page=10,
         total=50,
-        has_next=True,
-        items=[item_one, item_two],
+        items=[app_record(item, session=sqlite_session) for item in (item_one, item_two)],
     )
 
     serialized = AppPagination.model_validate(
         pagination,
         from_attributes=True,
-        context={"session": sqlite_session},
     ).model_dump(mode="json")
 
     assert serialized["page"] == 2
@@ -571,567 +434,164 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session
     assert serialized["data"][1]["icon_url"] is None
 
 
-def test_app_list_uses_injected_session_for_draft_workflows(
-    app: Flask,
-    app_module: ModuleType,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-) -> None:
-    api = app_module.AppListApi()
-    method = _unwrap(api.get)
-    app_item = _app(
-        app_id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow App",
-        mode=AppMode.WORKFLOW,
-    )
-    app_pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_item])
-    workflow = Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({"nodes": [{"id": "trigger-1", "data": {"type": "trigger-webhook"}}], "edges": []}),
-        features=json.dumps({}),
-        created_by="user-1",
-        environment_variables=[],
-        conversation_variables=[],
-    )
-    sqlite_session.add(workflow)
+@pytest.mark.parametrize("strategy", [None, "cot", "function-calling"])
+def test_app_detail_preserves_historical_agent_strategy(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, strategy: str | None
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    agent_mode = {"enabled": True, "tools": []}
+    if strategy is not None:
+        agent_mode["strategy"] = strategy
+    config.agent_mode = json.dumps(agent_mode)
     sqlite_session.commit()
-
     monkeypatch.setattr(
-        app_module,
-        "AppService",
-        lambda: SimpleNamespace(get_paginate_apps=lambda *_args, **_kwargs: app_pagination),
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
     )
+
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    assert response["model_config"]["agent_mode"] == agent_mode
+
+
+def test_app_detail_preserves_historical_agent_mode_without_tools(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    app_obj.mode = AppMode.AGENT_CHAT
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    agent_mode = {"enabled": True, "max_iteration": 5, "strategy": "function_call"}
+    config.agent_mode = json.dumps(agent_mode)
+    sqlite_session.commit()
     monkeypatch.setattr(
-        app_module,
-        "SystemFeatureService",
-        SimpleNamespace(is_webapp_auth_enabled=lambda: False),
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
     )
-    get_permissions = MagicMock(
-        return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
-            app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                overrides=[
-                    app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                        resource_id="app-1",
-                        permission_keys=["app.acl.edit"],
-                    )
-                ]
-            )
-        )
-    )
-    monkeypatch.setattr(
-        app_module.enterprise_rbac_service.RBACService.MyPermissions,
-        "get",
-        get_permissions,
-    )
-    with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
-        response, status = method("tenant-1", "user-1", sqlite_session)
 
-    assert status == 200
-    assert response["data"][0]["has_draft_trigger"] is True
-    get_permissions.assert_called_once_with("tenant-1", "user-1", session=sqlite_session)
-    assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    assert response["model_config"]["agent_mode"] == agent_mode
 
 
-def test_app_create_api_attaches_permission_keys(
-    app, app_module, sqlite_session: Session, config_overrides: Callable[..., None]
+def test_app_model_config_response_round_trips_persisted_dataset_and_external_tool_fields(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppListApi.post
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    app_obj = _app(
-        app_id="app-new",
-        tenant_id="tenant-1",
-        name="Created App",
-        description="Summary",
-        mode=AppMode.ADVANCED_CHAT,
-    )
-
-    with app.test_request_context("/apps", method="POST", json={}):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            app_module.console_ns.payload = {
-                "name": "Created App",
-                "description": "Summary",
-                "mode": "advanced-chat",
-            }
-            monkeypatch.setattr(
-                app_module,
-                "AppService",
-                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user, session: app_obj),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "replace_whitelist",
-                MagicMock(),
-            )
-            monkeypatch.setattr(app_module.initialize_created_app_rbac_access_task, "delay", MagicMock())
-            resp, status = method(
-                app_module.AppListApi(),
-                app_module.CreateAppPayload(
-                    name="Created App",
-                    description="Summary",
-                    mode="advanced-chat",
-                ),
-                sqlite_session,
-                "tenant-1",
-                _account(account_id="acct-1"),
-            )
-
-    assert status == 201
-    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-
-
-def test_app_list_api_attaches_permission_keys(
-    app, app_module, sqlite_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    app_obj = _app(
-        app_id="app-1",
-        tenant_id="tenant-1",
-        name="List App",
-        created_at=_ts(15),
-    )
-    pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
-    get_paginate_apps = MagicMock(return_value=pagination)
-
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(
-                app_module.AppService,
-                "get_paginate_apps",
-                get_paginate_apps,
-            )
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        default_permission_keys=["app.preview", "app.acl.view_layout"],
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=["app.acl.view_layout", "app.acl.edit"],
-                            )
-                        ],
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(unrestricted=True, resource_ids=[]),
-            )
-
-            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", sqlite_session)
-
-    assert status == 200
-    params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids is None
-    assert params.is_created_by_me is None
-    assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-
-
-def test_recent_app_list_api_returns_only_home_card_fields(
-    app,
-    app_module,
-    unbound_session: Session,
-    config_overrides: Callable[..., None],
-):
-    config_overrides(RBAC_ENABLED=False)
-    method = app_module.RecentAppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    recent_app = RecentAppListItem(
-        id="app-1",
-        name="Recent App",
-        icon_type=IconType.EMOJI,
-        icon="🚀",
-        icon_background="#FFFFFF",
-        mode="chat",
-        author_name="Recent Author",
-        updated_at=_ts(15),
-        maintainer="acct-1",
-    )
-    get_recent_apps = MagicMock(return_value=[recent_app])
-
-    with app.test_request_context("/apps/recent?limit=8"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=["app.acl.monitor"],
-                            )
-                        ]
-                    )
-                ),
-            )
-
-            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
-
-    assert status == 200
-    assert resp == {
-        "data": [
-            {
-                "id": "app-1",
-                "name": "Recent App",
-                "icon_type": "emoji",
-                "icon": "🚀",
-                "icon_background": "#FFFFFF",
-                "mode": "chat",
-                "author_name": "Recent Author",
-                "updated_at": int(_ts(15).timestamp()),
-                "permission_keys": ["app.acl.monitor"],
-                "maintainer": "acct-1",
-                "icon_url": None,
-            }
-        ]
+    app_obj = _persist_response_graph(sqlite_session)
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    dataset_configs = {
+        "retrieval_model": "multiple",
+        "reranking_enable": True,
+        "reranking_enabled": True,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": "condition-1",
+                    "metadata_id": "metadata-1",
+                    "name": "category",
+                    "comparison_operator": "is",
+                    "value": "books",
+                }
+            ],
+        },
+        "extension_setting": {"value": 1},
     }
-    params = get_recent_apps.call_args.args[2]
-    assert params.limit == 8
-    assert "total" not in resp
-    assert "description" not in resp["data"][0]
-    assert "tags" not in resp["data"][0]
-    assert "workflow" not in resp["data"][0]
-
-
-@pytest.mark.parametrize("mode", ["channel", "rag-pipeline", "agent"])
-def test_recent_app_response_rejects_non_home_app_modes(app_module, mode: str) -> None:
-    with pytest.raises(ValidationError):
-        app_module.RecentAppResponse.model_validate(
-            {
-                "id": "app-1",
-                "name": "Recent App",
-                "mode": mode,
-                "updated_at": _ts(),
-            }
-        )
-
-
-def test_recent_app_list_api_applies_rbac_visibility_filter(
-    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.RecentAppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    get_recent_apps = MagicMock(return_value=[])
-    with app.test_request_context("/apps/recent"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
-                        permission_keys=["app.create_and_management"]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    unrestricted=False,
-                    resource_ids=["app-shared"],
-                ),
-            )
-
-            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
-
-    assert status == 200
-    assert resp == {"data": []}
-    params = get_recent_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-shared"]
-    assert params.include_own_apps is False
-
-
-def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(
-    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
-    get_paginate_apps = MagicMock(return_value=pagination)
-
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
-                        permission_keys=["app.create_and_management"]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
-            )
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-
-            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
-
-    assert status == 200
-    assert resp["data"] == []
-    params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-not-permitted", "app-shared"]
-    assert params.include_own_apps is False
-    assert params.is_created_by_me is None
-
-
-def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
-    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
-    get_paginate_apps = MagicMock(return_value=pagination)
-
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-acl-shared",
-                                permission_keys=["app.acl.preview"],
-                            ),
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-full",
-                                permission_keys=["app.full_access"],
-                            ),
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-shared",
-                                permission_keys=["app.preview"],
-                            ),
-                        ]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-whitelist-only"]),
-            )
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-
-            method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
-
-    params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-whitelist-only"]
-    assert params.include_own_apps is False
-    assert params.is_created_by_me is None
-
-
-def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permission(
-    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppListApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
-    get_paginate_apps = MagicMock(return_value=pagination)
-
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-not-permitted"]),
-            )
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-
-            method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
-
-    params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-not-permitted"]
-    assert params.include_own_apps is False
-    assert params.is_created_by_me is None
-
-
-def test_app_detail_api_attaches_current_user_permission_keys(
-    app, app_module, sqlite_session: Session, config_overrides: Callable[..., None]
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppApi.get
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    app_obj = _app(
-        app_id="app-1",
-        tenant_id="tenant-1",
-        name="Detail App",
-        description="Summary",
-    )
-
-    with app.test_request_context("/apps/app-1"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            get_app = MagicMock(return_value=app_obj)
-            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-            get_permissions = MagicMock(
-                return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=[
-                                    "app.acl.view_layout",
-                                    "app.acl.edit",
-                                    "app.acl.deploy",
-                                    "app.acl.monitor",
-                                ],
-                            )
-                        ]
-                    )
-                )
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                get_permissions,
-            )
-
-            resp = method(
-                app_module.AppApi(),
-                sqlite_session,
-                "tenant-1",
-                _account(account_id="acct-1"),
-                app_model=app_obj,
-            )
-
-    get_app.assert_called_once_with(app_obj, session=sqlite_session)
-    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=sqlite_session)
-    assert resp["permission_keys"] == [
-        "app.acl.view_layout",
-        "app.acl.edit",
-        "app.acl.deploy",
-        "app.acl.monitor",
-    ]
-
-
-def test_app_copy_api_attaches_permission_keys(
-    app,
-    app_module,
-    sqlite_session: Session,
-    config_overrides: Callable[..., None],
-):
-    config_overrides(RBAC_ENABLED=True)
-    method = app_module.AppCopyApi.post
-    while hasattr(method, "__wrapped__"):
-        method = method.__wrapped__
-
-    app_obj = App(
-        id="00000000-0000-0000-0000-000000000101",
-        tenant_id="00000000-0000-0000-0000-000000000102",
-        name="Copied App",
-        description="Summary",
-        mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
-        icon="copy",
-        icon_background="#ffffff",
-        enable_site=True,
-        enable_api=True,
-    )
-    sqlite_session.add(app_obj)
+    external_form = {
+        "external_data_tool": {
+            "variable": "customer",
+            "label": "Customer",
+            "type": "api",
+            "enabled": True,
+            "icon": "icon-key",
+            "icon_background": "#fff",
+            "config": {"provider": "crm"},
+            "extension_setting": {"value": 2},
+        }
+    }
+    config.dataset_configs = json.dumps(dataset_configs)
+    config.user_input_form = json.dumps([external_form])
     sqlite_session.commit()
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
 
-    import_result = SimpleNamespace(status=app_module.ImportStatus.COMPLETED, app_id=app_obj.id)
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
 
-    with app.test_request_context("/apps/app-original/copy", method="POST", json={}):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(
-                app_module,
-                "AppDslService",
-                lambda *_args, **_kwargs: SimpleNamespace(
-                    copy_app=lambda **_kwargs: (import_result, app_obj),
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.SystemFeatureService,
-                "is_webapp_auth_enabled",
-                lambda: False,
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids, session: {app_obj.id: ["app.acl.view_layout", "app.acl.edit"]},
-            )
+    model_config = response["model_config"]
+    assert model_config["dataset_configs"] == dataset_configs
+    assert model_config["user_input_form"] == [external_form]
 
-            resp, status = method(
-                app_module.AppCopyApi(),
-                app_module.CopyAppPayload(),
-                sqlite_session,
-                "tenant-1",
-                _account(account_id="acct-1"),
-                app_model=_app(app_id="app-original", tenant_id="tenant-1"),
-            )
+    reimported = AppModelConfig(app_id=APP_ID)
+    reimported.from_model_config_dict(model_config)
+    assert reimported.dataset_configs_dict == dataset_configs
+    assert reimported.user_input_form_list == [external_form]
 
-    assert status == 201
-    assert sqlite_session.get(App, app_obj.id) is not None
-    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+def test_recommended_app_model_configs_keep_all_published_fields():
+    catalog_path = Path(__file__).resolve().parents[5] / "constants" / "recommended_apps.json"
+    catalog = json.loads(catalog_path.read_text())
+
+    def assert_fields_preserved(source, serialized):
+        if isinstance(source, dict):
+            for key, value in source.items():
+                assert key in serialized
+                assert_fields_preserved(value, serialized[key])
+        elif isinstance(source, list):
+            assert len(source) == len(serialized)
+            for value, serialized_value in zip(source, serialized, strict=True):
+                assert_fields_preserved(value, serialized_value)
+        else:
+            assert serialized == source
+
+    for entry in catalog["app_details"].values():
+        source = yaml.safe_load(entry["export_data"]).get("model_config") or {}
+        if not source:
+            continue
+        payload = {**source, "created_by": None, "created_at": 1, "updated_by": None, "updated_at": 1}
+        response = AppModelConfigResponse.model_validate(payload).model_dump(mode="json")
+        assert_fields_preserved(source, response)
+
+
+def test_app_detail_rejects_invalid_known_configuration_fields(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+    with app.test_request_context("/"):
+        detail = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    for field in ("mode", "permission_keys", "site", "model_config"):
+        with pytest.raises(ValidationError):
+            app_fields.AppDetailWithSite.model_validate({key: value for key, value in detail.items() if key != field})
+
+    with pytest.raises(ValidationError):
+        app_fields.AppDetailWithSite.model_validate({**detail, "mode": "unsupported"})
+
+    config = detail["model_config"]
+    for invalid in (
+        {"speech_to_text": {"enabled": "not-a-boolean"}},
+        {"agent_mode": {"enabled": True, "strategy": "unsupported", "tools": []}},
+        {"agent_mode": {"enabled": True, "tools": "not-a-list"}},
+        {"agent_mode": {"enabled": True, "tools": [{"provider_id": "only-id"}]}},
+        {"dataset_configs": {"retrieval_model": "unsupported"}},
+        {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},
+        {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unsupported"}},
+        {"user_input_form": [{"unsupported": {"label": "Name", "variable": "name"}}]},
+    ):
+        with pytest.raises(ValidationError):
+            app_fields.AppDetailWithSite.model_validate({**detail, "model_config": {**config, **invalid}})

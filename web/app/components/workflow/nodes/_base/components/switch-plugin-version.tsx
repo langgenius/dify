@@ -63,7 +63,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       },
     )
   }
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
   if (!uniqueIdentifier || !pluginId || !canUpdatePlugin) return null
@@ -82,10 +82,14 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           })}
           mutation={mutation}
           mutate={install}
-          confirmButtonText={t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflow' })}
-          cancelButtonText={t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflow' })}
-          modelTitle={t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })}
-          description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflow' })}
+          confirmButtonText={t(($) => $['nodes.agent.installPlugin.install'], {
+            ns: 'workflowAgent',
+          })}
+          cancelButtonText={t(($) => $['nodes.agent.installPlugin.cancel'], {
+            ns: 'workflowAgent',
+          })}
+          modelTitle={t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })}
+          description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflowAgent' })}
           cardTitleLeft={
             <>
               <Badge2 className="mx-1" size="s" state={BadgeState.Warning}>
@@ -103,7 +107,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               rel="noopener noreferrer"
             >
               <span className="system-xs-regular text-xs text-text-accent">
-                {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
               </span>
               <span className="i-ri-external-link-line size-3 text-text-accent" />
             </Link>
@@ -151,7 +155,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         aria-label={
           typeof tooltip === 'string'
             ? tooltip
-            : t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })
+            : t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })
         }
         render={content}
       />

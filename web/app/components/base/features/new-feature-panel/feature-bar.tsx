@@ -23,7 +23,7 @@ const FeatureBar = ({
   onFeatureBarClick,
   hideEditEntrance = false,
 }: Props) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appDebug', 'fileUpload'])
   const features = useFeatures((s) => s.features)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -160,7 +160,7 @@ const FeatureBar = ({
                   }
                 />
                 <TooltipContent>
-                  {t(($) => $['feature.fileUpload.title'], { ns: 'appDebug' })}
+                  {t(($) => $['feature.fileUpload.title'], { ns: 'fileUpload' })}
                 </TooltipContent>
               </Tooltip>
             )}

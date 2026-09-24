@@ -104,7 +104,7 @@ describe('KnowledgeBaseNode', () => {
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
       expect(
-        screen.getByText('common.modelProvider.selector.configureRequired'),
+        screen.getByText('modelProvider.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
     })
 
@@ -118,7 +118,7 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.selector.disabled')).toBeInTheDocument()
     })
 
     it('should render incompatible when embedding model status is incompatible', () => {
@@ -131,7 +131,9 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
     })
 
     it('should render configure model prompt when no embedding model is selected', () => {

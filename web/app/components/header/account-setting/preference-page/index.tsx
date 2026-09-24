@@ -49,14 +49,17 @@ export default function PreferencePage() {
   })
   const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'accountSettings'])
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter((item) => item.supported)
   const themeOptions: SelectOption[] = [
-    { value: 'system', name: t(($) => $['account.appearanceFollowSystem'], { ns: 'common' }) },
-    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'common' }) },
-    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'common' }) },
+    {
+      value: 'system',
+      name: t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' }),
+    },
+    { value: 'light', name: t(($) => $['account.appearanceLight'], { ns: 'accountSettings' }) },
+    { value: 'dark', name: t(($) => $['account.appearanceDark'], { ns: 'accountSettings' }) },
   ]
   const selectedLanguage = languageOptions.find(
     (item) => item.value === (locale || userProfile.interface_language),
@@ -94,7 +97,7 @@ export default function PreferencePage() {
     <>
       <div className="mb-6">
         <div className={titleClassName}>
-          {t(($) => $['account.appearanceLabel'], { ns: 'common' })}
+          {t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         </div>
         <Select
           value={selectedTheme?.value ?? 'system'}
@@ -105,7 +108,8 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedTheme?.name ?? t(($) => $['account.appearanceFollowSystem'], { ns: 'common' })}
+            {selectedTheme?.name ??
+              t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' })}
           </SelectTrigger>
           <SelectContent>
             {themeOptions.map((item) => (

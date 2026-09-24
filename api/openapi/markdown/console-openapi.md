@@ -1497,8 +1497,6 @@ Get advanced prompt templates based on app mode and model configuration
 | 400 | Invalid request parameters |  |
 
 ### [GET] /apps
-**Get app list**
-
 Get list of applications with pagination and filtering
 
 #### Parameters
@@ -1521,8 +1519,6 @@ Get list of applications with pagination and filtering
 | 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
 
 ### [POST] /apps
-**Create app**
-
 Create a new application
 
 #### Request Body
@@ -1585,8 +1581,6 @@ Create a new application
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
 
 ### [GET] /apps/recent
-**Return the lightweight app cards needed by the Explore home page**
-
 Get recently modified apps for the home Continue Work section
 
 #### Parameters
@@ -1639,8 +1633,6 @@ Get workflow online users
 | 200 | Workflow online users retrieved successfully | **application/json**: [WorkflowOnlineUsersResponse](#workflowonlineusersresponse)<br> |
 
 ### [DELETE] /apps/{app_id}
-**Delete app**
-
 Delete application
 
 #### Parameters
@@ -1657,8 +1649,6 @@ Delete application
 | 403 | Insufficient permissions |
 
 ### [GET] /apps/{app_id}
-**Get app detail**
-
 Get application details
 
 #### Parameters
@@ -1674,8 +1664,6 @@ Get application details
 | 200 | Success | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
 ### [PUT] /apps/{app_id}
-**Update app**
-
 Update application details
 
 #### Parameters
@@ -2681,8 +2669,6 @@ Convert Completion App to Workflow App
 | 403 | Permission denied |  |
 
 ### [POST] /apps/{app_id}/copy
-**Copy app**
-
 Create a copy of an existing application
 
 #### Parameters
@@ -2706,8 +2692,6 @@ Create a copy of an existing application
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/export
-**Export app**
-
 Export application configuration as DSL
 
 #### Parameters
@@ -2859,8 +2843,6 @@ Check if app name is available
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
-**Publish app to Creators Platform**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -3220,8 +3202,6 @@ Get available TTS voices for a specific language
 | 400 | Invalid language parameter |  |
 
 ### [GET] /apps/{app_id}/trace
-**Get app trace**
-
 Get app tracing configuration
 
 #### Parameters
@@ -13690,41 +13670,41 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
 | access_ready | boolean |  | No |
-| api_base_url | string |  | No |
+| api_base_url | string |  | Yes |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
 | debug_conversation_has_messages | boolean |  | No |
 | debug_conversation_id | string |  | No |
 | debug_conversation_message_count | integer |  | No |
-| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
 | hidden_app_backed | boolean |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| max_active_requests | integer |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| max_active_requests | integer |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | Yes |
 | role | string |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
 #### AgentAppFeaturesPayload
 
@@ -13772,7 +13752,7 @@ default (the config form sends the full desired feature state on save).
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | No |
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
@@ -13787,13 +13767,13 @@ default (the config form sends the full desired feature state on save).
 | hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | Yes |
@@ -15377,7 +15357,7 @@ Legacy Chat App model config used only for follow-up question generation.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| autoPlay | string |  | No |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
 | enabled | boolean |  | No |
 | language | string |  | No |
 | voice | string |  | No |
@@ -15762,105 +15742,251 @@ This class is used to store the schema information of an api based tool.
 | app_id | string |  | No |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 
+#### AppAgentModeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| max_iteration | integer |  | No |
+| prompt | [AppAgentPromptResponse](#appagentpromptresponse)<br>string |  | No |
+| strategy | [PlanningStrategy](#planningstrategy)<br>string, <br>**Available values:** "cot", "function-calling" |  | No |
+| tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | No |
+
+#### AppAgentPromptResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_prompt | string |  | No |
+| next_iteration | string |  | No |
+
+#### AppAnnotationReplyDisabledResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### AppAnnotationReplyEnabledResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | [AppEmbeddingModelResponse](#appembeddingmodelresponse) |  | Yes |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+| score_threshold | number |  | Yes |
+
 #### AppApiStatusPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enable_api | boolean | Enable or disable API | Yes |
 
+#### AppChatPromptConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| prompt | [ [AppChatPromptMessageResponse](#appchatpromptmessageresponse) ] |  | No |
+
+#### AppChatPromptMessageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string |  | Yes |
+| text | string |  | Yes |
+
+#### AppCheckboxFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkbox | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppCompletionPromptConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_histories_role | [AppConversationHistoriesRoleResponse](#appconversationhistoriesroleresponse) |  | No |
+| prompt | [AppCompletionPromptTextResponse](#appcompletionprompttextresponse) |  | No |
+
+#### AppCompletionPromptTextResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
+#### AppConversationHistoriesRoleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| assistant_prefix | string |  | Yes |
+| user_prefix | string |  | Yes |
+
+#### AppDatasetConfigsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [AppDatasetListResponse](#appdatasetlistresponse) |  | No |
+| metadata_filtering_conditions | [AppMetadataFilteringConditionsResponse](#appmetadatafilteringconditionsresponse) |  | No |
+| metadata_filtering_mode | string, <br>**Available values:** "automatic", "disabled", "manual" | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
+| metadata_model_config | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
+| reranking_enable | boolean |  | No |
+| reranking_enabled | boolean |  | No |
+| reranking_mode | [RerankMode](#rerankmode) |  | No |
+| reranking_model | [AppRerankingModelResponse](#apprerankingmodelresponse) |  | No |
+| retrieval_model | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | Yes |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
+| weights | [AppWeightsResponse](#appweightsresponse) |  | No |
+
+#### AppDatasetItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetReferenceResponse](#appdatasetreferenceresponse) |  | Yes |
+
+#### AppDatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AppDatasetItemResponse](#appdatasetitemresponse) ] |  | Yes |
+| strategy | string |  | No |
+
+#### AppDatasetReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| id | string |  | No |
+
 #### AppDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
-| icon | string |  | No |
-| icon_background | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| permission_keys | [ string ] |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
 
 #### AppDetailSiteResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_token | string |  | No |
-| app_base_url | string |  | No |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
-| copyright | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string<br>[IconType](#icontype) |  | No |
+| access_token | string |  | Yes |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | Yes |
+| chat_color_theme_inverted | boolean |  | Yes |
+| code | string |  | Yes |
+| copyright | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| custom_disclaimer | string |  | Yes |
+| customize_domain | string |  | Yes |
+| customize_token_strategy | [CustomizeTokenStrategy](#customizetokenstrategy) |  | Yes |
+| default_language | string |  | Yes |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
-| input_placeholder | string |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| input_placeholder | string |  | Yes |
+| privacy_policy | string |  | Yes |
+| prompt_public | boolean |  | Yes |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### AppDetailWithSite
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
-| api_base_url | string |  | No |
-| app_id | string |  | No |
-| bound_agent_id | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | Yes |
+| api_base_url | string |  | Yes |
+| app_id | string |  | Yes |
+| bound_agent_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | Yes |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| maintainer | string |  | No |
-| max_active_requests | integer |  | No |
-| mode | string |  | Yes |
-| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
+| maintainer | string |  | Yes |
+| max_active_requests | integer |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | Yes |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| tracing |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| permission_keys | [ string ] |  | Yes |
+| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | Yes |
+| tags | [ [Tag](#tag) ] |  | Yes |
+| tracing | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
+| workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+
+#### AppDisabledExternalDataToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | No |
+| variable | string |  | No |
 
 #### AppDslVersionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_dsl_version | string |  | Yes |
+
+#### AppEmbeddingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+
+#### AppEnabledConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### AppEnabledExternalDataToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | Yes |
+| variable | string |  | Yes |
 
 #### AppExportQuery
 
@@ -15877,6 +16003,35 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | data | string |  | Yes |
 
+#### AppExternalDataToolFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| external_data_tool | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileListFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file-list | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| enabled | boolean |  | No |
+| image | [AppImageUploadResponse](#appimageuploadresponse) |  | No |
+| number_limits | integer |  | No |
+
 #### AppIconPayload
 
 | Name | Type | Description | Required |
@@ -15884,6 +16039,15 @@ This class is used to store the schema information of an api based tool.
 | icon | string | Icon data | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
+
+#### AppImageUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string, <br>**Available values:** "high", "low" |  | No |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 
 #### AppImportPayload
 
@@ -15904,13 +16068,69 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string |  | Yes |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 | warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
+
+#### AppJsonObjectFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| json_object | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppKeywordSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_weight | number |  | Yes |
+
+#### AppLegacyCurrentDatetimeToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_datetime | object |  | Yes |
+
+#### AppLegacyDatasetToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetReferenceResponse](#appdatasetreferenceresponse) |  | Yes |
+
+#### AppLegacyGoogleSearchToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| google_search | object |  | Yes |
+
+#### AppLegacySensitiveWordToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canned_response | string |  | Yes |
+| enabled | boolean |  | Yes |
+| words | [ string ] |  | Yes |
+
+#### AppLegacySensitiveWordToolResponseItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sensitive-word-avoidance | [AppLegacySensitiveWordToolResponse](#applegacysensitivewordtoolresponse) |  | Yes |
+
+#### AppLegacyWebReaderToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| web_reader | object |  | Yes |
+
+#### AppLegacyWikipediaToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| wikipedia | object |  | Yes |
 
 #### AppListQuery
 
@@ -15946,6 +16166,23 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
 
+#### AppMetadataConditionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| id | string |  | No |
+| metadata_id | string |  | No |
+| name | string |  | Yes |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
+
+#### AppMetadataFilteringConditionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [AppMetadataConditionResponse](#appmetadataconditionresponse) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or" |  | No |
+
 #### AppMode
 
 | Name | Type | Description | Required |
@@ -15956,36 +16193,51 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_mode |  |  | No |
-| annotation_reply |  |  | No |
-| chat_prompt_config |  |  | No |
-| completion_prompt_config |  |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| dataset_configs |  |  | No |
-| dataset_query_variable | string |  | No |
-| external_data_tools |  |  | No |
-| file_upload |  |  | No |
-| model |  |  | No |
-| more_like_this |  |  | No |
-| opening_statement | string |  | No |
-| pre_prompt | string |  | No |
-| prompt_type | string |  | No |
-| retriever_resource |  |  | No |
-| sensitive_word_avoidance |  |  | No |
-| speech_to_text |  |  | No |
-| suggested_questions |  |  | No |
-| suggested_questions_after_answer |  |  | No |
-| text_to_speech |  |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| user_input_form |  |  | No |
+| agent_mode | [AppAgentModeResponse](#appagentmoderesponse) |  | Yes |
+| annotation_reply | [AppAnnotationReplyEnabledResponse](#appannotationreplyenabledresponse)<br>[AppAnnotationReplyDisabledResponse](#appannotationreplydisabledresponse) |  | Yes |
+| chat_prompt_config | [AppChatPromptConfigResponse](#appchatpromptconfigresponse) |  | Yes |
+| completion_prompt_config | [AppCompletionPromptConfigResponse](#appcompletionpromptconfigresponse) |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| dataset_configs | [AppDatasetConfigsResponse](#appdatasetconfigsresponse) |  | Yes |
+| dataset_query_variable | string |  | Yes |
+| external_data_tools | [ [AppEnabledExternalDataToolResponse](#appenabledexternaldatatoolresponse)<br>[AppDisabledExternalDataToolResponse](#appdisabledexternaldatatoolresponse) ] |  | Yes |
+| file_upload | [AppFileUploadResponse](#appfileuploadresponse) |  | Yes |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | Yes |
+| more_like_this | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
+| opening_statement | string |  | Yes |
+| pre_prompt | string |  | Yes |
+| prompt_type | [PromptType](#prompttype) |  | Yes |
+| retriever_resource | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
+| sensitive_word_avoidance | [AppSensitiveWordAvoidanceResponse](#appsensitivewordavoidanceresponse) |  | Yes |
+| speech_to_text | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | [AppSuggestedQuestionsAfterAnswerResponse](#appsuggestedquestionsafteranswerresponse) |  | Yes |
+| text_to_speech | [AppTextToSpeechResponse](#apptexttospeechresponse) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| user_input_form | [ [AppTextInputFormResponse](#apptextinputformresponse)<br>[AppSelectFormResponse](#appselectformresponse)<br>[AppParagraphFormResponse](#appparagraphformresponse)<br>[AppNumberFormResponse](#appnumberformresponse)<br>[AppCheckboxFormResponse](#appcheckboxformresponse)<br>[AppFileFormResponse](#appfileformresponse)<br>[AppFileListFormResponse](#appfilelistformresponse)<br>[AppExternalDataToolFormResponse](#appexternaldatatoolformresponse)<br>[AppJsonObjectFormResponse](#appjsonobjectformresponse) ] |  | Yes |
+
+#### AppModelSelectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | [LLMMode](#llmmode)<br>string |  | No |
+| name | string |  | No |
+| provider | string |  | No |
 
 #### AppNamePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string | Name to check | Yes |
+
+#### AppNumberFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| number | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
 
 #### AppPagination
 
@@ -15997,11 +16249,17 @@ AppMCPServer Status Enum
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### AppParagraphFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| paragraph | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
 #### AppPartial
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
@@ -16012,13 +16270,13 @@ AppMCPServer Status Enum
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
@@ -16028,11 +16286,49 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppProviderAgentToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| enabled | boolean |  | No |
+| isDeleted | boolean |  | No |
+| notAuthor | boolean |  | No |
+| plugin_unique_identifier | string |  | No |
+| provider_id | string |  | Yes |
+| provider_name | string |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
+| tool_label | string |  | No |
+| tool_name | string |  | Yes |
+| tool_parameters | object |  | Yes |
+
+#### AppRerankingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
+#### AppSelectFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| select | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
 #### AppSelectorScope
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppSelectorScope | string |  |  |
+
+#### AppSensitiveWordAvoidanceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| configs | [ [JsonValue](#jsonvalue) ] |  | No |
+| enabled | boolean |  | Yes |
+| type | string |  | No |
 
 #### AppSiteResponse
 
@@ -16083,6 +16379,29 @@ AppMCPServer Status Enum
 | title | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### AppSuggestedQuestionsAfterAnswerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
+| prompt | string |  | No |
+
+#### AppTextInputFormResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text-input | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppTextToSpeechResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" | *Enum:* `"disabled"`, `"enabled"` | No |
+| enabled | boolean |  | Yes |
+| language | string |  | No |
+| voice | string |  | No |
+
 #### AppTracePayload
 
 | Name | Type | Description | Required |
@@ -16097,6 +16416,28 @@ AppMCPServer Status Enum
 | enabled | boolean |  | No |
 | tracing_provider | string |  | No |
 
+#### AppUserInputFormConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| config | object |  | No |
+| default | [JsonValue](#jsonvalue) |  | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| hide | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| json_schema | string<br>object |  | No |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
+| variable | string |  | Yes |
+
 #### AppVariableConfig
 
 | Name | Type | Description | Required |
@@ -16105,6 +16446,22 @@ AppMCPServer Status Enum
 | name | string |  | Yes |
 | required | boolean |  | No |
 | type | string |  | Yes |
+
+#### AppVectorSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+| vector_weight | number |  | Yes |
+
+#### AppWeightsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [AppKeywordSettingResponse](#appkeywordsettingresponse) |  | Yes |
+| vector_setting | [AppVectorSettingResponse](#appvectorsettingresponse) |  | Yes |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
 
 #### AudioBinaryResponse
 
@@ -16996,6 +17353,14 @@ Model class for provider custom model configuration.
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 | unadded_to_model_list | boolean |  | No |
+
+#### CustomizeTokenStrategy
+
+Site token customization strategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CustomizeTokenStrategy | string | Site token customization strategy |  |
 
 #### CustomizedPipelineTemplatePayload
 
@@ -19070,7 +19435,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
-| app_mode | string |  | No |
+| app_mode | [AppMode](#appmode) |  | No |
 | current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
@@ -19727,7 +20092,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model |  |  | No |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -20775,6 +21140,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | unit | string |  | No |
 | variable | string |  | Yes |
 
+#### PlanningStrategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PlanningStrategy | string |  |  |
+
 #### PluginAutoUpgradeChangeResponse
 
 | Name | Type | Description | Required |
@@ -21283,6 +21654,14 @@ Dataset Process Rule Mode
 | mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
 
+#### PromptType
+
+Prompt configuration type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PromptType | string | Prompt configuration type |  |
+
 #### ProviderConfig
 
 Model class for common provider settings like credentials
@@ -21774,6 +22153,12 @@ Resource types understood by access policies.
 | id | string | The id of the request log | Yes |
 | request | object | The request of the request log | Yes |
 | response | object | The response of the request log | Yes |
+
+#### RerankMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RerankMode | string |  |  |
 
 #### RerankingModel
 
@@ -24042,6 +24427,12 @@ in form definition, or a variable while the workflow is running.
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
 
+#### WebAppAccessMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebAppAccessMode | string |  |  |
+
 #### WebAppAuthModel
 
 | Name | Type | Description | Required |
@@ -25132,7 +25523,7 @@ Query parameters for workflow runs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| autoPlay | string |  | No |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
 | enabled | boolean |  | No |
 | language | string |  | No |
 | voice | string |  | No |

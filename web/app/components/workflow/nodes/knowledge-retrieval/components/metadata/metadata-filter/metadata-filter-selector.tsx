@@ -18,33 +18,33 @@ const MetadataFilterSelector = ({
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.manual,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
   ]

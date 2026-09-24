@@ -34,9 +34,12 @@ describe('Loop variable item', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.loop.variableName' }), {
-      target: { value: 'new name' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'workflowLogic.nodes.loop.variableName' }),
+      {
+        target: { value: 'new name' },
+      },
+    )
 
     expect(handleUpdateLoopVariable).toHaveBeenCalledWith('loop-variable', { label: 'new_name' })
   })

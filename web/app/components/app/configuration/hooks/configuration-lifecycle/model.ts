@@ -28,7 +28,7 @@ type ModelChangeHandlerOptions = {
   resolvedModelModeType: ModelModeType
   setCompletionParams: (value: FormValue) => void
   setModelConfig: (config: ModelConfig) => void
-  t: TFunction<['appDebug', 'common']>
+  t: TFunction<['appDebug', 'common', 'modelProvider']>
   visionConfig: VisionSettings
 }
 
@@ -102,7 +102,7 @@ export const createModelChangeHandler =
 
       if (Object.keys(removedDetails).length)
         toast.warning(
-          `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${Object.entries(
+          `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${Object.entries(
             removedDetails,
           )
             .map(([key, reason]) => `${key} (${reason})`)

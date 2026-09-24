@@ -34,7 +34,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
 }) => {
   const deliveryLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleMethodChange = (target: DeliveryMethod) => {
@@ -66,12 +66,12 @@ const DeliveryMethodForm: React.FC<Props> = ({
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
           <div id={deliveryLabelId} className="system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflowHumanInput' })}
           </div>
           <Infotip>
             <InfotipTrigger aria-labelledby={deliveryLabelId} />
             <InfotipContent aria-labelledby={deliveryLabelId}>
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflowHumanInput' })}
             </InfotipContent>
           </Infotip>
         </div>
@@ -87,7 +87,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
       </div>
       {!value.length && (
         <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflowHumanInput' })}
         </div>
       )}
       {value.length > 0 && (

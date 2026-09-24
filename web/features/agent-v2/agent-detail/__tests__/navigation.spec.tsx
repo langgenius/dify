@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
@@ -86,22 +87,23 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
-  permission_keys: Object.values(AgentPermission),
-  app_id: 'app-1',
-  description: 'Find and summarize market materials.',
-  enable_api: true,
-  enable_site: true,
-  icon: '🧪',
-  icon_background: '#E0F2FE',
-  icon_type: 'emoji',
-  id: 'agent-1',
-  icon_url: null,
-  mode: 'agent',
-  name: 'Research Agent',
-  role: 'Research Assistant',
-  ...overrides,
-})
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite =>
+  createAgentFixture({
+    permission_keys: Object.values(AgentPermission),
+    app_id: 'app-1',
+    description: 'Find and summarize market materials.',
+    enable_api: true,
+    enable_site: true,
+    icon: '🧪',
+    icon_background: '#E0F2FE',
+    icon_type: 'emoji',
+    id: 'agent-1',
+    icon_url: null,
+    mode: 'agent',
+    name: 'Research Agent',
+    role: 'Research Assistant',
+    ...overrides,
+  })
 
 function renderAgentDetailSection(expand = true) {
   const queryClient = new QueryClient()
@@ -151,14 +153,14 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    const trigger = screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ })
+    const trigger = screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ })
     expect(trigger).toHaveClass('size-6')
     expect(trigger).toHaveClass('hover:bg-state-base-hover')
 
     await user.click(trigger)
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'agentV2.roster.editInfo',
+      'agentRoster.roster.editInfo',
       'common.operation.duplicate',
       'app.exportApp',
       'common.operation.delete',
@@ -169,7 +171,7 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
@@ -183,11 +185,11 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
     const dialog = await screen.findByRole('alertdialog', {
-      name: /agentV2\.roster\.deleteDialog\.title/,
+      name: /agentRoster\.roster\.deleteDialog\.title/,
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
@@ -206,11 +208,11 @@ describe('AgentDetailSection', () => {
     mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
     renderAgentDetailSection()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
     const dialog = await screen.findByRole('alertdialog', {
-      name: /agentV2\.roster\.deleteDialog\.title/,
+      name: /agentRoster\.roster\.deleteDialog\.title/,
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
@@ -225,7 +227,7 @@ describe('AgentDetailSection', () => {
     renderAgentDetailSection(false)
 
     expect(
-      screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ }),
+      screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
   })
 })
@@ -238,7 +240,10 @@ describe('AgentDetailTop', () => {
   it('links the combined home control to home', () => {
     render(<AgentDetailTop />)
 
-    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
     expect(screen.getByRole('link', { name: 'Agents' })).toHaveAttribute('href', '/agents')
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })

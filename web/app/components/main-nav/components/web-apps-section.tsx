@@ -58,7 +58,7 @@ type WebAppListRow =
     }
 
 const WebAppsSectionContent = () => {
-  const { t } = useTranslation(['common', 'explore'])
+  const { t } = useTranslation(['common', 'explore', 'navigation'])
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
   const searchFocusRequestedRef = useRef(false)
@@ -138,7 +138,7 @@ const WebAppsSectionContent = () => {
   })
 
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
-  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })
+  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'navigation' })
   const showNoResults =
     !installedAppsQuery.isError &&
     !installedAppsQuery.isFetching &&
@@ -219,8 +219,8 @@ const WebAppsSectionContent = () => {
               ref={focusSearchOnAttach}
               value={searchText}
               onValueChange={handleSearchTextChange}
-              placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
-              aria-label={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
+              placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'navigation' })}
+              aria-label={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'navigation' })}
             />
           </div>
         </CollapsiblePanel>

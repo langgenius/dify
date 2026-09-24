@@ -29,7 +29,7 @@ const isWorkflowStopEvent = (value: EventEmitterValue) =>
   typeof value !== 'string' && value.type === EVENT_WORKFLOW_STOP
 
 const RunMode = ({ text, disabled = false }: RunModeProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const {
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
@@ -160,7 +160,7 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
       {isRunning && !isRunDisabled && (
         <button
           type="button"
-          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
           )}

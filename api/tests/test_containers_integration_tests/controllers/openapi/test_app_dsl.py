@@ -18,6 +18,7 @@ from controllers.openapi.app_dsl import (
     AppDslImportApi,
     AppDslImportConfirmApi,
 )
+from machinery.context import RequestContext
 from models import Account, App
 from models.model import AppModelConfig
 from services.account_service import AccountService, TenantService
@@ -112,7 +113,7 @@ class TestDslImport:
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
             result, code = api.post.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                RequestContext("test-request", None, account.id, tenant.id),
                 tenant.id,
                 body=body,
             )
@@ -134,7 +135,7 @@ class TestDslImport:
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
             result, code = api.post.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                RequestContext("test-request", None, account.id, tenant.id),
                 tenant.id,
                 body=body,
             )
@@ -159,7 +160,7 @@ class TestDslImport:
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
             result, code = api.post.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                RequestContext("test-request", None, account.id, tenant.id),
                 tenant.id,
                 body=body,
             )
@@ -185,11 +186,7 @@ class TestDslImportConfirm:
         ):
             result, code = api.post.__handler__(
                 api,
-                context_for(
-                    account,
-                    session=db_session_with_containers,
-                    view_args={"workspace_id": tenant.id, "import_id": import_id},
-                ),
+                RequestContext("test-request", None, account.id, tenant.id),
                 tenant.id,
                 import_id,
             )
@@ -262,7 +259,7 @@ class TestDslCheckDependencies:
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):
             result, code = api.get.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                RequestContext("test-request", None, account.id, app_model.tenant_id),
                 app_model.id,
             )
 

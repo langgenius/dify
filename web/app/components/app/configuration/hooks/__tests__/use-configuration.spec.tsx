@@ -4,6 +4,7 @@ import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -272,14 +273,17 @@ describe('useConfiguration', () => {
     const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(detailQueryKey, {
-      enable_api: false,
-      enable_site: false,
-      icon_url: null,
-      id: 'app-1',
-      mode: 'chat',
-      name: 'Cached app',
-    })
+    queryClient.setQueryData(
+      detailQueryKey,
+      createAppDetailFixture({
+        enable_api: false,
+        enable_site: false,
+        icon_url: null,
+        id: 'app-1',
+        mode: 'chat',
+        name: 'Cached app',
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)

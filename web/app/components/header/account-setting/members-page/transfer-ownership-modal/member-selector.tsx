@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
@@ -55,7 +55,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
       >
         {!currentValue && (
           <span className="grow p-1 system-sm-regular text-components-input-text-placeholder">
-            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
+            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'workspaceMembers' })}
           </span>
         )}
         {currentValue && (

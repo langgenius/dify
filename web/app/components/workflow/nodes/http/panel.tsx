@@ -19,7 +19,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.http'
 
 const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowIntegrations'])
 
   const {
     readOnly,
@@ -70,10 +70,12 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
                   />
                 )}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.authorization.authorization`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.authorization.authorization`], {
+                    ns: 'workflowIntegrations',
+                  })}
                   <span className="ml-1 text-text-secondary">
                     {t(($) => $[`${i18nPrefix}.authorization.${inputs.authorization.type}`], {
-                      ns: 'workflow',
+                      ns: 'workflowIntegrations',
                     })}
                   </span>
                 </div>
@@ -92,7 +94,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
                   />
                 )}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.curl.title`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.curl.title`], { ns: 'workflowIntegrations' })}
                 </div>
               </div>
             </div>
@@ -107,7 +109,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
             onUrlChange={handleUrlChange}
           />
         </Field>
-        <Field title={t(($) => $[`${i18nPrefix}.headers`], { ns: 'workflow' })}>
+        <Field title={t(($) => $[`${i18nPrefix}.headers`], { ns: 'workflowIntegrations' })}>
           <KeyValue
             nodeId={id}
             list={headers}
@@ -116,7 +118,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
             readonly={readOnly}
           />
         </Field>
-        <Field title={t(($) => $[`${i18nPrefix}.params`], { ns: 'workflow' })}>
+        <Field title={t(($) => $[`${i18nPrefix}.params`], { ns: 'workflowIntegrations' })}>
           <KeyValue
             nodeId={id}
             list={params}
@@ -125,12 +127,14 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
             readonly={readOnly}
           />
         </Field>
-        <Field title={t(($) => $[`${i18nPrefix}.body`], { ns: 'workflow' })} required>
+        <Field title={t(($) => $[`${i18nPrefix}.body`], { ns: 'workflowIntegrations' })} required>
           <EditBody nodeId={id} readonly={readOnly} payload={inputs.body} onChange={setBody} />
         </Field>
         <Field
-          title={t(($) => $[`${i18nPrefix}.verifySSL.title`], { ns: 'workflow' })}
-          tooltip={t(($) => $[`${i18nPrefix}.verifySSL.warningTooltip`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.verifySSL.title`], { ns: 'workflowIntegrations' })}
+          tooltip={t(($) => $[`${i18nPrefix}.verifySSL.warningTooltip`], {
+            ns: 'workflowIntegrations',
+          })}
           operations={
             <Switch
               checked={!!inputs.ssl_verify}
@@ -159,22 +163,30 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
             <VarItem
               name="body"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.body`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.body`], {
+                ns: 'workflowIntegrations',
+              })}
             />
             <VarItem
               name="status_code"
               type="number"
-              description={t(($) => $[`${i18nPrefix}.outputVars.statusCode`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.statusCode`], {
+                ns: 'workflowIntegrations',
+              })}
             />
             <VarItem
               name="headers"
               type="object"
-              description={t(($) => $[`${i18nPrefix}.outputVars.headers`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.headers`], {
+                ns: 'workflowIntegrations',
+              })}
             />
             <VarItem
               name="files"
               type="Array[File]"
-              description={t(($) => $[`${i18nPrefix}.outputVars.files`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.files`], {
+                ns: 'workflowIntegrations',
+              })}
             />
           </>
         </OutputVars>

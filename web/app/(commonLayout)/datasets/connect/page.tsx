@@ -2,7 +2,10 @@ import ExternalKnowledgeBaseConnector from '@/app/components/datasets/external-k
 import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
-  return getRouteMetadata('common', ($) => $['stepByStepTour.guides.knowledge.empty.connect.title'])
+  return getRouteMetadata(
+    'onboarding',
+    ($) => $['stepByStepTour.guides.knowledge.empty.connect.title'],
+  )
 }
 
 const ExternalKnowledgeBaseCreation = () => {
