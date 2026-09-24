@@ -41,7 +41,7 @@ const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
 }
 
 const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
-  const { t } = useTranslation(['plugin'])
+  const { t } = useTranslation(['common', 'plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const renderI18nObject = useRenderI18nObject()
@@ -135,6 +135,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
                 size="small"
                 className="h-5 rounded-md px-1.5 py-0 system-xs-medium"
                 onClick={handleTriggerLatestUpdate}
+                aria-label={`${t(($) => $['detailPanel.operation.update'], { ns: 'plugin' })} ${pluginLabel}`}
               >
                 {t(($) => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
@@ -146,6 +147,10 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         </Tooltip>
       )}
       <OperationDropdown
+        triggerAriaLabel={t(($) => $['operation.moreActionsFor'], {
+          ns: 'common',
+          name: pluginLabel,
+        })}
         source={detail.source}
         onInfo={modalStates.showPluginInfo}
         onCheckVersion={handleUpdate}

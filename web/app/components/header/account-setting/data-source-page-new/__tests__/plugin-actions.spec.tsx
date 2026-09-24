@@ -133,7 +133,9 @@ describe('DataSourcePluginActions', () => {
       systemFeatures: { enable_marketplace: true },
     })
     fireEvent.click(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      screen.getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Data Source Plugin"}',
+      }),
     )
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
 

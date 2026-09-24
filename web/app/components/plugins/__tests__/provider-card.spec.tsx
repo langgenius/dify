@@ -108,7 +108,11 @@ describe('ProviderCard', () => {
   it('opens and closes the install modal', () => {
     renderProviderCard()
 
-    fireEvent.click(screen.getByRole('button', { name: /plugin.detailPanel.operation.install/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'plugin.detailPanel.operation.install Provider One',
+      }),
+    )
     expect(screen.getByTestId('install-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('close-install-modal'))
