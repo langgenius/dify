@@ -9,6 +9,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -173,16 +174,23 @@ const ModelLoadBalancingConfigs = ({
     <>
       <div
         className={cn(
-          'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+          'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
           withSwitch || !draftConfig.enabled
             ? 'border-components-panel-border'
             : 'border-util-colors-blue-blue-600',
-          withSwitch || draftConfig.enabled ? 'cursor-default' : 'cursor-pointer',
           className,
         )}
-        onClick={!withSwitch && !draftConfig.enabled ? () => toggleModalBalancing(true) : undefined}
         data-testid="load-balancing-main-panel"
       >
+        {!withSwitch && !draftConfig.enabled && modelLoadBalancingEnabled && (
+          <button
+            type="button"
+            className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            aria-labelledby={loadBalancingLabelId}
+            onClick={() => toggleModalBalancing(true)}
+            data-testid="load-balancing-select-mode"
+          />
+        )}
         <div className="flex items-center gap-2 px-3.75 py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
             <div className="i-custom-vender-line-financeAndECommerce-balance h-4 w-4" />
@@ -195,7 +203,7 @@ const ModelLoadBalancingConfigs = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={loadBalancingLabelId}
-                  className="size-3"
+                  className="relative z-20 size-3"
                   iconSize="small"
                 />
                 <InfotipContent aria-labelledby={loadBalancingLabelId}>
@@ -209,6 +217,7 @@ const ModelLoadBalancingConfigs = ({
           </div>
           {withSwitch && (
             <Switch
+              aria-labelledby={loadBalancingLabelId}
               checked={Boolean(draftConfig.enabled)}
               size="lg"
               className="ml-3 justify-self-end"
@@ -222,6 +231,8 @@ const ModelLoadBalancingConfigs = ({
           <div className="flex flex-col gap-1 px-3 pb-3">
             {validDraftConfigList.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
+              const entryLabelId = `${loadBalancingLabelId}-entry-${index}`
+              const removeLabelId = `${loadBalancingLabelId}-remove-${index}`
               const credential = modelCredential.available_credentials.find(
                 (c) => c.credential_id === config.credential_id,
               )
@@ -254,7 +265,7 @@ const ModelLoadBalancingConfigs = ({
                         </Tooltip>
                       )}
                     </div>
-                    <div className="mr-1 text-[13px] text-text-secondary">
+                    <div id={entryLabelId} className="mr-1 text-[13px] text-text-secondary">
                       {isProviderManaged
                         ? t(($) => $['modelProvider.defaultConfig'], { ns: 'modelProvider' })
                         : config.name}
@@ -269,23 +280,31 @@ const ModelLoadBalancingConfigs = ({
                   <div className="flex items-center gap-1">
                     {!isProviderManaged && (
                       <>
-                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
                           <Tooltip>
                             <TooltipTrigger
                               render={
-                                <span
-                                  className="flex size-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
+                                <IconButton
+                                  size="lg"
+                                  aria-labelledby={`${removeLabelId} ${entryLabelId}`}
+                                  className="bg-components-button-secondary-bg text-text-tertiary hover:bg-components-button-secondary-bg-hover"
                                   onClick={() => updateConfigEntry(index, () => undefined)}
                                   data-testid={`load-balancing-remove-${config.id || index}`}
                                 >
-                                  <div className="i-ri-indeterminate-circle-line size-4" />
-                                </span>
+                                  <span
+                                    aria-hidden="true"
+                                    className="i-ri-indeterminate-circle-line size-4"
+                                  />
+                                </IconButton>
                               }
                             />
                             <TooltipContent>
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </TooltipContent>
                           </Tooltip>
+                          <span id={removeLabelId} className="sr-only">
+                            {t(($) => $['operation.remove'], { ns: 'common' })}
+                          </span>
                         </div>
                       </>
                     )}
@@ -293,6 +312,7 @@ const ModelLoadBalancingConfigs = ({
                       <>
                         <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                         <Switch
+                          aria-labelledby={entryLabelId}
                           checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                           size="md"
                           className="justify-self-end"
