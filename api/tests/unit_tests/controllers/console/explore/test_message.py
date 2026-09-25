@@ -1,34 +1,45 @@
 """Explore message HTTP contracts through real admission, services and SQLite."""
 
 import json
-from collections.abc import Generator, Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Generator, Iterator, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
 from pydantic import JsonValue
-from sqlalchemy import Connection, event, select
+from sqlalchemy import Connection, Engine, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.message as module
+import services.message_service as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_manager import ModelInstance
+from core.ops.ops_trace_manager import TraceTask
+from extensions.ext_database import db
+from graphon.model_runtime.entities import PromptMessage
+from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
-from models import App, AppMode, InstalledApp
+from models import Account, App, AppMode, InstalledApp
 from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating
-from models.model import Conversation, Message, MessageFeedback
+from models.model import AppModelConfig, Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from services.installed_app_message_service import InstalledAppMessageService, MessageFeedbackEvent
+from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_service import (
+    MessageSuggestedQuestions,
+    SuggestedQuestionsAccount,
+    SuggestedQuestionsActor,
+)
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -47,18 +58,20 @@ _BLOCKING: dict[str, object] = {"answer": "你好", "metadata": {}, "usage": Non
 class _Services:
     installed_app_messages: InstalledAppMessageService
     installed_app_generation: InstalledAppGenerationService
+    message_suggested_questions: MessageSuggestedQuestions
 
 
 @dataclass
 class _Messages:
     harness: _Harness
     factory: sessionmaker[Session]
+    services: _Services = field(init=False)
     sessions: list[Session] = field(default_factory=list)
     extras: dict[str, list[dict[str, JsonValue]]] = field(default_factory=dict)
     extra_calls: list[list[str]] = field(default_factory=list)
     feedback_events: list[MessageFeedbackEvent] = field(default_factory=list)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "还有吗？"])
-    question_calls: list[tuple[InstalledAppRef, str, str]] = field(default_factory=list)
+    question_calls: list[tuple[str, str, str, SuggestedQuestionsActor, str]] = field(default_factory=list)
     generation_calls: list[tuple[str, str, str, bool]] = field(default_factory=list)
     generation_response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING))
     external_error: Exception | None = None
@@ -80,9 +93,17 @@ class _Messages:
             assert persisted.content == feedback.content
         self.feedback_events.append(feedback)
 
-    def suggested_questions(self, *, installed_app: InstalledAppRef, account_id: str, message_id: str) -> list[str]:
+    def get_suggested_questions(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        expected_app_mode: str,
+        actor: SuggestedQuestionsActor,
+        message_id: str,
+    ) -> list[str]:
         self.assert_sessions_closed()
-        self.question_calls.append((installed_app, account_id, message_id))
+        self.question_calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, message_id))
         if self.external_error is not None:
             raise self.external_error
         return self.questions
@@ -143,18 +164,18 @@ def messages(
     def track_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         state.sessions.append(session)
 
-    services = _Services(
+    state.services = _Services(
         installed_app_messages=InstalledAppMessageService(
             messages=SQLAlchemyInstalledAppMessageRepository(session_factory=factory),
             get_extra_contents=state.get_extra_contents,
-            suggested_questions=state.suggested_questions,
             emit_feedback=state.emit_feedback,
         ),
         installed_app_generation=InstalledAppGenerationService(
             usage=SQLAlchemyInstalledAppRepository(session_factory=factory), runtime=state
         ),
+        message_suggested_questions=state,
     )
-    monkeypatch.setattr(module, "application_services", lambda: services)
+    monkeypatch.setattr(module, "application_services", lambda: state.services)
     for resource, suffix in (
         (module.MessageListApi, ""),
         (module.MessageFeedbackApi, "/<uuid:message_id>/feedbacks"),
@@ -163,6 +184,89 @@ def messages(
     ):
         harness.api.add_resource(resource, f"/installed-apps/<uuid:installed_app_id>/messages{suffix}")
     return state
+
+
+@dataclass
+class _QuestionProvider:
+    messages: _Messages
+    message: Message
+    legacy_sessions: list[Session] = field(default_factory=list)
+    histories: list[str] = field(default_factory=list)
+    traces: list[TraceTask] = field(default_factory=list)
+
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        assert tenant_id == self.messages.harness.target_app.tenant_id
+        assert model_type == ModelType.LLM
+        self.messages.assert_sessions_closed()
+        return cast(ModelInstance, self)
+
+    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
+        return len(prompt_messages)
+
+    def generate(
+        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
+    ) -> list[str]:
+        assert tenant_id == self.messages.harness.target_app.tenant_id
+        assert instruction_prompt == "Published questions"
+        assert model_config is None
+        self.messages.assert_sessions_closed()
+        self.histories.append(histories)
+        if self.messages.external_error is not None:
+            raise self.messages.external_error
+        return self.messages.questions
+
+    def add_trace_task(self, task: TraceTask) -> None:
+        self.traces.append(task)
+
+    def assert_closed(self) -> None:
+        self.messages.assert_sessions_closed()
+        assert all(not session.in_transaction() and not session.identity_map for session in self.legacy_sessions)
+
+
+@pytest.fixture
+def real_questions(
+    messages: _Messages, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> Iterator[_QuestionProvider]:
+    config = AppModelConfig(
+        app_id=messages.harness.target_app.id,
+        suggested_questions_after_answer='{"enabled":true,"prompt":"Published questions"}',
+    )
+    with messages.factory.begin() as session:
+        session.add_all([messages.harness.account, config])
+    conversation = _conversation(messages)
+    with messages.factory.begin() as session:
+        session.execute(
+            update(Conversation).where(Conversation.id == conversation.id).values(app_model_config_id=config.id)
+        )
+    provider = _QuestionProvider(messages=messages, message=_message(messages, conversation))
+
+    def model_manager(*, tenant_id: str) -> _QuestionProvider:
+        assert tenant_id == messages.harness.target_app.tenant_id
+        return provider
+
+    def trace_manager(*, app_id: str) -> _QuestionProvider:
+        assert app_id == messages.harness.target_app.id
+        return provider
+
+    monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
+    monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
+    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    messages.services = replace(
+        messages.services,
+        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=messages.factory),
+    )
+    messages.harness.app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+    db.init_app(messages.harness.app)
+
+    def track_legacy(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        provider.legacy_sessions.append(session)
+
+    event.listen(db.session.session_factory, "after_begin", track_legacy)
+    yield provider
+    event.remove(db.session.session_factory, "after_begin", track_legacy)
+    with messages.harness.app.app_context():
+        db.session.remove()
+        db.engine.dispose()
 
 
 def _set_mode(state: _Messages, mode: AppMode) -> None:
@@ -447,16 +551,23 @@ def test_invalid_feedback_uses_shared_422(messages: _Messages, body: dict[str, o
 
 
 @pytest.mark.parametrize("operation", _OPERATIONS)
-@pytest.mark.parametrize("admission", ["missing", "denied"])
+@pytest.mark.parametrize("admission", ["missing", "denied", "wrong-workspace"])
 def test_all_message_handlers_apply_installed_app_admission(
     messages: _Messages, operation: _Operation, admission: str
 ) -> None:
     if admission == "denied":
         messages.harness.state.allowed = False
+    elif admission == "wrong-workspace":
+        with messages.factory.begin() as session:
+            session.execute(
+                update(InstalledApp)
+                .where(InstalledApp.id == messages.harness.installed_app.id)
+                .values(tenant_id=str(uuid4()))
+            )
     _error(
         messages.request(operation, installed_app_id=str(uuid4()) if admission == "missing" else None),
-        status=404 if admission == "missing" else 403,
-        code="installed_app_not_found" if admission == "missing" else "access_denied",
+        status=403 if admission == "denied" else 404,
+        code="access_denied" if admission == "denied" else "installed_app_not_found",
     )
     assert (
         messages.extra_calls == messages.feedback_events == messages.question_calls == messages.generation_calls == []
@@ -531,13 +642,112 @@ def test_suggested_questions_preserves_results_and_empty_fallback(messages: _Mes
     _assert_json_response(
         messages.request("suggested-questions", message_id=message_id), status=200, body={"data": questions}
     )
-    installed_app, account_id, called_message_id = messages.question_calls[0]
-    assert installed_app.id == messages.harness.installed_app.id
-    assert installed_app.app_id == messages.harness.target_app.id
-    assert installed_app.tenant_id == messages.harness.installed_app.tenant_id
-    assert installed_app.app_mode == "chat"
-    assert account_id == messages.harness.account.id
-    assert called_message_id == message_id
+    assert messages.question_calls == [
+        (
+            messages.harness.target_app.id,
+            messages.harness.target_app.tenant_id,
+            "chat",
+            SuggestedQuestionsAccount(account_id=messages.harness.account.id, invoke_from="explore"),
+            message_id,
+        )
+    ]
+
+
+@pytest.mark.parametrize("failure", [None, InvokeError("Provider rejected input")])
+def test_shared_suggested_questions_uses_owner_tenant_and_releases_sessions(
+    real_questions: _QuestionProvider, failure: Exception | None
+) -> None:
+    messages = real_questions.messages
+    assert messages.harness.target_app.tenant_id != messages.harness.installed_app.tenant_id
+    messages.external_error = failure
+    response = messages.request("suggested-questions", message_id=real_questions.message.id)
+    if failure is None:
+        _assert_json_response(response, status=200, body={"data": messages.questions})
+        assert len(real_questions.traces) == 1
+    else:
+        _error(response, status=400, code="completion_request_error", message="Provider rejected input")
+        assert not real_questions.traces
+    assert real_questions.histories == ["Human: Hello\nAssistant: 你好"]
+    assert real_questions.legacy_sessions
+    real_questions.assert_closed()
+    messages.assert_unused()
+
+
+@pytest.mark.parametrize("entity", ["message", "conversation"])
+def test_shared_suggested_questions_rejects_other_account_history(
+    real_questions: _QuestionProvider, entity: str
+) -> None:
+    messages = real_questions.messages
+    model = Message if entity == "message" else Conversation
+    record_id = real_questions.message.id if entity == "message" else real_questions.message.conversation_id
+    with messages.factory.begin() as session:
+        session.execute(update(model).where(model.id == record_id).values(from_account_id=str(uuid4())))
+    _error(
+        messages.request("suggested-questions", message_id=real_questions.message.id),
+        status=404,
+        code="message_not_found" if entity == "message" else "conversation_not_found",
+    )
+    assert not real_questions.histories
+    real_questions.assert_closed()
+
+
+@pytest.mark.parametrize("change", ["mode", "owner", "app", "account"])
+def test_shared_suggested_questions_rejects_stale_admitted_app_and_actor(
+    real_questions: _QuestionProvider, change: str
+) -> None:
+    messages = real_questions.messages
+
+    def change_admitted_resource() -> None:
+        with messages.factory.begin() as session:
+            if change == "account":
+                account = session.get(Account, messages.harness.account.id)
+                assert account is not None
+                session.delete(account)
+                return
+            app = session.get(App, messages.harness.target_app.id)
+            assert app is not None
+            if change == "mode":
+                app.mode = AppMode.COMPLETION
+            elif change == "owner":
+                app.tenant_id = str(uuid4())
+            else:
+                session.delete(app)
+
+    messages.harness.state.permission_action = change_admitted_resource
+    _error(
+        messages.request("suggested-questions", message_id=real_questions.message.id),
+        status=401 if change == "account" else 400,
+        code="unauthorized" if change == "account" else "app_unavailable",
+        message="Account no longer exists." if change == "account" else None,
+    )
+    assert not real_questions.histories
+    assert not real_questions.legacy_sessions
+    real_questions.assert_closed()
+
+
+def test_suggested_questions_uses_admitted_installation_until_next_request(real_questions: _QuestionProvider) -> None:
+    messages = real_questions.messages
+
+    def remove_installation() -> None:
+        with messages.factory.begin() as session:
+            installation = session.get(InstalledApp, messages.harness.installed_app.id)
+            assert installation is not None
+            session.delete(installation)
+
+    messages.harness.state.permission_action = remove_installation
+    _assert_json_response(
+        messages.request("suggested-questions", message_id=real_questions.message.id),
+        status=200,
+        body={"data": messages.questions},
+    )
+    messages.harness.state.permission_action = None
+    _error(
+        messages.request("suggested-questions", message_id=real_questions.message.id),
+        status=404,
+        code="installed_app_not_found",
+    )
+    assert len(real_questions.histories) == 1
+    real_questions.assert_closed()
 
 
 @pytest.mark.parametrize("operation", ["more-like-this", "suggested-questions"])
@@ -570,6 +780,7 @@ def test_generation_failures_keep_provider_errors_and_context(
         ("more-like-this", ValueError("Bad runtime arguments"), 400, "invalid_param"),
         ("suggested-questions", MessageNotExistsError(), 404, "message_not_found"),
         ("suggested-questions", ConversationNotExistsError(), 404, "conversation_not_found"),
+        ("suggested-questions", ValueError("Invalid legacy configuration"), 500, "internal_server_error"),
         (
             "suggested-questions",
             SuggestedQuestionsAfterAnswerDisabledError(),
