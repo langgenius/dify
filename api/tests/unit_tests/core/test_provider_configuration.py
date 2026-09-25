@@ -254,6 +254,8 @@ class TestProviderConfiguration:
 
         # Assert
         assert ConfigurateMethod.PREDEFINED_MODEL in config.provider.configurate_methods
+        assert config.provider is not mock_provider_entity
+        assert mock_provider_entity.configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]
 
     def test_get_current_credentials_with_restricted_models(self, provider_configuration):
         """Test getting credentials with model restrictions"""

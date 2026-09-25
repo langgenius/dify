@@ -43,22 +43,22 @@ function WorkspaceSwitchControls({
   onSearchTextChange: (value: string) => void
   onSortChange: (value: WorkspaceSort) => void
 }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortMenuLabel = t(($) => $['mainNav.workspace.sort.openMenu'], {
-    ns: 'common',
+    ns: 'navigation',
   })
   const sortOptions: Array<{ value: WorkspaceSort; label: string }> = [
     {
       value: 'lastOpened',
       label: t(($) => $['mainNav.workspace.sort.lastOpened'], {
-        ns: 'common',
+        ns: 'navigation',
       }),
     },
     {
       value: 'createdAt',
       label: t(($) => $['mainNav.workspace.sort.createdTime'], {
-        ns: 'common',
+        ns: 'navigation',
       }),
     },
   ]
@@ -132,7 +132,7 @@ function WorkspaceSwitchControls({
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
-            placeholder={t(($) => $['mainNav.workspace.searchPlaceholder'], { ns: 'common' })}
+            placeholder={t(($) => $['mainNav.workspace.searchPlaceholder'], { ns: 'navigation' })}
             autoFocus
           />
         </div>
@@ -152,7 +152,7 @@ export function WorkspaceSwitcher({
   isPending,
   onSwitchWorkspace,
 }: WorkspaceSwitcherProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const workspaceListLabelId = useId()
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')
@@ -205,7 +205,7 @@ export function WorkspaceSwitcher({
             className="flex h-8 items-center px-3 system-xs-regular text-text-tertiary"
           >
             {t(($) => $['mainNav.workspace.noResults'], {
-              ns: 'common',
+              ns: 'navigation',
             })}
           </div>
         ) : (

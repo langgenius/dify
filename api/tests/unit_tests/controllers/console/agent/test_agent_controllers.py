@@ -64,8 +64,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ApiTokenType, ConversationFromSource
-from models.model import ApiToken, App, AppMode, Conversation, IconType, Message
+from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
+from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -216,9 +216,9 @@ def _app_detail_obj(**overrides) -> App:
         "tracing": None,
         "use_icon_as_answer_icon": False,
         "created_by": "account-1",
-        "created_at": None,
+        "created_at": datetime(2025, 1, 1),
         "updated_by": "account-1",
-        "updated_at": None,
+        "updated_at": datetime(2025, 1, 1),
         "max_active_requests": 0,
     }
     overrides.pop("bound_agent_id", None)
@@ -322,6 +322,24 @@ def test_agent_app_list_and_create_use_agent_route(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     captured: dict[str, object] = {}
+    listed_app = _app_detail_obj(id="app-list")
+    created_app = _app_detail_obj(id="app-created", enable_site=True)
+    tag = Tag(tenant_id="tenant-1", type=TagType.APP, name="Agent tag", created_by=account_id)
+    sqlite_session.add_all([listed_app, created_app, tag])
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            Site(
+                app_id=created_app.id,
+                code="agent-site-code",
+                title="Agent web app",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            ),
+            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=listed_app.id, created_by=account_id),
+        ]
+    )
+    sqlite_session.flush()
     permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse(
         agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
             overrides=[
@@ -351,9 +369,6 @@ def test_agent_app_list_and_create_use_agent_route(
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
@@ -361,7 +376,7 @@ def test_agent_app_list_and_create_use_agent_route(
                 per_page=10,
                 total=1,
                 has_next=False,
-                items=[_app_detail_obj(id="app-list", bound_agent_id="agent-list")],
+                items=[listed_app],
             )
 
         def get_agent_publication_counts(self, user_id: str, tenant_id: str, params, session):
@@ -371,7 +386,7 @@ def test_agent_app_list_and_create_use_agent_route(
 
         def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
-            return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
+            return created_app
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
     monkeypatch.setattr(
@@ -467,6 +482,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
     assert listed["data"][0]["permission_keys"] == ["agent.acl.preview"]
     assert listed["data"][0]["role"] == "List role"
+    assert listed["data"][0]["tags"] == [{"id": tag.id, "name": "Agent tag", "type": "app"}]
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["reference_count"] == 2
     assert listed["data"][0]["published_reference_count"] == 1
@@ -510,6 +526,10 @@ def test_agent_app_list_and_create_use_agent_route(
     assert created["app_id"] == "app-created"
     assert created["debug_conversation_id"] == "debug-conversation-created"
     assert created["role"] == "Created role"
+    assert created["enable_site"] is True
+    assert created["site"]["code"] == "agent-site-code"
+    assert created["site"]["access_token"] == "agent-site-code"
+    assert created["site"]["title"] == "Agent web app"
     assert "active_config_is_published" not in created
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
@@ -626,10 +646,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            captured["get_app"] = {"app": app_obj, "session": session}
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
@@ -651,7 +667,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["access_ready"] is False
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
-    assert captured["get_app"] == {"app": app_model, "session": session}
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
@@ -1020,9 +1035,6 @@ def test_agent_app_update_allows_empty_role(
     )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)

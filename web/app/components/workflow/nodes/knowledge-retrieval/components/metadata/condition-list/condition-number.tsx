@@ -26,7 +26,7 @@ const ConditionNumber = ({
   isCommonVariable,
   commonVariables,
 }: ConditionNumberProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const handleVariableValueChange = useCallback(
     (v: ValueSelector) => {
       onChange(`{{#${v.join('.')}#}}`)
@@ -74,10 +74,10 @@ const ConditionNumber = ({
               className="rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
               inputMode="decimal"
               aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
-                ns: 'workflow',
+                ns: 'workflowModels',
               })}
               placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
-                ns: 'workflow',
+                ns: 'workflowModels',
               })}
             />
           </NumberFieldGroup>

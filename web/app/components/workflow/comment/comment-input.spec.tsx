@@ -114,7 +114,7 @@ describe('CommentInput', () => {
   it('passes translated placeholder to mention input', () => {
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
-    expect(mentionInputProps?.placeholder).toBe('workflow.comments.placeholder.add')
+    expect(mentionInputProps?.placeholder).toBe('workflowComments.comments.placeholder.add')
     expect(mentionInputProps?.autoFocus).toBe(true)
     expect(mentionInputProps?.disabled).toBe(false)
   })
