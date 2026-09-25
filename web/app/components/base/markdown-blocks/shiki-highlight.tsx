@@ -35,6 +35,37 @@ export const highlightCode = async ({
     normalizedLanguage === 'dotenv' || Object.hasOwn(codeLanguages, normalizedLanguage)
       ? normalizedLanguage
       : 'text'
+
+  // Plain text and unsupported languages do not need syntax highlighting, so
+  // skip `getSingletonHighlighter` to avoid loading the WASM engine for them
+  // (see #42943). The shiki engine is still loaded on the first real highlight
+  // call, so subsequent supported-language code blocks render normally.
+  if (lang === 'text') {
+    const plainHast = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'pre',
+          properties: {},
+          children: [
+            {
+              type: 'element',
+              tagName: 'code',
+              properties: {},
+              children: [{ type: 'text', value: code }],
+            },
+          ],
+        },
+      ],
+    }
+    return toJsxRuntime(plainHast, {
+      Fragment,
+      jsx,
+      jsxs,
+    }) as JSX.Element
+  }
+
   // README fences may name languages outside the web bundle. Load dotenv on
   // demand and keep unknown languages readable without throwing an error.
   const highlighter = await getSingletonHighlighter({
