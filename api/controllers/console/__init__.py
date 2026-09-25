@@ -49,7 +49,7 @@ api.document_generic_errors(
 )
 
 
-@api.errorhandler(ActiveWorkspaceRequiredError)
+@api.errorhandler(ActiveWorkspaceRequiredError)  # pyrefly: ignore[not-callable] - Flask-RESTX decorator typing
 def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
     """Map a broken Console admission invariant without exposing internal details."""
     got_request_exception.send(current_app, exception=error)
