@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import PropertyMock, patch
 from uuid import UUID
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from controllers.console.app import conversation_variables as conversation_variables_module
@@ -24,7 +22,6 @@ def _app() -> App:
 
 def test_get_conversation_variables_returns_paginated_response(
     app: Flask,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
@@ -49,15 +46,11 @@ def test_get_conversation_variables_returns_paginated_response(
     sqlite_session.expire(row)
     expected_created_at = int(row.created_at.timestamp())
     expected_updated_at = int(row.updated_at.timestamp())
-    with (
-        app.test_request_context(
-            "/console/api/apps/app-1/conversation-variables",
-            method="GET",
-            query_string={"conversation_id": "conv-1"},
-        ),
-        patch.object(type(conversation_variables_module.db), "engine", new_callable=PropertyMock) as engine,
+    with app.test_request_context(
+        "/console/api/apps/app-1/conversation-variables",
+        method="GET",
+        query_string={"conversation_id": "conv-1"},
     ):
-        engine.return_value = sqlite_engine
         response = method(
             api,
             conversation_variables_module.ConversationVariablesQuery(conversation_id="conv-1"),
@@ -75,10 +68,8 @@ def test_get_conversation_variables_returns_paginated_response(
     assert response["data"][0]["updated_at"] == expected_updated_at
 
 
-@pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
 def test_get_conversation_variables_normalizes_value_type_and_value(
     app: Flask,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
@@ -95,15 +86,11 @@ def test_get_conversation_variables_normalizes_value_type_and_value(
     )
     sqlite_session.add(ConversationVariable.from_variable(app_id="app-1", conversation_id="conv-1", variable=variable))
     sqlite_session.commit()
-    with (
-        app.test_request_context(
-            "/console/api/apps/app-1/conversation-variables",
-            method="GET",
-            query_string={"conversation_id": "conv-1"},
-        ),
-        patch.object(type(conversation_variables_module.db), "engine", new_callable=PropertyMock) as engine,
+    with app.test_request_context(
+        "/console/api/apps/app-1/conversation-variables",
+        method="GET",
+        query_string={"conversation_id": "conv-1"},
     ):
-        engine.return_value = sqlite_engine
         response = method(
             api,
             conversation_variables_module.ConversationVariablesQuery(conversation_id="conv-1"),
