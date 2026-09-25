@@ -469,6 +469,14 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
+    @staticmethod
+    def cache_import_dependencies(*, app_id: str, dependencies: list[PluginDependency]) -> None:
+        redis_client.setex(
+            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
+            IMPORT_INFO_REDIS_EXPIRY,
+            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
+        )
+
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
@@ -612,11 +620,7 @@ class AppDslService:
 
         # save dependencies
         if dependencies:
-            redis_client.setex(
-                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
-                IMPORT_INFO_REDIS_EXPIRY,
-                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
-            )
+            self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
 
         # Initialize app based on mode
         match app_mode:
