@@ -102,7 +102,7 @@ class LegacyToolFallbackSelection:
     @property
     def overflow_count(self) -> int:
         """Count intentional pinned overflow beyond the legacy prompt cap."""
-        return max(0, len(self.entries) + len(self.omitted_entries) - self.limit)
+        return max(0, len(self.entries) - self.limit)
 
 
 def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
