@@ -65,6 +65,11 @@ overrides:
   ws@>=8.0.0 <8.20.1: ^8.21.3
   yaml@>=2.0.0 <2.8.3: 2.9.1
   yauzl@<3.2.1: 3.2.1
+patchedDependencies:
+  '@devframes/hub-ui@1.1.0': patches/@devframes__hub-ui@1.1.0.patch
+  '@vitejs/devtools-oxc@0.7.6': patches/@vitejs__devtools-oxc@0.7.6.patch
+  '@vitejs/devtools-rolldown@0.7.6': patches/@vitejs__devtools-rolldown@0.7.6.patch
+  '@voidzero-dev/vite-plus-core@1.0.0-rc.0': patches/@voidzero-dev__vite-plus-core@1.0.0-rc.0.patch
 catalog:
   '@amplitude/analytics-browser': 2.45.10
   '@amplitude/plugin-session-replay-browser': 1.35.1
@@ -142,10 +147,16 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.70.0
   '@typescript/native': npm:typescript@7.0.2
+  '@vitejs/devtools': 0.7.6
+  '@vitejs/devtools-oxc': 0.7.6
+  '@vitejs/devtools-rolldown': 0.7.6
+  '@vitejs/devtools-vite': 0.7.6
+  '@vitejs/devtools-vitest': 0.7.6
   '@vitejs/plugin-react': 6.1.1
   '@vitejs/plugin-rsc': 0.5.35
   '@vitest/browser-playwright': 5.0.1
   '@vitest/coverage-v8': 5.0.1
+  '@vitest/ui': 5.0.1
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.0
   agentation: 3.0.2

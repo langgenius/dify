@@ -1,0 +1,383 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -120,24 +120,27 @@
+ //#endregion
+ //#region src/node/utils/chunk.ts
+ function getInitialChunkIds(chunks) {
+-	const chunkMap = new Map(chunks.map((chunk) => [chunk.chunk_id, chunk]));
+-	const entryChunkIds = chunks.filter((chunk) => !!chunk.is_user_defined_entry).map((chunk) => chunk.chunk_id);
+-	const visited = /* @__PURE__ */ new Set();
+-	const initialChunkIds = new Set(entryChunkIds);
+-	const queue = [...entryChunkIds];
+-	while (queue.length > 0) {
+-		const chunkId = queue.shift();
+-		if (visited.has(chunkId)) continue;
+-		visited.add(chunkId);
+-		const chunk = chunkMap.get(chunkId);
+-		if (chunk?.imports) {
+-			for (const _import of chunk.imports) if (!initialChunkIds.has(_import.chunk_id)) {
+-				initialChunkIds.add(_import.chunk_id);
+-				queue.push(_import.chunk_id);
+-			}
+-		}
+-	}
+-	return initialChunkIds;
++    const chunkMap = new Map(chunks.map(chunk => [chunk.chunk_id, chunk]));
++    const entryChunkIds = chunks.filter(chunk => !!chunk.is_user_defined_entry).map(chunk => chunk.chunk_id);
++    const visited = new Set();
++    const initialChunkIds = new Set(entryChunkIds);
++    const queue = [...entryChunkIds];
++    while (queue.length > 0) {
++        const chunkId = queue.shift();
++        if (visited.has(chunkId))
++            continue;
++        visited.add(chunkId);
++        const chunk = chunkMap.get(chunkId);
++        if (chunk?.imports) {
++            for (const _import of chunk.imports) {
++                if (_import.kind !== 'dynamic-import' && !initialChunkIds.has(_import.chunk_id)) {
++                    initialChunkIds.add(_import.chunk_id);
++                    queue.push(_import.chunk_id);
++                }
++            }
++        }
++    }
++    return initialChunkIds;
+ }
+ //#endregion
+ //#region src/node/rolldown/events-manager.ts
+@@ -389,6 +392,8 @@
+ 		this.eventCount = snapshot.eventCount;
+ 		this.lastEvent = snapshot.lastEvent;
+ 		this.chunks = new Map(snapshot.chunks);
++        const initialChunkIds = getInitialChunkIds(Array.from(this.chunks.values()));
++        for (const chunk of this.chunks.values()) chunk.is_initial = initialChunkIds.has(chunk.chunk_id);
+ 		this.packageGraphReady = snapshot.packageGraphReady ?? !!snapshot.packages?.length;
+ 		this.packages = new Map(snapshot.packages ?? []);
+ 		this.assets.clear();
+@@ -754,6 +759,9 @@
+ //#region src/node/rolldown/events-reader.ts
+ const readers = /* @__PURE__ */ new Map();
+ const MAX_READERS = 32;
++// Trace size is a conservative cache weight, not a measurement of JS heap.
++// Keep one oversized active session, rather than up to 32 multi-GB readers.
++const MAX_READER_LOG_BYTES = 268435456;
+ const MAX_MODULE_METRICS_CACHE = 32;
+ const MAX_MODULE_METRICS_CACHE_BYTES = 67108864;
+ const READ_STREAM_HIGH_WATER_MARK = 1048576;
+@@ -873,16 +881,21 @@
+ 	}
+ 	return summary;
+ }
+-function pruneReaders() {
+-	if (readers.size <= MAX_READERS) return;
+-	for (const reader of Array.from(readers.values())) {
+-		if (readers.size <= MAX_READERS) return;
+-		if (!reader.hasPendingRead()) reader.dispose();
++function pruneReaders(current) {
++	let bytes = Array.from(readers.values()).reduce((total, reader) => total + reader.logBytes, 0);
++	for (const [key, reader] of readers) {
++		if (readers.size <= MAX_READERS && bytes <= MAX_READER_LOG_BYTES) break;
++		if (dirname(reader.filepath) === dirname(current.filepath) || reader.hasPendingRead()) continue;
++		// Remove only cache ownership. RPC handlers may still hold this reader;
++		// clearing its maps here would corrupt an in-flight detail response.
++		readers.delete(key);
++		bytes -= reader.logBytes;
+ 	}
+ }
+ var RolldownEventsReader = class RolldownEventsReader {
+ 	filepath;
+ 	cacheKey;
++	logBytes = 0;
+ 	lastBytes = 0;
+ 	lastTimestamp = 0;
+ 	manager = new RolldownEventsManager();
+@@ -918,7 +931,7 @@
+ 		}
+ 		const reader = new RolldownEventsReader(filepath, cacheKey);
+ 		readers.set(cacheKey, reader);
+-		pruneReaders();
++		pruneReaders(reader);
+ 		return reader;
+ 	}
+ 	static peek(filepath, cacheKey = filepath) {
+@@ -942,6 +955,8 @@
+ 	}
+ 	async readChanges() {
+ 		const stat = await fs.promises.stat(this.filepath);
++		this.logBytes = stat.size;
++		pruneReaders(this);
+ 		const mtime = stat.mtime.getTime();
+ 		if (this.summaryOnly || this.packageSummaryOnly) this.resetReadState();
+ 		if (await this.logCache.restoreCompleteSession(stat, this.createLogCacheState())) {
+@@ -978,6 +993,8 @@
+ 	}
+ 	async readSummaryChanges() {
+ 		const stat = await fs.promises.stat(this.filepath);
++		this.logBytes = stat.size;
++		pruneReaders(this);
+ 		const mtime = stat.mtime.getTime();
+ 		if (this.manager.eventCount && mtime <= this.lastTimestamp) {
+ 			if (this.logCache.shouldWriteSummary()) await this.logCache.writeSummary(stat, this.createLogCacheState());
+@@ -1157,6 +1174,8 @@
+ 	}
+ 	async readPackageSummaryChanges() {
+ 		const stat = await fs.promises.stat(this.filepath);
++		this.logBytes = stat.size;
++		pruneReaders(this);
+ 		const mtime = stat.mtime.getTime();
+ 		if (mtime <= this.packageSummaryTimestamp) {
+ 			if (this.packageSummaryOnly && this.logCache.shouldWritePackageSummary()) await this.logCache.writePackageSummary(stat, this.createLogCacheState());
+@@ -1370,61 +1389,68 @@
+ 			this.pendingModuleMetrics.delete(module);
+ 		}
+ 	}
+-	async hydratePluginBuildMetrics(pluginId) {
+-		await this.read();
+-		let metrics = this.manager.plugin_build_metrics.get(pluginId);
+-		if (!metrics && this.metricsSummaryOnly) {
+-			metrics = await this.hydratePluginBuildMetricsFromIndex(pluginId);
+-			if (metrics) this.manager.plugin_build_metrics.set(pluginId, metrics);
+-		}
+-		if (!metrics) return;
+-		const transformCalls = metrics.calls.filter((call) => call.type === "transform" && call.unchanged == null);
+-		if (!transformCalls.length) return;
+-		const refs = /* @__PURE__ */ new Set();
+-		const transformEventIndexes = [];
+-		const locations = [];
+-		for (const call of transformCalls) {
+-			const location = this.moduleEventIndex.get(call.module)?.transforms.get(call.id);
+-			if (!location) {
+-				transformEventIndexes.push(void 0);
+-				continue;
+-			}
+-			transformEventIndexes.push(locations.length);
+-			locations.push(location.start, location.end);
+-		}
+-		const events = await this.readEventsAt(locations);
+-		const contents = transformCalls.map((call, index) => {
+-			const eventIndex = transformEventIndexes[index];
+-			if (eventIndex == null) return {
+-				call,
+-				content_from: void 0,
+-				content_to: void 0
+-			};
+-			const start = events[eventIndex];
+-			const end = events[eventIndex + 1];
+-			return {
+-				call,
+-				content_from: start?.action === "HookTransformCallStart" ? getDeferredContent(start, refs) : {
+-					value: null,
+-					ref: null
+-				},
+-				content_to: end?.action === "HookTransformCallEnd" ? getDeferredContent(end, refs) : {
+-					value: null,
+-					ref: null
+-				}
+-			};
+-		});
+-		const refValues = await this.readStringRefs(refs);
+-		for (const item of contents) {
+-			if (!item.content_from || !item.content_to) {
+-				item.call.unchanged = false;
+-				continue;
+-			}
+-			const contentFrom = resolveDeferredContent(item.content_from, refValues);
+-			const contentTo = resolveDeferredContent(item.content_to, refValues);
+-			item.call.unchanged = getContentHash(contentFrom) === getContentHash(contentTo);
+-		}
+-	}
++    async hydratePluginBuildMetrics(pluginId) {
++        await this.read();
++        let metrics = this.manager.plugin_build_metrics.get(pluginId);
++        if (!metrics && this.metricsSummaryOnly) {
++            metrics = await this.hydratePluginBuildMetricsFromIndex(pluginId);
++            if (metrics)
++                this.manager.plugin_build_metrics.set(pluginId, metrics);
++        }
++        if (!metrics)
++            return;
++        const transformCalls = metrics.calls.filter(call => call.type === 'transform' && call.unchanged == null);
++        if (!transformCalls.length)
++            return;
++        // Content equality only needs one bounded group of transforms at a time.
++        for (let offset = 0; offset < transformCalls.length; offset += 128) {
++            const batch = transformCalls.slice(offset, offset + 128);
++            const refs = new Set();
++            const transformEventIndexes = [];
++            const locations = [];
++            for (const call of batch) {
++                const location = this.moduleEventIndex.get(call.module)?.transforms.get(call.id);
++                if (!location) {
++                    transformEventIndexes.push(undefined);
++                    continue;
++                }
++                transformEventIndexes.push(locations.length);
++                locations.push(location.start, location.end);
++            }
++            const events = await this.readEventsAt(locations);
++            const contents = batch.map((call, index) => {
++                const eventIndex = transformEventIndexes[index];
++                if (eventIndex == null) {
++                    return {
++                        call,
++                        content_from: undefined,
++                        content_to: undefined,
++                    };
++                }
++                const start = events[eventIndex];
++                const end = events[eventIndex + 1];
++                return {
++                    call,
++                    content_from: start?.action === 'HookTransformCallStart'
++                        ? getDeferredContent(start, refs)
++                        : { value: null, ref: null },
++                    content_to: end?.action === 'HookTransformCallEnd'
++                        ? getDeferredContent(end, refs)
++                        : { value: null, ref: null },
++                };
++            });
++            const refValues = await this.readStringRefs(refs);
++            for (const item of contents) {
++                if (!item.content_from || !item.content_to) {
++                    item.call.unchanged = false;
++                    continue;
++                }
++                const contentFrom = resolveDeferredContent(item.content_from, refValues);
++                const contentTo = resolveDeferredContent(item.content_to, refValues);
++                item.call.unchanged = getContentHash(contentFrom) === getContentHash(contentTo);
++            }
++        }
++    }
+ 	clearModuleMetricsCache() {
+ 		this.moduleMetricsCache.clear();
+ 		this.moduleMetricsCacheBytes = 0;
+@@ -1542,57 +1568,67 @@
+ 			})
+ 		};
+ 	}
+-	async hydratePluginBuildMetricsFromIndex(pluginId) {
+-		const calls = [];
+-		for (const [module, index] of this.moduleEventIndex) {
+-			for (const [id, location] of index.resolveIds) calls.push({
+-				module,
+-				type: "resolve",
+-				id,
+-				location
+-			});
+-			for (const [id, location] of index.loads) calls.push({
+-				module,
+-				type: "load",
+-				id,
+-				location
+-			});
+-			for (const [id, location] of index.transforms) calls.push({
+-				module,
+-				type: "transform",
+-				id,
+-				location
+-			});
+-		}
+-		const events = await this.readIndexedHookEvents(calls.map((call) => [call.id, call.location]));
+-		const metrics = {
+-			plugin_id: pluginId,
+-			plugin_name: "",
+-			calls: []
+-		};
+-		for (const [index, item] of events.entries()) {
+-			const call = calls[index];
+-			const start = item.start;
+-			const end = item.end;
+-			if (!start || !end || !("plugin_id" in end) || end.plugin_id !== pluginId) continue;
+-			const timestamp_start = "timestamp" in start ? +start.timestamp : 0;
+-			const timestamp_end = "timestamp" in end ? +end.timestamp : 0;
+-			metrics.plugin_name = end.plugin_name;
+-			metrics.calls.push({
+-				type: call.type,
+-				id: call.id,
+-				duration: timestamp_end - timestamp_start,
+-				plugin_id: pluginId,
+-				plugin_name: end.plugin_name,
+-				module: call.type === "resolve" && start.action === "HookResolveIdCallStart" ? start.module_request : call.module,
+-				timestamp_start,
+-				timestamp_end,
+-				unchanged: call.type === "load" && end.action === "HookLoadCallEnd" ? !end.content : void 0
+-			});
+-		}
+-		metrics.calls.sort((a, b) => a.timestamp_start - b.timestamp_start);
+-		return metrics.calls.length ? metrics : void 0;
+-	}
++    async hydratePluginBuildMetricsFromIndex(pluginId) {
++        const calls = [];
++        const metrics = {
++            plugin_id: pluginId,
++            plugin_name: '',
++            calls: [],
++        };
++        // Bound temporary event payloads independently of the trace's module count.
++        // A single event can exceed the byte budget, but is never batched with others.
++        let bytes = 0;
++        const flush = async () => {
++            if (!calls.length)
++                return;
++            const events = await this.readIndexedHookEvents(calls.map(call => [call.id, call.location]));
++            for (const [index, item] of events.entries()) {
++                const call = calls[index];
++                const start = item.start;
++                const end = item.end;
++                if (!start || !end || !('plugin_id' in end) || end.plugin_id !== pluginId)
++                    continue;
++                const timestamp_start = 'timestamp' in start ? +start.timestamp : 0;
++                const timestamp_end = 'timestamp' in end ? +end.timestamp : 0;
++                metrics.plugin_name = end.plugin_name;
++                metrics.calls.push({
++                    type: call.type,
++                    id: call.id,
++                    duration: timestamp_end - timestamp_start,
++                    plugin_id: pluginId,
++                    plugin_name: end.plugin_name,
++                    module: call.type === 'resolve' && start.action === 'HookResolveIdCallStart'
++                        ? start.module_request
++                        : call.module,
++                    timestamp_start,
++                    timestamp_end,
++                    unchanged: call.type === 'load' && end.action === 'HookLoadCallEnd'
++                        ? !end.content
++                        : undefined,
++                });
++            }
++            calls.length = 0;
++            bytes = 0;
++        };
++        for (const [module, index] of this.moduleEventIndex) {
++            for (const [type, entries] of [
++                ['resolve', index.resolveIds],
++                ['load', index.loads],
++                ['transform', index.transforms],
++            ]) {
++                for (const [id, location] of entries) {
++                    const size = location.start.length + location.end.length;
++                    if (calls.length && (calls.length >= 128 || bytes + size > 1024 * 1024))
++                        await flush();
++                    calls.push({ module, type, id, location });
++                    bytes += size;
++                }
++            }
++        }
++        await flush();
++        metrics.calls.sort((a, b) => a.timestamp_start - b.timestamp_start);
++        return metrics.calls.length ? metrics : undefined;
++    }
+ 	async hydrateModuleBuildMetrics(module) {
+ 		const summary = this.manager.module_build_metrics.get(module) ?? {
+ 			resolve_ids: [],
+@@ -1750,7 +1786,7 @@
+ 		return !!this.pendingRead;
+ 	}
+ 	dispose() {
+-		readers.delete(this.cacheKey);
++		if (readers.get(this.cacheKey) === this) readers.delete(this.cacheKey);
+ 		this.disposeData();
+ 	}
+ 	resetReadState() {
