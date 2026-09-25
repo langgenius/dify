@@ -5,6 +5,7 @@ import { useAtomValue } from 'jotai'
 import { createElement, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
+import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -25,13 +26,18 @@ type ResponseCallback = {
   onFailed?: () => void
   skipRedirectOnSuccess?: boolean
 }
+
 export const useImportDSL = () => {
   const { t } = useTranslation(['app'])
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
-  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
+  const { mutateAsync: importApp } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+  )
   const { mutateAsync: confirmImport } = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const actionInFlightRef = useRef(false)
   const [isFetching, setIsFetching] = useState(false)
@@ -112,11 +118,21 @@ export const useImportDSL = () => {
           importIdRef.current = id
           onPending?.(response)
         } else {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+          toast.error(
+            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            {
+              description: response.error || undefined,
+            },
+          )
           onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          {
+            description: await getAppTransferErrorMessage(error),
+          },
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
@@ -151,6 +167,16 @@ export const useImportDSL = () => {
         })
 
         const { status, app_id, app_mode, permission_keys } = response
+        if (status === DSLImportStatus.FAILED) {
+          toast.error(
+            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            {
+              description: response.error || undefined,
+            },
+          )
+          onFailed?.()
+          return
+        }
         if (!app_id) return
 
         if (
@@ -188,12 +214,14 @@ export const useImportDSL = () => {
               isRbacEnabled,
             })
           }
-        } else if (status === DSLImportStatus.FAILED) {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-          onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          {
+            description: await getAppTransferErrorMessage(error),
+          },
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
