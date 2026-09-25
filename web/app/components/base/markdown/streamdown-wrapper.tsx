@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
-import { createMathPlugin } from '@streamdown/math'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
@@ -17,8 +16,9 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
-import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import { ALLOW_INLINE_STYLES } from '@/config'
 import { customUrlTransform } from './markdown-utils'
+import { useMathPlugins } from './use-math-plugins'
 import 'katex/dist/katex.min.css'
 
 type PluggableList = NonNullable<StreamdownProps['rehypePlugins']>
@@ -42,10 +42,6 @@ const CodeBlock = dynamic(
     import('@/app/components/base/markdown-blocks/code-block').then((module) => module.CodeBlock),
   { ssr: false },
 )
-
-const mathPlugin = createMathPlugin({
-  singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,
-})
 
 /**
  * Allowed HTML tags and their permitted data attributes for rehype-sanitize.
@@ -195,11 +191,9 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     [props.rehypePlugins],
   )
 
-  const plugins = useMemo(
-    () => ({
-      math: mathPlugin,
-    }),
-    [],
+  const plugins = useMathPlugins(
+    latexContent,
+    !!props.remarkPlugins?.length || !!props.rehypePlugins?.length,
   )
 
   const disallowedElements = useMemo(
