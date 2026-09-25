@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from datetime import datetime
 from io import BytesIO
 from types import SimpleNamespace
-from typing import IO, cast
+from typing import IO, cast, overload
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -146,6 +146,25 @@ def _bearer(*scopes: FileGrantScope, end_user_id: str, tenant_id: str = TENANT_I
     return {"Authorization": f"Bearer {token}"}
 
 
+type _UploadResource = GrantedFileUploadApi | GrantedRemoteFileUploadApi | ProducedFileApi
+type _UploadResult = tuple[dict[str, object], int]
+type _ResolveResult = dict[str, list[dict[str, object]]]
+
+
+@overload
+def _post_with_file_grant(resource: _UploadResource) -> _UploadResult: ...
+
+
+@overload
+def _post_with_file_grant(resource: GrantedFileResolveApi) -> _ResolveResult: ...
+
+
+def _post_with_file_grant(resource: _UploadResource | GrantedFileResolveApi) -> _UploadResult | _ResolveResult:
+    """Call the decorated method, which supplies its own grant argument."""
+
+    return cast(Callable[[], _UploadResult | _ResolveResult], resource.post)()
+
+
 def _content_token(*, file_id: str, kind: FileKind, expires_in: int = 300) -> str:
     return jwt.encode(
         {
@@ -227,7 +246,7 @@ def test_upload_stores_the_file_for_the_grant_end_user(
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
         ):
-            body, status = GrantedFileUploadApi().dispatch_request()
+            body, status = _post_with_file_grant(GrantedFileUploadApi())
 
     assert status == 201
     assert body["id"] == UPLOAD_FILE_ID
@@ -252,7 +271,7 @@ def test_upload_answers_in_dify_s_own_upload_shape(
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
         ):
-            body, _ = GrantedFileUploadApi().dispatch_request()
+            body, _ = _post_with_file_grant(GrantedFileUploadApi())
 
     source_url = body.pop("source_url")
     assert body == {
@@ -271,6 +290,7 @@ def test_upload_answers_in_dify_s_own_upload_shape(
         "conversation_id": None,
         "file_key": None,
     }
+    assert isinstance(source_url, str)
     assert source_url.startswith(f"https://files.example.com/files/appdeploy/{UPLOAD_FILE_ID}/content?token=")
 
 
@@ -285,7 +305,7 @@ def test_upload_carries_every_key_dify_s_web_client_reads(
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
         ):
-            body, _ = GrantedFileUploadApi().dispatch_request()
+            body, _ = _post_with_file_grant(GrantedFileUploadApi())
 
     assert set(body) >= WEB_CLIENT_KEYS
 
@@ -300,7 +320,7 @@ def test_upload_rejects_a_grant_from_another_tenant(app: Flask, end_user: EndUse
         content_type="multipart/form-data",
     ):
         with pytest.raises(GrantedFileNotFoundError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -317,7 +337,7 @@ def test_upload_applies_the_shared_per_extension_size_limit(
         content_type="multipart/form-data",
     ):
         with pytest.raises(FileTooLargeError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -334,7 +354,7 @@ def test_upload_rejects_a_blacklisted_extension(
         content_type="multipart/form-data",
     ):
         with pytest.raises(BlockedFileExtensionError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -347,7 +367,7 @@ def test_upload_rejects_a_request_carrying_no_file(app: Flask, end_user: EndUser
         content_type="multipart/form-data",
     ):
         with pytest.raises(NoFileUploadedError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -363,7 +383,7 @@ def test_upload_rejects_a_batch_of_files(app: Flask, end_user: EndUser) -> None:
         content_type="multipart/form-data",
     ):
         with pytest.raises(TooManyFilesError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -376,7 +396,7 @@ def test_upload_rejects_a_file_without_a_name(app: Flask, end_user: EndUser) -> 
         content_type="multipart/form-data",
     ):
         with pytest.raises(FilenameNotExistsError):
-            GrantedFileUploadApi().dispatch_request()
+            _post_with_file_grant(GrantedFileUploadApi())
 
 
 def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
@@ -400,7 +420,7 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
         ):
             with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
                 files_ns.payload = {"url": url}
-                body, status = GrantedRemoteFileUploadApi().dispatch_request()
+                body, status = _post_with_file_grant(GrantedRemoteFileUploadApi())
 
     assert status == 201
     assert body["id"] == UPLOAD_FILE_ID
@@ -437,11 +457,12 @@ def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
         ):
             with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
                 files_ns.payload = {"url": url}
-                body, _ = GrantedRemoteFileUploadApi().dispatch_request()
+                body, _ = _post_with_file_grant(GrantedRemoteFileUploadApi())
 
     assert set(body) == DIFY_UPLOAD_RESPONSE_KEYS | {"url"}
     # The row records where the bytes came from; the response hands back the
     # signed URL that fetches them, exactly as dify's own remote upload does.
+    assert isinstance(body["source_url"], str)
     assert body["source_url"].startswith(f"https://files.example.com/files/appdeploy/{UPLOAD_FILE_ID}/content?token=")
     # One URL under both names, not two signings of the same file.
     assert body["url"] == body["source_url"]
@@ -463,7 +484,7 @@ def test_remote_upload_honours_the_size_precheck(app: Flask, end_user: EndUser, 
             with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
                 files_ns.payload = {"url": url}
                 with pytest.raises(FileTooLargeError):
-                    GrantedRemoteFileUploadApi().dispatch_request()
+                    _post_with_file_grant(GrantedRemoteFileUploadApi())
 
 
 def test_produced_stores_a_tool_file_and_returns_both_urls(
@@ -484,13 +505,15 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
             data={"file": (BytesIO(b"0" * 16), "chart.png")},
             content_type="multipart/form-data",
         ):
-            body, status = ProducedFileApi().dispatch_request()
+            body, status = _post_with_file_grant(ProducedFileApi())
 
     assert status == 201
     kwargs = create_file.call_args.kwargs
     assert kwargs["user_id"] == end_user.id
     assert kwargs["tenant_id"] == TENANT_ID
     assert kwargs["conversation_id"] is None
+    assert isinstance(body["url"], str)
+    assert isinstance(body["internal_url"], str)
     assert body["url"].startswith(f"https://files.example.com/files/appdeploy/{tool_file.id}/content?token=")
     assert body["internal_url"].startswith(
         f"http://dify-api.dify.svc:5001/files/appdeploy/{tool_file.id}/content?token="
@@ -510,7 +533,7 @@ def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, file_gat
             content_type="multipart/form-data",
         ):
             with pytest.raises(GrantedFileNotFoundError):
-                ProducedFileApi().dispatch_request()
+                _post_with_file_grant(ProducedFileApi())
 
     create_file.assert_not_called()
 
@@ -548,7 +571,7 @@ def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(
             data={"file": (BytesIO(b"0" * one_megabyte_image_limit), "chart.png")},
             content_type="multipart/form-data",
         ):
-            _, status = ProducedFileApi().dispatch_request()
+            _, status = _post_with_file_grant(ProducedFileApi())
 
     assert status == 201
     assert len(create_file.call_args.kwargs["file_binary"]) == one_megabyte_image_limit
@@ -568,7 +591,7 @@ def test_produced_rejects_a_file_one_byte_over_the_per_extension_limit(
             content_type="multipart/form-data",
         ):
             with pytest.raises(FileTooLargeError) as raised:
-                ProducedFileApi().dispatch_request()
+                _post_with_file_grant(ProducedFileApi())
 
     assert raised.value.code == 413
     create_file.assert_not_called()
@@ -632,12 +655,14 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
     ):
         with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
             files_ns.payload = payload
-            body = GrantedFileResolveApi().dispatch_request()
+            body = _post_with_file_grant(GrantedFileResolveApi())
 
     resolved, hidden = body["files"]
     assert resolved["ok"] is True
     assert resolved["kind"] == "upload"
     assert resolved["extension"] == "pdf"
+    assert isinstance(resolved["url"], str)
+    assert isinstance(resolved["internal_url"], str)
     assert resolved["url"].startswith(f"https://files.example.com/files/appdeploy/{owned.id}/content?token=")
     assert resolved["internal_url"].startswith(
         f"http://dify-api.dify.svc:5001/files/appdeploy/{owned.id}/content?token="
@@ -679,7 +704,7 @@ def test_resolve_answers_a_mixed_batch_item_by_item(app: Flask, end_user: EndUse
     ):
         with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
             files_ns.payload = payload
-            body = GrantedFileResolveApi().dispatch_request()
+            body = _post_with_file_grant(GrantedFileResolveApi())
 
     assert [(file["id"], file["ok"], file["kind"], file["error"]) for file in body["files"]] == [
         (owned_upload.id, True, "upload", None),
@@ -701,7 +726,7 @@ def test_resolve_returns_an_empty_batch_unchanged(app: Flask, end_user: EndUser)
     ):
         with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
             files_ns.payload = payload
-            assert GrantedFileResolveApi().dispatch_request() == {"files": []}
+            assert _post_with_file_grant(GrantedFileResolveApi()) == {"files": []}
 
 
 def test_resolve_rejects_an_unbounded_batch(app: Flask, end_user: EndUser, sqlite_db: FileGrantService) -> None:
@@ -721,7 +746,7 @@ def test_resolve_rejects_an_unbounded_batch(app: Flask, end_user: EndUser, sqlit
         with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
             files_ns.payload = payload
             with pytest.raises(InvalidFileRequestError):
-                GrantedFileResolveApi().dispatch_request()
+                _post_with_file_grant(GrantedFileResolveApi())
 
 
 @pytest.fixture
