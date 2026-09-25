@@ -22,7 +22,7 @@ StatusResponse = tuple[JsonResponse, int]
 
 
 def unwrap(func: Callable[..., object]) -> Callable[..., object]:
-    return cast(Callable[..., object], inspect.unwrap(func))
+    return inspect.unwrap(func)
 
 
 def unwrap_status_response(func: Callable[..., object]) -> Callable[..., StatusResponse]:
