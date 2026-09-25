@@ -9,10 +9,11 @@ create-run payloads are never persisted because layer config may include
 sensitive runtime configuration.
 """
 
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator
 from typing import cast
 
 from redis.asyncio import Redis
+from redis_lua_py import Key, cjson, redis, script
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
@@ -45,102 +46,114 @@ class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
 
 
-_FINALIZE_RUN_SCRIPT = """
-local record_json = redis.call("GET", KEYS[1])
-if not record_json then
-    return {-1, "", ""}
-end
+@script
+def _finalize_run(
+    record_key: Key,
+    events_key: Key,
+    cancel_intent_key: Key,
+    status: str,
+    updated_at: str,
+    has_error: bool,
+    error: str,
+    has_error_type: bool,
+    error_type: str,
+    payload: str,
+    ttl: int,
+    max_length: int,
+) -> list[int | bytes]:
+    record_json = redis.get(record_key)
+    if record_json is None:
+        return [-1, b"", b""]
 
-local record = cjson.decode(record_json)
-if record.status ~= "running" then
-    return {0, tostring(record.status), ""}
-end
+    record = cjson.decode(record_json)
+    if record["status"] != "running":
+        return [0, str(record["status"]).encode(), b""]
 
-if redis.call("EXISTS", KEYS[3]) == 1 then
-    return {-2, "running", ""}
-end
+    if redis.exists(cancel_intent_key) == 1:
+        return [-2, b"running", b""]
 
-record.status = ARGV[1]
-record.updated_at = ARGV[2]
-if ARGV[3] == "1" then
-    record.error = ARGV[4]
-else
-    record.error = cjson.null
-end
-if ARGV[5] == "1" then
-    record.error_type = ARGV[6]
-else
-    record.error_type = cjson.null
-end
+    record["status"] = status
+    record["updated_at"] = updated_at
+    if has_error:
+        record["error"] = error
+    else:
+        record["error"] = cjson.null
+    if has_error_type:
+        record["error_type"] = error_type
+    else:
+        record["error_type"] = cjson.null
 
-local ttl = tonumber(ARGV[8])
-local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", ARGV[7])
-redis.call("EXPIRE", KEYS[2], ttl)
-redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
-return {1, ARGV[1], event_id}
-"""
-
-
-_REQUEST_CANCELLATION_SCRIPT = """
-local record_json = redis.call("GET", KEYS[1])
-if not record_json then
-    return {-1, ""}
-end
-
-local record = cjson.decode(record_json)
-if record.status == "succeeded" or record.status == "failed" then
-    return {0, tostring(record.status)}
-end
-if record.status == "cancelled" then
-    return {1, "cancelled"}
-end
-if redis.call("EXISTS", KEYS[2]) == 1 then
-    return {1, "running"}
-end
-
-local ttl = tonumber(ARGV[2])
-redis.call("XADD", KEYS[2], "MAXLEN", "1", "*", "payload", ARGV[1])
-redis.call("EXPIRE", KEYS[2], ttl)
-redis.call("EXPIRE", KEYS[1], ttl)
-redis.call("EXPIRE", KEYS[3], ttl)
-return {1, "running"}
-"""
+    updated_record_json = cjson.encode(record)
+    event_id = redis.xadd(events_key, "MAXLEN", "~", max_length, "*", "payload", payload)
+    redis.expire(events_key, ttl)
+    redis.set(record_key, updated_record_json, "EX", ttl)
+    return [1, status.encode(), event_id]
 
 
-_FINALIZE_CANCELLATION_SCRIPT = """
-local record_json = redis.call("GET", KEYS[1])
-if not record_json then
-    return {-1, "", ""}
-end
+@script
+def _request_cancellation(
+    record_key: Key,
+    cancel_intent_key: Key,
+    events_key: Key,
+    intent: str,
+    ttl: int,
+) -> list[int | bytes]:
+    record_json = redis.get(record_key)
+    if record_json is None:
+        return [-1, b""]
 
-local record = cjson.decode(record_json)
-if record.status == "cancelled" then
-    return {0, "cancelled", ""}
-end
-if record.status ~= "running" then
-    return {0, tostring(record.status), ""}
-end
-if redis.call("EXISTS", KEYS[2]) == 0 then
-    return {-2, "running", ""}
-end
+    record = cjson.decode(record_json)
+    if record["status"] == "succeeded" or record["status"] == "failed":
+        return [0, str(record["status"]).encode()]
+    if record["status"] == "cancelled":
+        return [1, b"cancelled"]
+    if redis.exists(cancel_intent_key) == 1:
+        return [1, b"running"]
 
-record.status = "cancelled"
-record.updated_at = ARGV[1]
-if ARGV[2] == "1" then
-    record.error = ARGV[3]
-else
-    record.error = cjson.null
-end
-record.error_type = cjson.null
+    redis.xadd(cancel_intent_key, "MAXLEN", "1", "*", "payload", intent)
+    redis.expire(cancel_intent_key, ttl)
+    redis.expire(record_key, ttl)
+    redis.expire(events_key, ttl)
+    return [1, b"running"]
 
-local ttl = tonumber(ARGV[5])
-local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
-redis.call("DEL", KEYS[2])
-redis.call("EXPIRE", KEYS[3], ttl)
-redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
-return {1, "cancelled", event_id}
-"""
+
+@script
+def _finalize_cancellation(
+    record_key: Key,
+    cancel_intent_key: Key,
+    events_key: Key,
+    updated_at: str,
+    has_error: bool,
+    error: str,
+    payload: str,
+    ttl: int,
+    max_length: int,
+) -> list[int | bytes]:
+    record_json = redis.get(record_key)
+    if record_json is None:
+        return [-1, b"", b""]
+
+    record = cjson.decode(record_json)
+    if record["status"] == "cancelled":
+        return [0, b"cancelled", b""]
+    if record["status"] != "running":
+        return [0, str(record["status"]).encode(), b""]
+    if redis.exists(cancel_intent_key) == 0:
+        return [-2, b"running", b""]
+
+    record["status"] = "cancelled"
+    record["updated_at"] = updated_at
+    if has_error:
+        record["error"] = error
+    else:
+        record["error"] = cjson.null
+    record["error_type"] = cjson.null
+
+    event_id = redis.xadd(events_key, "MAXLEN", "~", max_length, "*", "payload", payload)
+    redis.delete(cancel_intent_key)
+    redis.expire(events_key, ttl)
+    redis.set(record_key, cjson.encode(record), "EX", ttl)
+    return [1, b"cancelled", event_id]
 
 
 class RedisRunStore(RunEventSink):
@@ -219,28 +232,22 @@ class RedisRunStore(RunEventSink):
         """Atomically append the first success/failure event and update its run record."""
         status, error, error_type = terminal_event_status_fields(event)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        evaluation = cast(
-            Awaitable[object],
-            self.redis.eval(
-                _FINALIZE_RUN_SCRIPT,
-                3,
-                run_record_key(self.prefix, event.run_id),
-                run_events_key(self.prefix, event.run_id),
-                run_cancel_intent_key(self.prefix, event.run_id),
-                status,
-                event.created_at.isoformat(),
-                "1" if error is not None else "0",
-                error or "",
-                "1" if error_type is not None else "0",
-                error_type.value if error_type is not None else "",
-                payload,
-                str(self.run_retention_seconds),
-                str(self.run_event_stream_max_length),
-            ),
+        result = await _finalize_run(
+            self.redis,
+            record_key=run_record_key(self.prefix, event.run_id),
+            events_key=run_events_key(self.prefix, event.run_id),
+            cancel_intent_key=run_cancel_intent_key(self.prefix, event.run_id),
+            status=status,
+            updated_at=event.created_at.isoformat(),
+            has_error=error is not None,
+            error=error or "",
+            has_error_type=error_type is not None,
+            error_type=error_type.value if error_type is not None else "",
+            payload=payload,
+            ttl=self.run_retention_seconds,
+            max_length=self.run_event_stream_max_length,
         )
-        raw_result = await evaluation
-        result = cast(list[object], raw_result)
-        applied = int(cast(int | bytes | str, result[0]))
+        applied = int(result[0])
         if applied == -1:
             raise RunNotFoundError(event.run_id)
 
@@ -259,20 +266,15 @@ class RedisRunStore(RunEventSink):
             message=request.message,
             requested_at=utc_now(),
         )
-        evaluation = cast(
-            Awaitable[object],
-            self.redis.eval(
-                _REQUEST_CANCELLATION_SCRIPT,
-                3,
-                run_record_key(self.prefix, run_id),
-                run_cancel_intent_key(self.prefix, run_id),
-                run_events_key(self.prefix, run_id),
-                intent.model_dump_json(),
-                str(self.run_retention_seconds),
-            ),
+        result = await _request_cancellation(
+            self.redis,
+            record_key=run_record_key(self.prefix, run_id),
+            cancel_intent_key=run_cancel_intent_key(self.prefix, run_id),
+            events_key=run_events_key(self.prefix, run_id),
+            intent=intent.model_dump_json(),
+            ttl=self.run_retention_seconds,
         )
-        result = cast(list[object], await evaluation)
-        if int(cast(int | bytes | str, result[0])) == -1:
+        if int(result[0]) == -1:
             raise RunNotFoundError(run_id)
         return cast(RunStatus, _decode_redis_text(result[1]))
 
@@ -313,24 +315,19 @@ class RedisRunStore(RunEventSink):
         )
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         error = event.data.message or event.data.reason
-        evaluation = cast(
-            Awaitable[object],
-            self.redis.eval(
-                _FINALIZE_CANCELLATION_SCRIPT,
-                3,
-                run_record_key(self.prefix, run_id),
-                run_cancel_intent_key(self.prefix, run_id),
-                run_events_key(self.prefix, run_id),
-                event.created_at.isoformat(),
-                "1" if error is not None else "0",
-                error or "",
-                payload,
-                str(self.run_retention_seconds),
-                str(self.run_event_stream_max_length),
-            ),
+        result = await _finalize_cancellation(
+            self.redis,
+            record_key=run_record_key(self.prefix, run_id),
+            cancel_intent_key=run_cancel_intent_key(self.prefix, run_id),
+            events_key=run_events_key(self.prefix, run_id),
+            updated_at=event.created_at.isoformat(),
+            has_error=error is not None,
+            error=error or "",
+            payload=payload,
+            ttl=self.run_retention_seconds,
+            max_length=self.run_event_stream_max_length,
         )
-        result = cast(list[object], await evaluation)
-        applied = int(cast(int | bytes | str, result[0]))
+        applied = int(result[0])
         if applied == -1:
             raise RunNotFoundError(run_id)
         return RunFinalizationResult(

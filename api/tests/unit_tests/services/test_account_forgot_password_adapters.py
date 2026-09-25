@@ -1,6 +1,7 @@
 """Tests for forgot-password infrastructure adapters."""
 
 import json
+from collections.abc import Callable
 from typing import cast
 
 import pytest
@@ -27,19 +28,17 @@ class FakeRedis:
     def delete(self, key: str) -> int:
         return int(self.values.pop(key, None) is not None)
 
-    def eval(
-        self,
-        _script: str,
-        _key_count: int,
-        key: str,
-        expected: str,
-        *args: object,
-    ) -> int:
-        if self.values.get(key) != expected:
-            return 0
-        replacement, _expiry_seconds = args
-        self.values[key] = replacement
-        return 1
+    def register_script(self, _script: str) -> Callable[..., int]:
+        def compare_and_set(*, keys: list[str], args: list[object], client: object | None = None) -> int:
+            _ = client
+            (key,) = keys
+            expected, replacement, _expiry_seconds = args
+            if self.values.get(key) != expected:
+                return 0
+            self.values[key] = replacement
+            return 1
+
+        return compare_and_set
 
 
 def _gateway(redis: FakeRedis | None = None) -> RedisForgotPasswordTokenGateway:

@@ -621,6 +621,7 @@ server = [
     { name = "pydantic-ai-slim", extra = ["anthropic", "google", "openai"] },
     { name = "pydantic-settings" },
     { name = "redis" },
+    { name = "redis-lua-py" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -658,6 +659,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=2.30.0,<3.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
+    { name = "redis-lua-py", marker = "extra == 'server'", specifier = "==0.11.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
@@ -3154,6 +3156,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7b/7f/3759b1d0d72b7c92f0d70ffd9dc962b7b7b5ee74e135f9d7d8ab06b8a318/redis-7.4.0.tar.gz", hash = "sha256:64a6ea7bf567ad43c964d2c30d82853f8df927c5c9017766c55a1d1ed95d18ad", size = 4943913, upload-time = "2026-03-24T09:14:37.53Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/74/3a/95deec7db1eb53979973ebd156f3369a72732208d1391cd2e5d127062a32/redis-7.4.0-py3-none-any.whl", hash = "sha256:a9c74a5c893a5ef8455a5adb793a31bb70feb821c86eccb62eebef5a19c429ec", size = 409772, upload-time = "2026-03-24T09:14:35.968Z" },
+]
+
+[[package]]
+name = "redis-lua-py"
+version = "0.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/14/79566ad1ef6faed4761b4fd2c2fc76de5e5975559184f37672d8940717c4/redis_lua_py-0.11.0.tar.gz", hash = "sha256:8648db0231b997ac01fea38543da317afc43856b562dc121b371936fd7e9d9f8", size = 315649, upload-time = "2026-09-25T19:56:48.177Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/a6/745a4f56586946f8dff8b96fab3f98484f2157d7af33624b0eb3a81d68e9/redis_lua_py-0.11.0-py3-none-any.whl", hash = "sha256:2794b9ae6f86369a0b6580f1960cc165cd14e60bf34f91e40b474db45da82d78", size = 107982, upload-time = "2026-09-25T19:56:46.726Z" },
 ]
 
 [[package]]

@@ -28,7 +28,8 @@ class _Redis:
     def register_script(self, script: str):
         self.script_sources.append(script)
 
-        def execute(*, keys, args=()):
+        def execute(*, keys, args=(), client=None):
+            _ = client
             self.script_calls.append((script, tuple(keys), tuple(args or ())))
             if "return raw" in script:
                 return self.response
@@ -121,7 +122,7 @@ def test_approval_guard_release_compares_owner_before_delete() -> None:
     store.release_approval("rotation-1", "owner-1")
 
     release_script = next(source for source in redis.script_sources if "ARGV[1]" in source and "DEL" in source)
-    assert "redis.call('GET', KEYS[1]) == ARGV[1]" in release_script
+    assert "if redis.call('GET', guard_key) == owner_id then" in release_script
     assert redis.script_calls[-1][1:] == (("oauth_device:approval_guard:rotation-1",), ("owner-1",))
 
 

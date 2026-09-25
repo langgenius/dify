@@ -7,10 +7,10 @@ from enum import IntEnum, StrEnum
 from hashlib import sha256
 
 from redis.exceptions import RedisError
+from redis_lua_py import Key, cjson, redis, script
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
-from extensions.redis_names import serialize_redis_name
 
 _TOKEN_TYPE = "email_code_login"
 _CHALLENGE_VERSION = 2
@@ -18,129 +18,120 @@ _CHALLENGE_VERSION = 2
 
 # The per-email v2 challenge is the sole state for tokens created by this
 # implementation. Lua result codes must stay in sync with ``_LuaResult``.
-_VERIFY_CHALLENGE_LUA = """
-local raw = redis.call('GET', KEYS[1])
-if not raw then
-    return {0, -1}
-end
+@script
+def _verify_challenge(
+    challenge_key: Key,
+    token_type: str,
+    token: str,
+    email: str,
+    code: str,
+    challenge_version: int,
+) -> list[int]:
+    raw = redis.get(challenge_key)
+    if raw is None:
+        return [0, -1]
 
-local decoded, data = pcall(cjson.decode, raw)
-if not decoded or type(data) ~= 'table' then
-    return {5, -1}
-end
+    try:
+        data = cjson.decode(raw)
+    except Exception:
+        return [5, -1]
+    if not isinstance(data, dict):
+        return [5, -1]
 
-if data.token_type ~= ARGV[1] or tonumber(data.challenge_version) ~= tonumber(ARGV[5]) then
-    return {5, -1}
-end
+    if data["token_type"] != token_type or float(data["challenge_version"]) != challenge_version:
+        return [5, -1]
 
-if data.state == 'consumed' or data.state == 'exhausted' then
-    return {8, -1}
-end
+    if data["state"] == "consumed" or data["state"] == "exhausted":
+        return [8, -1]
 
-if type(data.token) ~= 'string' or data.token ~= ARGV[2] then
-    return {1, -1}
-end
+    if not isinstance(data["token"], str) or data["token"] != token:
+        return [1, -1]
 
-if type(data.email) ~= 'string' or data.email ~= ARGV[3] then
-    return {2, -1}
-end
+    if not isinstance(data["email"], str) or data["email"] != email:
+        return [2, -1]
 
-if type(data.code) ~= 'string' then
-    return {5, -1}
-end
+    if not isinstance(data["code"], str):
+        return [5, -1]
 
-local remaining = tonumber(data.remaining_attempts)
-if not remaining or remaining <= 0 then
-    local tombstone = {
-        token_type = data.token_type,
-        challenge_version = data.challenge_version,
-        state = 'exhausted',
-        remaining_attempts = 0
-    }
-    redis.call('SET', KEYS[1], cjson.encode(tombstone), 'KEEPTTL')
-    return {6, 0}
-end
+    def write_tombstone(state: str) -> None:
+        tombstone = {
+            "token_type": data["token_type"],
+            "challenge_version": data["challenge_version"],
+            "state": state,
+            "remaining_attempts": 0,
+        }
+        redis.set(challenge_key, cjson.encode(tombstone), "KEEPTTL")
 
-if data.code == ARGV[4] then
-    local tombstone = {
-        token_type = data.token_type,
-        challenge_version = data.challenge_version,
-        state = 'consumed',
-        remaining_attempts = 0
-    }
-    redis.call('SET', KEYS[1], cjson.encode(tombstone), 'KEEPTTL')
-    return {4, -1}
-end
+    remaining: float | None = float(data["remaining_attempts"])
+    if remaining is None or remaining <= 0:
+        write_tombstone("exhausted")
+        return [6, 0]
 
-remaining = remaining - 1
-if remaining <= 0 then
-    local tombstone = {
-        token_type = data.token_type,
-        challenge_version = data.challenge_version,
-        state = 'exhausted',
-        remaining_attempts = 0
-    }
-    redis.call('SET', KEYS[1], cjson.encode(tombstone), 'KEEPTTL')
-    return {6, 0}
-end
+    if data["code"] == code:
+        write_tombstone("consumed")
+        return [4, -1]
 
-data.remaining_attempts = remaining
-redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
-return {3, remaining}
-"""
+    remaining = remaining - 1
+    if remaining <= 0:
+        write_tombstone("exhausted")
+        return [6, 0]
+
+    data["remaining_attempts"] = remaining
+    redis.set(challenge_key, cjson.encode(data), "KEEPTTL")
+    return [3, int(remaining)]
 
 
 # Tokens created before this deployment only have the legacy per-token key.
 # This fallback gives those in-flight tokens the same atomic attempt budget.
 # A versioned token is never accepted here, so a consumed v2 challenge cannot
 # fall back even if a stale legacy key is present unexpectedly.
-_VERIFY_LEGACY_TOKEN_LUA = """
-local raw = redis.call('GET', KEYS[1])
-if not raw then
-    return {0, -1}
-end
+@script
+def _verify_legacy_token(
+    token_key: Key,
+    token_type: str,
+    email: str,
+    code: str,
+    max_attempts: int,
+) -> list[int]:
+    raw = redis.get(token_key)
+    if raw is None:
+        return [0, -1]
 
-local decoded, data = pcall(cjson.decode, raw)
-if not decoded or type(data) ~= 'table' then
-    return {5, -1}
-end
+    try:
+        data = cjson.decode(raw)
+    except Exception:
+        return [5, -1]
+    if not isinstance(data, dict):
+        return [5, -1]
 
-if data.token_type ~= ARGV[1] or type(data.email) ~= 'string' or type(data.code) ~= 'string' then
-    return {5, -1}
-end
+    if data["token_type"] != token_type or not isinstance(data["email"], str) or not isinstance(data["code"], str):
+        return [5, -1]
 
-if string.lower(data.email) ~= ARGV[2] then
-    return {2, -1}
-end
+    if data["email"].lower() != email:
+        return [2, -1]
 
-if data.challenge_version ~= nil then
-    return {7, -1}
-end
+    if "challenge_version" in data:
+        return [7, -1]
 
-local remaining = tonumber(data.remaining_attempts)
-if not remaining then
-    remaining = tonumber(ARGV[4])
-end
-if not remaining or remaining <= 0 then
-    redis.call('DEL', KEYS[1])
-    return {6, 0}
-end
+    remaining: float | None = float(data["remaining_attempts"])
+    if remaining is None:
+        remaining = max_attempts
+    if remaining <= 0:
+        redis.delete(token_key)
+        return [6, 0]
 
-if data.code == ARGV[3] then
-    redis.call('DEL', KEYS[1])
-    return {4, -1}
-end
+    if data["code"] == code:
+        redis.delete(token_key)
+        return [4, -1]
 
-remaining = remaining - 1
-if remaining <= 0 then
-    redis.call('DEL', KEYS[1])
-    return {6, 0}
-end
+    remaining = remaining - 1
+    if remaining <= 0:
+        redis.delete(token_key)
+        return [6, 0]
 
-data.remaining_attempts = remaining
-redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
-return {3, remaining}
-"""
+    data["remaining_attempts"] = remaining
+    redis.set(token_key, cjson.encode(data), "KEEPTTL")
+    return [3, int(remaining)]
 
 
 class EmailCodeLoginChallengeStatus(StrEnum):
@@ -209,37 +200,38 @@ class EmailCodeLoginChallengeStore:
         max_attempts = dify_config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS
 
         try:
-            challenge_result = cls._eval(
-                _VERIFY_CHALLENGE_LUA,
-                cls._challenge_key(normalized_email),
-                _TOKEN_TYPE,
-                token,
-                normalized_email,
-                code,
-                _CHALLENGE_VERSION,
+            challenge_result = cls._parse(
+                _verify_challenge(
+                    redis_client,
+                    challenge_key=cls._challenge_key(normalized_email),
+                    token_type=_TOKEN_TYPE,
+                    token=token,
+                    email=normalized_email,
+                    code=code,
+                    challenge_version=_CHALLENGE_VERSION,
+                )
             )
             if challenge_result[0] is not _LuaResult.MISSING:
                 return cls._to_public_result(challenge_result)
 
             # Only a token created before this deployment can reach the
             # legacy fallback because new tokens are never written there.
-            legacy_result = cls._eval(
-                _VERIFY_LEGACY_TOKEN_LUA,
-                cls._legacy_token_key(token),
-                _TOKEN_TYPE,
-                normalized_email,
-                code,
-                max_attempts,
+            legacy_result = cls._parse(
+                _verify_legacy_token(
+                    redis_client,
+                    token_key=cls._legacy_token_key(token),
+                    token_type=_TOKEN_TYPE,
+                    email=normalized_email,
+                    code=code,
+                    max_attempts=max_attempts,
+                )
             )
             return cls._to_public_result(legacy_result)
         except (RedisError, TypeError, ValueError) as exc:
             raise EmailCodeLoginChallengeUnavailableError("Could not verify email-code challenge") from exc
 
     @staticmethod
-    def _eval(script: str, key: str, *args: str | int) -> tuple[_LuaResult, int | None]:
-        # ``eval`` is delegated to the raw Redis client, so unlike the wrapper's
-        # normal commands it needs an explicitly serialized physical key.
-        response = redis_client.eval(script, 1, serialize_redis_name(key), *args)
+    def _parse(response: object) -> tuple[_LuaResult, int | None]:
         if not isinstance(response, (list, tuple)) or len(response) != 2:
             raise ValueError("Unexpected Redis Lua response")
 

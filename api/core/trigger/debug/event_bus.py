@@ -2,6 +2,7 @@ import hashlib
 import logging
 
 from redis import RedisError
+from redis_lua_py import Key, redis, script
 
 from core.trigger.debug.events import BaseDebugEvent
 from extensions.ext_redis import redis_client
@@ -11,6 +12,37 @@ logger = logging.getLogger(__name__)
 TRIGGER_DEBUG_EVENT_TTL = 300
 
 
+@script
+def _select(inbox: Key, pool: Key, address_id: str) -> bytes | None:
+    """Atomically take the address's pending event, or join the waiting pool."""
+    event = redis.get(inbox)
+    if event is not None:
+        redis.delete(inbox)
+        return event
+    redis.sadd(pool, address_id)
+    redis.expire(pool, TRIGGER_DEBUG_EVENT_TTL)
+    return None
+
+
+@script
+def _dispatch(pool: Key, tenant_id: str, event: str) -> int:
+    """Deliver the event to every address waiting in the pool."""
+    addresses = redis.smembers(pool)
+    if len(addresses) == 0:
+        return 0
+    redis.delete(pool)
+    for address_id in addresses:
+        redis.set(f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}", event, "EX", TRIGGER_DEBUG_EVENT_TTL)
+    return len(addresses)
+
+
+def _unprefixed(name: str) -> bytes:
+    # Dispatch builds inbox keys inside the script, where the configured key
+    # prefix is not applied, so every key here stays unprefixed. The client
+    # wrapper leaves bytes names as they are.
+    return name.encode()
+
+
 class TriggerDebugEventBus:
     """
     Unified Redis-based trigger debug service with polling support.
@@ -18,32 +50,6 @@ class TriggerDebugEventBus:
     Uses {tenant_id} hash tags for Redis Cluster compatibility.
     Supports multiple event types through a generic dispatch/poll interface.
     """
-
-    # LUA_SELECT: Atomic poll or register for event
-    # KEYS[1] = trigger_debug_inbox:{<tenant_id>}:<address_id>
-    # KEYS[2] = trigger_debug_waiting_pool:{<tenant_id>}:...
-    # ARGV[1] = address_id
-    LUA_SELECT = (
-        "local v=redis.call('GET',KEYS[1]);"
-        "if v then redis.call('DEL',KEYS[1]);return v end;"
-        "redis.call('SADD',KEYS[2],ARGV[1]);"
-        f"redis.call('EXPIRE',KEYS[2],{TRIGGER_DEBUG_EVENT_TTL});"
-        "return false"
-    )
-
-    # LUA_DISPATCH: Dispatch event to all waiting addresses
-    # KEYS[1] = trigger_debug_waiting_pool:{<tenant_id>}:...
-    # ARGV[1] = tenant_id
-    # ARGV[2] = event_json
-    LUA_DISPATCH = (
-        "local a=redis.call('SMEMBERS',KEYS[1]);"
-        "if #a==0 then return 0 end;"
-        "redis.call('DEL',KEYS[1]);"
-        "for i=1,#a do "
-        f"redis.call('SET','trigger_debug_inbox:{{'..ARGV[1]..'}}'..':'..a[i],ARGV[2],'EX',{TRIGGER_DEBUG_EVENT_TTL});"
-        "end;"
-        "return #a"
-    )
 
     @classmethod
     def dispatch(
@@ -65,14 +71,12 @@ class TriggerDebugEventBus:
         """
         event_data = event.model_dump_json()
         try:
-            result = redis_client.eval(
-                cls.LUA_DISPATCH,
-                1,
-                pool_key,
-                tenant_id,
-                event_data,
+            return _dispatch(
+                redis_client,
+                pool=_unprefixed(pool_key),
+                tenant_id=tenant_id,
+                event=event_data,
             )
-            return int(result)
         except RedisError:
             logger.exception("Failed to dispatch event to pool: %s", pool_key)
             return 0
@@ -108,12 +112,11 @@ class TriggerDebugEventBus:
         address: str = f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
 
         try:
-            event_data = redis_client.eval(
-                cls.LUA_SELECT,
-                2,
-                address,
-                pool_key,
-                address_id,
+            event_data = _select(
+                redis_client,
+                inbox=_unprefixed(address),
+                pool=_unprefixed(pool_key),
+                address_id=address_id,
             )
             return event_type.model_validate_json(json_data=event_data) if event_data else None
         except RedisError:

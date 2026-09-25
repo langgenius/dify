@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 import json
 from typing import cast
 
@@ -121,6 +121,12 @@ class FakeRedis:
     async def expire(self, key: str, seconds: int) -> bool:
         self.commands.append(("expire", key, seconds))
         return True
+
+    def register_script(self, script: str) -> Callable[..., Awaitable[list[object]]]:
+        def run(*, keys: list[object], args: list[object], client: object | None = None) -> Awaitable[list[object]]:
+            return self.eval(script, len(keys), *keys, *args)
+
+        return run
 
     async def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[object]:
         self.commands.append(("eval", script, numkeys, *keys_and_args))
@@ -260,7 +266,7 @@ def test_request_cancellation_maps_eval_result_and_arguments() -> None:
     assert intent_payload["reason"] == "workflow_aborted"
     assert intent_payload["message"] == "workflow stopped"
     assert eval_command[7] == "60"
-    assert '"MAXLEN", "1"' in cast(str, eval_command[1])
+    assert "'MAXLEN', '1'" in cast(str, eval_command[1])
 
 
 def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
@@ -301,7 +307,7 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
     assert payload["data"]["usage"]["total_tokens"] == 21
     assert eval_command[10] == "60"
     assert eval_command[11] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
-    assert '"MAXLEN", "~", ARGV[6]' in cast(str, eval_command[1])
+    assert "'MAXLEN', '~', max_length" in cast(str, eval_command[1])
 
 
 def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
@@ -332,7 +338,7 @@ def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
     assert payload["data"]["error_type"] == "agent_run_limit_exceeded"
     assert eval_command[13] == str(DEFAULT_RUN_RETENTION_SECONDS)
     assert eval_command[14] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
-    assert '"MAXLEN", "~", ARGV[9]' in cast(str, eval_command[1])
+    assert "'MAXLEN', '~', max_length" in cast(str, eval_command[1])
 
 
 def test_request_cancellation_raises_when_record_is_missing() -> None:
