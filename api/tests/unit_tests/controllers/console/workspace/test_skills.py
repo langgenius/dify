@@ -150,7 +150,9 @@ def _skill_detail() -> dict[str, object]:
     }
 
 
-def test_create_skill_validates_payload_and_returns_detail(app: Flask, request_context: RequestContext) -> None:
+def test_create_skill_validates_payload_and_returns_detail(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.post)
     service, create_skill = _recording_service("create_skill", result=_skill_detail())
@@ -160,7 +162,7 @@ def test_create_skill_validates_payload_and_returns_detail(app: Flask, request_c
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context)
+        payload, status = method(api, sqlite_session, request_context)
 
     assert status == 201
     assert payload["id"] == "skill-1"
@@ -172,6 +174,7 @@ def test_create_skill_validates_payload_and_returns_detail(app: Flask, request_c
 
 @pytest.mark.parametrize("side_effect", [ValueError("bad payload"), SkillManagementServiceError("skill_error", "bad")])
 def test_create_skill_maps_validation_and_service_errors(
+    sqlite_session: Session,
     app: Flask,
     request_context: RequestContext,
     side_effect: Exception,
@@ -191,7 +194,9 @@ def test_create_skill_maps_validation_and_service_errors(
     assert payload["code"] in {"invalid_request", "skill_error"}
 
 
-def test_create_skill_rejects_extra_payload(app: Flask, request_context: RequestContext) -> None:
+def test_create_skill_rejects_extra_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.post)
 
@@ -206,7 +211,7 @@ def test_create_skill_rejects_extra_payload(app: Flask, request_context: Request
 
 
 def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(
-    app: Flask, request_context: RequestContext
+    sqlite_session: Session, app: Flask, request_context: RequestContext
 ) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.get)
@@ -224,7 +229,7 @@ def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(
         app.test_request_context("/?keyword=finance&tag=ops&tag=", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context)
+        payload = method(api, sqlite_session, request_context)
 
     assert payload == {
         "data": [],
@@ -241,7 +246,9 @@ def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(
     ]
 
 
-def test_list_skills_passes_explicit_pagination(app: Flask, request_context: RequestContext) -> None:
+def test_list_skills_passes_explicit_pagination(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.get)
     service, list_skills = _recording_service("list_skills")
@@ -252,7 +259,7 @@ def test_list_skills_passes_explicit_pagination(app: Flask, request_context: Req
         app.test_request_context("/?limit=10&page=2", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context)
+        payload = method(api, sqlite_session, request_context)
 
     assert payload["limit"] == 10
     assert payload["page"] == 2
@@ -264,7 +271,9 @@ def test_list_skills_passes_explicit_pagination(app: Flask, request_context: Req
     ]
 
 
-def test_upload_skill_file_returns_tool_file_metadata(app: Flask, request_context: RequestContext) -> None:
+def test_upload_skill_file_returns_tool_file_metadata(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
     service, upload_file = _recording_service(
@@ -287,7 +296,7 @@ def test_upload_skill_file_returns_tool_file_metadata(app: Flask, request_contex
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context)
+        payload, status = method(api, sqlite_session, request_context)
 
     assert status == 201
     assert payload["id"] == "tool-file-1"
@@ -305,7 +314,7 @@ def test_upload_skill_file_returns_tool_file_metadata(app: Flask, request_contex
     ]
 
 
-def test_upload_skill_file_requires_file(app: Flask, request_context: RequestContext) -> None:
+def test_upload_skill_file_requires_file(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
 
@@ -316,7 +325,9 @@ def test_upload_skill_file_requires_file(app: Flask, request_context: RequestCon
     assert payload == {"code": "no_file_uploaded", "message": "no file uploaded"}
 
 
-def test_upload_skill_file_requires_filename(app: Flask, request_context: RequestContext) -> None:
+def test_upload_skill_file_requires_filename(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
 
@@ -332,7 +343,7 @@ def test_upload_skill_file_requires_filename(app: Flask, request_context: Reques
     assert payload == {"code": "filename_missing", "message": "filename is required"}
 
 
-def test_import_skill_uploads_zip(app: Flask, request_context: RequestContext) -> None:
+def test_import_skill_uploads_zip(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
     service, import_skill = _recording_service("import_skill", result=_skill_detail())
@@ -346,7 +357,7 @@ def test_import_skill_uploads_zip(app: Flask, request_context: RequestContext) -
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context)
+        payload, status = method(api, sqlite_session, request_context)
 
     assert status == 201
     assert payload["id"] == "skill-1"
@@ -359,7 +370,7 @@ def test_import_skill_uploads_zip(app: Flask, request_context: RequestContext) -
     assert service_payload.filename == "skill.zip"
 
 
-def test_import_skill_requires_file(app: Flask, request_context: RequestContext) -> None:
+def test_import_skill_requires_file(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
 
@@ -370,7 +381,7 @@ def test_import_skill_requires_file(app: Flask, request_context: RequestContext)
     assert payload == {"code": "invalid_request", "message": "file is required"}
 
 
-def test_import_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_import_skill_maps_service_error(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
     service, _ = _recording_service(
@@ -392,7 +403,7 @@ def test_import_skill_maps_service_error(app: Flask, request_context: RequestCon
     assert payload == {"code": "invalid_skill_archive", "message": "invalid archive"}
 
 
-def test_get_skill_detail_returns_files(app: Flask, request_context: RequestContext) -> None:
+def test_get_skill_detail_returns_files(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.get)
     service, get_skill = _recording_service("get_skill", result=_skill_detail())
@@ -401,14 +412,16 @@ def test_get_skill_detail_returns_files(app: Flask, request_context: RequestCont
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     assert payload["files"][0]["path"] == "SKILL.md"
     assert get_skill.calls == [RecordedCall(args=(), kwargs={"tenant_id": "tenant-1", "skill_id": "skill-1"})]
 
 
-def test_get_skill_detail_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_get_skill_detail_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.get)
     service, _ = _recording_service(
@@ -425,7 +438,9 @@ def test_get_skill_detail_maps_service_error(app: Flask, request_context: Reques
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
-def test_update_skill_metadata_validates_payload(app: Flask, request_context: RequestContext) -> None:
+def test_update_skill_metadata_validates_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.patch)
     service, update_metadata = _recording_service(
@@ -442,7 +457,7 @@ def test_update_skill_metadata_validates_payload(app: Flask, request_context: Re
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["display_name"] == "Finance SOP"
     call = update_metadata.calls[0].kwargs
@@ -459,6 +474,7 @@ def test_update_skill_metadata_validates_payload(app: Flask, request_context: Re
     [ValueError("bad metadata"), SkillManagementServiceError("skill_conflict", "conflict", status_code=409)],
 )
 def test_update_skill_metadata_maps_service_errors(
+    sqlite_session: Session,
     app: Flask,
     request_context: RequestContext,
     side_effect: Exception,
@@ -478,7 +494,9 @@ def test_update_skill_metadata_maps_service_errors(
     assert payload["code"] in {"invalid_request", "skill_conflict"}
 
 
-def test_delete_skill_passes_confirmation_name(app: Flask, request_context: RequestContext) -> None:
+def test_delete_skill_passes_confirmation_name(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.delete)
     service, delete_skill = _recording_service("delete_skill", result={"id": "skill-1", "deleted": True})
@@ -493,7 +511,7 @@ def test_delete_skill_passes_confirmation_name(app: Flask, request_context: Requ
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload == {"id": "skill-1", "deleted": True}
     assert delete_skill.calls == [
@@ -504,7 +522,7 @@ def test_delete_skill_passes_confirmation_name(app: Flask, request_context: Requ
     ]
 
 
-def test_delete_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_delete_skill_maps_service_error(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.delete)
     service, _ = _recording_service(
@@ -527,7 +545,9 @@ def test_delete_skill_maps_service_error(app: Flask, request_context: RequestCon
     assert payload == {"code": "skill_referenced", "message": "skill is referenced"}
 
 
-def test_duplicate_skill_returns_new_detail(app: Flask, request_context: RequestContext) -> None:
+def test_duplicate_skill_returns_new_detail(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillDuplicateApi()
     method = unwrap(api.post)
     service, duplicate_skill = _recording_service("duplicate_skill", result=_skill_detail())
@@ -536,7 +556,7 @@ def test_duplicate_skill_returns_new_detail(app: Flask, request_context: Request
         app.test_request_context("/", method="POST"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = method(api, sqlite_session, request_context, "skill-1")
 
     assert status == 201
     assert payload["id"] == "skill-1"
@@ -545,7 +565,9 @@ def test_duplicate_skill_returns_new_detail(app: Flask, request_context: Request
     ]
 
 
-def test_duplicate_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_duplicate_skill_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillDuplicateApi()
     method = unwrap(api.post)
     service, _ = _recording_service(
@@ -567,7 +589,9 @@ def test_duplicate_skill_maps_service_error(app: Flask, request_context: Request
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
-def test_export_skill_returns_archive_response(app: Flask, request_context: RequestContext) -> None:
+def test_export_skill_returns_archive_response(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service, export_draft_archive = _recording_service(
@@ -583,7 +607,7 @@ def test_export_skill_returns_archive_response(app: Flask, request_context: Requ
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response = method(api, request_context, "skill-1")
+        response = method(api, sqlite_session, request_context, "skill-1")
 
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
@@ -595,7 +619,7 @@ def test_export_skill_returns_archive_response(app: Flask, request_context: Requ
     ]
 
 
-def test_export_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_export_skill_maps_service_error(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service, _ = _recording_service(
@@ -617,7 +641,7 @@ def test_export_skill_maps_service_error(app: Flask, request_context: RequestCon
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
-def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
+def test_inner_api_pulls_published_skill_archive(app: Flask, sqlite_session: Session) -> None:
     api = PublishedSkillPullApi()
     method = unwrap(api.get)
     service, pull_published_archive = _recording_service(
@@ -633,7 +657,7 @@ def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
         app.test_request_context("/?tenant_id=tenant-1", method="GET"),
         patch("controllers.inner_api.plugin.skills.SkillManagementService", return_value=service),
     ):
-        response = method(api, "skill-1")
+        response = method(api, sqlite_session, "skill-1")
 
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
@@ -644,18 +668,20 @@ def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
     ]
 
 
-def test_inner_api_pull_maps_missing_tenant_to_invalid_request(app: Flask) -> None:
+def test_inner_api_pull_maps_missing_tenant_to_invalid_request(app: Flask, sqlite_session: Session) -> None:
     api = PublishedSkillPullApi()
     method = unwrap(api.get)
 
     with app.test_request_context("/", method="GET"):
-        payload, status = method(api, "skill-1")
+        payload, status = method(api, sqlite_session, "skill-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_get_agent_skill_bindings_returns_card_data(app: Flask, request_context: RequestContext) -> None:
+def test_get_agent_skill_bindings_returns_card_data(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.get)
     service, list_agent_bindings = _recording_service(
@@ -686,7 +712,7 @@ def test_get_agent_skill_bindings_returns_card_data(app: Flask, request_context:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "agent-1")
+        payload = method(api, sqlite_session, request_context, "agent-1")
 
     assert payload["skill_ids"] == ["skill-1"]
     assert payload["data"][0]["display_name"] == "Finance SOP"
@@ -695,7 +721,7 @@ def test_get_agent_skill_bindings_returns_card_data(app: Flask, request_context:
 
 
 def test_patch_skill_file_operation_validates_payload_and_returns_detail(
-    app: Flask, request_context: RequestContext
+    sqlite_session: Session, app: Flask, request_context: RequestContext
 ) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.patch)
@@ -711,7 +737,7 @@ def test_patch_skill_file_operation_validates_payload_and_returns_detail(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=request_payload),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     assert len(apply_draft_file_operation.calls) == 1
@@ -724,7 +750,9 @@ def test_patch_skill_file_operation_validates_payload_and_returns_detail(
     assert service_payload.operation == "upsert_text"
 
 
-def test_patch_skill_file_operation_returns_error_details(app: Flask, request_context: RequestContext) -> None:
+def test_patch_skill_file_operation_returns_error_details(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.patch)
     service, _ = _recording_service(
@@ -756,7 +784,9 @@ def test_patch_skill_file_operation_returns_error_details(app: Flask, request_co
     }
 
 
-def test_check_skill_files_validates_payload_and_returns_results(app: Flask, request_context: RequestContext) -> None:
+def test_check_skill_files_validates_payload_and_returns_results(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilesCheckApi()
     method = unwrap(api.post)
     service, check_draft_files = _recording_service(
@@ -785,7 +815,7 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask, req
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["data"]["policy.md"]["path"] == "references/policy.md"
     assert payload["data"]["policy.md"]["errors"] == []
@@ -799,7 +829,7 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask, req
 
 
 def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
-    app: Flask, request_context: RequestContext
+    sqlite_session: Session, app: Flask, request_context: RequestContext
 ) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.put)
@@ -815,7 +845,7 @@ def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     call = replace_draft_tree.calls[0].kwargs
@@ -827,7 +857,9 @@ def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
     assert service_payload.files[0].path == "SKILL.md"
 
 
-def test_preview_skill_file_validates_query(app: Flask, request_context: RequestContext) -> None:
+def test_preview_skill_file_validates_query(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
     service, preview_file = _recording_service(
@@ -845,7 +877,7 @@ def test_preview_skill_file_validates_query(app: Flask, request_context: Request
         app.test_request_context("/?path=SKILL.md&version_id=version-1", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["content"] == "# Body"
     assert preview_file.calls == [
@@ -861,7 +893,9 @@ def test_preview_skill_file_validates_query(app: Flask, request_context: Request
     ]
 
 
-def test_pull_skill_file_content_returns_download(app: Flask, request_context: RequestContext) -> None:
+def test_pull_skill_file_content_returns_download(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
     service, pull_file = _recording_service(
@@ -881,7 +915,7 @@ def test_pull_skill_file_content_returns_download(app: Flask, request_context: R
         app.test_request_context("/?path=SKILL.md&download=1", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response = method(api, request_context, "skill-1")
+        response = method(api, sqlite_session, request_context, "skill-1")
 
     assert response.status_code == 200
     assert response.mimetype == "text/markdown"
@@ -896,7 +930,9 @@ def test_pull_skill_file_content_returns_download(app: Flask, request_context: R
     ]
 
 
-def test_list_skill_tags_returns_filter_options(app: Flask, request_context: RequestContext) -> None:
+def test_list_skill_tags_returns_filter_options(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillTagsApi()
     method = unwrap(api.get)
     service, list_tags = _recording_service("list_tags", result={"data": [{"tag": "finance", "count": 2}]})
@@ -905,13 +941,13 @@ def test_list_skill_tags_returns_filter_options(app: Flask, request_context: Req
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context)
+        payload = method(api, sqlite_session, request_context)
 
     assert payload == {"data": [{"tag": "finance", "count": 2}]}
     assert list_tags.calls == [RecordedCall(args=(), kwargs={"tenant_id": "tenant-1"})]
 
 
-def test_publish_skill_validates_payload(app: Flask, request_context: RequestContext) -> None:
+def test_publish_skill_validates_payload(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
     service, publish_skill = _recording_service(
@@ -936,7 +972,7 @@ def test_publish_skill_validates_payload(app: Flask, request_context: RequestCon
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"publish_note": "Initial"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["id"] == "version-1"
     call = publish_skill.calls[0].kwargs
@@ -948,7 +984,9 @@ def test_publish_skill_validates_payload(app: Flask, request_context: RequestCon
     assert service_payload.publish_note == "Initial"
 
 
-def test_restore_skill_version_validates_payload(app: Flask, request_context: RequestContext) -> None:
+def test_restore_skill_version_validates_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
     service, restore_version = _recording_service("restore_version")
@@ -982,7 +1020,7 @@ def test_restore_skill_version_validates_payload(app: Flask, request_context: Re
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"version_id": "version-1"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["latest_published_version_id"] == "version-1"
     call = restore_version.calls[0].kwargs
@@ -994,7 +1032,9 @@ def test_restore_skill_version_validates_payload(app: Flask, request_context: Re
     assert service_payload.version_id == "version-1"
 
 
-def test_list_skill_references_returns_reference_data(app: Flask, request_context: RequestContext) -> None:
+def test_list_skill_references_returns_reference_data(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillReferencesApi()
     method = unwrap(api.get)
     service, list_skill_references = _recording_service(
@@ -1015,7 +1055,7 @@ def test_list_skill_references_returns_reference_data(app: Flask, request_contex
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["data"][0]["agent_id"] == "agent-1"
     assert list_skill_references.calls == [
@@ -1023,7 +1063,9 @@ def test_list_skill_references_returns_reference_data(app: Flask, request_contex
     ]
 
 
-def test_list_skill_versions_returns_version_page(app: Flask, request_context: RequestContext) -> None:
+def test_list_skill_versions_returns_version_page(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillVersionsApi()
     method = unwrap(api.get)
     service, list_versions = _recording_service(
@@ -1051,13 +1093,15 @@ def test_list_skill_versions_returns_version_page(app: Flask, request_context: R
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, sqlite_session, request_context, "skill-1")
 
     assert payload["data"][0]["id"] == "version-1"
     assert list_versions.calls == [RecordedCall(args=(), kwargs={"tenant_id": "tenant-1", "skill_id": "skill-1"})]
 
 
-def test_get_skill_version_returns_version_detail(app: Flask, request_context: RequestContext) -> None:
+def test_get_skill_version_returns_version_detail(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.get)
     service, get_version = _recording_service("get_version")
@@ -1093,7 +1137,7 @@ def test_get_skill_version_returns_version_detail(app: Flask, request_context: R
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1", "version-1")
+        payload = method(api, sqlite_session, request_context, "skill-1", "version-1")
 
     assert payload["files"][0]["content"] == "# Version"
     assert get_version.calls == [
@@ -1101,7 +1145,9 @@ def test_get_skill_version_returns_version_detail(app: Flask, request_context: R
     ]
 
 
-def test_patch_skill_version_renames_version(app: Flask, request_context: RequestContext) -> None:
+def test_patch_skill_version_renames_version(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.patch)
     service, update_version = _recording_service(
@@ -1131,7 +1177,7 @@ def test_patch_skill_version_renames_version(app: Flask, request_context: Reques
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1", "version-1")
+        payload = method(api, sqlite_session, request_context, "skill-1", "version-1")
 
     assert payload["version_name"] == "Approval threshold"
     assert len(update_version.calls) == 1
@@ -1140,7 +1186,9 @@ def test_patch_skill_version_renames_version(app: Flask, request_context: Reques
     assert service_payload.version_name == "Approval threshold"
 
 
-def test_delete_skill_version_returns_new_latest(app: Flask, request_context: RequestContext) -> None:
+def test_delete_skill_version_returns_new_latest(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.delete)
     service, delete_version = _recording_service(
@@ -1156,7 +1204,7 @@ def test_delete_skill_version_returns_new_latest(app: Flask, request_context: Re
         app.test_request_context("/", method="DELETE"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1", "version-2")
+        payload = method(api, sqlite_session, request_context, "skill-1", "version-2")
 
     assert payload == {"id": "version-2", "deleted": True, "latest_published_version_id": "version-1"}
     assert delete_version.calls == [
@@ -1172,7 +1220,9 @@ def test_delete_skill_version_returns_new_latest(app: Flask, request_context: Re
     ]
 
 
-def test_skill_assistant_runs_agent_app_stream(app: Flask, request_context: RequestContext) -> None:
+def test_skill_assistant_runs_agent_app_stream(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillAssistMessageApi()
     method = unwrap(api.post)
     action_stream = iter([{"event": "done"}])
@@ -1201,7 +1251,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, request_context: Requ
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
         patch("controllers.console.workspace.skills.helper.compact_generate_response", new=compact_generate_response),
     ):
-        response = method(api, request_context, "skill-1")
+        response = method(api, sqlite_session, request_context, "skill-1")
 
     assert response is compact_response
     assert create_assistant_action_stream.calls == [
@@ -1231,6 +1281,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, request_context: Requ
 
 @pytest.mark.parametrize("payload", [{}, {"message": "x", "unknown": True}])
 def test_skill_assistant_rejects_invalid_payload(
+    sqlite_session: Session,
     app: Flask,
     request_context: RequestContext,
     payload: dict[str, object],
@@ -1248,7 +1299,9 @@ def test_skill_assistant_rejects_invalid_payload(
     assert response_body["code"] == "invalid_request"
 
 
-def test_skill_assistant_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_skill_assistant_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillAssistMessageApi()
     method = unwrap(api.post)
     service, _ = _recording_service(
@@ -1278,6 +1331,7 @@ def test_skill_assistant_maps_service_error(app: Flask, request_context: Request
     ],
 )
 def test_skill_file_write_methods_map_conflicts(
+    sqlite_session: Session,
     app: Flask,
     request_context: RequestContext,
     method_name: str,
@@ -1307,7 +1361,9 @@ def test_skill_file_write_methods_map_conflicts(
     assert response_body["code"] == "skill_conflict"
 
 
-def test_replace_skill_draft_tree_maps_value_error(app: Flask, request_context: RequestContext) -> None:
+def test_replace_skill_draft_tree_maps_value_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.put)
     service, _ = _recording_service("replace_draft_tree", error=ValueError("bad path"))
@@ -1325,7 +1381,7 @@ def test_replace_skill_draft_tree_maps_value_error(app: Flask, request_context: 
 
 @pytest.mark.parametrize("query_string", ["", "?path=../secret.md"])
 def test_preview_skill_file_rejects_invalid_query(
-    app: Flask, request_context: RequestContext, query_string: str
+    sqlite_session: Session, app: Flask, request_context: RequestContext, query_string: str
 ) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
@@ -1337,7 +1393,9 @@ def test_preview_skill_file_rejects_invalid_query(
     assert payload["code"] == "invalid_request"
 
 
-def test_preview_skill_file_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_preview_skill_file_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
     service, _ = _recording_service(
@@ -1356,7 +1414,7 @@ def test_preview_skill_file_maps_service_error(app: Flask, request_context: Requ
 
 @pytest.mark.parametrize("query_string", ["", "?path=../secret.md"])
 def test_pull_skill_file_content_rejects_invalid_query(
-    app: Flask, request_context: RequestContext, query_string: str
+    sqlite_session: Session, app: Flask, request_context: RequestContext, query_string: str
 ) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
@@ -1368,7 +1426,9 @@ def test_pull_skill_file_content_rejects_invalid_query(
     assert payload["code"] == "invalid_request"
 
 
-def test_pull_skill_file_content_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_pull_skill_file_content_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
     service, _ = _recording_service(
@@ -1385,7 +1445,9 @@ def test_pull_skill_file_content_maps_service_error(app: Flask, request_context:
     assert payload == {"code": "file_not_found", "message": "file not found"}
 
 
-def test_publish_skill_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
+def test_publish_skill_rejects_invalid_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
 
@@ -1399,7 +1461,7 @@ def test_publish_skill_rejects_invalid_payload(app: Flask, request_context: Requ
     assert payload["code"] == "invalid_request"
 
 
-def test_publish_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_publish_skill_maps_service_error(sqlite_session: Session, app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
     service, _ = _recording_service(
@@ -1417,7 +1479,9 @@ def test_publish_skill_maps_service_error(app: Flask, request_context: RequestCo
     assert payload == {"code": "missing_skill_name", "message": "name required"}
 
 
-def test_restore_skill_version_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
+def test_restore_skill_version_rejects_invalid_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
 
@@ -1431,7 +1495,9 @@ def test_restore_skill_version_rejects_invalid_payload(app: Flask, request_conte
     assert payload["code"] == "invalid_request"
 
 
-def test_restore_skill_version_maps_service_error(app: Flask, request_context: RequestContext) -> None:
+def test_restore_skill_version_maps_service_error(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
     service, _ = _recording_service(
@@ -1454,7 +1520,9 @@ def test_restore_skill_version_maps_service_error(app: Flask, request_context: R
     assert payload == {"code": "version_not_found", "message": "version not found"}
 
 
-def test_agent_skill_bindings_replaces_bound_skills(app: Flask, request_context: RequestContext) -> None:
+def test_agent_skill_bindings_replaces_bound_skills(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.put)
     service, replace_agent_bindings = _recording_service("replace_agent_bindings")
@@ -1466,7 +1534,7 @@ def test_agent_skill_bindings_replaces_bound_skills(app: Flask, request_context:
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"skill_ids": ["skill-1"]}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "agent-1")
+        payload = method(api, sqlite_session, request_context, "agent-1")
 
     assert payload["skill_ids"] == ["skill-1"]
     assert replace_agent_bindings.calls == [
@@ -1482,7 +1550,9 @@ def test_agent_skill_bindings_replaces_bound_skills(app: Flask, request_context:
     ]
 
 
-def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
+def test_agent_skill_bindings_rejects_invalid_payload(
+    sqlite_session: Session, app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.put)
 
