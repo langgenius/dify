@@ -4,13 +4,14 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
-import { useDetailSidebarMode } from './storage'
+import { detailSidebarModeAtom, setDetailSidebarModeAtom } from './state'
 
 type DetailSidebarRenderProps = {
   expand: boolean
@@ -48,7 +49,8 @@ export function DetailSidebarFrame({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,
   })
-  const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
+  const storedDetailSidebarExpand = useAtomValue(detailSidebarModeAtom)
+  const setStoredDetailSidebarExpand = useSetAtom(setDetailSidebarModeAtom)
   const [compactExpanded, setCompactExpanded] = useState(false)
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
   const detailNavigationExpanded = compact ? compactExpanded : detailNavigationMode === 'expand'
