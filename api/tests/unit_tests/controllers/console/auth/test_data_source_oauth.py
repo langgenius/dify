@@ -3,7 +3,7 @@ from inspect import unwrap
 from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
-from flask import Flask
+from flask import Flask, Response
 
 from controllers.console.auth.data_source_oauth import (
     OAuthDataSource,
@@ -81,6 +81,7 @@ def test_callback_parses_query_and_returns_flask_redirect() -> None:
     ):
         response = OAuthDataSourceCallback().get("notion")
 
+    assert isinstance(response, Response)
     assert response.status_code == HTTPStatus.FOUND
     assert response.location == "https://console.example/root?lang=en&type=notion&code=code-1#top"
     service.complete_callback.assert_called_once_with(code="code-1", error=None)

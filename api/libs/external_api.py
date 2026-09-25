@@ -135,11 +135,11 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
 
         return _finalize(e, data, status_code), status_code
 
-    api.errorhandler(HTTPException)(handle_http_exception)
-    api.errorhandler(ValueError)(handle_value_error)
-    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
-    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
-    api.errorhandler(Exception)(handle_general_exception)
+    api.errorhandler(HTTPException)(handle_http_exception)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(ValueError)(handle_value_error)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(Exception)(handle_general_exception)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
 
 
 class ExternalApi(Api):
