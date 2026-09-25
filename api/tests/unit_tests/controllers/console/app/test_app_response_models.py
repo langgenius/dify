@@ -3,8 +3,10 @@
 import json
 from dataclasses import replace
 from datetime import datetime
+from pathlib import Path
 
 import pytest
+import yaml
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -12,6 +14,7 @@ from werkzeug.datastructures import MultiDict
 
 from controllers.console.app import app as controller
 from fields import app_fields
+from fields.app_model_config_response import AppModelConfigResponse
 from libs.pagination import PaginatedResult
 from models.account import Account
 from models.enums import CustomizeTokenStrategy, TagType
@@ -308,7 +311,6 @@ def test_app_detail_with_site_includes_nested_serialization(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ):
-    AppDetailWithSite = app_models.AppDetailWithSite
     app_obj = _persist_response_graph(sqlite_session)
     app_obj.name = "Detailed App"
     app_obj.description = "Desc"
@@ -323,16 +325,19 @@ def test_app_detail_with_site_includes_nested_serialization(
     assert model_config is not None
     model_config.opening_statement = "hi"
     model_config.retriever_resource = json.dumps({"enabled": True})
-    monkeypatch.setattr("repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {})
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
 
     with app.test_request_context("/"):
-        serialized = AppDetailWithSite.model_validate(
+        response = controller._app_detail_response(
             replace(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site"),
                 permission_keys=app_obj.permission_keys,
             ),
-            from_attributes=True,
-        ).model_dump(mode="json")
+        )
+        assert isinstance(response, app_models.AppDetailWithSite)
+        serialized = response.model_dump(mode="json")
 
     assert serialized["icon_url"] == "signed:detail-icon"
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
@@ -427,3 +432,166 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session
     assert len(serialized["data"]) == 2
     assert serialized["data"][0]["icon_url"] == "signed:first-icon"
     assert serialized["data"][1]["icon_url"] is None
+
+
+@pytest.mark.parametrize("strategy", [None, "cot", "function-calling"])
+def test_app_detail_preserves_historical_agent_strategy(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, strategy: str | None
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    agent_mode = {"enabled": True, "tools": []}
+    if strategy is not None:
+        agent_mode["strategy"] = strategy
+    config.agent_mode = json.dumps(agent_mode)
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    assert response["model_config"]["agent_mode"] == agent_mode
+
+
+def test_app_detail_preserves_historical_agent_mode_without_tools(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    app_obj.mode = AppMode.AGENT_CHAT
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    agent_mode = {"enabled": True, "max_iteration": 5, "strategy": "function_call"}
+    config.agent_mode = json.dumps(agent_mode)
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    assert response["model_config"]["agent_mode"] == agent_mode
+
+
+def test_app_model_config_response_round_trips_persisted_dataset_and_external_tool_fields(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    dataset_configs = {
+        "retrieval_model": "multiple",
+        "reranking_enable": True,
+        "reranking_enabled": True,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": "condition-1",
+                    "metadata_id": "metadata-1",
+                    "name": "category",
+                    "comparison_operator": "is",
+                    "value": "books",
+                }
+            ],
+        },
+        "extension_setting": {"value": 1},
+    }
+    external_form = {
+        "external_data_tool": {
+            "variable": "customer",
+            "label": "Customer",
+            "type": "api",
+            "enabled": True,
+            "icon": "icon-key",
+            "icon_background": "#fff",
+            "config": {"provider": "crm"},
+            "extension_setting": {"value": 2},
+        }
+    }
+    config.dataset_configs = json.dumps(dataset_configs)
+    config.user_input_form = json.dumps([external_form])
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    model_config = response["model_config"]
+    assert model_config["dataset_configs"] == dataset_configs
+    assert model_config["user_input_form"] == [external_form]
+
+    reimported = AppModelConfig(app_id=APP_ID)
+    reimported.from_model_config_dict(model_config)
+    assert reimported.dataset_configs_dict == dataset_configs
+    assert reimported.user_input_form_list == [external_form]
+
+
+def test_recommended_app_model_configs_keep_all_published_fields():
+    catalog_path = Path(__file__).resolve().parents[5] / "constants" / "recommended_apps.json"
+    catalog = json.loads(catalog_path.read_text())
+
+    def assert_fields_preserved(source, serialized):
+        if isinstance(source, dict):
+            for key, value in source.items():
+                assert key in serialized
+                assert_fields_preserved(value, serialized[key])
+        elif isinstance(source, list):
+            assert len(source) == len(serialized)
+            for value, serialized_value in zip(source, serialized, strict=True):
+                assert_fields_preserved(value, serialized_value)
+        else:
+            assert serialized == source
+
+    for entry in catalog["app_details"].values():
+        source = yaml.safe_load(entry["export_data"]).get("model_config") or {}
+        if not source:
+            continue
+        payload = {**source, "created_by": None, "created_at": 1, "updated_by": None, "updated_at": 1}
+        response = AppModelConfigResponse.model_validate(payload).model_dump(mode="json")
+        assert_fields_preserved(source, response)
+
+
+def test_app_detail_rejects_invalid_known_configuration_fields(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+    with app.test_request_context("/"):
+        detail = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    for field in ("mode", "permission_keys", "site", "model_config"):
+        with pytest.raises(ValidationError):
+            app_fields.AppDetailWithSite.model_validate({key: value for key, value in detail.items() if key != field})
+
+    with pytest.raises(ValidationError):
+        app_fields.AppDetailWithSite.model_validate({**detail, "mode": "unsupported"})
+
+    config = detail["model_config"]
+    for invalid in (
+        {"speech_to_text": {"enabled": "not-a-boolean"}},
+        {"agent_mode": {"enabled": True, "strategy": "unsupported", "tools": []}},
+        {"agent_mode": {"enabled": True, "tools": "not-a-list"}},
+        {"agent_mode": {"enabled": True, "tools": [{"provider_id": "only-id"}]}},
+        {"dataset_configs": {"retrieval_model": "unsupported"}},
+        {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},
+        {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unsupported"}},
+        {"user_input_form": [{"unsupported": {"label": "Name", "variable": "name"}}]},
+    ):
+        with pytest.raises(ValidationError):
+            app_fields.AppDetailWithSite.model_validate({**detail, "model_config": {**config, **invalid}})

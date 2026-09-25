@@ -1382,6 +1382,8 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
+        if dify_config.RBAC_ENABLED:
+            return
         has_permission = False
         if (
             user.current_role != TenantAccountRole.OWNER

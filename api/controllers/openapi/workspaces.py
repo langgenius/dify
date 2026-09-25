@@ -63,7 +63,7 @@ from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRec
 
 def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
     return MemberResponse(
-        id=str(account.id),
+        id=account.id,
         name=account.name,
         email=account.email,
         role=account.legacy_role,
@@ -314,7 +314,7 @@ def _invitation_response(invitation: WorkspaceInvitation) -> MemberInviteRespons
 
 def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
     return WorkspaceSummaryResponse(
-        id=str(tenant.id),
+        id=tenant.id,
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
@@ -324,7 +324,7 @@ def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
 
 def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
     return WorkspaceDetailResponse(
-        id=str(tenant.id),
+        id=tenant.id,
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
