@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { basePath } from '@/utils/var'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
 
 type PdfPreviewProps = {
@@ -67,7 +68,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
           }}
         >
           <PdfLoader
-            workerSrc="/pdf.worker.min.mjs"
+            workerSrc={`${basePath}/pdf.worker.min.mjs`}
             url={url}
             beforeLoad={<LoadingPlaceholder className="h-64" />}
           >

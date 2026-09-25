@@ -6,11 +6,13 @@ vi.mock('../pdf-highlighter-adapter', () => ({
   PdfLoader: ({
     children,
     beforeLoad,
+    workerSrc,
   }: {
     children: (doc: unknown) => ReactNode
     beforeLoad: ReactNode
+    workerSrc?: string
   }) => (
-    <div data-testid="pdf-loader">
+    <div data-testid="pdf-loader" data-worker-src={workerSrc}>
       {beforeLoad}
       {children({ numPages: 1 })}
     </div>
@@ -142,5 +144,30 @@ describe('PdfPreview', () => {
 
     fireEvent.click(getScaleContainer())
     expect(mockOnCancel).not.toHaveBeenCalled()
+  })
+
+  it('should load the pdf worker from the configured base path', async () => {
+    vi.resetModules()
+    vi.doMock('@/utils/var', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@/utils/var')>()
+      return { ...actual, basePath: '/dify' }
+    })
+    const { default: SubPathPdfPreview } = await import('../pdf-preview')
+
+    render(<SubPathPdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    expect(screen.getByTestId('pdf-loader')).toHaveAttribute(
+      'data-worker-src',
+      '/dify/pdf.worker.min.mjs',
+    )
+  })
+
+  it('should load the pdf worker from the origin root when no base path is configured', () => {
+    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    expect(screen.getByTestId('pdf-loader')).toHaveAttribute(
+      'data-worker-src',
+      '/pdf.worker.min.mjs',
+    )
   })
 })
