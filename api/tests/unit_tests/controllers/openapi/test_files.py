@@ -1,3 +1,4 @@
+from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -62,7 +63,7 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = api.post.__handler__(api, SimpleNamespace(caller=caller, session=Mock()), app_id="app-1", body=_body())
+        result = unwrap(api.post)(api, SimpleNamespace(caller=caller, session=Mock()), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
     service.upload_file.assert_called_once_with(
@@ -113,7 +114,7 @@ def test_upload_preserves_specific_file_errors(
     ):
         api = AppFileUploadApi()
         with pytest.raises(controller_error) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
+            unwrap(api.post)(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -134,7 +135,7 @@ def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: 
     ):
         api = AppFileUploadApi()
         with pytest.raises(BadRequest) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
+            unwrap(api.post)(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error
