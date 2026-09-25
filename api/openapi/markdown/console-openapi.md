@@ -10330,6 +10330,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query |  | Yes | string |
 | provider | path |  | Yes | string |
 
 #### Request Body

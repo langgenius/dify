@@ -3567,7 +3567,9 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   path: {
     provider: string
   }
-  query?: never
+  query: {
+    credential_id: string
+  }
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
 

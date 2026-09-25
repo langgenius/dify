@@ -457,6 +457,27 @@ class TestModelProviderCredentialApi:
         assert status == 204
         assert result == ""
 
+    def test_delete_via_query_params(self, app: Flask):
+        api = ModelProviderCredentialApi()
+        method = unwrap(api.delete)
+
+        payload = {"credential_id": VALID_UUID}
+
+        with (
+            app.test_request_context("/", method="DELETE", query_string=payload),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.remove_provider_credential",
+                return_value=None,
+            ) as remove_provider_credential,
+        ):
+            result, status = method(api, ParserCredentialDelete.model_validate(payload), "tenant1", provider="openai")
+
+        remove_provider_credential.assert_called_once_with(
+            tenant_id="tenant1", provider="openai", credential_id=VALID_UUID
+        )
+        assert status == 204
+        assert result == ""
+
 
 class TestModelProviderCredentialSwitchApi:
     def test_switch_success(self, app: Flask):
