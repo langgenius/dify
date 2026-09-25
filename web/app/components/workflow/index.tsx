@@ -185,7 +185,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation(['common', 'workflow'])
+    const { t } = useTranslation(['common', 'workflow', 'workflowHistory', 'workflowComments'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
@@ -295,7 +295,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       return collaborationManager.onRestoreIntent((data) => {
         toast.info(
           t(($) => $['versionHistory.action.restoreInProgress'], {
-            ns: 'workflow',
+            ns: 'workflowHistory',
             userName: data.initiatorName,
             versionName: data.versionName || data.versionId,
           }),
@@ -464,8 +464,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentDelete(commentId)
               setShowConfirm(undefined)
@@ -480,8 +480,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string, replyId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentReplyDelete(commentId, replyId)
               setShowConfirm(undefined)

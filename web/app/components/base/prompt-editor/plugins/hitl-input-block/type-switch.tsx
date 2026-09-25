@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const TypeSwitch: FC<Props> = ({ className, isVariable, onIsVariableChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   return (
     <button
       type="button"
@@ -28,7 +28,7 @@ const TypeSwitch: FC<Props> = ({ className, isVariable, onIsVariableChange }) =>
             $[
               `nodes.humanInput.insertInputField.${isVariable ? 'useConstantInstead' : 'useVarInstead'}`
             ],
-          { ns: 'workflow' },
+          { ns: 'workflowHumanInput' },
         )}
       </div>
     </button>

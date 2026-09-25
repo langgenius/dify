@@ -1209,12 +1209,17 @@ describe('AgentPromptEditor', () => {
       try {
         renderAgentPromptEditor('Review /')
 
-        await openSlashMenuFromEditor()
+        const textbox = screen.getByRole('textbox')
+        textbox.focus()
+        expect(textbox).toHaveFocus()
+
+        await openSlashMenuFromEditor(textbox)
         expect(
           screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
         ).toBeInTheDocument()
 
-        fireEvent.focusIn(outsideButton)
+        outsideButton.focus()
+        expect(outsideButton).toHaveFocus()
 
         await waitFor(() => {
           expect(

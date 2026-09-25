@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid as _uuid
+from http import HTTPStatus
 from typing import Any
 
 from flask_restx import Resource
@@ -10,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -36,14 +36,16 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from extensions.ext_application_services import application_services
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode
 from services.account_service import TenantService
-from services.app_service import AppListParams, AppService
+from services.app.access import AppAccessFilter, resolve_app_access_filter
+from services.entities.app_entities import AppListParams, AppSummary
 
 
-def _is_listable(app: App) -> bool:
+def _is_listable(app: AppSummary) -> bool:
     """Whether the openapi app face exposes this app (curated, listable types only)."""
     return app.mode in SUPPORTED_APP_TYPES
 
@@ -147,7 +149,7 @@ class AppListApi(Resource):
             CheckWorkspaceMember(),
         ),
         query=AppListQuery,
-        returns=(200, AppListResponse, "App list"),
+        returns=(HTTPStatus.OK, AppListResponse, "App list"),
     )
     def get(self, ctx: Context, *, query: AppListQuery):
         workspace_id = query.workspace_id
@@ -171,7 +173,7 @@ class AppListApi(Resource):
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), ctx.session)
+            app = application_services().apps.queries.get_visible_app_by_id(str(parsed_uuid), workspace_id)
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
             if not _is_listable(app):
@@ -208,7 +210,7 @@ class AppListApi(Resource):
 
         access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(account_id, workspace_id, params, ctx.session)
+        pagination = application_services().apps.queries.get_paginate_apps(account_id, workspace_id, params)
         if pagination is None:
             return empty
 

@@ -87,7 +87,12 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
               </>
             )}
           </div>
-          {isConfigured && <StatusDot status="success" size="small" className="shrink-0" />}
+          {isConfigured && (
+            <span className="flex shrink-0 items-center">
+              <span className="sr-only">{t(($) => $['mcp.configured'], { ns: 'tools' })}</span>
+              <StatusDot status="success" size="small" />
+            </span>
+          )}
           {!isConfigured && (
             <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
               {t(($) => $['mcp.noConfigured'], { ns: 'tools' })}

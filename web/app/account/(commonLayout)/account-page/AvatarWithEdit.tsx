@@ -8,6 +8,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,16 +16,18 @@ import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
 type InputImageInfo =
   | { file: File }
   | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
-type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
-const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
+const AvatarWithEdit = (props: AvatarProps) => {
   const { t } = useTranslation(['app', 'common'])
+  const { mutateAsync: updateProfile } = useMutation(
+    consoleQuery.account.profile.patch.mutationOptions(),
+  )
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
@@ -57,27 +60,25 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleSaveAvatar = useCallback(
     async (uploadedFileId: string) => {
       try {
-        await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
+        await updateProfile({ body: { avatar: uploadedFileId } })
         setIsShowAvatarPicker(false)
-        onSave?.()
         toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       } catch (e) {
         toast.error((e as Error).message)
       }
     },
-    [onSave, t],
+    [t, updateProfile],
   )
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
-      await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
+      await updateProfile({ body: { avatar: '' } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setIsShowDeleteConfirm(false)
-      onSave?.()
     } catch (e) {
       toast.error((e as Error).message)
     }
-  }, [onSave, t])
+  }, [t, updateProfile])
 
   const handleDeleteAvatarClick = useCallback(() => {
     setIsShowAvatarPicker(false)

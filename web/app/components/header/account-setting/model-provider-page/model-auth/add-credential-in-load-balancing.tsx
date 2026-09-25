@@ -29,12 +29,13 @@ const AddCredentialInLoadBalancing = ({
   provider,
   model,
   configurationMethod,
+  currentCustomConfigurationModelFixedFields,
   modelCredential,
   onSelectCredential,
   onUpdate,
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { available_credentials } = modelCredential
   const canOpenCredentialMenu =
@@ -60,7 +61,7 @@ const AddCredentialInLoadBalancing = ({
           )}
         >
           <span className="mr-2 i-ri-add-line size-4" />
-          {t(($) => $['modelProvider.auth.addCredential'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
         </div>
       )
 
@@ -86,26 +87,23 @@ const AddCredentialInLoadBalancing = ({
       }
       items={[
         {
-          title: isCustomModel ? '' : t(($) => $['modelProvider.auth.apiKeys'], { ns: 'common' }),
+          title: isCustomModel
+            ? ''
+            : t(($) => $['modelProvider.auth.apiKeys'], { ns: 'modelProvider' }),
           model: isCustomModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={
-        isCustomModel
-          ? {
-              __model_name: model.model,
-              __model_type: model.model_type,
-            }
-          : undefined
-      }
+      currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
       placement="bottom-start"
       popupTitle={
-        isCustomModel ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'common' }) : ''
+        isCustomModel
+          ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })
+          : ''
       }
     />
   )

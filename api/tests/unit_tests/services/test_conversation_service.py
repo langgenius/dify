@@ -9,8 +9,10 @@ in-memory SQLite sessions with persisted ORM rows.
 
 import json
 from dataclasses import replace
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from sqlalchemy import asc, desc, event
@@ -19,6 +21,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.credit_usage import CreditUsageAppType
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, ConversationVariable
 from models.agent import (
@@ -590,6 +593,46 @@ class TestConversationServiceHelpers:
 
 class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
+
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
+    def test_imported_variable_id_can_be_used_for_pagination_and_update(self, sqlite_session: Session):
+        app_model = ConversationServiceTestDataFactory.create_app()
+        user = ConversationServiceTestDataFactory.create_account()
+        conversation = ConversationServiceTestDataFactory.create_conversation()
+        variable = variable_factory.build_conversation_variable_from_mapping(
+            {"id": "imported-topic", "name": "topic", "value_type": "string", "value": "original"}
+        )
+        imported_row = ConversationVariable.from_variable(
+            app_id=APP_ID, conversation_id=CONVERSATION_ID, variable=variable
+        )
+        imported_row.created_at = naive_utc_now()
+        next_row = _conversation_variable(variable_id=OTHER_VARIABLE_ID, name="next", value="next value")
+        next_row.created_at = imported_row.created_at + timedelta(seconds=1)
+        sqlite_session.add_all([conversation, imported_row, next_row])
+        sqlite_session.commit()
+
+        first_page = ConversationService.get_conversational_variable(
+            app_model, CONVERSATION_ID, user, limit=1, last_id=None, session=sqlite_session
+        )
+        returned_id = first_page.data[0]["id"]
+        assert returned_id == imported_row.id
+        UUID(returned_id)
+        assert first_page.has_more is True
+
+        second_page = ConversationService.get_conversational_variable(
+            app_model, CONVERSATION_ID, user, limit=1, last_id=returned_id, session=sqlite_session
+        )
+        assert [item["id"] for item in second_page.data] == [OTHER_VARIABLE_ID]
+        assert second_page.has_more is False
+
+        updated = ConversationService.update_conversation_variable(
+            app_model, CONVERSATION_ID, returned_id, user, "updated", session=sqlite_session
+        )
+        assert updated["id"] == returned_id
+        assert updated["value"] == "updated"
+        sqlite_session.refresh(imported_row)
+        assert imported_row.to_variable().id == "imported-topic"
+        assert imported_row.to_variable().value == "updated"
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
     def test_get_conversational_variable_with_name_filter_mysql(

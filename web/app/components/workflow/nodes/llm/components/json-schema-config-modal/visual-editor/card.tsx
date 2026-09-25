@@ -10,7 +10,7 @@ type CardProps = {
 }
 
 const Card: FC<CardProps> = ({ name, type, required, description }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <div className="flex flex-col py-0.5">
@@ -21,7 +21,7 @@ const Card: FC<CardProps> = ({ name, type, required, description }) => {
         <div className="px-1 py-0.5 system-xs-medium text-text-tertiary">{type}</div>
         {required && (
           <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-            {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflowModels' })}
           </div>
         )}
       </div>

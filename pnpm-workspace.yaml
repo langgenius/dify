@@ -5,6 +5,7 @@ allowBuilds:
   canvas: false
   esbuild: false
   sharp: false
+autoDedupe: true
 autoInstallPeers: false
 blockExoticSubdeps: true
 catalogMode: strict
@@ -158,7 +159,7 @@ catalog:
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
-  cron-parser: 5.6.2
+  cron-parser: 5.7.0
   dayjs: 1.11.23
   decimal.js: 10.6.0
   dompurify: 3.4.15

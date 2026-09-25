@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Când modelul de încorporare suportă multi-modal, vă rugăm să selectați un model de reordonare multi-modal pentru o performanță mai bună.",
   "form.retrievalSetting.title": "Setări de recuperare",
   "form.save": "Salvare",
-  "form.searchModel": "Căutare model",
   "form.summaryAutoGen": "Generare Automată Rezumat",
   "form.summaryAutoGenEnableTip": "Odată activat, rezumatele vor fi generate automat pentru documentele nou adăugate. Documentele existente pot fi încă rezumate manual.",
   "form.summaryAutoGenTip": "Rezumatele sunt generate automat pentru documentele nou adăugate. Documentele existente pot fi încă rezumate manual.",

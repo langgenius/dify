@@ -128,3 +128,24 @@ def test_all_variables_exist_no_changes(monkeypatch: pytest.MonkeyPatch, sqlite_
     assert [variable.id for variable in variables] == [VAR_1_ID, VAR_2_ID]
     persisted = sqlite_session.scalars(select(ConversationVariable)).all()
     assert len(persisted) == 2
+
+
+@pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+def test_non_uuid_conversation_variable_is_created_once(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    author_id = "opt-comp-prompt-var"
+    variable = _variable(author_id, "optimization_comparison_prompt", "-")
+    _bind_runner_sessions(monkeypatch, sqlite_session)
+    runner = _runner([variable])
+
+    first = runner._initialize_conversation_variables()
+    second = runner._initialize_conversation_variables()
+
+    expected_row_id = ConversationVariable.storage_id(variable)
+    assert variable.id == author_id
+    assert [item.id for item in first] == [author_id]
+    assert [item.id for item in second] == [author_id]
+    persisted = sqlite_session.scalars(select(ConversationVariable)).all()
+    assert [row.id for row in persisted] == [expected_row_id]
+    assert persisted[0].to_variable().id == author_id

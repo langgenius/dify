@@ -38,7 +38,7 @@ type DocumentSettingsProps = {
 }
 
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
-  const { t } = useTranslation(['common', 'datasetCreation', 'datasetPipeline'])
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetPipeline', 'navigation'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
@@ -65,7 +65,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
-  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })
   useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info

@@ -50,7 +50,7 @@ const userProfile = {
   email: 'current@example.com',
   avatar_url: 'current-avatar.png',
 }
-const accountMenuAccessibleName = `${userProfile.name} common.account.account`
+const accountMenuAccessibleName = `${userProfile.name} accountSettings.account.account`
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -130,30 +130,32 @@ describe('AccountDropdown', () => {
     const container = document.createElement('div')
     container.innerHTML = html
 
-    expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
+    expect(
+      container.querySelector('button[aria-label="accountSettings.account.account"]'),
+    ).toBeDisabled()
   })
 
   it('opens the main navigation account menu through the composed trigger', async () => {
     const user = userEvent.setup()
     renderAccountDropdown()
 
-    const trigger = screen.getByRole('button', { name: 'common.account.account' })
+    const trigger = screen.getByRole('button', { name: 'accountSettings.account.account' })
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
     await user.click(trigger)
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
     expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByText('common.settings.preferences')).toBeInTheDocument()
-    expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
+    expect(screen.getByText('navigation.settings.preferences')).toBeInTheDocument()
+    expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
   })
 
   it('opens preferences from the account menu', async () => {
     const user = userEvent.setup()
     renderAccountDropdown()
 
-    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
-    await user.click(await screen.findByText('common.settings.preferences'))
+    await user.click(screen.getByRole('button', { name: 'accountSettings.account.account' }))
+    await user.click(await screen.findByText('navigation.settings.preferences'))
 
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
@@ -162,7 +164,7 @@ describe('AccountDropdown', () => {
     mockLogout.mockResolvedValue({})
     renderAccountDropdown()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'accountSettings.account.account' }))
     fireEvent.click(await screen.findByText('common.userProfile.logout'))
 
     await waitFor(() => {

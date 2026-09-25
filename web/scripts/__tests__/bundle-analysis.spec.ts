@@ -2,7 +2,14 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
-import { collect, compare, parseAnalysis, parseSnapshot, staticClosure } from '../bundle-analysis'
+import {
+  collect,
+  compare,
+  parseAnalysis,
+  parseSnapshot,
+  shouldComment,
+  staticClosure,
+} from '../bundle-analysis'
 
 const dirs: string[] = []
 const sha = 'a'.repeat(40)
@@ -111,4 +118,49 @@ it('reports additions, removals, gzip differences and package attribution withou
   expect(report).toContain('+1.00 KiB')
   expect(report).toContain('not page first-load metrics')
   expect(() => parseSnapshot(JSON.stringify({ ...base, totals: {} }))).toThrow('Invalid')
+})
+
+const snapshot = () => ({
+  version: 1 as const,
+  commit: sha,
+  vinext: '1.0.0',
+  rolldown: '1.2.9',
+  totals: { js: { raw: 100000, gzip: 20000 }, css: { raw: 50000, gzip: 10000 } },
+  entries: { shared: { raw: 50000, gzip: 10000 } },
+  packages: { example: 10000 },
+})
+
+it.each([
+  ['js', 5 * 1024],
+  ['css', 1024],
+  ['entry', 2 * 1024],
+] as const)('comments at the %s gzip threshold in either direction', (metric, threshold) => {
+  for (const direction of [-1, 1]) {
+    const base = snapshot()
+    const merged = snapshot()
+    const target = metric === 'entry' ? merged.entries.shared : merged.totals[metric]
+    target.gzip += direction * (threshold - 1)
+    expect(shouldComment(base, merged)).toBe(false)
+    target.gzip += direction
+    expect(shouldComment(base, merged)).toBe(true)
+    target.gzip += direction
+    expect(shouldComment(base, merged)).toBe(true)
+  }
+})
+
+it('keeps tiny gzip changes and attribution-only or entry-boundary changes in the full report', () => {
+  const base = snapshot()
+  expect(shouldComment(base, base)).toBe(false)
+  const merged = {
+    ...snapshot(),
+    totals: { js: { raw: 200000, gzip: 20500 }, css: { raw: 100000, gzip: 10000 } },
+    entries: { added: { raw: 100000, gzip: 20000 } },
+    packages: { example: 100000 },
+  }
+  expect(shouldComment(base, merged)).toBe(false)
+  const report = compare(base, merged)
+  expect(report).toContain('+500 B (+2.50%)')
+  expect(report).toContain('New entry')
+  expect(report).toContain('Removed entry')
+  expect(report).toContain('example')
 })
