@@ -1,7 +1,7 @@
 """Unit tests for the Console workflow-run application service."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -53,17 +53,6 @@ def _workflow_run(
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
     )
-
-
-def test_init_keeps_injected_dependencies(
-    service_dependencies: tuple[MagicMock, MagicMock],
-) -> None:
-    node_executions, workflow_runs = service_dependencies
-
-    service = _service(service_dependencies)
-
-    assert service._workflow_runs is workflow_runs
-    assert service._node_executions is node_executions
 
 
 class TestWorkflowRunServiceQueries:
@@ -213,4 +202,4 @@ class TestWorkflowRunServiceQueries:
             app_id="app-1",
             workflow_run_id="run-1",
         )
-        mock_assemble.assert_called_once_with(expected_executions, node_executions)
+        mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)

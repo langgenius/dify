@@ -25,10 +25,9 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -56,7 +55,7 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['accountSettings'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme =
     theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
@@ -66,7 +65,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
-          label={t(($) => $['account.appearanceLabel'], { ns: 'common' })}
+          label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
@@ -85,7 +84,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
-              label={t(($) => $['account.appearanceLight'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<Theme>
@@ -95,7 +94,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
-              label={t(($) => $['account.appearanceDark'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<Theme>
@@ -105,7 +104,7 @@ function AppearanceSubmenu() {
           >
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
-              label={t(($) => $['account.appearanceSystem'], { ns: 'common' })}
+              label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
             />
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
@@ -119,15 +118,19 @@ type MainNavMenuContentProps = {
 }
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings', 'navigation'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: ({ is_student }) => is_student ?? false,
     }),
   )
@@ -174,7 +177,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-account-circle-line"
-            label={t(($) => $['account.account'], { ns: 'common' })}
+            label={t(($) => $['account.account'], { ns: 'accountSettings' })}
             trailing={<ExternalLinkIndicator />}
           />
         </DropdownMenuLinkItem>
@@ -184,7 +187,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"
-            label={t(($) => $['settings.preferences'], { ns: 'common' })}
+            label={t(($) => $['settings.preferences'], { ns: 'navigation' })}
           />
         </DropdownMenuItem>
         <AppearanceSubmenu />

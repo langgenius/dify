@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
 
 type SegmentAddProps = {
@@ -31,7 +31,7 @@ export function SegmentAdd({
   showBatchModal,
   embedding,
 }: SegmentAddProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetDocuments'])
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(

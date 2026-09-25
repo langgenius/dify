@@ -1,20 +1,20 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: canReplaceLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => data.can_replace_logo,

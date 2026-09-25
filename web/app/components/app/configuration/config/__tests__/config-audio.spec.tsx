@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -73,13 +72,13 @@ describe('ConfigAudio', () => {
   it('should not render when the audio configuration is hidden', () => {
     renderConfigAudio({ isVisible: false })
 
-    expect(screen.queryByText('appDebug.feature.audioUpload.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('fileUpload.feature.audioUpload.title')).not.toBeInTheDocument()
   })
 
   it('should display the audio toggle state based on feature store data', () => {
     renderConfigAudio({ allowedTypes: [SupportUploadFileTypes.audio] })
 
-    expect(screen.getByText('appDebug.feature.audioUpload.title')).toBeInTheDocument()
+    expect(screen.getByText('fileUpload.feature.audioUpload.title')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 

@@ -19,7 +19,6 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account
-from models.account import Tenant
 from models.dataset import (
     Dataset,
     DatasetCollectionBinding,
@@ -36,6 +35,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
     MagicMock,
@@ -51,13 +51,13 @@ def _account(
     tenant_id: str = "tenant-1",
     role: TenantAccountRole = TenantAccountRole.OWNER,
 ) -> Account:
-    account = Account(name=f"User {account_id}", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.role = role
-    tenant = Tenant(name=f"Tenant {tenant_id}")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name=f"User {account_id}",
+        email=f"{account_id}@example.com",
+        role=role,
+        tenant=make_tenant(tenant_id=tenant_id, name=f"Tenant {tenant_id}"),
+    )
 
 
 def _dataset(
@@ -71,8 +71,8 @@ def _dataset(
     indexing_technique: str = IndexTechniqueType.ECONOMY,
     chunk_structure: str | None = "text_model",
 ) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
         name=name,
         description="",
@@ -271,7 +271,7 @@ class TestDatasetServiceRetrieval:
         assert DatasetService.get_dataset_for_tenant(foreign.id, "tenant-1", session=sqlite_session) is None
 
     def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(
-        self, config_overrides: Callable[..., None], sqlite_session: Session
+        self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
     ) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         accessible = _dataset(dataset_id="accessible", name="Accessible", maintainer="other")
@@ -297,13 +297,14 @@ class TestDatasetServiceRetrieval:
                 user=user,
                 accessible_dataset_ids=[accessible.id],
                 include_own_datasets=True,
+                tags=application_tags,
             )
 
         assert total == 2
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
 
     def test_get_datasets_without_user_keeps_only_team_visible_rows(
-        self, config_overrides: Callable[..., None], sqlite_session: Session
+        self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
     ) -> None:
         shared = _dataset(dataset_id="shared", name="Shared", permission=DatasetPermissionEnum.ALL_TEAM)
         private = _dataset(dataset_id="private", name="Private", permission=DatasetPermissionEnum.ONLY_ME)
@@ -312,10 +313,7 @@ class TestDatasetServiceRetrieval:
 
         config_overrides(RBAC_ENABLED=False)
         datasets, total = DatasetService.get_datasets(
-            page=1,
-            per_page=20,
-            session=sqlite_session,
-            tenant_id="tenant-1",
+            page=1, per_page=20, session=sqlite_session, tenant_id="tenant-1", tags=application_tags
         )
 
         assert total == 1
@@ -345,24 +343,21 @@ class TestDatasetServiceRetrieval:
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
 
     def test_get_datasets_rbac_without_user_returns_no_rows(
-        self, config_overrides: Callable[..., None], sqlite_session: Session
+        self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
     ) -> None:
         sqlite_session.add(_dataset())
         sqlite_session.commit()
 
         config_overrides(RBAC_ENABLED=True)
         datasets, total = DatasetService.get_datasets(
-            page=1,
-            per_page=20,
-            session=sqlite_session,
-            tenant_id="tenant-1",
+            page=1, per_page=20, session=sqlite_session, tenant_id="tenant-1", tags=application_tags
         )
 
         assert datasets == []
         assert total == 0
 
     def test_get_datasets_rbac_include_all_requires_workspace_permission(
-        self, config_overrides: Callable[..., None], sqlite_session: Session
+        self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
     ) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         sqlite_session.add_all(
@@ -389,6 +384,7 @@ class TestDatasetServiceRetrieval:
                 tenant_id="tenant-1",
                 user=user,
                 include_all=True,
+                tags=application_tags,
             )
 
         assert total == 2
@@ -1048,6 +1044,21 @@ class TestDatasetPermissions:
         DatasetService.check_dataset_permission(dataset, permitted_user, sqlite_session)
         with pytest.raises(NoPermissionError):
             DatasetService.check_dataset_permission(dataset, denied_user, sqlite_session)
+        with pytest.raises(NoPermissionError):
+            DatasetService.check_dataset_permission(dataset, foreign_user, sqlite_session)
+
+    def test_check_dataset_permission_skips_legacy_acl_in_rbac_mode(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
+        dataset = _dataset(permission=DatasetPermissionEnum.ONLY_ME, maintainer="owner")
+        non_member = _account(account_id="non-member", role=TenantAccountRole.NORMAL)
+        foreign_user = _account(account_id="foreign", tenant_id="tenant-2", role=TenantAccountRole.NORMAL)
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        config_overrides(RBAC_ENABLED=True)
+
+        DatasetService.check_dataset_permission(dataset, non_member, sqlite_session)
         with pytest.raises(NoPermissionError):
             DatasetService.check_dataset_permission(dataset, foreign_user, sqlite_session)
 

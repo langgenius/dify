@@ -8,7 +8,7 @@ const Footer: FC<YearAndMonthPickerFooterProps> = ({
   handleYearMonthCancel,
   handleYearMonthConfirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['time'])
 
   return (
     <div className="grid grid-cols-2 gap-x-1 p-2">

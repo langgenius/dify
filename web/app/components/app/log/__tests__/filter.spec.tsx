@@ -3,7 +3,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,

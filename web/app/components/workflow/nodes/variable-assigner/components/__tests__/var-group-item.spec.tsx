@@ -1,12 +1,12 @@
 import type { ComponentProps } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen } from '@testing-library/react'
 import { createNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import VarGroupItem from '../var-group-item'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -67,7 +67,7 @@ describe('variable-assigner/var-group-item', () => {
       onGroupNameChange: handleGroupNameChange,
     })
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Group_A'))
     fireEvent.change(screen.getByDisplayValue('Group_A'), {

@@ -8,7 +8,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -17,9 +16,9 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -34,7 +33,7 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'
@@ -51,7 +50,7 @@ type Props = Readonly<{
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
@@ -185,7 +184,10 @@ const Annotation: FC<Props> = (props) => {
                     'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2',
                   )}
                 >
-                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-communication-message-fast size-4 text-util-colors-indigo-indigo-600"
+                  />
                   <div className="system-sm-medium text-text-primary">
                     {t(($) => $.name, { ns: 'appAnnotation' })}
                   </div>
@@ -248,7 +250,7 @@ const Annotation: FC<Props> = (props) => {
           </div>
         </Filter>
         {isLoading ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             list={list}

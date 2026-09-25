@@ -14,7 +14,10 @@ let mockWorkspacePermissionKeys: string[] = ['plugin.model_config']
 function createWrapper(deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   return createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
-    features: { billing: { subscription: { plan: mockPlanType } } },
+    features: {
+      billing: { subscription: { plan: mockPlanType } },
+      model_load_balancing_enabled: mockModelLoadBalancingEnabled,
+    },
   }).wrapper
 }
 
@@ -24,10 +27,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockModelLoadBalancingEnabled,
-}))
 
 vi.mock('@/service/common', () => ({
   enableModel: vi.fn(),
@@ -43,8 +42,17 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ children, nameClassName }: { children: React.ReactNode; nameClassName?: string }) => (
+  default: ({
+    children,
+    nameClassName,
+    nameId,
+  }: {
+    children: React.ReactNode
+    nameClassName?: string
+    nameId?: string
+  }) => (
     <div data-testid="model-name" className={nameClassName}>
+      <span id={nameId}>gpt-4</span>
       {children}
     </div>
   ),
@@ -93,6 +101,7 @@ describe('ModelListItem', () => {
     })
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
     expect(screen.getByTestId('model-name')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'gpt-4' })).toBeInTheDocument()
   })
 
   it('should disable an active model when switch is clicked', async () => {

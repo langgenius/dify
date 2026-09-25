@@ -1,6 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -171,5 +172,5 @@ function renderWorkflowComponent(
   createConsoleQueryWrapper({ queryClient })
   seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
   seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
-  return renderWorkflow(ui, { ...options, queryClient })
+  return renderWorkflow(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { ...options, queryClient })
 }

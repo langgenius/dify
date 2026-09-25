@@ -16,18 +16,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -70,9 +67,9 @@ import {
   trackAgentPreviewModeRun,
   useInlineAgentScope,
 } from '@/features/agent-v2/analytics'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -123,7 +120,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
   if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -158,8 +155,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
     } | null
   }
 }) {
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
 
   return (
     <AgentOrchestratePanel
@@ -167,13 +163,11 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
-      textGenerationModelList={textGenerationModelList}
       readOnly
       showHeader={false}
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onPublish={() => undefined}
       onOpenVersions={() => undefined}
     />
   )
@@ -196,7 +190,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
   if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -247,7 +241,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -297,8 +291,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation('common')
-  const { t: tAgent } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
@@ -325,8 +319,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
   const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
@@ -687,7 +680,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -716,9 +708,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           }
           className="min-w-90"
           onSelectModel={setConfigureModel}
-          onPublish={() => {
-            void saveDraft()
-          }}
           onOpenVersions={() => undefined}
         />
       }
@@ -826,10 +815,10 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation('common')
-  const canManageAgents = useCanManageAgents()
+  const { t } = useTranslation(['common', 'agentRoster'])
+  const canCreateAgents = useCanCreateAgents()
 
-  if (!canManageAgents) return null
+  if (!canCreateAgents) return null
 
   return (
     <DropdownMenu modal={false}>
@@ -850,7 +839,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -867,12 +856,9 @@ function useAgentOrchestrateModelOptions() {
       }
     : undefined
   const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
     setConfigureModel: setModel,
-    textGenerationModelList,
   }
 }

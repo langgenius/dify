@@ -12,7 +12,7 @@ type IInvitationLinkProps = {
 }
 
 const InvitationLink = ({ value }: IInvitationLinkProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi'])
   const [isCopied, setIsCopied] = useState(false)
 
   const copyHandle = useCallback(() => {

@@ -1,6 +1,6 @@
 import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import { infiniteQueryOptions, keepPreviousData } from '@tanstack/react-query'
-import { marketplaceQuery } from '@/service/client'
+import { marketplaceQuery } from '@/service/marketplace'
 import { getMarketplacePlugins } from './utils'
 
 export const getMarketplacePluginsInfiniteQueryOptions = (

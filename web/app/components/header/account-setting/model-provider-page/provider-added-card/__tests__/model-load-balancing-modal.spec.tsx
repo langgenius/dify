@@ -56,8 +56,8 @@ let mockCredentialData: CredentialData | undefined = {
   current_credential_name: 'Default',
 }
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     default: {
@@ -214,7 +214,7 @@ describe('ModelLoadBalancingModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
   })
 
   it('should render predefined model content', () => {
@@ -601,7 +601,7 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  it('should toggle modal from enabled to disabled when clicking the card', async () => {
+  it('should toggle to model credentials from the named mode button with the keyboard', async () => {
     renderModal(
       <ModelLoadBalancingModal
         provider={mockProvider}
@@ -615,12 +615,11 @@ describe('ModelLoadBalancingModal', () => {
     // draftConfig.enabled=true → title shows configLoadBalancing
     expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
 
-    // Clicking the card when enabled=true toggles to disabled
-    const card = screen
-      .getByText(/modelProvider\.auth\.providerManaged$/)
-      .closest('div[class]')!
-      .closest('div[class]')!
-    await user.click(card)
+    const modeButton = screen.getByRole('button', {
+      name: 'modelProvider.modelProvider.auth.providerManaged',
+    })
+    modeButton.focus()
+    await user.keyboard('{Enter}')
 
     // After toggling, title should show configModel (disabled state)
     // After toggling, title should show configModel (disabled state)

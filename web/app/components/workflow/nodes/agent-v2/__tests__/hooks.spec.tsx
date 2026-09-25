@@ -130,7 +130,7 @@ const mockSnippetComposerQueryOptions = vi.hoisted(() =>
 )
 const trackCreateAppMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -146,7 +146,7 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

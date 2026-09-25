@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppSourceType } from '@/service/share'
 import GenerationItem from '../index'
@@ -57,7 +56,7 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{`markdown:${content}`}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     warning: (...args: unknown[]) => mockToastWarning(...args),
     success: vi.fn(),

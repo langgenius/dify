@@ -20,8 +20,8 @@ export function VersionSelection({
   request: DeploymentDialogRequest
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const title = versionSelectionTitle(
     request,
     t(($) => $['versions.deployTo'], { name: request.environment }),
@@ -70,8 +70,8 @@ export function EmbeddedVersionSelection({
   onBack: () => void
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const title = versionSelectionTitle(
     request,
     t(($) => $['versions.deployTo'], { name: request.environment }),

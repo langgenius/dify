@@ -1,6 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -8,10 +7,11 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import useTheme from '@/hooks/use-theme'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidAllLastRun,
   useResetWorkflowVersionHistory,
@@ -29,7 +29,7 @@ export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
   const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -85,7 +85,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
         versionId: currentVersion.id,
         versionName: getWorkflowVersionName(
           currentVersion,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
         ),
         initiatorUserId: userProfile.id,
         initiatorName: userProfile.name,
@@ -138,13 +138,13 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
-      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflow' }))
+      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflowHistory' }))
       deleteAllInspectVars()
       invalidAllLastRun()
       await emitRestoreComplete(true)
       await emitWorkflowUpdate()
     } catch {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflow' }))
+      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
       await emitRestoreComplete(false, 'restore failed')
     } finally {
       resetWorkflowVersionHistory()

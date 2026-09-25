@@ -11,10 +11,10 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function ArchivedLogsNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

@@ -47,7 +47,7 @@ def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
         tenant_id="test_tenant",
         icon="",
         server_url="https://server.invalid",
-        provider_id="provider_1",
+        server_identifier="provider_1",
         headers={},
     )
 

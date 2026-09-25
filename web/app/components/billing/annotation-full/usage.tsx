@@ -3,8 +3,7 @@ import type { FC } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
+import { consoleQuery } from '@/service/console'
 import UsageInfo from '../usage-info'
 import { parseLimit } from '../utils'
 
@@ -13,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const Usage: FC<Props> = ({ className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.annotation_quota_limit,
@@ -23,7 +22,7 @@ const Usage: FC<Props> = ({ className }) => {
   return (
     <UsageInfo
       className={className}
-      Icon={MessageFastPlus}
+      iconClassName={'i-custom-vender-line-communication-message-fast-plus'}
       name={t(($) => $['annotatedResponse.quotaTitle'], { ns: 'billing' })}
       usage={annotationQuota.size}
       total={parseLimit(annotationQuota.limit)}

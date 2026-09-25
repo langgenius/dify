@@ -1701,34 +1701,6 @@ class TestTenantService:
         assert dataset_operators[0].email == operator_email
         assert dataset_operators[0].role == "dataset_operator"
 
-    def test_get_custom_config_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test getting custom config successfully.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        theme = fake.random_element(elements=("dark", "light"))
-        language = fake.random_element(elements=("zh-CN", "en-US"))
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
-
-        # Create tenant with custom config
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-
-        # Set custom config
-        custom_config = {"theme": theme, "language": language, "feature_flags": {"beta": True}}
-        tenant.custom_config_dict = custom_config
-
-        db_session_with_containers.commit()
-
-        # Get custom config
-        retrieved_config = TenantService.get_custom_config(tenant.id)
-
-        assert retrieved_config == custom_config
-        assert retrieved_config["theme"] == theme
-        assert retrieved_config["language"] == language
-        assert retrieved_config["feature_flags"]["beta"] is True
-
 
 class TestRegisterService:
     """Integration tests for RegisterService using testcontainers."""

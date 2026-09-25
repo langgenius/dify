@@ -20,9 +20,8 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
@@ -57,7 +56,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     forwardedRef,
   ) => {
     const params = useParams()
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflowComments', 'workflowAgent'])
     const appId = params.appId as string
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
@@ -83,7 +82,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
     const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
     const resolvedPlaceholder =
-      placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflow' })
+      placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
     const BASE_PADDING = 4
     const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
     const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(
@@ -569,7 +568,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               className="absolute right-1 bottom-0 z-20 flex items-end gap-1"
             >
               <IconButton
-                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflow' })}
+                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
                 size="lg"
                 disabled={shouldDisableMentionButton}
                 className="z-20 transition-opacity data-disabled:opacity-40"
@@ -606,7 +605,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               className="absolute inset-x-1 bottom-0 z-20 flex items-end justify-between"
             >
               <IconButton
-                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflow' })}
+                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
                 size="lg"
                 disabled={shouldDisableMentionButton}
                 className="z-20 transition-opacity data-disabled:opacity-40"
@@ -628,7 +627,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
                   )}
                   <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
-                  {!loading && <EnterKey className="size-4" />}
+                  {!loading && (
+                    <span aria-hidden className="i-custom-public-common-enter-key size-4" />
+                  )}
                 </Button>
               </div>
             </div>

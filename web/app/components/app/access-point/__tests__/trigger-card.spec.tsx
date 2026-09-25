@@ -1,9 +1,9 @@
-import type { AccessPointAppInfo } from '../shared/utils'
 import type { AppTrigger } from '@/service/use-tools'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   updateTriggerStatus: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byAppId: {
@@ -72,7 +72,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 const appInfo = {
   id: 'app-1',
   mode: AppModeEnum.WORKFLOW,
-} as AccessPointAppInfo
+} as App
 
 function createTrigger(id: string, status: AppTrigger['status']): AppTrigger {
   return {

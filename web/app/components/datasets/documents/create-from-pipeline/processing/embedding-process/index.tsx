@@ -5,6 +5,7 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -18,7 +19,6 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -28,7 +28,7 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
@@ -48,7 +48,7 @@ const EmbeddingProcess = ({
   indexingType,
   retrievalMethod,
 }: EmbeddingProcessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -252,7 +252,7 @@ const EmbeddingProcess = ({
             </div>
           ))}
         </div>
-        <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
         <RuleDetail
           sourceData={ruleDetail}
           indexingType={indexingType}

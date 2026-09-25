@@ -142,10 +142,10 @@ register_response_schema_models(
 )
 
 
-def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
+def _is_role_enabled(role: TenantAccountRole | str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
-    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
+    return dify_config.DATASET_OPERATOR_ENABLED
 
 
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> tuple[int, int]:
@@ -254,7 +254,7 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
-        if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
+        if not _is_role_enabled(invitee_role):
             raise InvalidMemberRoleError()
 
         # Check workspace permission for member invitations
@@ -374,7 +374,7 @@ class MemberUpdateRoleApi(Resource):
             return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not _is_role_enabled(new_role, current_user.current_tenant.id):
+        if not _is_role_enabled(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         member = db.session.get(Account, str(member_id))
         if not member:

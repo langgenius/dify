@@ -54,11 +54,11 @@ const consoleStateRef = vi.hoisted(() => ({
 }))
 const mockUpdateCustomConfig = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
       if (prop === 'workspaces') {
@@ -137,7 +137,6 @@ const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): Conso
     userProfile: testUserProfile,
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
     workspacePermissionKeys: ['customization.manage'],
     refreshCurrentWorkspace: vi.fn(),

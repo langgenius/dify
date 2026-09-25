@@ -1,10 +1,10 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
-import * as exploreService from '@/service/explore'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -48,8 +48,8 @@ const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
     new Proxy(operation, {
       get(target, property, receiver) {
@@ -141,7 +141,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -159,7 +159,6 @@ vi.mock('use-context-selector', () => ({
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
-  isCurrentWorkspaceEditor: true,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
@@ -191,8 +190,14 @@ vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
+const { installedRequest } = vi.hoisted(() => ({
+  installedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: installedRequest,
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -215,11 +220,13 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   }),
 }))
 
-// Mock hooks
-const mockOpenAsyncWindow = vi.fn()
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
+const popup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+} = { location: { href: '' }, opener: null, close: vi.fn() }
+let installedApps: InstalledAppListResponse
+const openWindow = vi.fn<() => typeof popup | null>()
 
 // Mock utils
 const { mockGetRedirection } = vi.hoisted(() => ({
@@ -240,7 +247,7 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     void importFn().catch(() => {})
     const fnString = importFn.toString()
@@ -340,7 +347,7 @@ vi.mock('@/next/dynamic', () => ({
         )
       }
     }
-    if (fnString.includes('dsl-export-confirm-modal')) {
+    if (fnString.includes('app/export-confirm-modal')) {
       return function MockDSLExportModal({
         onClose,
         onConfirm,
@@ -431,7 +438,33 @@ describe('AppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOpenAsyncWindow.mockReset()
+    openWindow.mockReturnValue(popup)
+    popup.location.href = ''
+    popup.opener = window
+    vi.stubGlobal('open', openWindow)
+    installedApps = {
+      has_more: false,
+      next_cursor: null,
+      installed_apps: ['installed-1', 'installed-2'].map((id) => ({
+        id,
+        app_owner_tenant_id: 'workspace-1',
+        editable: false,
+        is_pinned: false,
+        last_used_at: null,
+        app: {
+          id: mockApp.id,
+          name: mockApp.name,
+          description: '',
+          mode: 'chat',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+          icon_url: null,
+          use_icon_as_answer_icon: false,
+        },
+      })),
+    }
+    installedRequest.mockResolvedValue(Response.json(installedApps))
     mockWebappAuthEnabled = false
     mockRbacEnabled = true
     mockUserCanAccessApp.result = true
@@ -446,9 +479,12 @@ describe('AppCard', () => {
     mockAppDslExport.exportAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockWorkflowAppDslExport.isExporting = false
     mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
-    mockConsoleState.isCurrentWorkspaceEditor = true
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   describe('Rendering', () => {
@@ -546,10 +582,10 @@ describe('AppCard', () => {
     it('should render app icon', () => {
       // AppIcon component renders the emoji icon from app data
       const { container } = render(<AppCard app={mockApp} />)
-      const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
+      const emojiIcon = screen.getByText(mockApp.icon!)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
-      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
+      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should treat a redundant image icon as decorative', () => {
@@ -608,7 +644,6 @@ describe('AppCard', () => {
     })
 
     it('should allow app edit permission to bind tags without workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
@@ -626,7 +661,6 @@ describe('AppCard', () => {
     })
 
     it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = ['app.tag.manage']
       mockConsoleState.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
@@ -644,7 +678,6 @@ describe('AppCard', () => {
     })
 
     it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
@@ -766,7 +799,7 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('menuitem', { name: 'app.editApp' })).toBeInTheDocument()
       expect(screen.getByRole('menuitem', { name: 'app.duplicate' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'app.export' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toBeInTheDocument()
     })
 
     it('should keep card actions outside the card context menu trigger', async () => {
@@ -804,7 +837,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show duplicate option on starred cards when user can create apps without app import export permission', async () => {
@@ -820,7 +853,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show export option when dropdown menu is opened', async () => {
@@ -829,7 +862,7 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
 
       await waitFor(() => {
-        expect(screen.getByText('app.export')).toBeInTheDocument()
+        expect(screen.getByText('app.exportApp')).toBeInTheDocument()
       })
     })
 
@@ -1185,7 +1218,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       expect(mockAppDslExport.exportAppDsl).toHaveBeenCalledWith({
@@ -1288,7 +1321,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1311,7 +1344,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1325,7 +1358,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1344,7 +1377,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1366,7 +1399,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1444,46 +1477,39 @@ describe('AppCard', () => {
       })
     })
 
-    it('should handle open in explore via async window', async () => {
-      let openedUrl = ''
-      // Configure mockOpenAsyncWindow to actually call the callback
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        openedUrl = await callback()
+    it('opens the popup before lookup completes and navigates to the first installed app', async () => {
+      let resolveResponse!: (response: Response) => void
+      const response = new Promise<Response>((resolve) => {
+        resolveResponse = resolve
       })
-
+      installedRequest.mockReturnValueOnce(response)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
 
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
-        expect(openedUrl).toBe('/installed/installed-1')
-      })
+      expect(openWindow).toHaveBeenCalledOnce()
+      expect(openWindow).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+      expect(popup.opener).toBeNull()
+      expect(popup.location.href).toBe('')
+      await waitFor(() => expect(installedRequest).toHaveBeenCalledOnce())
+      const url = new URL(installedRequest.mock.calls[0]![0])
+      expect(url.pathname).toBe('/console/api/installed-apps')
+      expect(url.searchParams.get('app_id')).toBe(mockApp.id)
+      expect(installedRequest.mock.calls[0]![2].request.method).toBe('GET')
+      resolveResponse(Response.json(installedApps))
+      await waitFor(() => expect(popup.location.href).toBe('/installed/installed-1'))
+      expect(popup.close).not.toHaveBeenCalled()
     })
 
-    it('should show string errors from open in explore onError callback', async () => {
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (
-          _callback: () => Promise<string>,
-          options?: { onError?: (err: unknown) => void },
-        ) => {
-          options?.onError?.('Window failed')
-        },
-      )
-
+    it('reports a blocked popup without making a request', async () => {
+      openWindow.mockReturnValueOnce(null)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window failed' })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      expect(installedRequest).not.toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Failed to open new window',
       })
     })
   })
@@ -1532,70 +1558,38 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when installed_apps is empty array', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockResolvedValueOnce({
-        has_more: false,
-        installed_apps: [],
-        next_cursor: null,
-      })
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-          try {
-            await callback()
-          } catch (err) {
-            options?.onError?.(err)
-          }
-        },
+    it('closes the popup and reports an empty installed list', async () => {
+      installedRequest.mockResolvedValueOnce(
+        Response.json({ has_more: false, installed_apps: [], next_cursor: null }),
       )
-
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.notPublishedYet',
-        })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when API throws in callback', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockRejectedValueOnce(
-        new Error('Network error'),
-      )
-
-      // Configure mockOpenAsyncWindow to call the callback without catching
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        return await callback()
-      })
-
+    it('closes the popup and reports a failed lookup without retrying', async () => {
+      installedRequest.mockRejectedValueOnce(new Error('Network error'))
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(installedRequest).toHaveBeenCalledOnce()
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Network error' })
     })
   })
 
@@ -1610,14 +1604,6 @@ describe('AppCard', () => {
         // openInExplore should not be shown for draft trigger apps
         expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Non-editor User', () => {
-    it('should handle non-editor workspace users', () => {
-      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 
@@ -1666,7 +1652,7 @@ describe('AppCard', () => {
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
       expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
 
     it('should hide resource access option when RBAC is disabled', async () => {
@@ -1683,7 +1669,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
 
     it('should navigate to app access config when resource access is clicked', async () => {
@@ -1696,7 +1682,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+        fireEvent.click(screen.getByText('navigation.settings.resourceAccess'))
       })
 
       expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/access-config')
@@ -1728,8 +1714,8 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',

@@ -32,7 +32,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       externalKnowledgeApi: {
@@ -44,10 +44,6 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
-  ApiConnectionMod: (props: Record<string, unknown>) => <span data-testid="api-icon" {...props} />,
 }))
 
 const { default: ExternalApiSelect } = await import('../ExternalApiSelect')

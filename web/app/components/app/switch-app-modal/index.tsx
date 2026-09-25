@@ -16,16 +16,16 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -43,7 +43,7 @@ type SwitchAppModalProps = {
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

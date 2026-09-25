@@ -34,7 +34,7 @@ const VirtualPageList = ({
   selectionMode,
   showPreview,
 }: VirtualPageListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({

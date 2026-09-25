@@ -4,8 +4,10 @@ import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
@@ -79,7 +81,7 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
@@ -433,7 +435,7 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
     expect(mockToast.error).toHaveBeenCalledWith(
-      'workflow.versionHistory.action.deleteDeployedVersionError',
+      'workflowHistory.versionHistory.action.deleteDeployedVersionError',
     )
     expect(screen.queryByText('confirm delete')).not.toBeInTheDocument()
   })
@@ -530,8 +532,15 @@ describe('VersionHistoryPanel', () => {
 })
 
 function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }

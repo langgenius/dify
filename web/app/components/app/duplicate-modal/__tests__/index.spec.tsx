@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -14,7 +14,7 @@ const { mockAppQuota, toastErrorMock } = vi.hoisted(() => ({
   toastErrorMock: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
   },
@@ -41,7 +41,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
       <div>
         <input placeholder="Search emojis..." />
         <button type="button" onClick={() => {}}>
-          <em-emoji />
+          <span>😀</span>
         </button>
         <button
           type="button"
@@ -256,7 +256,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    const emojiButton = screen.getByText('😀').closest('button')
     expect(emojiButton).toBeTruthy()
     await user.click(emojiButton!)
     await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))

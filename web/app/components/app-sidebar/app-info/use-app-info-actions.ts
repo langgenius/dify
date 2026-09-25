@@ -2,16 +2,15 @@ import type {
   AppDetailWithSite,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import {
@@ -20,7 +19,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -32,18 +31,6 @@ export type AppInfoModalType =
   | 'importDSL'
   | 'exportWarning'
   | null
-
-type UseAppInfoActionsParams = {
-  resetKey?: string
-}
-
-type AppInfoUiState = {
-  resetKey?: string
-  activeModal: AppInfoModalType
-  secretEnvList: EnvironmentVariableItemResponse[]
-}
-
-const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
 
 type AppMetadata = Pick<
   App,
@@ -68,29 +55,18 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
     icon_background: app.icon_background,
     icon_type: app.icon_type,
     icon_url: app.icon_url,
-    max_active_requests: app.max_active_requests,
+    max_active_requests:
+      app.max_active_requests === undefined
+        ? cachedApp.max_active_requests
+        : app.max_active_requests,
     name: app.name,
     updated_at: app.updated_at,
     use_icon_as_answer_icon: app.use_icon_as_answer_icon,
   }
 }
 
-const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
-  resetKey,
-  activeModal: null,
-  secretEnvList: [],
-})
-
-const resolveStateAction = <T>(value: SetStateAction<T>, previous: T) => {
-  return typeof value === 'function' ? (value as (previous: T) => T)(previous) : value
-}
-
-const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
-  return state.resetKey === resetKey ? state : createInitialUiState(resetKey)
-}
-
-export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
-  const { t } = useTranslation()
+export function useAppInfoActions() {
+  const { t } = useTranslation(['app'])
   const { replace } = useRouter()
   const queryClient = useQueryClient()
   const { mutateAsync: copyApp } = useMutation(
@@ -105,36 +81,8 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
-  const uiStateMatchesResetKey = uiState.resetKey === resetKey
-  const activeModal = uiStateMatchesResetKey ? uiState.activeModal : null
-  const secretEnvList = uiStateMatchesResetKey ? uiState.secretEnvList : emptySecretEnvList
-
-  const setActiveModal = useCallback<Dispatch<SetStateAction<AppInfoModalType>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          activeModal: resolveStateAction(value, current.activeModal),
-        }
-      })
-    },
-    [resetKey],
-  )
-
-  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariableItemResponse[]>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          secretEnvList: resolveStateAction(value, current.secretEnvList),
-        }
-      })
-    },
-    [resetKey],
-  )
+  const [activeModal, setActiveModal] = useState<AppInfoModalType>(null)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
 
   const openModal = useCallback(
     (modal: Exclude<AppInfoModalType, null>) => {
@@ -281,12 +229,13 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
 
   const onExport = useCallback(
     async (include = false) => {
-      if (!appDetail) return
-      await exportAppDsl({
+      if (!appDetail) return false
+      const result = await exportAppDsl({
         appId: appDetail.id,
         appName: appDetail.name,
         includeSecret: include,
       })
+      return result.status === 'downloaded'
     },
     [appDetail, exportAppDsl],
   )
@@ -301,14 +250,15 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   }, [appDetail, isExporting, onExport, setActiveModal])
 
   const handleConfirmExport = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail || isExporting) return
     const result = await exportWorkflowAppDsl({
       appId: appDetail.id,
       appName: appDetail.name,
     })
+    if (result.status === 'failed') return
     if (result.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
     closeModal()
-  }, [appDetail, closeModal, exportWorkflowAppDsl, setSecretEnvList])
+  }, [appDetail, closeModal, exportWorkflowAppDsl, isExporting, setSecretEnvList])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return
@@ -348,5 +298,3 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
     onConfirmDelete,
   }
 }
-
-export type AppInfoActions = ReturnType<typeof useAppInfoActions>

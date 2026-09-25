@@ -10,7 +10,11 @@ from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
 from controllers.console.workspace.models import ModelProviderModelCredentialApi
-from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi, ToolOAuthCustomClient
+from controllers.console.workspace.tool_providers import (
+    ToolBuiltinProviderAddApi,
+    ToolMCPDetailApi,
+    ToolOAuthCustomClient,
+)
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
@@ -92,3 +96,13 @@ def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
     [check] = rbac_checks(method)
     assert check.scene == RBACPermission.AGENT_PREVIEW
     assert isinstance(check.locator, AgentId)
+
+
+def test_tool_mcp_detail_get_requires_rbac() -> None:
+    """GET endpoint that returns MCP provider details must enforce
+    the workspace MCP management RBAC gate."""
+    method = ToolMCPDetailApi.get
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.MCP_MANAGE
+    assert isinstance(check.locator, Workspace)

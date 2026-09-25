@@ -1,5 +1,6 @@
 import type {
   WorkflowPaginationResponse,
+  WorkflowPublishResponse,
   WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type {
@@ -22,9 +23,9 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { del, get, patch, post, put } from './base'
-import { consoleQuery } from './client'
 import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
@@ -317,7 +318,7 @@ export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
-      post<CommonResponse & { created_at: number }>(params.url, {
+      post<WorkflowPublishResponse>(params.url, {
         body: {
           marked_name: params.title,
           marked_comment: params.releaseNotes,

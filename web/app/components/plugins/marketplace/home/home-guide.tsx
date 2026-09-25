@@ -1,17 +1,17 @@
 'use client'
 
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useTranslation } from '#i18n'
+import { useLocale } from '#i18n'
 import {
   SubmitRequestDropdown,
   SubmitRequestDropdownMenu,
 } from '@/app/components/plugins/plugin-page/nav-operations'
 import { defaultDocBaseUrl } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
 
 function MarketplaceGuide() {
-  const { i18n } = useTranslation()
-  const docLanguage = getDocLanguage(i18n.language)
+  const locale = useLocale()
+  const docLanguage = getDocLanguage(locale)
   const docLink = (path: DocPathWithoutLang) => `${defaultDocBaseUrl}/${docLanguage}${path}`
 
   return <SubmitRequestDropdownMenu dividerAfterFirst docLink={docLink} />

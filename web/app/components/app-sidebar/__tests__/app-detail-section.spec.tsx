@@ -44,9 +44,7 @@ vi.mock('@/context/permission-state', async () => {
 })
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: false,
-  }))
+  return createWorkspaceStateModuleMock(() => ({}))
 })
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
@@ -54,14 +52,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('../app-info', () => ({
   AppInfoView: () => <div />,
-}))
-
-vi.mock('../app-info/use-app-info-actions', () => ({
-  useAppInfoActions: vi.fn(() => ({})),
-}))
-
-vi.mock('../../base/divider', () => ({
-  default: ({ className }: { className?: string }) => <hr className={className} />,
 }))
 
 vi.mock('../nav-link', () => ({
@@ -263,7 +253,7 @@ describe('AppDetailSection', () => {
 
         // Assert
         expect(
-          screen.getByRole('link', { name: 'common.settings.resourceAccess' }),
+          screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
         ).toHaveAttribute('href', '/app/app-1/access-config')
         expect(
           screen.queryByRole('link', { name: 'common.appMenus.overview' }),
@@ -281,7 +271,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -291,7 +281,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -305,7 +295,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
   })

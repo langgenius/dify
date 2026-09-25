@@ -17,6 +17,7 @@ const config: KnipConfig = {
         'plugins/eslint/index.js',
         // Public surface consumed by the standalone Marketplace host.
         // The `!` suffix keeps these entries in `knip --production`.
+        'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',
         'app/components/plugins/marketplace/standalone/server.ts!',
         'app/components/plugins/marketplace/standalone/client.ts!',
       ],
@@ -32,11 +33,7 @@ const config: KnipConfig = {
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],
-      ignoreFiles: [
-        'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
-        'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
-        'i18n-config/locale-resources/*.ts',
-      ],
+      ignoreFiles: ['i18n/locale-resources/*.ts'],
       ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
     },
   },

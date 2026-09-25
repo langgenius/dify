@@ -2,7 +2,6 @@ import {
   getPlanVectorSpaceLimitMB,
   getResetInDaysFromDate,
   parseLimit,
-  parseRateLimit,
   parseVectorSpaceToMB,
 } from '../index'
 
@@ -70,11 +69,6 @@ describe('billing utils', () => {
     it('displays zero count limits as unlimited', () => {
       expect(parseLimit(0)).toBe(-1)
       expect(parseLimit(10)).toBe(10)
-    })
-    it('preserves unlimited rate limits in either API representation', () => {
-      expect(parseRateLimit(0)).toBe(-1)
-      expect(parseRateLimit(-1)).toBe(-1)
-      expect(parseRateLimit(5000)).toBe(5000)
     })
   })
 })

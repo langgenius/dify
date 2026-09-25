@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -47,6 +46,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -72,6 +72,7 @@ import HelpLine from './help-line'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
@@ -79,6 +80,7 @@ import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
@@ -183,8 +185,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow', 'workflowHistory', 'workflowComments'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
+    useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
     const store = useStoreApi()
@@ -292,7 +295,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       return collaborationManager.onRestoreIntent((data) => {
         toast.info(
           t(($) => $['versionHistory.action.restoreInProgress'], {
-            ns: 'workflow',
+            ns: 'workflowHistory',
             userName: data.initiatorName,
             versionName: data.versionName || data.versionId,
           }),
@@ -461,8 +464,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentDelete(commentId)
               setShowConfirm(undefined)
@@ -477,8 +480,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string, replyId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentReplyDelete(commentId, replyId)
               setShowConfirm(undefined)
@@ -559,6 +562,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleNodeEnter,
       handleNodeLeave,
       handleNodeClick,
+      handleNodeSelect,
       handleNodeConnect,
       handleNodeConnectStart,
       handleNodeConnectEnd,
@@ -566,6 +570,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleHistoryBack,
       handleHistoryForward,
     } = useNodesInteractions()
+    const handleNodeKeyDown = useNodeKeyboardInteractions(handleNodeSelect)
     const { handleEdgeEnter, handleEdgeLeave, handleEdgesChange, handleEdgeContextMenu } =
       useEdgesInteractions()
     const {
@@ -767,6 +772,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             edgeTypes={edgeTypes}
             nodes={nodes}
             edges={edges}
+            onKeyDownCapture={handleNodeKeyDown}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
@@ -789,6 +795,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
             defaultViewport={viewport}
+            fitView={!viewport}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
             nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}

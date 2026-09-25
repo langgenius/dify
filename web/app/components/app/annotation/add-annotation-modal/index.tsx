@@ -13,15 +13,15 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
@@ -31,7 +31,7 @@ type Props = Readonly<{
 }>
 
 const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

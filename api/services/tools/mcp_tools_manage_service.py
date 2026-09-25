@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -8,7 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -83,15 +84,35 @@ class MCPToolManageService:
 
     # ========== Provider CRUD Operations ==========
 
-    def get_provider(
-        self, *, provider_id: str | None = None, server_identifier: str | None = None, tenant_id: str
-    ) -> MCPToolProvider:
+    def get_provider_by_id(self, *, provider_id: str, tenant_id: str) -> MCPToolProvider:
         """
-        Get MCP provider by ID or server identifier.
+        Get MCP provider by its primary key.
 
         Args:
-            provider_id: Provider ID (UUID)
-            server_identifier: Server identifier
+            provider_id: Provider primary key (UUID). Server identifiers are not
+                accepted here — use get_provider_by_server_identifier instead.
+            tenant_id: Tenant ID
+
+        Returns:
+            MCPToolProvider instance
+
+        Raises:
+            ValueError: If provider_id is not a UUID, or the provider does not exist
+        """
+        try:
+            uuid.UUID(provider_id)
+        except (AttributeError, TypeError, ValueError):
+            raise ValueError("expected a valid UUID, but got: " + provider_id)
+
+        stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
+        return self._scalar_one_provider(stmt)
+
+    def get_provider_by_server_identifier(self, *, server_identifier: str, tenant_id: str) -> MCPToolProvider:
+        """
+        Get MCP provider by its tenant-scoped server identifier.
+
+        Args:
+            server_identifier: Server identifier (the runtime-facing reference)
             tenant_id: Tenant ID
 
         Returns:
@@ -100,27 +121,66 @@ class MCPToolManageService:
         Raises:
             ValueError: If provider not found
         """
-        if server_identifier:
-            stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
-            )
-        else:
-            stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id
-            )
+        stmt = select(MCPToolProvider).where(
+            MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+        )
+        return self._scalar_one_provider(stmt)
 
+    def _scalar_one_provider(self, stmt: Select[tuple[MCPToolProvider]]) -> MCPToolProvider:
         provider = self._session.scalar(stmt)
         if not provider:
             raise ValueError("MCP tool not found")
         return provider
 
-    def get_provider_entity(self, provider_id: str, tenant_id: str, by_server_id: bool = False) -> MCPProviderEntity:
-        """Get provider entity by ID or server identifier."""
-        if by_server_id:
-            db_provider = self.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
-        else:
-            db_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
-        return db_provider.to_entity()
+    def get_provider_entity_by_id(self, *, provider_id: str, tenant_id: str) -> MCPProviderEntity:
+        """Get provider entity by primary key."""
+        return self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id).to_entity()
+
+    def get_provider_entity_by_server_identifier(self, *, server_identifier: str, tenant_id: str) -> MCPProviderEntity:
+        """Get provider entity by server identifier."""
+        return self.get_provider_by_server_identifier(
+            server_identifier=server_identifier, tenant_id=tenant_id
+        ).to_entity()
+
+    def get_provider_by_persisted_reference(self, *, id_or_server_identifier: str, tenant_id: str) -> MCPToolProvider:
+        """
+        Resolve an MCP provider from a reference persisted in a graph or agent config.
+
+        For backward compatibility. Previously, the id returned by the
+        server is non-deterministic, depending on the query parameter,
+        so we accept both primary key (id) and server identifier for any existing DSLs
+
+        Raises:
+            ValueError: If no provider matches the reference
+        """
+        try:
+            uuid.UUID(id_or_server_identifier)
+        except (AttributeError, TypeError, ValueError):
+            # Not uuid-shaped, so it can only ever be a server identifier. Skipping
+            # the primary-key lookup also keeps its "expected a valid UUID" error,
+            # which would misdescribe a legitimate reference, out of this path.
+            return self.get_provider_by_server_identifier(
+                server_identifier=id_or_server_identifier, tenant_id=tenant_id
+            )
+
+        try:
+            return self.get_provider_by_id(provider_id=id_or_server_identifier, tenant_id=tenant_id)
+        except ValueError:
+            # A server identifier is free text, so it may itself look like a uuid.
+            return self.get_provider_by_server_identifier(
+                server_identifier=id_or_server_identifier, tenant_id=tenant_id
+            )
+
+    def get_provider_entity_by_persisted_reference(
+        self, *, id_or_server_identifier: str, tenant_id: str
+    ) -> MCPProviderEntity:
+        """Resolve a provider entity from a persisted graph or agent config reference.
+
+        Accepts both meanings — see get_provider_by_persisted_reference.
+        """
+        return self.get_provider_by_persisted_reference(
+            id_or_server_identifier=id_or_server_identifier, tenant_id=tenant_id
+        ).to_entity()
 
     def create_provider(
         self,
@@ -178,7 +238,7 @@ class MCPToolManageService:
         self._session.add(mcp_tool)
         self._session.flush()
 
-        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
+        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
         return mcp_providers
 
     def update_provider(
@@ -206,7 +266,7 @@ class MCPToolManageService:
                               If provided and contains reconnect_result, it will be used
                               instead of performing network operations.
         """
-        mcp_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        mcp_provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
 
         # Check for duplicate name (excluding current provider)
         if name != mcp_provider.name:
@@ -271,17 +331,14 @@ class MCPToolManageService:
 
     def delete_provider(self, *, tenant_id: str, provider_id: str) -> None:
         """Delete an MCP provider."""
-        mcp_tool = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        mcp_tool = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
         self._session.delete(mcp_tool)
 
-    def list_providers(
-        self, *, tenant_id: str, for_list: bool = False, include_sensitive: bool = True
-    ) -> list[ToolProviderApiEntity]:
+    def list_providers(self, *, tenant_id: str, include_sensitive: bool = True) -> list[ToolProviderApiEntity]:
         """List all MCP providers for a tenant.
 
         Args:
             tenant_id: Tenant ID
-            for_list: If True, return provider ID; if False, return server identifier
             include_sensitive: If False, skip expensive decryption operations (default: True for backward compatibility)
         """
         from models.account import Account
@@ -300,7 +357,6 @@ class MCPToolManageService:
         return [
             ToolTransformService.mcp_provider_to_user_provider(
                 provider,
-                for_list=for_list,
                 user_name=user_name_map.get(provider.user_id),
                 include_sensitive=include_sensitive,
             )
@@ -312,7 +368,7 @@ class MCPToolManageService:
     def list_provider_tools(self, *, tenant_id: str, provider_id: str) -> ToolProviderApiEntity:
         """List tools from remote MCP server."""
         # Load provider and convert to entity
-        db_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        db_provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
         provider_entity = db_provider.to_entity()
 
         # Verify authentication
@@ -361,7 +417,7 @@ class MCPToolManageService:
         from core.tools.mcp_tool.provider import MCPToolProviderController
 
         # Get provider from current session
-        provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
 
         # Encrypt new credentials
         provider_controller = MCPToolProviderController.from_db(provider)
@@ -413,7 +469,7 @@ class MCPToolManageService:
             tenant_id: Tenant ID
         """
         # Get provider from current session
-        provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
 
         provider.tools = EMPTY_TOOLS_JSON
         provider.encrypted_credentials = EMPTY_CREDENTIALS_JSON
@@ -568,7 +624,7 @@ class MCPToolManageService:
         Returns:
             ProviderUrlValidationData: Data needed for standalone URL validation
         """
-        provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+        provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
         provider_entity = provider.to_entity()
         return ProviderUrlValidationData(
             current_server_url_hash=provider.server_url_hash,
@@ -692,12 +748,13 @@ class MCPToolManageService:
         self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
-        user = db_provider.load_user()
+        user = db_provider.load_user(self._session)
+        user_name = user.name if user else None
         response = provider_entity.to_api_response(
-            user_name=user.name if user else None,
+            user_name=user_name,
         )
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools)
-        response["plugin_unique_identifier"] = provider_entity.provider_id
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools, user_name=user_name)
+        response["plugin_unique_identifier"] = provider_entity.server_identifier
         return ToolProviderApiEntity(**response)
 
     def _handle_integrity_error(

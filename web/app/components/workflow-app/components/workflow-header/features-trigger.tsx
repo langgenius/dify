@@ -8,7 +8,6 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,10 +27,11 @@ import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/type
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -40,7 +40,7 @@ import {
 } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
@@ -202,6 +202,7 @@ const FeaturesTrigger = () => {
           if (options?.showSuccessToast !== false) {
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           }
+          if (res.warning) toast.warning(res.warning)
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)

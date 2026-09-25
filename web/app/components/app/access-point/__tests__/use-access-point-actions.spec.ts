@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   updateAppSiteConfig: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mocks.toast }))
+vi.mock('@/app/notifications', () => ({ toast: mocks.toast }))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { setAppDetail: typeof mocks.setAppDetail }) => unknown) =>
@@ -23,7 +23,7 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteConfig: mocks.updateAppSiteConfig,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       get: { key: () => ['apps'] },

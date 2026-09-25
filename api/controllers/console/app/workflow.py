@@ -2,10 +2,10 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, Self, TypedDict
+from typing import Any, Literal, NotRequired, Self, TypedDict
 
 from flask import abort, request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -21,7 +21,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from configs import dify_config
-from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -53,7 +52,6 @@ from controllers.console.wraps import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
@@ -77,7 +75,10 @@ from factories import file_factory, variable_factory
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
-from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
+from fields.workflow_run_fields import (
+    WorkflowRunNodeExecutionResponse,
+    node_execution_response_source,
+)
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
@@ -94,11 +95,16 @@ from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_variable_reference_validator import (
+    format_variable_reference_errors,
+    validate_variable_references,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +220,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -399,6 +405,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    warning: str | None = Field(
+        default=None,
+        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -583,14 +593,14 @@ class DraftWorkflowApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         """
         Get draft workflow
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        session = db.session()
         workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
@@ -1260,8 +1270,23 @@ class DraftWorkflowNodeRunApi(Resource):
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
+
+
+def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
+    try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -1328,11 +1353,16 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            graph_text = workflow.graph
 
-        return {
+        warning = _advisory_variable_reference_warning(graph_text)
+        payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
         }
+        if warning:
+            payload["warning"] = warning
+        return payload
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
@@ -1486,11 +1516,12 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @with_session(write=False)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(WorkflowListQuery)
-    def get(self, args: WorkflowListQuery, current_user: Account, app_model: App):
+    def get(self, args: WorkflowListQuery, session: Session, current_user: Account, app_model: App):
         """
         Get published workflows
         """
@@ -1505,23 +1536,22 @@ class PublishedAllWorkflowApi(Resource):
                 raise Forbidden()
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
-            workflows, has_more = workflow_service.get_all_published_workflow(
-                session=session,
-                app_model=app_model,
-                page=page,
-                limit=limit,
-                user_id=user_id,
-                named_only=named_only,
-            )
-            return WorkflowPaginationResponse.model_validate(
-                {
-                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
-                    "page": page,
-                    "limit": limit,
-                    "has_more": has_more,
-                }
-            ).model_dump(mode="json")
+        workflows, has_more = workflow_service.get_all_published_workflow(
+            session=session,
+            app_model=app_model,
+            page=page,
+            limit=limit,
+            user_id=user_id,
+            named_only=named_only,
+        )
+        return WorkflowPaginationResponse.model_validate(
+            {
+                "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                "page": page,
+                "limit": limit,
+                "has_more": has_more,
+            }
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
@@ -1680,7 +1710,9 @@ class DraftWorkflowNodeLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
@@ -1693,14 +1725,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowTriggerRunRequest",
-            {
-                "node_id": fields.String(required=True, description="Node ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunPayload.__name__])
     @console_ns.response(
         200,
         "Trigger event received and workflow executed successfully",
@@ -1739,15 +1764,12 @@ class DraftWorkflowTriggerRunApi(Resource):
             event = poller.poll()
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
-            workflow_args = dict(event.workflow_args)
-
-            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
                     session=session,
                     app_model=app_model,
                     user=current_user,
-                    args=workflow_args,
+                    args=event.workflow_args,
                     invoke_from=InvokeFrom.DEBUGGER,
                     streaming=True,
                     root_node_id=node_id,
@@ -1896,14 +1918,11 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
         try:
-            workflow_args = dict(trigger_debug_event.workflow_args)
-
-            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,
-                args=workflow_args,
+                args=trigger_debug_event.workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
                 root_node_id=trigger_debug_event.node_id,

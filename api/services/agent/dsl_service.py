@@ -12,13 +12,15 @@ import copy
 import json
 from collections.abc import Mapping
 from typing import Any, cast
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -37,10 +39,12 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from models.model import App, AppModelConfig
+from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
+from models.tools import ToolFile
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
+from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -51,9 +55,9 @@ from services.agent.dsl_entities import (
     portable_ref,
 )
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
-from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
 class AgentPackageImportResult(BaseModel):
@@ -72,8 +76,8 @@ class AgentDslService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def export_agent_app(self, *, app: App) -> tuple[str, dict[str, AgentPackage]]:
-        """Export the editable shared Agent draft, falling back to the active snapshot."""
+    def export_agent_app(self, *, app: App, version_id: UUID | None) -> tuple[str, dict[str, AgentPackage]]:
+        """Export a visible version, or the shared draft with an active snapshot fallback."""
 
         agent = self.session.scalar(
             select(Agent)
@@ -89,39 +93,52 @@ class AgentDslService:
         if agent is None:
             raise ValueError("Agent App has no active backing Agent.")
 
-        draft = self.session.scalar(
-            select(AgentConfigDraft)
-            .where(
-                AgentConfigDraft.tenant_id == app.tenant_id,
-                AgentConfigDraft.agent_id == agent.id,
-                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                AgentConfigDraft.draft_owner_key == "",
+        draft = None
+        snapshot_id = agent.active_config_snapshot_id
+        if version_id is not None:
+            snapshot = AgentRosterService(self.session).get_visible_agent_version_snapshot(
+                tenant_id=app.tenant_id, agent_id=agent.id, version_id=version_id
             )
-            .limit(1)
-        )
-        if draft is not None:
-            soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        else:
-            snapshot = self._require_snapshot(
-                tenant_id=app.tenant_id,
-                agent_id=agent.id,
-                snapshot_id=agent.active_config_snapshot_id,
-            )
+            snapshot_id = snapshot.id
             soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        else:
+            draft = self.session.scalar(
+                select(AgentConfigDraft)
+                .where(
+                    AgentConfigDraft.tenant_id == app.tenant_id,
+                    AgentConfigDraft.agent_id == agent.id,
+                    AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                    AgentConfigDraft.draft_owner_key == "",
+                )
+                .limit(1)
+            )
+            if draft is not None:
+                soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            else:
+                snapshot = self._require_snapshot(
+                    tenant_id=app.tenant_id,
+                    agent_id=agent.id,
+                    snapshot_id=snapshot_id,
+                )
+                soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
 
         package_ref = "agent_1"
         workspace_skills = self._workspace_skills_for_export(
             tenant_id=app.tenant_id,
             agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
+            snapshot_id=snapshot_id,
             include_draft=draft is not None,
         )
         return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}
 
     def export_workflow_packages(
-        self, *, workflow: Workflow, graph: Mapping[str, Any]
+        self,
+        *,
+        workflow: Workflow,
+        graph: Mapping[str, Any],
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
-        """Replace persisted Agent binding ids with portable package references."""
+        """Replace persisted bindings with portable packages, optionally collecting their assets."""
 
         portable_graph = copy.deepcopy(dict(graph))
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(portable_graph))
@@ -131,6 +148,7 @@ class AgentDslService:
         bindings = self.session.scalars(
             select(WorkflowAgentNodeBinding).where(
                 WorkflowAgentNodeBinding.tenant_id == workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == workflow.id,
                 WorkflowAgentNodeBinding.workflow_version == workflow.version,
                 WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes)),
@@ -156,16 +174,25 @@ class AgentDslService:
             if package_ref is None:
                 package_ref = f"agent_{len(packages) + 1}"
                 package_refs_by_source[source_key] = package_ref
-                packages[package_ref] = make_portable_agent_package(
-                    agent,
-                    AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
-                    workspace_skills=self._workspace_skills_for_export(
-                        tenant_id=workflow.tenant_id,
-                        agent_id=agent.id,
+                if resource_exporter is not None:
+                    packages[package_ref] = resource_exporter.collect_package(
+                        session=self.session,
+                        agent=agent,
+                        soul=AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
                         snapshot_id=snapshot.id,
-                        include_draft=False,
-                    ),
-                )
+                        package_ref=package_ref,
+                    )
+                else:
+                    packages[package_ref] = make_portable_agent_package(
+                        agent,
+                        AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
+                        workspace_skills=self._workspace_skills_for_export(
+                            tenant_id=workflow.tenant_id,
+                            agent_id=agent.id,
+                            snapshot_id=snapshot.id,
+                            include_draft=False,
+                        ),
+                    )
             node_data["agent_binding"] = {
                 "binding_type": binding.binding_type.value,
                 AGENT_PACKAGE_REF_KEY: package_ref,
@@ -198,12 +225,12 @@ class AgentDslService:
     ) -> AgentPackageImportResult:
         """Create the imported backing Agent and its editable unpublished draft."""
 
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=app.tenant_id,
             package=package,
             package_path="agent",
         )
-        if app.app_model_config is None:
+        if app.app_model_config_with_session(session=self.session) is None:
             model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
             self.session.add(model_config)
             self.session.flush()
@@ -214,7 +241,7 @@ class AgentDslService:
             tenant_id=app.tenant_id,
             account_id=account.id,
             app_id=app.id,
-            name=self._unique_roster_name(tenant_id=app.tenant_id, requested=app.name or metadata.name),
+            name=self.unique_roster_name(tenant_id=app.tenant_id, requested=app.name or metadata.name),
             description=app.description or metadata.description,
             role=metadata.role,
             icon_type=self._agent_icon_type(metadata.icon_type),
@@ -375,29 +402,7 @@ class AgentDslService:
     def extract_package_dependencies(self, packages: Mapping[str, AgentPackage]) -> list[str]:
         dependencies: list[str] = []
         for package in packages.values():
-            soul = package.soul
-            if soul.model is not None:
-                dependencies.append(
-                    DependenciesAnalysisService.analyze_model_provider_dependency(soul.model.model_provider)
-                )
-            for tool in soul.tools.dify_tools:
-                provider_id = tool.provider_id or (
-                    f"{tool.plugin_id}/{tool.provider}" if tool.plugin_id and tool.provider else None
-                )
-                if provider_id:
-                    dependencies.append(DependenciesAnalysisService.analyze_tool_dependency(provider_id))
-            for knowledge_set in soul.knowledge.sets:
-                retrieval = knowledge_set.retrieval
-                if retrieval.model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(retrieval.model.provider)
-                    )
-                if retrieval.reranking_model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(
-                            retrieval.reranking_model.provider
-                        )
-                    )
+            dependencies.extend(extract_agent_soul_dependencies(package.soul))
         return dependencies
 
     def _workspace_skills_for_export(
@@ -505,7 +510,7 @@ class AgentDslService:
         package: AgentPackage,
         package_path: str,
     ) -> AgentPackageImportResult:
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=workflow.tenant_id,
             package=package,
             package_path=package_path,
@@ -527,6 +532,15 @@ class AgentDslService:
             warnings=warnings,
             account_id=account.id,
         )
+        upload_file_ids = [
+            item.file_id for item in soul.config_files if item.file_kind == "upload_file" and not item.is_missing
+        ]
+        if upload_file_ids:
+            self.session.execute(
+                update(UploadFile)
+                .where(UploadFile.tenant_id == workflow.tenant_id, UploadFile.id.in_(upload_file_ids))
+                .values(used=True, used_by=account.id, used_at=naive_utc_now())
+            )
         return AgentPackageImportResult(agent=agent, snapshot=snapshot, warnings=warnings)
 
     def _create_workflow_only_agent(
@@ -583,7 +597,7 @@ class AgentDslService:
         self.session.flush()
         return agent, snapshot
 
-    def _resolve_package_soul(
+    def resolve_package_soul(
         self,
         *,
         tenant_id: str,
@@ -611,6 +625,9 @@ class AgentDslService:
             )
             for asset in package.omitted_assets
         ]
+        warnings.extend(
+            self._mark_missing_package_assets(tenant_id=tenant_id, soul_data=soul_data, package_path=package_path)
+        )
         for tool_index, tool in enumerate(package.soul.tools.dify_tools):
             tool_label = tool.tool_name or tool.provider or tool.provider_id
             warnings.append(
@@ -663,6 +680,51 @@ class AgentDslService:
                 )
         return AgentSoulConfig.model_validate(soul_data), warnings
 
+    def _mark_missing_package_assets(
+        self,
+        *,
+        tenant_id: str,
+        soul_data: dict[str, Any],
+        package_path: str,
+    ) -> list[DslImportWarning]:
+        """Mark unavailable asset references in place and return import warnings."""
+        warnings: list[DslImportWarning] = []
+        # Legacy DSLs can retain source-workspace ids without an is_missing flag.
+        # Check local records so resources materialized from archives remain usable.
+        asset_refs = [
+            (kind, index, item)
+            for kind, field in (("skill", "config_skills"), ("file", "config_files"))
+            for index, item in enumerate(soul_data[field])
+            if not item["is_missing"]
+        ]
+        for file_kind, model in (("tool_file", ToolFile), ("upload_file", UploadFile)):
+            refs = [(kind, index, item) for kind, index, item in asset_refs if item["file_kind"] == file_kind]
+            valid_ids: set[str] = set()
+            for _, _, item in refs:
+                try:
+                    valid_ids.add(str(UUID(item["file_id"])))
+                except ValueError:
+                    continue
+            existing_ids = (
+                set(self.session.scalars(select(model.id).where(model.tenant_id == tenant_id, model.id.in_(valid_ids))))
+                if valid_ids
+                else set()
+            )
+            for kind, index, item in refs:
+                if item["file_id"] in existing_ids:
+                    continue
+                item["file_id"] = ""
+                item["is_missing"] = True
+                warnings.append(
+                    DslImportWarning(
+                        code=f"agent_{kind}_missing",
+                        path=f"{package_path}.soul.config_{'skills' if kind == 'skill' else 'files'}.{index}",
+                        message=f"Agent {kind} {item['name']!r} is unavailable in the target workspace.",
+                        details={"kind": kind, "name": item["name"]},
+                    )
+                )
+        return warnings
+
     def _create_snapshot(
         self,
         *,
@@ -703,7 +765,7 @@ class AgentDslService:
         self.session.flush()
         return snapshot
 
-    def _unique_roster_name(self, *, tenant_id: str, requested: str) -> str:
+    def unique_roster_name(self, *, tenant_id: str, requested: str) -> str:
         candidates = [requested]
         for index in range(1, 100):
             suffix = " import" if index == 1 else f" import {index}"

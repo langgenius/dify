@@ -95,7 +95,7 @@ describe('assigner/panel', () => {
 
     render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
-    expect(screen.getByText('workflow.nodes.assigner.variables')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.variables')).toBeInTheDocument()
     expect(screen.getByText('node-1.count')).toBeInTheDocument()
     expect(mockVarListRender).toHaveBeenCalledWith(
       expect.objectContaining({
