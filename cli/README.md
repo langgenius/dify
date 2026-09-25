@@ -68,12 +68,13 @@ response in the error envelope instead of dropping it.
 
 ## Agent skills
 
-difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
+difyctl installs agent skills from [`skills/`] at the repo root. It downloads them from GitHub at install time, from the commit the binary was built from; the binary holds no copy and needs no git. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one.
 
 - `difyctl get skills` — the collection: each skill's name and description. Writes nothing.
-- `difyctl install skills <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
+- `difyctl install skills <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Each skill's folder is replaced whole. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
+- `--from` on both reads skills from elsewhere: any GitHub folder in the standard layout (`https://github.com/<owner>/<repo>/tree/<ref>/<folder>`), or a local folder when GitHub is blocked. Set `GITHUB_TOKEN` if GitHub's rate limit (60 requests an hour per IP) gets in the way.
 
-difyctl does not detect agents. You name the root, and the same command re-run after an upgrade refreshes the copies.
+difyctl does not detect agents. You name the root, and re-running the same command refreshes the copies.
 
 The same files install through the Vercel skills installer: `npx skills add langgenius/dify --skill difyctl -g`. Always pass `--skill`; without it the installer also offers the contributor skills under `.agents/skills/`.
 

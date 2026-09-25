@@ -25,7 +25,7 @@ src/
   net/          fetch init and proxy dispatcher, shared by the http plugin and the pre-login device flow
   store/        config/session/token file and keychain persistence
   sys/          the process edges — env, argv, exit, platform paths; io/ holds streams.ts, color.ts and view.ts (a JSON value paired with its text form, the mode picks one)
-  skills/       the embedded skill collection (generated from ../skills) and its installer
+  skills/       reads skills from a GitHub folder or a local folder, and installs them
 ```
 
 ---
@@ -145,24 +145,20 @@ expect(JSON.parse(out).data).toHaveLength(2)
 
 ## Scripts
 
-| Command                 | When to run                                                      |
-| ----------------------- | ---------------------------------------------------------------- |
-| `pnpm dev <cmd> [args]` | Run CLI from source during dev                                   |
-| `pnpm test`             | Full vitest suite — run before every commit                      |
-| `pnpm test:coverage`    | Coverage report                                                  |
-| `vp check cli`          | Scoped static check from the repository root                     |
-| `vp check --fix cli`    | Scoped static fixes from the repository root                     |
-| `pnpm build`            | Production bundle (`vp pack`)                                    |
-| `pnpm tree:gen`         | Regenerate `src/commands/tree.generated.ts`                      |
-| `pnpm tree:check`       | Verify the generated tree matches the commands                   |
-| `pnpm skills:gen`       | Regenerate `src/skills/collection.generated.ts` from `../skills` |
-| `pnpm skills:check`     | Verify the generated collection matches `../skills`              |
-| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI)                   |
-| `pnpm build:bin:local`  | Same, pinned to the `dev` channel                                |
+| Command                 | When to run                                    |
+| ----------------------- | ---------------------------------------------- |
+| `pnpm dev <cmd> [args]` | Run CLI from source during dev                 |
+| `pnpm test`             | Full vitest suite — run before every commit    |
+| `pnpm test:coverage`    | Coverage report                                |
+| `vp check cli`          | Scoped static check from the repository root   |
+| `vp check --fix cli`    | Scoped static fixes from the repository root   |
+| `pnpm build`            | Production bundle (`vp pack`)                  |
+| `pnpm tree:gen`         | Regenerate `src/commands/tree.generated.ts`    |
+| `pnpm tree:check`       | Verify the generated tree matches the commands |
+| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI) |
+| `pnpm build:bin:local`  | Same, pinned to the `dev` channel              |
 
 **`pnpm tree:gen` rule:** run after adding, removing, or renaming any command. The generated `tree.generated.ts` is the runtime command registry; a stale tree makes commands invisible at runtime. It also runs through `prebuild`, `predev`, and `pretest`.
-
-**`pnpm skills:gen` rule:** run after editing anything under `skills/` at the repo root. The generated `collection.generated.ts` is what the binary ships; a stale one ships old skill text. It also runs through `prebuild`, `predev`, and `pretest`.
 
 **README hand-maintained.** When adding a command, update the command table in `README.md` manually.
 

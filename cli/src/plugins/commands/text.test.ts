@@ -95,7 +95,8 @@ it('renders a static descriptor with arguments and flags', () => {
       <dir>  string  required  The agent's skills root: the folder that holds one subfolder per skill
 
     Flags
-      --skill  string[]  []  Skill to install (repeatable); default: the whole collection
+      --skill  string[]  []                                                        Skill to install (repeatable); default: the whole collection
+      --from   string    "https://github.com/langgenius/dify/tree/0000000/skills"  Where the skills come from: a GitHub folder URL or a local folder
 
     Global
       --verbose  boolean  false  Keep the raw server response in error envelopes

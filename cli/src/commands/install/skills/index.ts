@@ -1,7 +1,9 @@
 import { resolve } from 'node:path'
 import { z } from 'zod'
 import { Command } from '@/plugins/commands/command'
+import { loadSkills } from '@/skills/collection'
 import { installSkills, selectSkills } from '@/skills/install'
+import { FROM_FIELD, openSource } from '@/skills/source'
 
 const INPUT = z.object({
   dir: z
@@ -12,6 +14,7 @@ const INPUT = z.object({
     .array(z.string())
     .default([])
     .describe('Skill to install (repeatable); default: the whole collection'),
+  from: FROM_FIELD,
 })
 
 export default class SkillsInstall extends Command<typeof INPUT> {
@@ -25,7 +28,8 @@ export default class SkillsInstall extends Command<typeof INPUT> {
   ]
 
   async run(input: z.infer<typeof INPUT>) {
-    const wrote = await installSkills(resolve(input.dir), selectSkills(input.skill))
-    return { wrote }
+    const source = await openSource(input.from)
+    const skills = selectSkills(await loadSkills(source), input.skill)
+    return { wrote: await installSkills(resolve(input.dir), skills, source) }
   }
 }

@@ -56,4 +56,4 @@ Operations that remove or revoke have no confirmation prompt. Confirm with the p
 
 ## Other skills
 
-Scenario skills add guidance for one kind of task. `difyctl get skills` shows them; `difyctl install skills <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. `difyctl install skills <skills root>` also refreshes this file after upgrading difyctl.
+Scenario skills add guidance for one kind of task. `difyctl get skills` shows them; `difyctl install skills <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. Re-running `difyctl install skills <skills root>` after upgrading difyctl refreshes every skill.

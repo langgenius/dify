@@ -1,7 +1,7 @@
 import { load } from 'js-yaml'
 import { isRecord } from '@/util/is-record'
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n/
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/
 
 export type Frontmatter = { readonly head: string; readonly body: string }
 

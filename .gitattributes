@@ -10,6 +10,5 @@
 # `pnpm tree:check` in CI does not trip on CRLF rewrites.
 *.generated.ts  text eol=lf
 
-# Skill sources are embedded byte-for-byte into collection.generated.ts by
-# `pnpm skills:gen`, so they must read the same on every platform.
-/skills/**      text eol=lf
+# Skill scripts run on every platform, so keep LF line endings.
+/skills/**      text=auto eol=lf
