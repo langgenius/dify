@@ -11,6 +11,7 @@ from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import PluginDaemonUnavailableError
 from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
+            PluginDaemonUnavailableError: {"code": "plugin_daemon_unavailable", "status": 503},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
                 "code": "provider_quota_exceeded",

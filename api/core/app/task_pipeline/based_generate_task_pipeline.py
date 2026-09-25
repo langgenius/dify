@@ -18,6 +18,7 @@ from core.app.entities.task_entities import (
 )
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from core.plugin.impl.exc import PluginDaemonUnavailableError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
@@ -55,7 +56,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
-            case InvokeError() | ValueError() | AgentBackendError():
+            case InvokeError() | ValueError() | AgentBackendError() | PluginDaemonUnavailableError():
                 err = e
             case _:
                 description = getattr(e, "description", None)
