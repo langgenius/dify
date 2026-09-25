@@ -528,7 +528,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
   })
 
-  it('should apply workflow node map updates through command handler', () => {
+  it('should apply workflow node map updates without stopping command propagation', () => {
     render(
       <WorkflowVariableBlockComponent
         nodeKey="k"
@@ -556,7 +556,10 @@ describe('WorkflowVariableBlockComponent', () => {
       })
     })
 
-    expect(result).toBe(true)
+    // The payload is a broadcast to every mounted variable block, so this
+    // handler must not report the command as handled. See
+    // multi-block-dispatch.spec.tsx for the real-editor regression.
+    expect(result).toBe(false)
   })
 
   it('should mark non-special variable invalid when source key is missing in availableVariables', () => {

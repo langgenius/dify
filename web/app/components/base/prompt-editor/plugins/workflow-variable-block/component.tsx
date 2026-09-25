@@ -91,7 +91,10 @@ const WorkflowVariableBlockComponent = ({
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
           setLocalAvailableVariables(payload.availableVariables)
-          return true
+          // Returning true would stop Lexical from invoking the listeners
+          // registered by the other variable blocks, so only the first block in
+          // the prompt would ever receive the broadcast.
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
