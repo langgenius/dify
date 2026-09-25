@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.app.app_config.features.suggested_questions_after_answer.manager import (
+    SuggestedQuestionsAfterAnswerConfigManager,
+)
+from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.rbac import RBACPermission, RBACResourceScope
@@ -465,6 +469,14 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
+    @staticmethod
+    def cache_import_dependencies(*, app_id: str, dependencies: list[PluginDependency]) -> None:
+        redis_client.setex(
+            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
+            IMPORT_INFO_REDIS_EXPIRY,
+            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
+        )
+
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
@@ -608,11 +620,7 @@ class AppDslService:
 
         # save dependencies
         if dependencies:
-            redis_client.setex(
-                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
-                IMPORT_INFO_REDIS_EXPIRY,
-                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
-            )
+            self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
 
         # Initialize app based on mode
         match app_mode:
@@ -694,6 +702,8 @@ class AppDslService:
                 model_config = data.get("model_config")
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
+                TextToSpeechConfigManager.validate_optional_fields(model_config)
                 # Initialize or update model config
                 app_model_config = (
                     self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None

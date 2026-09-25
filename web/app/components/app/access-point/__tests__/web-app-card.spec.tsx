@@ -1,5 +1,6 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -109,7 +110,7 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
     ) : null,
 }))
 
-function createAppInfo(mode: AppModeEnum): AccessPointAppInfo {
+function createAppInfo(mode: AppModeEnum): App {
   return {
     access_mode: AccessMode.PUBLIC,
     api_base_url: 'https://api.example.test/v1',
@@ -124,7 +125,7 @@ function createAppInfo(mode: AppModeEnum): AccessPointAppInfo {
       access_token: 'site-code',
       app_base_url: 'https://site.example.test',
     },
-  } as AccessPointAppInfo
+  } as App
 }
 
 function renderCard(

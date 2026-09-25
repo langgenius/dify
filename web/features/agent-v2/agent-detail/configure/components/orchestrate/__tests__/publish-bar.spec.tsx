@@ -17,6 +17,7 @@ import {
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
@@ -1140,11 +1141,10 @@ describe('AgentConfigurePublishBar', () => {
     const readyAgent = {
       access_ready: true,
       enable_site: true,
-      site: {
+      site: createAppSiteFixture({
         access_token: 'published-token',
         app_base_url: 'https://apps.example.test',
-        icon_url: null,
-      },
+      }),
     }
 
     it.each([
