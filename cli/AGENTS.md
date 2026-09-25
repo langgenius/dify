@@ -4,11 +4,11 @@ This package is the Node 24+, ESM TypeScript implementation of `difyctl`. Develo
 
 ## Architecture Boundaries
 
-- Every leaf command extends `DifyCommand`; command classes own framework parsing and delegate behavior to domain modules.
-- Each command folder keeps its framework shell in `index.ts`. Extract behavior into sibling modules such as `run.ts` and `handlers.ts` when it needs an independently testable owner; those modules receive typed dependencies and do not import `src/framework/`.
-- `src/http/` owns ky middleware and client construction; `src/api/` owns resource clients; `src/sys/io/` owns process streams and progress UI; `src/types/` remains a pure data and schema leaf.
-- Preserve flags, output, and exit codes during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
-- `ARD.md` owns CLI code structure. Keep wire behavior aligned with typed API clients and the real mock-server behavior tests.
+- Every command extends `Command` (`src/plugins/commands/command.ts`) and declares no `needs` of its own; it reads whatever plugin services it uses directly through `ctx.get(...)` inside `run(input, ctx)`.
+- Plugins under `src/plugins/` (`argv global-flags env config session token catalog http ops io commands`) own state. A plugin's `build()` closes over its own cache or loaded document; nothing outside a plugin reaches into another plugin's internals. Outside a plugin folder, import only `@/plugins/<name>` and use the service from `ctx.get(...)`; the command framework (`plugins/commands/command.ts`, `cancel.ts`, `registry.ts`) and the argv parser (`plugins/argv/parse.ts`) are the only modules imported directly.
+- `src/protocol/` and `src/call/` are pure modules: catalog-shape logic (kinds, bind, pins, fold) and the `call` flag table, request-building and rendering, with no op-specific branching anywhere under `src/call/` — kind and bind dispatch go through the tables in `src/protocol/` and `src/call/render/`, keyed by the catalog's own `kind`/`bind` values, never by operation id.
+- Preserve exit codes and the JSON output contract during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
+- `ARD.md` owns CLI code structure. Keep behavior aligned with the real mock-server (`test/fixtures/dify-mock/`) behavior tests.
 
 ## Commands
 

@@ -34,7 +34,7 @@ from services.entities.account_entities import AccountSnapshot
 @openapi_ns.route("/account")
 class AccountApi(Resource):
     @endpoint(
-        op="account.get",
+        op="describe.account",
         kind=Kind.OBJECT,
         summary="Current account",
         examples=(Example(title="Show the logged-in account and its workspaces", input={}),),
@@ -61,7 +61,7 @@ class AccountApi(Resource):
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
     @endpoint(
-        op="account.sessions.revoke_current",
+        op="delete.account.current_session",
         kind=Kind.OBJECT,
         summary="Revoke the session behind this token",
         examples=(Example(title="Log out the session behind this token", input={}),),
@@ -76,7 +76,7 @@ class AccountSessionsSelfApi(Resource):
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
     @endpoint(
-        op="account.sessions.list",
+        op="get.account.session",
         kind=Kind.LIST,
         summary="List login sessions of the current account",
         examples=(Example(title="List login sessions, first page", input={"page": 1, "limit": 20}),),
@@ -102,7 +102,7 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @endpoint(
-        op="account.sessions.revoke",
+        op="delete.account.session",
         kind=Kind.OBJECT,
         summary="Revoke one login session by id",
         examples=(Example(title="Log out one device by session id", input={"session_id": "<session_id>"}),),

@@ -35,7 +35,7 @@ class AppFileUploadApi(Resource):
         }
     )
     @endpoint(
-        op="console_app.file.upload",
+        op="upload.console_app.file",
         kind=Kind.OBJECT,
         summary="Upload a file and get a file id for later runs",
         examples=(

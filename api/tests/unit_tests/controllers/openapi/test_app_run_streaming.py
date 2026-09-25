@@ -208,7 +208,7 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     assert json.loads(chunks[1][len("data: ") :])["hints"] == [
         {
             "summary": "Reply in this conversation",
-            "op": "console_app.chat.run",
+            "op": "run.console_app.chat",
             "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
         }
     ]

@@ -15,7 +15,7 @@ export default defineConfig({
   },
   pack: {
     deps: { resolveDepSubpath: true },
-    entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
+    entry: ['src/main.ts', 'src/kernel/**/*.ts', 'src/plugins/**/*.ts', 'src/commands/**/*.ts'],
     format: ['esm'],
     fixedExtension: false,
     dts: true,
@@ -29,8 +29,6 @@ export default defineConfig({
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),
       __DIFYCTL_BUILD_DATE__: JSON.stringify(buildInfo.buildDate),
       __DIFYCTL_CHANNEL__: JSON.stringify(buildInfo.channel),
-      __DIFYCTL_MIN_DIFY__: JSON.stringify(buildInfo.minDify),
-      __DIFYCTL_MAX_DIFY__: JSON.stringify(buildInfo.maxDify),
     },
   },
   test: {
@@ -42,7 +40,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/types/**'],
+      exclude: ['src/**/*.test.ts'],
     },
   },
 })

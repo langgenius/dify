@@ -9,3 +9,6 @@
 # Codegen output must stay byte-identical across platforms so
 # `pnpm tree:check` in CI does not trip on CRLF rewrites.
 *.generated.ts  text eol=lf
+
+# Skill scripts run on every platform, so keep LF line endings.
+/skills/**      text=auto eol=lf

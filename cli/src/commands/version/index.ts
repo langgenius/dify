@@ -1,61 +1,46 @@
-import { DifyCommand } from '@/commands/_shared/dify-command'
-import { Flags } from '@/framework/flags'
-import { formatted, OutputFormat, raw, stringifyOutput } from '@/framework/output'
-import { colorEnabled } from '@/sys/io/color'
-import { realStreams } from '@/sys/io/streams'
+import type { CommandContext } from '@/plugins/base'
+import { z } from 'zod'
+import { parseJsonBody } from '@/call/json-body'
+import { errorMessage } from '@/errors/message'
+import { Command } from '@/plugins/commands/command'
+import { http } from '@/plugins/http'
+import { io } from '@/plugins/io'
+import { session } from '@/plugins/session'
 import { versionInfo } from '@/version/info'
-import { runVersionProbe } from '@/version/probe'
-import { renderVersionText } from '@/version/render'
 
-export const COMPAT_FAIL_EXIT_CODE = 64
+const INPUT = z.object({})
+const SERVER_VERSION_PATH = '/openapi/v1/_version'
+const SERVER_VERSION_UNAVAILABLE_PREFIX = 'server version unavailable: '
 
-export default class Version extends DifyCommand {
-  static override description = 'Show difyctl version, probe server, and report compatibility'
-  static override examples = [
-    '<%= config.bin %> version',
-    '<%= config.bin %> version --short',
-    '<%= config.bin %> version --client',
-    '<%= config.bin %> version -o json',
-    '<%= config.bin %> version --check-compat',
-  ]
+type ServerVersion = { version: string; edition: string }
 
-  static override flags = {
-    output: Flags.outputFormat({
-      options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML],
-      default: '',
-    }),
-    client: Flags.boolean({ description: 'skip server probe' }),
-    short: Flags.boolean({ description: 'print only the client semver' }),
-    'check-compat': Flags.boolean({
-      description: `exit ${COMPAT_FAIL_EXIT_CODE} if server is not 'compatible'`,
-    }),
-  }
+export default class Version extends Command<typeof INPUT> {
+  static override summary = 'Print the client and server versions'
+  static override input = INPUT
 
-  async run(argv: string[]) {
-    const { flags } = this.parse(Version, argv)
-
-    if (flags.short) return raw(`${versionInfo.version}\n`)
-
-    const report = await runVersionProbe({ skipServer: flags.client })
-
-    const io = realStreams(flags.output)
-    const useColor = colorEnabled(io.isOutTTY)
-    const output = formatted({
-      format: flags.output,
-      data: {
-        text: () => renderVersionText(report, { color: useColor }),
-        json: () => report,
-      },
-    })
-
-    if (flags['check-compat'] && report.compat.status !== 'compatible') {
-      // Emit the full report first so `difyctl version -o json --check-compat | jq`
-      // works exactly like the success path: stdout gets the canonical envelope,
-      // stderr gets the one-line failure reason, exit code signals the verdict.
-      io.out.write(stringifyOutput(output))
-      this.error(report.compat.detail, { exit: COMPAT_FAIL_EXIT_CODE })
+  async run(_input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const client = {
+      version: versionInfo.version,
+      commit: versionInfo.commit,
+      channel: versionInfo.channel,
+      build_date: versionInfo.buildDate,
     }
+    const login = await (await ctx.get(session)).current()
+    if (login === null) return { client }
 
-    return output
+    const streams = await ctx.get(io)
+    const httpService = await ctx.get(http)
+    try {
+      const res = await httpService.request(() => ({
+        method: 'GET',
+        path: SERVER_VERSION_PATH,
+        auth: false,
+      }))
+      const body = (await parseJsonBody(res)) as ServerVersion
+      return { client, server: { version: body.version, edition: body.edition } }
+    } catch (err) {
+      streams.notice(`${SERVER_VERSION_UNAVAILABLE_PREFIX}${errorMessage(err)}`)
+      return { client, server: null }
+    }
   }
 }

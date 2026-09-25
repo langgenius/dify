@@ -43,7 +43,7 @@ _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
     @endpoint(
-        op="console_app.external.list",
+        op="get.console_app.external",
         kind=Kind.LIST,
         summary="List apps an external SSO subject may run",
         examples=(Example(title="List the apps this SSO subject may run, first page", input={"page": 1, "limit": 20}),),
@@ -101,7 +101,7 @@ class PermittedExternalAppsListApi(Resource):
 @openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @endpoint(
-        op="console_app.external.describe",
+        op="describe.console_app.external",
         kind=Kind.OBJECT,
         summary="External-subject app detail",
         examples=(Example(title="Describe a permitted app with its input_schema", input={"app_id": "<app_id>"}),),
