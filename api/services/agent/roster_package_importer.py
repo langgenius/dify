@@ -35,10 +35,10 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.package_resource_importer import AgentPackageResourceImporter, _Storage
-from services.agent.roster_package_dependencies import check_package_dependencies
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
 from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
@@ -73,7 +73,6 @@ class RosterAgentPackageImporter:
             agent_package = app_dsl.package
             self._resources.validate(resources=package.manifest, agent_package=agent_package)
 
-            check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             try:
                 icons = self._resources.materialize_icons(
                     archive=package, icons=package.manifest.icons, tenant_id=tenant_id, account_id=account.id
@@ -133,6 +132,16 @@ class RosterAgentPackageImporter:
                     app_id,
                     exc_info=True,
                 )
+            if app_dsl.dependencies:
+                try:
+                    AppDslService.cache_import_dependencies(app_id=app_id, dependencies=app_dsl.dependencies)
+                except Exception:
+                    logger.warning(
+                        "Imported Agent App dependency check could not be cached: tenant_id=%s app_id=%s",
+                        tenant_id,
+                        app_id,
+                        exc_info=True,
+                    )
             return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @staticmethod
