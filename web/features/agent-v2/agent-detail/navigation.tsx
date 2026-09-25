@@ -219,7 +219,10 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
               !expand && 'hidden',
             )}
           >
-            <div className="truncate system-md-semibold text-text-secondary">
+            <div
+              className="truncate system-md-semibold text-text-secondary"
+              title={agent?.name ?? t(($) => $['agentDetail.title'])}
+            >
               {agent?.name ?? t(($) => $['agentDetail.title'])}
             </div>
             {agent?.role?.trim() && (

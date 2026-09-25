@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
 import Cookies from 'js-cookie'
+import { useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '../cookie'
@@ -180,6 +181,41 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
+  })
+
+  it('does not restore a stale hover preview after leaving compact layout', async () => {
+    const user = userEvent.setup()
+
+    function ResponsiveDetailSidebar() {
+      const [compact, setCompact] = useState(false)
+      return (
+        <Provider>
+          <InitialDetailSidebarMode mode="collapse">
+            <HotkeysProvider>
+              <button type="button" onClick={() => setCompact((value) => !value)}>
+                Switch layout
+              </button>
+              <DetailSidebarFrame
+                compact={compact}
+                renderTop={({ expand }) => <div data-testid="detail-top" data-expand={expand} />}
+                renderSection={() => <div>Section</div>}
+              />
+            </HotkeysProvider>
+          </InitialDetailSidebarMode>
+        </Provider>
+      )
+    }
+
+    renderWithConsoleQuery(<ResponsiveDetailSidebar />, {
+      accountProfileMeta: { currentEnv: null },
+    })
+    fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
+
+    await user.click(screen.getByRole('button', { name: 'Switch layout' }))
+    await user.click(screen.getByRole('button', { name: 'Switch layout' }))
+
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
   })
 
   it('persists expansion when the hovered preview toggle is clicked', () => {
