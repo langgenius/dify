@@ -2303,12 +2303,6 @@ requires-dist = [{ name = "upstash-vector", specifier = "==0.8.0" }]
 name = "dify-vdb-vastbase"
 version = "0.0.1"
 source = { editable = "providers/vdb/vdb-vastbase" }
-dependencies = [
-    { name = "pyobvector" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pyobvector", specifier = "==0.2.25" }]
 
 [[package]]
 name = "dify-vdb-vikingdb"
