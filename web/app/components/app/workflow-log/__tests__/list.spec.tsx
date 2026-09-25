@@ -11,7 +11,7 @@
 
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -186,7 +186,7 @@ describe('WorkflowAppLogList', () => {
         />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render loading state when appDetail is undefined', () => {
@@ -196,7 +196,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={undefined} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render table when data is available', () => {
@@ -259,7 +259,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
     })
 
     it('should render failure status correctly', () => {
@@ -273,7 +273,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Failure'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.failed'))!.toBeInTheDocument()
     })
 
     it('should render stopped status correctly', () => {
@@ -287,7 +287,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Stop'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.stopped'))!.toBeInTheDocument()
     })
 
     it('should render running status correctly', () => {
@@ -301,14 +301,42 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Running'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.running'))!.toBeInTheDocument()
+    })
+
+    it('should render paused status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: 'paused' }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('appLog.status.paused'))!.toBeInTheDocument()
+    })
+
+    it('should render scheduled status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: 'scheduled' }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('appLog.status.scheduled'))!.toBeInTheDocument()
     })
 
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
-            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+            status: 'partial-succeeded',
           }),
         }),
       ])
@@ -317,7 +345,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.partial-succeeded'))!.toBeInTheDocument()
     })
   })
 

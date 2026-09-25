@@ -1,11 +1,11 @@
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItemBasic } from '../../type'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
@@ -30,7 +30,8 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => LanguagesSupported[0]),
 }))
 

@@ -7,8 +7,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -16,8 +16,8 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -49,7 +49,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
 }
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const nameInputId = useId()
 
@@ -297,7 +297,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   </div>
                 )}
               </div>
-              <Divider style={{ margin: 0 }} />
+              <Separator />
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
@@ -433,7 +433,7 @@ const CreateAppModal = ({
   onCreateFromTemplate,
   defaultAppMode,
 }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
@@ -482,7 +482,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 }
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const previewInfo = (() => {
     switch (mode) {
       case AppModeEnum.CHAT:

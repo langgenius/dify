@@ -19,13 +19,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -67,7 +67,7 @@ const emptyPlaceholderCardIds = Array.from(
 )
 
 function AgentRosterSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -111,7 +111,7 @@ function AgentRosterPlaceholderState({
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -171,9 +171,9 @@ function AgentCardActionMenuItems({
   onEdit,
   onExport,
 }: AgentCardActionMenuItemsProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -182,7 +182,7 @@ function AgentCardActionMenuItems({
       {onEdit && (
         <MenuItem className="gap-2" onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-          <span>{t(($) => $['roster.editInfo'])}</span>
+          <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
         </MenuItem>
       )}
       {onDuplicate && (
@@ -194,7 +194,7 @@ function AgentCardActionMenuItems({
       {onExport && (
         <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-          <span>{tApp(($) => $.export)}</span>
+          <span>{tApp(($) => $.exportApp)}</span>
         </MenuItem>
       )}
       {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
@@ -209,8 +209,8 @@ function AgentCardActionMenuItems({
 }
 
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
@@ -218,6 +218,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
+  const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
   const canDuplicate = useCanCreateAgents() && capabilities.canPreview
   const hasActions =
     capabilities.canEdit ||
@@ -229,7 +230,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     agent.updated_at != null
       ? formatTime(
           agent.updated_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
       : null
   const referenceCount = agent.published_reference_count ?? 0
@@ -270,14 +271,19 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportFailed))
+      toast.error(tApp(($) => $.exportAppFailed))
       return
     }
 
     return exportAppDsl({
+      format: 'ifpkg',
       appId: agent.app_id,
       appName: agent.name,
     })
+  }
+
+  const showPreviewOnlyAccessWarning = () => {
+    toast.warning(tApp(($) => $.noAccessResourcePermission))
   }
 
   const cardContent = (
@@ -312,7 +318,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             id={draftStatusId}
             className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
           >
-            {t(($) => $['roster.usageStatus.draft'])}
+            {t(($) => $['roster.usageStatus.draft'], { ns: 'agentRoster' })}
           </div>
         </div>
       )}
@@ -324,7 +330,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     <li
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
-      className="group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
+      className={cn(
+        "group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+        isPreviewOnly
+          ? 'opacity-60'
+          : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
+      )}
     >
       <ContextMenu>
         <ContextMenuTrigger
@@ -338,13 +349,23 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               >
                 {cardContent}
               </Link>
+            ) : isPreviewOnly ? (
+              <button
+                type="button"
+                aria-labelledby={nameId}
+                aria-describedby={accessibleDescriptionIds || undefined}
+                className={cn(cardClassName, 'w-full cursor-not-allowed text-left')}
+                onClick={showPreviewOnlyAccessWarning}
+              >
+                {cardContent}
+              </button>
             ) : (
               <div className={cardClassName}>{cardContent}</div>
             )
           }
         />
         {hasActions && (
-          <ContextMenuContent className="w-40">
+          <ContextMenuContent className="w-max min-w-40">
             <AgentCardActionMenuItems
               kind="context"
               isExporting={isExporting}
@@ -363,7 +384,10 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               <DropdownMenuTrigger
                 render={
                   <IconButton
-                    aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+                    aria-label={t(($) => $['roster.moreActions'], {
+                      ns: 'agentRoster',
+                      name: agent.name,
+                    })}
                     size="lg"
                     className="data-popup-open:bg-state-base-hover"
                   >
@@ -371,7 +395,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   </IconButton>
                 }
               />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}
@@ -400,7 +424,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                 className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
               />
               <span className="sr-only">
-                {t(($) => $['roster.references.trigger'], { name: agent.name })}:{' '}
+                {t(($) => $['roster.references.trigger'], { ns: 'agentRoster', name: agent.name })}
+                :{' '}
               </span>
               <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
             </div>
@@ -442,8 +467,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 }
 
 export function AgentRosterList({ label, state }: AgentRosterListProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
 
   return (
@@ -457,7 +482,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         <AgentRosterPlaceholderState
           onRetry={state.onRetry}
           role="alert"
-          title={t(($) => $['roster.loadingError'])}
+          title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
         />
       )}
       {state.status === 'ready' && state.agents.length === 0 && (
@@ -465,27 +490,26 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           role={state.emptyState === 'filtered' ? 'status' : undefined}
           title={
             state.emptyState === 'filtered'
-              ? t(($) => $['roster.emptySearch'])
-              : t(($) => $['roster.empty'])
+              ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+              : t(($) => $['roster.empty'], { ns: 'agentRoster' })
           }
         />
       )}
-      {state.status === 'ready' &&
-        state.agents.length > 0 && (
-          // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
-          // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
-          <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
-            {state.agents.map((agent) => (
-              <AgentRosterItem key={agent.id} agent={agent} />
-            ))}
-          </ul>
-        )}
+      {state.status === 'ready' && state.agents.length > 0 && (
+        // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+        <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
+          {state.agents.map((agent) => (
+            <AgentRosterItem key={agent.id} agent={agent} />
+          ))}
+        </ul>
+      )}
       {state.status === 'ready' && state.footer.status === 'error' && (
         <div
           className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
           role="alert"
         >
-          <span>{t(($) => $['roster.loadingError'])}</span>
+          <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
           <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
@@ -494,7 +518,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
       {state.status === 'ready' && state.footer.status === 'load-more' && (
         <div className="flex justify-center pt-1">
           <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
-            {t(($) => $['roster.loadMore'])}
+            {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
           </Button>
         </div>
       )}

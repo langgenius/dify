@@ -479,9 +479,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         :param existing_variables: List of existing conversation variables
         :return: Updated list including any newly created variables
         """
-        # Get IDs of existing and workflow variables
+        # Compare stored primary keys. A non-UUID author id is rewritten by
+        # ConversationVariable.storage_id, so the workflow id itself will not match.
         existing_ids = {var.id for var in existing_variables}
-        workflow_variables = {var.id: var for var in self._workflow.conversation_variables}
+        workflow_variables = {
+            ConversationVariable.storage_id(variable): variable for variable in self._workflow.conversation_variables
+        }
 
         # Find missing variable IDs
         missing_ids = set(workflow_variables.keys()) - existing_ids

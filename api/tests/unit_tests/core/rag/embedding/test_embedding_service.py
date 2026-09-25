@@ -254,6 +254,17 @@ class TestMultimodalDocumentCache:
 
 class TestQueryCache:
     @patch("core.rag.embedding.cached_embedding.redis_client")
+    def test_cached_query_can_be_read_without_model_instance(self, redis: Mock) -> None:
+        vector = np.array([0.25, 0.75], dtype=float)
+        redis.get.return_value = base64.b64encode(vector.tobytes())
+
+        result = CacheEmbedding.get_cached_query_embedding("openai", "text-embedding-ada-002", "query")
+
+        assert result == vector.tolist()
+        redis.get.assert_called_once_with(f"openai_text-embedding-ada-002_{helper.generate_text_hash('query')}")
+        redis.expire.assert_called_once_with(f"openai_text-embedding-ada-002_{helper.generate_text_hash('query')}", 600)
+
+    @patch("core.rag.embedding.cached_embedding.redis_client")
     def test_query_cache_miss_normalizes_and_stores(self, redis: Mock, model_instance: Mock) -> None:
         redis.get.return_value = None
         model_instance.invoke_text_embedding.return_value = _result(_vector())

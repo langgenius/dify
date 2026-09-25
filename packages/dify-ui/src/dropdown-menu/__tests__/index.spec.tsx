@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   DropdownMenu,
@@ -296,7 +296,6 @@ describe('dropdown-menu wrapper', () => {
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
-            {/* oxlint-disable-next-line jsx-a11y/anchor-has-content -- Base UI merges this item's children and accessible name into the render element. */}
             <DropdownMenuLinkItem render={<a href="/account" />} aria-label="account link">
               Account settings
             </DropdownMenuLinkItem>
@@ -398,4 +397,26 @@ describe('dropdown-menu wrapper', () => {
       expect(screen.getByRole('separator').elements()).toHaveLength(1)
     })
   })
+})
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <DropdownMenu open>
+      <DropdownMenuTrigger>Open audit menu</DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuSub open>
+          <DropdownMenuSubTrigger>More audit actions</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}
+          >
+            <DropdownMenuItem>Audit action</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  )
+
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
 })

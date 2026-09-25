@@ -224,13 +224,9 @@ vi.mock('../../utils', async () => {
   return {
     ...actual,
     MODEL_PROVIDER_QUOTA_GET_PAID: ['test-openai', 'test-anthropic'],
-    providerIconMap: {
-      'test-openai': ({ className }: { className?: string }) => (
-        <span className={className}>OAI</span>
-      ),
-      'test-anthropic': ({ className }: { className?: string }) => (
-        <span className={className}>ANT</span>
-      ),
+    providerLogoMap: {
+      'test-openai': { iconClassName: 'i-ri-openai-fill' },
+      'test-anthropic': { iconClassName: 'i-custom-public-llm-anthropic-short-light' },
     },
     modelNameMap: {
       'test-openai': 'TestOpenAI',
@@ -315,11 +311,11 @@ describe('Popup', () => {
 
     expect(screen.getByText('openai'))!.toBeInTheDocument()
 
-    const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    const input = screen.getByPlaceholderText('modelProvider.form.searchModel')
     await user.click(input)
     await user.keyboard('not-found')
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     )!.toBeInTheDocument()
 
     const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
@@ -354,7 +350,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'claude' },
     })
 
@@ -363,7 +359,7 @@ describe('Popup', () => {
     expect(screen.getByText('claude-3')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(
-      screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.queryByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     ).not.toBeInTheDocument()
   })
 
@@ -382,12 +378,12 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'mistral' },
     })
 
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     )!.toBeInTheDocument()
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
@@ -420,7 +416,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -458,7 +454,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'opnai' },
     })
 
@@ -498,7 +494,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'claude3' },
     })
 
@@ -542,7 +538,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'gpt5.4' },
     })
 
@@ -597,7 +593,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -644,7 +640,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'gemni' },
     })
 
@@ -669,7 +665,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -697,12 +693,12 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*openai/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*openai/),
     )!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
@@ -730,32 +726,42 @@ describe('Popup', () => {
     expect(screen.getByText('gpt-4o')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' }),
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.showIncompatibleModels',
+      }),
     ).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' }),
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.showIncompatibleModels',
+      }),
     )
 
     expect(screen.getByText('gpt-4o')).toBeInTheDocument()
     expect(screen.getByText('gpt-4')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'common.modelProvider.selector.showIncompatibleModels',
+        name: 'modelProvider.modelProvider.selector.showIncompatibleModels',
       }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' }),
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.hideIncompatibleModels',
+      }),
     ).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' }),
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.hideIncompatibleModels',
+      }),
     )
 
     expect(screen.getByText('gpt-4o')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' }),
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.showIncompatibleModels',
+      }),
     ).toBeInTheDocument()
   })
 
@@ -783,7 +789,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'claude' },
     })
 
@@ -792,7 +798,7 @@ describe('Popup', () => {
     expect(screen.getByText('claude-3')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(
-      screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*claude/),
+      screen.queryByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*claude/),
     ).not.toBeInTheDocument()
   })
 
@@ -811,12 +817,12 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'mistral' },
     })
 
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*mistral/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*mistral/),
     )!.toBeInTheDocument()
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
@@ -849,7 +855,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -876,7 +882,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -904,12 +910,12 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     )!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
@@ -919,7 +925,7 @@ describe('Popup', () => {
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
     expect(
-      screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
+      screen.queryByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
     ).not.toBeInTheDocument()
   })
 
@@ -933,7 +939,7 @@ describe('Popup', () => {
     )
 
     expect(
-      screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
+      screen.getByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
     )!.toBeInTheDocument()
   })
 
@@ -947,17 +953,17 @@ describe('Popup', () => {
       />,
     )
 
-    const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
-    const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    const scrollRegion = screen.getByRole('region', { name: 'modelProvider.modelProvider.models' })
+    const searchInput = screen.getByPlaceholderText('modelProvider.form.searchModel')
     const settingsAction = screen.getByRole('button', {
-      name: /common\.modelProvider\.selector\.modelProviderSettings/,
+      name: /modelProvider\.modelProvider\.selector\.modelProviderSettings/,
     })
 
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
     expect(scrollRegion).not.toContainElement(settingsAction)
     expect(scrollRegion).toContainElement(
-      screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
+      screen.getByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
     )
   })
 
@@ -977,7 +983,7 @@ describe('Popup', () => {
       />,
     )
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     )!.toBeInTheDocument()
 
     unmount()
@@ -1010,7 +1016,7 @@ describe('Popup', () => {
       />,
     )
     expect(
-      screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/),
+      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
     )!.toBeInTheDocument()
   })
 
@@ -1032,7 +1038,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('datasetSettings.form.searchModel'), {
+    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
       target: { value: 'openai' },
     })
 
@@ -1174,7 +1180,7 @@ describe('Popup', () => {
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
     expect(
-      screen.queryByText('common.modelProvider.selector.modelProviderSettings'),
+      screen.queryByText('modelProvider.modelProvider.selector.modelProviderSettings'),
     ).not.toBeInTheDocument()
   })
 
@@ -1198,13 +1204,13 @@ describe('Popup', () => {
     expect(await screen.findByRole('dialog', { name: 'Model selector' })).toBeInTheDocument()
 
     const searchInput = screen.getByRole('searchbox', {
-      name: 'datasetSettings.form.searchModel',
+      name: 'modelProvider.form.searchModel',
     })
     const configureButton = screen.getByRole('button', {
       name: /modelProvider\.selector\.configure/,
     })
     const providerSettingsButton = screen.getByRole('button', {
-      name: /common\.modelProvider\.selector\.modelProviderSettings/,
+      name: /modelProvider\.modelProvider\.selector\.modelProviderSettings/,
     })
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
 
@@ -1272,7 +1278,9 @@ describe('Popup', () => {
     expect(
       screen.queryByText(/modelProvider\.selector\.discoverMoreInMarketplace/),
     ).not.toBeInTheDocument()
-    expect(screen.queryByText(/common\.modelProvider\.selector\.install/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/modelProvider\.modelProvider\.selector\.install/),
+    ).not.toBeInTheDocument()
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {
@@ -1349,7 +1357,7 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
+    const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
     fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
@@ -1367,16 +1375,16 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
+    const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
     fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalled()
     })
 
-    expect(screen.getAllByText(/common\.modelProvider\.selector\.install/).length).toBeGreaterThan(
-      0,
-    )
+    expect(
+      screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/).length,
+    ).toBeGreaterThan(0)
   })
 
   it('should run checkTaskStatus when not all_installed', async () => {
@@ -1385,7 +1393,7 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
+    const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
     fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
@@ -1402,7 +1410,7 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0]!)
+    fireEvent.click(screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).not.toHaveBeenCalled()
@@ -1416,7 +1424,7 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0]!)
+    fireEvent.click(screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).not.toHaveBeenCalled()

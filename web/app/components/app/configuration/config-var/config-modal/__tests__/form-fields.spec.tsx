@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,13 +8,12 @@ import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  const React = await import('react')
   return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = options?.ns as string | undefined
         return ns ? `${ns}.${key}` : key
-      }),
+      }) as TFunction<['appDebug']>,
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
     Trans: withSelectorKeyProps(
@@ -100,7 +100,7 @@ vi.mock('../../config-string', () => ({
   ),
 }))
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug']>
 
 const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
 
@@ -142,7 +142,7 @@ const createBaseProps = () => {
       required: false,
       hide: false,
     } as any,
-    t: withSelectorKey(t),
+    t,
     payloadChangeHandlers,
   }
 }
@@ -188,7 +188,7 @@ describe('ConfigModalFormFields', () => {
     },
   )
 
-  it('should update paragraph, number, checkbox, and select defaults', async () => {
+  it('should update paragraph, checkbox, and select defaults', async () => {
     const user = userEvent.setup()
     const paragraphProps = createBaseProps()
     paragraphProps.tempPayload = {
@@ -199,16 +199,6 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...paragraphProps} />)
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated paragraph' } })
     expect(paragraphProps.payloadChangeHandlers.default).toHaveBeenCalledWith('updated paragraph')
-
-    const numberProps = createBaseProps()
-    numberProps.tempPayload = {
-      ...numberProps.tempPayload,
-      type: InputVarType.number,
-      default: '1',
-    }
-    render(<ConfigModalFormFields {...numberProps} />)
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-    expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith('2')
 
     const checkboxProps = createBaseProps()
     checkboxProps.tempPayload = {
@@ -244,7 +234,7 @@ describe('ConfigModalFormFields', () => {
     const textInputProps = createBaseProps()
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hiddenDescription' }))
+    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hidden' }))
     expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
     const docLink = await screen.findByRole('link')
     expect(docLink).toHaveAttribute(
@@ -390,18 +380,7 @@ describe('ConfigModalFormFields', () => {
     expect(multiFallbackProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
   })
 
-  it('should clear number defaults and skip rendering the default selector when options are missing', () => {
-    const numberProps = createBaseProps()
-    numberProps.tempPayload = {
-      ...numberProps.tempPayload,
-      type: InputVarType.number,
-      default: '9',
-    }
-    render(<ConfigModalFormFields {...numberProps} />)
-
-    fireEvent.change(screen.getByDisplayValue('9'), { target: { value: '' } })
-    expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
-
+  it('should skip rendering the default selector when options are missing', () => {
     const selectWithoutOptionsProps = createBaseProps()
     selectWithoutOptionsProps.tempPayload = {
       ...selectWithoutOptionsProps.tempPayload,
@@ -486,7 +465,7 @@ describe('ConfigModalFormFields', () => {
     }
     render(<ConfigModalFormFields {...numberProps} />)
 
-    expect(screen.getByRole('spinbutton')).toHaveValue(null)
+    expect(screen.getByRole('textbox', { name: 'variableConfig.defaultValue' })).toHaveValue('')
   })
 
   it('should disable hide checkbox when required is true and disable required when hide is true', () => {

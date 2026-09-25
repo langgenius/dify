@@ -1,6 +1,7 @@
 {
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
+    "noUncheckedSideEffectImports": true,
     "types": ["vite-plus/test/globals", "vite-plus/test/matchers"]
   },
   "include": [

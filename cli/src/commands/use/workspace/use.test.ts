@@ -56,7 +56,11 @@ function fakeClient(opts: {
       opts.list ??
         (() =>
           Promise.resolve({
-            workspaces: [
+            page: 1,
+            limit: 20,
+            total: 2,
+            has_more: false,
+            data: [
               { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
               {
                 id: '00000000-0000-0000-0000-000000000002',

@@ -1,9 +1,9 @@
-import type { AccessPointAppInfo } from '../shared/utils'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   apiEnable: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -53,24 +53,21 @@ vi.mock('../shared/api-secret-key-button', () => ({
   },
 }))
 
-function createAppInfo(
-  mode: AppModeEnum,
-  overrides: Partial<AccessPointAppInfo> = {},
-): AccessPointAppInfo {
+function createAppInfo(mode: AppModeEnum, overrides: Partial<App> = {}): App {
   return {
     api_base_url: 'https://api.example.test/v1',
     enable_api: true,
     id: 'app-1',
     mode,
     ...overrides,
-  } as AccessPointAppInfo
+  } as App
 }
 
 function renderCard(
   mode: AppModeEnum,
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   canManage = true,
-  overrides: Partial<AccessPointAppInfo> = {},
+  overrides: Partial<App> = {},
 ) {
   useAppStore.setState({ appDetail: createAppInfo(mode, overrides) })
   const queryClient = createTestQueryClient()

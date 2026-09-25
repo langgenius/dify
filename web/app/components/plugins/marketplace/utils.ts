@@ -107,31 +107,25 @@ export const getPluginDetailLinkInMarketplace = (
 }
 
 export const getTemplateDetailLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
+  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
 ) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const search = new URLSearchParams({ templateId: template.id })
+  const publisher = template.publisher_unique_handle || template.publisher_handle || 'template'
 
-  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}?${search.toString()}`
+  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.id)}`
 }
 
 export const getTemplateLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
+  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
   params?: Record<string, string | undefined>,
 ) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const path = `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}`
+  const {
+    tid: _tid,
+    templateId: _templateId,
+    creationType: _creationType,
+    ...detailParams
+  } = params ?? {}
 
-  return getMarketplaceUrl(path, {
-    ...params,
-    templateId: template.id,
-  })
+  return getMarketplaceUrl(getTemplateDetailLinkInMarketplace(template), detailParams)
 }
 
 export const getMarketplaceCategoryUrl = (
@@ -267,15 +261,14 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (
-    [
-      PluginCategoryEnum.tool,
-      PluginCategoryEnum.agent,
-      PluginCategoryEnum.model,
-      PluginCategoryEnum.datasource,
-      PluginCategoryEnum.trigger,
-    ].includes(pluginType as PluginCategoryEnum)
-  )
+  const marketplaceCategories: PluginCategoryEnum[] = [
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.model,
+    PluginCategoryEnum.datasource,
+    PluginCategoryEnum.trigger,
+  ]
+  if (marketplaceCategories.includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'

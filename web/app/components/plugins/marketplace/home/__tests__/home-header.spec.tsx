@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       i18n: {
         language: 'en-US',
@@ -102,16 +103,10 @@ describe('HomeHeader', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
     const brandLink = screen.getByRole('link', { name: 'Dify Marketplace' })
-    const [lightLogo, darkLogo] = brandLink.querySelectorAll('img')
-    expect(lightLogo).toHaveAttribute('src', expect.stringContaining('dify-marketplace-logo.svg'))
-    expect(darkLogo).toHaveAttribute(
-      'src',
-      expect.stringContaining('dify-marketplace-logo-dark.svg'),
-    )
-    expect(lightLogo).toHaveAttribute('width', '141.761')
-    expect(lightLogo).toHaveAttribute('height', '16.386')
-    expect(darkLogo).toHaveAttribute('width', '141.761')
-    expect(darkLogo).toHaveAttribute('height', '16.386')
+    const logo = brandLink.querySelector('img')
+    expect(logo).toHaveAttribute('src', '/marketplace/dify-marketplace-logo.svg')
+    expect(logo).toHaveAttribute('width', '141.761')
+    expect(logo).toHaveAttribute('height', '16.386')
     expect(screen.queryByText('mainNav.marketplace')).not.toBeInTheDocument()
   })
 

@@ -8,7 +8,7 @@ import { TabType } from '@/app/components/workflow/block-selector/types'
 import { useReplaceDataSourceNode } from './hooks'
 
 const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleReplaceNode } = useReplaceDataSourceNode(id)
 
   const triggerElement = (

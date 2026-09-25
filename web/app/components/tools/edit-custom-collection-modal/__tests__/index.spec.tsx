@@ -1,5 +1,4 @@
 import type { ModalContextState } from '@/context/modal-context'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   act,
   fireEvent,
@@ -10,6 +9,7 @@ import {
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
 import EditCustomCollectionModal from '../index'
 
@@ -393,6 +393,14 @@ describe('EditCustomCollectionModal', () => {
 
   // Tests for Icon Section
   describe('Icon Section', () => {
+    it('names the button that changes the tool icon', () => {
+      renderModal()
+
+      expect(
+        screen.getByRole('button', { name: 'tools.createTool.changeIcon' }),
+      ).toBeInTheDocument()
+    })
+
     it('should render icon section', () => {
       renderModal()
 

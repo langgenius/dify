@@ -325,7 +325,7 @@ class TestWorkflowConverter:
         workflow_converter = WorkflowConverter()
         workflow = workflow_converter.convert_app_model_config_to_workflow(
             app_model=app,
-            app_model_config=app.app_model_config,
+            app_model_config=app.app_model_config_with_session(session=db_session_with_containers),
             account_id=account.id,
             session=db_session_with_containers,
         )

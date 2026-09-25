@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
           python-version: '3.12'
@@ -107,8 +107,18 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
-  web-style:
-    name: Web Style
+  web-build:
+    name: Web Build and Bundle Analysis
+    if: ${{ !inputs.skip-checks && inputs.classification-succeeded && inputs.run-web-style }}
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/web-bundle-size.yml
+    with:
+      base-rev: ${{ inputs.base-rev }}
+
+  web-style-checks:
+    name: Web Static Checks
     if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-web-style) }}
     runs-on: depot-ubuntu-24.04
     defaults:
@@ -134,6 +144,9 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Check generated i18n types
+        run: vp run i18n:check-types
+
       - name: Web tsslint
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -150,6 +163,24 @@ jobs:
       - name: Web production unused declarations check
         working-directory: .
         run: vp run knip:production-unused-check
+
+  # Preserve the existing required check while build and static checks run in parallel.
+  web-style:
+    name: Web Style
+    if: ${{ always() && !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-web-style) }}
+    needs: [web-build, web-style-checks]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Verify web checks
+        env:
+          BUILD_RESULT: ${{ needs.web-build.result }}
+          STYLE_RESULT: ${{ needs.web-style-checks.result }}
+        run: |
+          if [[ "$BUILD_RESULT" != 'success' || "$STYLE_RESULT" != 'success' ]]; then
+            echo "Web checks failed: build=$BUILD_RESULT, static checks=$STYLE_RESULT" >&2
+            exit 1
+          fi
 
   ts-common-style:
     name: TS Common

@@ -1,5 +1,6 @@
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiCheckboxCircleFill,
@@ -11,7 +12,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
@@ -20,7 +20,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
 const CommentsPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowComments'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)
@@ -75,7 +75,7 @@ const CommentsPanel = () => {
     >
       <div className="flex items-center justify-between p-4 pb-2">
         <div className="system-xl-semibold leading-6 font-semibold text-text-primary">
-          {t(($) => $['comments.panelTitle'], { ns: 'workflow' })}
+          {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
         </div>
         <div className="relative flex items-center gap-2">
           <button
@@ -83,7 +83,7 @@ const CommentsPanel = () => {
               'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
               hasActiveFilter && 'bg-state-accent-active',
             )}
-            aria-label={t(($) => $['comments.aria.filterComments'], { ns: 'workflow' })}
+            aria-label={t(($) => $['comments.aria.filterComments'], { ns: 'workflowComments' })}
             onClick={() => setShowFilter((v) => !v)}
           >
             <RiFilter3Line
@@ -106,7 +106,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">
-                  {t(($) => $['comments.filter.all'], { ns: 'workflow' })}
+                  {t(($) => $['comments.filter.all'], { ns: 'workflowComments' })}
                 </span>
                 {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
@@ -121,11 +121,11 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">
-                  {t(($) => $['comments.filter.onlyYourThreads'], { ns: 'workflow' })}
+                  {t(($) => $['comments.filter.onlyYourThreads'], { ns: 'workflowComments' })}
                 </span>
                 {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
-              <Divider type="horizontal" className="my-1" />
+              <Separator orientation="horizontal" className="my-1 h-[0.5px]" />
               <div
                 className="flex w-full items-center justify-between rounded-md p-2"
                 onClick={(e) => {
@@ -133,7 +133,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-sm text-text-secondary">
-                  {t(($) => $['comments.filter.showResolved'], { ns: 'workflow' })}
+                  {t(($) => $['comments.filter.showResolved'], { ns: 'workflowComments' })}
                 </span>
                 <Switch
                   size="md"
@@ -145,7 +145,7 @@ const CommentsPanel = () => {
               </div>
             </div>
           )}
-          <Divider type="vertical" className="h-3.5" />
+          <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
           <div
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => {
@@ -206,7 +206,7 @@ const CommentsPanel = () => {
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
                     <div className="system-2xs-regular text-text-tertiary">
-                      {c.reply_count} {t(($) => $['comments.reply'], { ns: 'workflow' })}
+                      {c.reply_count} {t(($) => $['comments.reply'], { ns: 'workflowComments' })}
                     </div>
                   </div>
                 )}
@@ -216,7 +216,7 @@ const CommentsPanel = () => {
         })}
         {!loading && filteredSorted.length === 0 && (
           <div className="mt-6 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['comments.noComments'], { ns: 'workflow' })}
+            {t(($) => $['comments.noComments'], { ns: 'workflowComments' })}
           </div>
         )}
       </div>

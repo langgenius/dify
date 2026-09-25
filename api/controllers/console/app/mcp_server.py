@@ -123,7 +123,7 @@ class AppMCPServerController(Resource):
             status=AppMCPServerStatus.ACTIVE,
             app_id=app_model.id,
             tenant_id=current_tenant_id,
-            server_code=AppMCPServer.generate_server_code(16),
+            server_code=AppMCPServer.generate_server_code(16, session=db.session()),
         )
         db.session.add(server)
         db.session.commit()
@@ -201,6 +201,6 @@ class AppMCPServerRefreshController(Resource):
         )
         if not server:
             raise NotFound()
-        server.server_code = AppMCPServer.generate_server_code(16)
+        server.server_code = AppMCPServer.generate_server_code(16, session=db.session())
         db.session.commit()
         return dump_response(AppMCPServerResponse, server)

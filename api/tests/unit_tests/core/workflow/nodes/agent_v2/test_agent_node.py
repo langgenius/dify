@@ -52,7 +52,13 @@ from core.workflow.nodes.agent_v2.session_store import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    NodeExecutionType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import StreamCompletedEvent
@@ -404,6 +410,7 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -440,7 +447,16 @@ def _node(
     node = DifyAgentNode(
         node_id="agent-node",
         data=DifyAgentNodeData.model_validate(
-            {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
+            {
+                "type": BuiltinNodeTypes.AGENT,
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "agent_output_routes": binding_resolver.binding.node_job_config.output_routes.model_dump(),
+                "error_strategy": error_strategy,
+                "default_value": [{"key": "text", "type": "string", "value": "fallback"}]
+                if error_strategy == ErrorStrategy.DEFAULT_VALUE
+                else [],
+            }
         ),
         graph_init_params=graph_init_params,
         graph_runtime_state=cast(
@@ -1114,3 +1130,224 @@ def test_agent_node_records_stream_usage_metadata():
     assert agent_backend["last_stream_event_id"] == "1-1"
     assert agent_backend["last_stream_event_kind"] == "model_response"
     assert agent_backend["usage"] == {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}
+
+
+@pytest.mark.parametrize(
+    ("enabled", "count", "output", "expected_handle"),
+    [
+        (False, 2, "hello", "source"),
+        (True, 2, {"text": "hello", "switch": "route-1"}, "route-1"),
+    ],
+)
+def test_agent_node_selects_the_configured_success_exit(enabled, count, output, expected_handle):
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": enabled,
+                "routes": [{"id": f"route-{i}", "name": "Condition"} for i in range(count)],
+            }
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.edge_source_handle == expected_handle
+    assert result.outputs == (output if isinstance(output, dict) else {"text": output})
+
+
+@pytest.mark.parametrize(
+    ("enabled", "error_strategy", "expected_execution_type"),
+    [
+        (False, None, NodeExecutionType.EXECUTABLE),
+        (True, None, NodeExecutionType.BRANCH),
+        (False, ErrorStrategy.DEFAULT_VALUE, NodeExecutionType.EXECUTABLE),
+        (True, ErrorStrategy.FAIL_BRANCH, NodeExecutionType.BRANCH),
+        (True, ErrorStrategy.DEFAULT_VALUE, None),
+    ],
+)
+def test_agent_routes_initialize_through_workflow_node_factory(
+    enabled, error_strategy, expected_execution_type, config_overrides
+):
+    from core.workflow.node_factory import DifyNodeFactory
+
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    template = _node()
+    factory = DifyNodeFactory(template.graph_init_params, template.graph_runtime_state)
+    node_data = template.node_data.model_dump(mode="python", by_alias=True)
+    node_data.update(
+        agent_output_routes={
+            "enabled": enabled,
+            "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+        },
+        error_strategy=error_strategy,
+    )
+    # Exercise the production factory, which serializes data before construction.
+    node_config = {"id": "agent-node", "data": node_data}
+    if expected_execution_type is None:
+        with pytest.raises(ValueError, match="default-value"):
+            factory.create_node(node_config)
+        return
+
+    node = factory.create_node(node_config)
+    assert isinstance(node, DifyAgentNode)
+    assert node.execution_type == expected_execution_type
+    assert node.node_data.agent_output_routes.enabled is enabled
+
+
+def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches():
+    from graphon.enums import NodeState
+    from graphon.graph.edge import Edge
+    from graphon.graph.graph import Graph
+    from graphon.graph_engine.graph_state_manager import GraphStateManager
+    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
+    from graphon.graph_engine.graph_traversal.skip_propagator import SkipPropagator
+    from graphon.graph_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
+    from graphon.nodes.end.end_node import EndNode
+    from graphon.nodes.end.entities import EndNodeData
+
+    outputs = iter([{"score": "invalid", "switch": "a"}, {"score": 42, "switch": "b"}])
+
+    class RetryingBackendClient(FileOutputBackendClient):
+        def _events(self, run_id: str):
+            self.output_payload = next(outputs)
+            return super()._events(run_id)
+
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "score",
+                    "type": "number",
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+            },
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=RetryingBackendClient(output_payload={}))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["score"] == 42
+
+    edges = {
+        target: Edge(id=target, tail="agent-node", head=target, source_handle=handle)
+        for target, handle in [("a-end", "a"), ("b-end-1", "b"), ("b-end-2", "b")]
+    }
+    leaves = {
+        target: EndNode(
+            node_id=target,
+            data=EndNodeData(title=target, outputs=[]),
+            graph_init_params=node.graph_init_params,
+            graph_runtime_state=node.graph_runtime_state,
+        )
+        for target in edges
+    }
+    graph = Graph(
+        root_node=node,
+        nodes={"agent-node": node, **leaves},
+        edges=edges,
+        out_edges={"agent-node": list(edges)},
+        in_edges={target: [target] for target in edges},
+    )
+    state = GraphStateManager(graph, node.graph_runtime_state, "root")
+    ready, traversed = EdgeProcessor(graph, state, SkipPropagator(graph, state)).process_node_success(
+        "agent-node", result.edge_source_handle
+    )
+    assert ready == ["b-end-1", "b-end-2"]
+    assert [event.edge_id for event in traversed if isinstance(event, GraphEdgeTakenEvent)] == ["b-end-1", "b-end-2"]
+    assert [event.edge_id for event in traversed if isinstance(event, GraphEdgeSkippedEvent)] == ["a-end"]
+    assert leaves["a-end"].state == NodeState.SKIPPED
+
+
+@pytest.mark.parametrize("output", ["plain text", {}, {"switch": None}, {"switch": 1}, {"switch": "unknown"}])
+def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(output):
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+            }
+        }
+    )
+    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "output_route_selection_failed"
+
+
+@pytest.mark.parametrize(
+    ("enabled", "count", "expected"),
+    [
+        (False, 2, {}),
+        (
+            True,
+            2,
+            {
+                "agent-node.previous.report": ["previous", "report"],
+                "agent-node.env.threshold": ["env", "threshold"],
+            },
+        ),
+    ],
+)
+def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enabled, count, expected):
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_output_routes": {
+                "enabled": enabled,
+                "routes": [{"id": str(i), "name": "{{#previous.report#}} {{#env.threshold#}}"} for i in range(count)],
+            }
+        },
+    )
+    assert mapping == expected
+
+
+def test_disabled_routes_continue_through_graphon_default_values():
+    from graphon.graph.edge import Edge
+    from graphon.graph.graph import Graph
+    from graphon.graph_engine.error_handler import ErrorHandler
+    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
+    from graphon.graph_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
+    from graphon.node_events import NodeRunResult
+
+    node = _node(error_strategy=ErrorStrategy.DEFAULT_VALUE)
+    edges = {target: Edge(id=target, tail="agent-node", head=target) for target in ["next-a", "next-b"]}
+    graph = Graph(root_node=node, nodes={"agent-node": node}, edges=edges, out_edges={"agent-node": list(edges)})
+    failure = NodeRunFailedEvent(
+        id="execution",
+        node_id="agent-node",
+        node_type=BuiltinNodeTypes.AGENT,
+        start_at=datetime.now(UTC),
+        finished_at=datetime.now(UTC),
+        error="backend failed",
+        node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error="backend failed"),
+    )
+    result = ErrorHandler(graph, MagicMock()).handle_node_failure(frame_id="root", event=failure)
+    assert isinstance(result, NodeRunExceptionEvent)
+    assert result.node_run_result.outputs["text"] == "fallback"
+    ready, traversed = EdgeProcessor(graph, MagicMock(), MagicMock()).process_node_success(
+        "agent-node", result.node_run_result.edge_source_handle
+    )
+    assert ready == ["next-a", "next-b"]
+    assert [event.edge_id for event in traversed] == ["next-a", "next-b"]
+
+
+def test_enabled_routes_reject_default_value_before_execution():
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="default-value"):
+        _node(binding_resolver=resolver, error_strategy=ErrorStrategy.DEFAULT_VALUE)
