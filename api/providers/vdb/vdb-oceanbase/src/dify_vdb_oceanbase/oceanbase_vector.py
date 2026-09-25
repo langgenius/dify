@@ -143,7 +143,7 @@ class OceanBaseVector(BaseVector):
                     mapping = row._mapping
                 except AttributeError:
                     mapping = None
-                
+
                 raw_value = None
                 if mapping is not None:
                     for key, value in mapping.items():
