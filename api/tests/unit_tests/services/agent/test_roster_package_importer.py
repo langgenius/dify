@@ -4,19 +4,17 @@ import hashlib
 import io
 import json
 import zipfile
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 
 import pytest
 import yaml
 from sqlalchemy import event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import Forbidden
 
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models import Account
-from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -42,7 +40,6 @@ from services.agent.dsl_entities import (
 from services.agent.errors import (
     AgentNameConflictError,
     InvalidRosterAgentPackageError,
-    RosterAgentPackageDependenciesMissingError,
     RosterAgentPackageImportFailedError,
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
@@ -56,6 +53,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.agent.roster_package_importer import RosterAgentPackageImporter
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.file_service import FileService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -83,8 +81,17 @@ class _MemoryStorage:
 
 
 @pytest.fixture(autouse=True)
-def _installed_plugins(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **_kwargs: [])
+def _dependency_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    cached: dict[str, str] = {}
+
+    class Cache:
+        def setex(self, key: str, _expiry: int, value: str) -> None:
+            cached[key] = value
+
+        def get(self, key: str) -> str | None:
+            return cached.get(key)
+
+    monkeypatch.setattr("services.app_dsl_service.redis_client", Cache())
 
 
 def _account() -> Account:
@@ -119,6 +126,7 @@ def _package(
     name: str = "Imported Agent",
     binary_dependency: bool = False,
     missing_knowledge: bool = False,
+    include_dependency: bool = True,
 ) -> bytes:
     config_skill = _skill_archive("config-skill")
     workspace_skill = _skill_archive("workspace-skill")
@@ -189,7 +197,7 @@ def _package(
                 ],
             )
         },
-        dependencies=[dependency],
+        dependencies=[dependency] if include_dependency else [],
     )
     app_bytes = yaml.safe_dump(app.model_dump(mode="json")).encode()
     manifest = RosterAgentPackageManifest(
@@ -426,58 +434,37 @@ def test_import_clears_source_credentials(
         assert "source-id" not in json.dumps(data)
 
 
-@pytest.mark.parametrize("allowed", [False, True])
-def test_missing_plugins_are_checked_before_writes(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], allowed: bool
-) -> None:
-    config_overrides(RBAC_ENABLED=True)
-    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **kwargs: kwargs["dependencies"])
-    monkeypatch.setattr(
-        "services.agent.roster_package_dependencies.RBACService.CheckAccess.check", lambda *_args, **_kwargs: allowed
-    )
-    storage = _MemoryStorage()
-    with pytest.raises(RosterAgentPackageDependenciesMissingError if allowed else Forbidden) as failure:
-        RosterAgentPackageImporter(storage_backend=storage).import_package(
-            source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
-        )
-    assert storage.save_count == 0
-    if allowed:
-        assert isinstance(failure.value, RosterAgentPackageDependenciesMissingError)
-        assert failure.value.data is not None
-        assert len(failure.value.data["leaked_dependencies"]) == 1
-
-
-def test_empty_dependencies_do_not_require_plugin_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.agent.roster_package_dependencies import check_package_dependencies
-
-    def unavailable(**_kwargs) -> None:
-        raise OSError("plugin service unavailable")
-
-    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", unavailable)
-    check_package_dependencies(tenant_id="tenant-1", account=_account(), dependencies=[])
-
-
-@pytest.mark.parametrize("policy", [TenantPluginInstallPermission.NOBODY, TenantPluginInstallPermission.ADMINS])
-def test_missing_plugins_respect_workspace_install_policy(
+@pytest.mark.parametrize("include_dependency", [False, True])
+def test_plugin_dependencies_do_not_block_import(
     monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
     sqlite_session_factory: sessionmaker[Session],
-    policy: TenantPluginInstallPermission,
+    include_dependency: bool,
 ) -> None:
-    config_overrides(RBAC_ENABLED=False)
-    with sqlite_session_factory() as session, session.begin():
-        session.add(
-            TenantPluginPermission(
-                tenant_id="tenant-1", install_permission=policy, debug_permission=TenantPluginDebugPermission.NOBODY
-            )
-        )
     monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **kwargs: kwargs["dependencies"])
     storage = _MemoryStorage()
-    with pytest.raises(Forbidden):
-        RosterAgentPackageImporter(storage_backend=storage).import_package(
-            source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
-        )
-    assert storage.save_count == 0
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_package(include_dependency=include_dependency)), tenant_id="tenant-1", account=_account()
+    )
+    assert storage.save_count > 0
+    with sqlite_session_factory() as session:
+        assert session.get(App, result.app_id) is not None
+    missing = AppDslService.check_app_dependencies(tenant_id="tenant-1", app_id=result.app_id)
+    assert len(missing.leaked_dependencies) == int(include_dependency)
+
+
+def test_dependency_cache_failure_does_not_fail_committed_import(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    class UnavailableCache:
+        def setex(self, *_args: object) -> None:
+            raise OSError("cache unavailable")
+
+    monkeypatch.setattr("services.app_dsl_service.redis_client", UnavailableCache())
+    result = RosterAgentPackageImporter(storage_backend=_MemoryStorage()).import_package(
+        source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
+    )
+    with sqlite_session_factory() as session:
+        assert session.get(App, result.app_id) is not None
 
 
 def test_import_materializes_agent_resources_and_unpublished_draft(
