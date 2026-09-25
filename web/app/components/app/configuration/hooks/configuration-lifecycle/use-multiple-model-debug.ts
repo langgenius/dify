@@ -1,8 +1,9 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/models/debug'
+import { useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 import { useDebugWithSingleOrMultipleModel } from '@/app/components/app/configuration/debug/hooks'
-import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
+import { setDetailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 
 export function useMultipleModelDebug({
   appId,
@@ -13,7 +14,7 @@ export function useMultipleModelDebug({
   completionParams: FormValue
   modelConfig: ModelConfig
 }) {
-  const setDetailSidebarMode = useSetDetailSidebarMode()
+  const setDetailSidebarMode = useSetAtom(setDetailSidebarModeAtom)
   const { debugWithMultipleModel, multipleModelConfigs, handleMultipleModelConfigsChange } =
     useDebugWithSingleOrMultipleModel(appId)
   const enableMultipleModelDebug = useCallback(() => {
