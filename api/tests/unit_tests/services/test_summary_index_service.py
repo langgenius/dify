@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.summary_index_service as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
 TENANT_ID = "tenant-1"
@@ -75,7 +75,7 @@ def _persist_document(
         name=f"Document {document_id}",
         created_from=DocumentCreatedFrom.WEB,
         created_by="account-1",
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
         doc_form=doc_form,

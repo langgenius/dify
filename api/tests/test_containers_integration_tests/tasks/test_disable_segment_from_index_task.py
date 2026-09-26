@@ -114,7 +114,7 @@ class TestDisableSegmentFromIndexTask:
         dataset: Dataset,
         tenant: Tenant,
         account: Account,
-        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+        doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """
         Helper method to create a test document.
