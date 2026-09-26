@@ -106,7 +106,7 @@ def _fetch_workspace(ctx: Context) -> Tenant:
 
 def _workspace_from_app(ctx: Context) -> Tenant:
     app = load_app(ctx)
-    tenant = TenantService.get_tenant_by_id(str(app.tenant_id), session=ctx.session)
+    tenant = TenantService.get_tenant_by_id(app.tenant_id, session=ctx.session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     return tenant
@@ -131,7 +131,7 @@ def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
     caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
         raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), str(workspace.id), session=ctx.session)
+    role = TenantService.get_account_role_in_tenant(ctx.subject.account_id, workspace.id, session=ctx.session)
     if role is None:
         raise NotFound("workspace not found")
     return role
