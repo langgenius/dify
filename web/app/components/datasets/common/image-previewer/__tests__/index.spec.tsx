@@ -59,7 +59,7 @@ describe('ImagePreviewer', () => {
 
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.getByText('Esc')).toBeInTheDocument()
   })
@@ -71,10 +71,19 @@ describe('ImagePreviewer', () => {
       'src',
       'blob:mock-url',
     )
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
     expect(screen.getByText(/800.*600/)).toBeInTheDocument()
     expect(screen.getByText('1.00 KB')).toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledTimes(3)
     expect(mockFetch.mock.calls.map(([url]) => url)).toEqual(images.map(({ url }) => url))
+  })
+
+  it('keeps a localized dialog name when the image name is empty', async () => {
+    render(<ImagePreviewer images={[{ ...images[0]!, name: '' }]} onClose={vi.fn()} />)
+
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
   })
 
   it('starts from the requested image', async () => {
@@ -94,6 +103,7 @@ describe('ImagePreviewer', () => {
 
     await user.click(nextButton)
     expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'image2.png' })).toBeInTheDocument()
     expect(previousButton).toBeEnabled()
 
     await user.click(nextButton)
@@ -133,6 +143,7 @@ describe('ImagePreviewer', () => {
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
     expect(await screen.findByText(/Failed to load image/)).toHaveTextContent(images[0]!.url)
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
     const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
 
     await user.click(retryButton)

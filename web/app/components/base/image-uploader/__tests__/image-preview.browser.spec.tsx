@@ -35,7 +35,7 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
   await page.viewport(960, 640)
   const screen = await render(<PreviewHost />)
   await screen.getByRole('button', { name: 'Open preview' }).click()
-  const dialog = screen.getByRole('dialog')
+  const dialog = screen.getByRole('dialog', { name: 'Local preview' })
   await expect.element(dialog).toBeVisible()
   await expect.poll(() => dialog.element().contains(document.activeElement)).toBe(true)
   const bounds = dialog.element().getBoundingClientRect()

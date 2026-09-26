@@ -111,12 +111,19 @@ describe('ImagePreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
       expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
       expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
         'src',
         'https://example.com/image.png',
       )
+    })
+
+    it.each(['', '   '])('names the dialog when the image title is %j', (title) => {
+      render(<ImagePreview url={dataImage} title={title} onCancel={vi.fn()} />)
+
+      expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     })
 
     it('should convert plain base64 string into data image src', () => {

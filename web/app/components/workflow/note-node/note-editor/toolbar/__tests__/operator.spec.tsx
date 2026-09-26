@@ -1,6 +1,7 @@
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import Operator from '../operator'
 
@@ -10,17 +11,24 @@ const renderOperator = (showAuthor = false) => {
   const onDelete = vi.fn()
   const onShowAuthorChange = vi.fn()
 
-  render(
-    <ReactFlowProvider>
-      <Operator
-        onCopy={onCopy}
-        onDuplicate={onDuplicate}
-        onDelete={onDelete}
-        showAuthor={showAuthor}
-        onShowAuthorChange={onShowAuthorChange}
-      />
-    </ReactFlowProvider>,
-  )
+  function NoteMenu() {
+    const [authorVisible, setAuthorVisible] = useState(showAuthor)
+    return (
+      <ReactFlowProvider>
+        <Operator
+          onCopy={onCopy}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          showAuthor={authorVisible}
+          onShowAuthorChange={(value) => {
+            setAuthorVisible(value)
+            onShowAuthorChange(value)
+          }}
+        />
+      </ReactFlowProvider>
+    )
+  }
+  render(<NoteMenu />)
 
   return {
     onCopy,
@@ -61,13 +69,28 @@ describe('NoteEditor Toolbar Operator', () => {
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the menu open when toggling show author', async () => {
+  it('lets the keyboard toggle show author and return to the trigger', async () => {
     const user = userEvent.setup()
-    renderOperator(true)
+    const { onShowAuthorChange } = renderOperator(true)
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByRole('switch'))
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    const option = screen.getByRole('menuitemcheckbox', {
+      name: 'workflow.nodes.note.editor.showAuthor',
+      checked: true,
+    })
+    await user.keyboard('{End}{ArrowUp}')
+    expect(option).toHaveFocus()
+    await user.keyboard(' ')
 
-    expect(screen.getByText('workflow.nodes.note.editor.showAuthor')).toBeInTheDocument()
+    expect(onShowAuthorChange).toHaveBeenCalledWith(false)
+    expect(option).toHaveAttribute('aria-checked', 'false')
+    expect(option).toHaveFocus()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
   })
 })

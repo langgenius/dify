@@ -65,6 +65,7 @@ describe('PdfPreview', () => {
   it('should render the pdf preview portal with overlay and loading indicator', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
     expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()

@@ -1,6 +1,6 @@
 import type { VariableAssignerNodeType } from '../../../types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import AddVariable from '../index'
@@ -43,8 +43,9 @@ describe('variable-assigner/add-variable', () => {
     vi.clearAllMocks()
   })
 
-  it('opens the real popup and assigns the selected variable', () => {
-    const { container } = render(
+  it('opens the real popup from its named trigger and assigns the selected variable', async () => {
+    const user = userEvent.setup()
+    render(
       <AddVariable
         availableVars={availableVars}
         variableAssignerNodeId="node-target"
@@ -53,20 +54,23 @@ describe('variable-assigner/add-variable', () => {
       />,
     )
 
-    const triggerButton = container.querySelector('button')!
-    const triggerVisual = triggerButton.firstElementChild!
+    const triggerButton = screen.getByRole('button', {
+      name: 'workflowLogic.nodes.variableAssigner.setAssignVariable',
+    })
     expect(triggerButton).not.toHaveAttribute('data-popup-open')
 
-    fireEvent.click(triggerButton)
+    await user.click(triggerButton)
 
     expect(triggerButton).toHaveAttribute('data-popup-open', '')
-    expect(triggerVisual).toHaveClass('bg-primary-600!')
+    expect(triggerButton).toHaveAccessibleName(
+      'workflowLogic.nodes.variableAssigner.setAssignVariable',
+    )
 
     expect(
       screen.getByText('workflowLogic.nodes.variableAssigner.setAssignVariable'),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('answer'))
+    await user.click(screen.getByText('answer'))
 
     expect(mockHandleAssignVariableValueChange).toHaveBeenCalledWith(
       'node-target',
@@ -97,7 +101,11 @@ describe('variable-assigner/add-variable', () => {
       </>,
     )
 
-    await user.click(screen.getByRole('button'))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowLogic.nodes.variableAssigner.setAssignVariable',
+      }),
+    )
     const popup = screen.getByRole('dialog')
     expect(popup).toContainElement(document.activeElement as HTMLElement)
     await user.keyboard('{ArrowDown}{Enter}')

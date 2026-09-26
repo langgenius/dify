@@ -1,6 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuCheckboxItemIndicator,
   DropdownMenuItem,
   DropdownMenuPopup,
   DropdownMenuPortal,
@@ -8,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Switch } from '@langgenius/dify-ui/switch'
 import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -104,13 +105,15 @@ const Operator = ({
               </div>
               <DropdownMenuSeparator className="my-0" />
               <div className="p-1">
-                <div
-                  className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-                  onClick={(e) => e.stopPropagation()}
+                <DropdownMenuCheckboxItem
+                  checked={showAuthor}
+                  onCheckedChange={onShowAuthorChange}
+                  closeOnClick={false}
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
                 >
-                  <div>{t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
-                  <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
-                </div>
+                  {t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}
+                  <DropdownMenuCheckboxItemIndicator />
+                </DropdownMenuCheckboxItem>
               </div>
               <DropdownMenuSeparator className="my-0" />
               <div className="p-1">

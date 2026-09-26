@@ -17,7 +17,7 @@ type PdfPreviewProps = {
 
 function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workflow'])
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -82,6 +82,7 @@ function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
       <DialogBackdrop className="bg-transparent!" />
       <DialogPopup
         ref={previewRef}
+        aria-label={t(($) => $['common.preview'], { ns: 'workflow' })}
         className={`fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
       >
         <div

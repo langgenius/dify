@@ -230,6 +230,61 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
+it('admits and releases keyboard focus while keeping character shortcuts inside the canvas', async () => {
+  // Native Tab navigation and shifted printable keys establish the focused-component boundary.
+  await page.viewport(1000, 700)
+  const screen = await render(
+    <>
+      <button>Before canvas</button>
+      <Canvas />
+    </>,
+  )
+  const before = screen.getByRole('button', { name: 'Before canvas' })
+  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+  const node = screen.getByRole('button', { name: 'Workflow node' })
+  const outside = screen.getByRole('textbox', { name: 'Outside canvas input' })
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(before).toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(canvas).toHaveFocus()
+  await userEvent.keyboard('vhc')
+  expect(actions.pointer).toHaveBeenCalledOnce()
+  expect(actions.hand).toHaveBeenCalledOnce()
+  expect(actions.comment).toHaveBeenCalledOnce()
+
+  const initialWidth = node.element().getBoundingClientRect().width
+  expect(initialWidth).toBeGreaterThan(0)
+  await userEvent.keyboard('{Shift>}[Digit5]{/Shift}')
+  await expect
+    .poll(() => node.element().getBoundingClientRect().width)
+    .toBeCloseTo(initialWidth / 2)
+  await userEvent.keyboard('{Shift>}[Digit1]{/Shift}')
+  await expect.poll(() => node.element().getBoundingClientRect().width).toBeCloseTo(initialWidth)
+
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+  await expect.element(before).toHaveFocus()
+  await userEvent.keyboard('vhc{Shift>}[Digit5]{/Shift}')
+  expect(node.element().getBoundingClientRect().width).toBeCloseTo(initialWidth)
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(canvas).toHaveFocus()
+  for (let steps = 0; steps < 10 && document.activeElement !== outside.element(); steps++)
+    await userEvent.keyboard('{Tab}')
+  await expect.element(outside).toHaveFocus()
+  await userEvent.keyboard('vhc')
+  await expect.element(outside).toHaveValue('vhc')
+
+  await screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }).click()
+  await userEvent.keyboard('vhc')
+  await screen.getByRole('button', { name: 'Popup action' }).click()
+  await userEvent.keyboard('vhc{Shift>}[Digit5]{/Shift}')
+  expect(node.element().getBoundingClientRect().width).toBeCloseTo(initialWidth)
+  expect(actions.pointer).toHaveBeenCalledOnce()
+  expect(actions.hand).toHaveBeenCalledOnce()
+  expect(actions.comment).toHaveBeenCalledOnce()
+})
+
 it('acquires canvas focus from pane and node clicks while preserving native editor undo', async () => {
   // Native focus, React Flow pointer handling, and textarea undo cannot be proved by synthetic key events.
   await page.viewport(1000, 700)
