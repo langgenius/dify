@@ -2,21 +2,39 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import PdfPreview from '../pdf-preview'
 
+const { mockLoader } = vi.hoisted(() => ({
+  mockLoader: { failed: false, mounts: 0 },
+}))
+
+// Mirrors the real PdfLoader contract: on a failed load it renders
+// `errorMessage` instead of the children, and it only reloads when `url`
+// changes, so a retry has to come from a remount.
 vi.mock('../pdf-highlighter-adapter', () => ({
   PdfLoader: ({
     children,
     beforeLoad,
     workerSrc,
+    errorMessage,
   }: {
     children: (doc: unknown) => ReactNode
     beforeLoad: ReactNode
     workerSrc?: string
-  }) => (
-    <div data-testid="pdf-loader" data-worker-src={workerSrc}>
-      {beforeLoad}
-      {children({ numPages: 1 })}
-    </div>
-  ),
+    errorMessage?: ReactNode
+  }) => {
+    mockLoader.mounts += 1
+    return (
+      <div data-testid="pdf-loader" data-worker-src={workerSrc}>
+        {mockLoader.failed && errorMessage ? (
+          errorMessage
+        ) : (
+          <>
+            {beforeLoad}
+            {children({ numPages: 1 })}
+          </>
+        )}
+      </div>
+    )
+  },
   PdfHighlighter: ({
     enableAreaSelection,
     highlightTransform,
@@ -58,6 +76,8 @@ describe('PdfPreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockLoader.failed = false
+    mockLoader.mounts = 0
     window.innerWidth = 1024
     fireEvent(window, new Event('resize'))
   })
@@ -169,5 +189,19 @@ describe('PdfPreview', () => {
       'data-worker-src',
       '/pdf.worker.min.mjs',
     )
+  })
+
+  it('should show the load-failure state and remount the loader on retry', () => {
+    mockLoader.failed = true
+
+    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    const mountsBeforeRetry = mockLoader.mounts
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(mockLoader.mounts).toBeGreaterThan(mountsBeforeRetry)
+    expect(mockOnCancel).not.toHaveBeenCalled()
   })
 })
