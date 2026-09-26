@@ -509,7 +509,7 @@ class TestDatasetServiceUpdateDataset:
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
-            patch("services.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
+            patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay") as mock_regenerate_task,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
@@ -524,11 +524,7 @@ class TestDatasetServiceUpdateDataset:
             )
             mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "update")
-            mock_regenerate_task.delay.assert_called_once_with(
-                dataset.id,
-                regenerate_reason="embedding_model_changed",
-                regenerate_vectors_only=True,
-            )
+            mock_regenerate_task.assert_not_called()
 
         db_session_with_containers.refresh(dataset)
         assert dataset.embedding_model == "text-embedding-3-small"
