@@ -3247,7 +3247,7 @@
   },
   "web/app/components/workflow/nodes/index.tsx": {
     "eslint-react/static-components": {
-      "count": 4
+      "count": 2
     }
   },
   "web/app/components/workflow/nodes/iteration/node.tsx": {

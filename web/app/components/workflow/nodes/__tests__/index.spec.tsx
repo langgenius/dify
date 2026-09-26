@@ -3,13 +3,17 @@ import type { Node as WorkflowNode } from '../../types'
 import { render, screen } from '@testing-library/react'
 import { CUSTOM_NODE } from '../../constants'
 import { BlockEnum } from '../../types'
-import CustomNode, { Panel } from '../index'
+import CustomNode from '../index'
+import Panel from '../panel'
 
 vi.mock('../components', () => ({
   NodeComponentMap: {
     [BlockEnum.Start]: () => <div>start-node-component</div>,
     [BlockEnum.StartPlaceholder]: () => <div>start-placeholder-node-component</div>,
   },
+}))
+
+vi.mock('../panel-components', () => ({
   PanelComponentMap: {
     [BlockEnum.Start]: () => <div>start-panel-component</div>,
     [BlockEnum.StartPlaceholder]: () => <div>start-placeholder-panel-component</div>,
