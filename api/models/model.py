@@ -1391,10 +1391,8 @@ class Conversation(Base):
             select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
         )
 
-    @property
-    def app(self) -> App | None:
-        with Session(db.engine, expire_on_commit=False) as session:
-            return session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
     def from_end_user_session_id_with_session(self, *, session: Session) -> str | None:
         if self.from_end_user_id:
