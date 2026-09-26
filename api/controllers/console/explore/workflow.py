@@ -58,7 +58,7 @@ class InstalledAppWorkflowRunApi(Resource):
         Run workflow
         """
         try:
-            response = application_services().installed_app_generation.generate_workflow(
+            response = application_services().installed_apps.generation.generate_workflow(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),

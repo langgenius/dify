@@ -78,8 +78,13 @@ class _Runtime:
 
 
 @dataclass(frozen=True)
+class _InstalledAppServices:
+    generation: InstalledAppGenerationService
+
+
+@dataclass(frozen=True)
 class _Services:
-    installed_app_generation: InstalledAppGenerationService
+    installed_apps: _InstalledAppServices
     app_tasks: AppTaskControlService
 
 
@@ -97,9 +102,11 @@ def runtime(
         installation.last_used_at = _LAST_USED_AT
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
     services = _Services(
-        installed_app_generation=InstalledAppGenerationService(
-            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-            runtime=runtime,
+        installed_apps=_InstalledAppServices(
+            generation=InstalledAppGenerationService(
+                usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+                runtime=runtime,
+            )
         ),
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
@@ -390,9 +397,11 @@ def test_workflow_run_revalidates_app_while_stop_uses_admission_snapshot(
 
     harness.state.permission_action = remove_app
     services = _Services(
-        installed_app_generation=InstalledAppGenerationService(
-            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-            runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+        installed_apps=_InstalledAppServices(
+            generation=InstalledAppGenerationService(
+                usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+            )
         ),
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
