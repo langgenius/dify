@@ -7,6 +7,7 @@ import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
 
@@ -130,6 +131,29 @@ describe('SettingsModal', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('edits a site with nullable optional fields as empty form values', async () => {
+    renderSettingsModal({ id: 'app-null-fields', mode: 'chat', site: createAppSiteFixture() })
+
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() =>
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'App',
+          description: '',
+          chat_color_theme: '',
+          privacy_policy: '',
+          input_placeholder: '',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+        }),
+      ),
+    )
+    expect(mockOnClose).toHaveBeenCalledOnce()
   })
 
   it('should render the modal with all settings exposed by default', async () => {

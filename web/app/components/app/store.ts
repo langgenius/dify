@@ -1,9 +1,9 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { App } from '@/types/app'
 import { create } from 'zustand'
 
 type State = {
-  appDetail?: App
+  appDetail?: AppDetailWithSite
   currentLogItem?: IChatItem
   currentLogModalActiveTab: string
   showPromptLogModal: boolean
@@ -13,7 +13,7 @@ type State = {
 }
 
 type Action = {
-  setAppDetail: (appDetail?: App) => void
+  setAppDetail: (appDetail?: AppDetailWithSite) => void
   setCurrentLogItem: (item?: IChatItem) => void
   setCurrentLogModalActiveTab: (tab: string) => void
   setShowPromptLogModal: (showPromptLogModal: boolean) => void

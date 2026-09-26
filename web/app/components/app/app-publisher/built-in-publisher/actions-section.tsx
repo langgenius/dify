@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -10,18 +11,7 @@ type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
   'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
 > & {
-  appDetail:
-    | {
-        id?: string
-        icon?: string
-        icon_type?: string | null
-        icon_background?: string | null
-        description?: string
-        mode?: AppModeEnum
-        name?: string
-      }
-    | null
-    | undefined
+  appDetail: Partial<Pick<AppDetailWithSite, 'id' | 'mode'>> | null | undefined
   appURL: string
   canViewAccessPoint: boolean
   disabledFunctionButton: boolean

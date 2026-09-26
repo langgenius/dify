@@ -84,6 +84,33 @@ describe('CreateAppModal', () => {
     mockAppCount = 1
   })
 
+  it.each([
+    { appIconType: null, appIcon: null, appIconBackground: null },
+    {
+      appIconType: 'link' as const,
+      appIcon: 'https://example.com/icon.png',
+      appIconBackground: null,
+    },
+  ])('preserves the existing icon when editing other fields: %j', async (iconProps) => {
+    const user = userEvent.setup()
+    const { onConfirm } = await setup({ isEditModal: true, ...iconProps })
+
+    await user.clear(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Renamed app')
+    await user.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
+
+    await waitFor(() =>
+      expect(onConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Renamed app',
+          icon_type: iconProps.appIconType,
+          icon: iconProps.appIcon,
+          icon_background: iconProps.appIconBackground,
+        }),
+      ),
+    )
+  })
+
   describe('Rendering', () => {
     it('should render create title and actions when creating', async () => {
       await setup({ appName: 'My App', isEditModal: false })
@@ -439,7 +466,7 @@ describe('CreateAppModal', () => {
       expect(onConfirm.mock.calls[0]![0]).toMatchObject({ description: 'Updated description' })
     })
 
-    it('should omit icon_background when submitting with image icon', async () => {
+    it('preserves the existing null background when submitting an unchanged image icon', async () => {
       const { onConfirm } = await setup({
         appIconType: 'image',
         appIcon: 'file-123',
@@ -457,7 +484,7 @@ describe('CreateAppModal', () => {
         icon_type: 'image',
         icon: 'file-123',
       })
-      expect(payload.icon_background).toBeUndefined()
+      expect(payload.icon_background).toBeNull()
     })
 
     it('should include max_active_requests and updated answer icon when saving', async () => {

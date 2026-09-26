@@ -1,9 +1,10 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppDetailSection from '../../app-detail-section'
 
-let currentApp = { id: 'app-1', name: 'First app', mode: 'chat' }
+let currentApp = createAppDetailFixture({ name: 'First app' })
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -66,7 +67,7 @@ vi.mock('../app-info-modals', () => ({
 
 describe('AppInfoView identity in the app detail sidebar', () => {
   beforeEach(() => {
-    currentApp = { id: 'app-1', name: 'First app', mode: 'chat' }
+    currentApp = createAppDetailFixture({ name: 'First app' })
   })
 
   it('keeps transient state for the same app and clears it when the app changes', async () => {
@@ -80,12 +81,12 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     expect(screen.getByText('First app: edit; secrets: 1')).toBeInTheDocument()
     screen.getByRole('button', { name: 'Open First app' }).focus()
 
-    currentApp = { id: 'app-1', name: 'Renamed app', mode: 'chat' }
+    currentApp = createAppDetailFixture({ name: 'Renamed app' })
     view.rerender(<AppDetailSection />)
     expect(screen.getByText('Renamed app: edit; secrets: 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Renamed app' })).toHaveFocus()
 
-    currentApp = { id: 'app-2', name: 'Second app', mode: 'chat' }
+    currentApp = createAppDetailFixture({ id: 'app-2', name: 'Second app' })
     view.rerender(<AppDetailSection />)
     expect(screen.getByRole('button', { name: 'Open Second app' })).toBeInTheDocument()
     expect(screen.getByText('Second app: closed; secrets: 0')).toBeInTheDocument()

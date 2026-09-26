@@ -88,6 +88,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
       draft.agentConfig.tools.forEach((tool) => {
         if (
           'provider_id' in tool &&
+          typeof tool.provider_id === 'string' &&
           tool.isDeleted &&
           installedPluginNames.includes(tool.provider_id)
         ) {

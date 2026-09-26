@@ -124,13 +124,6 @@ describe('configuration debug hooks', () => {
           prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
         },
         more_like_this: { enabled: true },
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
       },
       appId: 'app-1',
       promptMode: 'simple',

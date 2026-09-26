@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
-import type { App } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
@@ -17,6 +16,7 @@ import {
   updateAnnotationStatus,
 } from '@/service/annotation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
@@ -179,10 +179,10 @@ const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
 const updateAnnotationScoreMock = updateAnnotationScore as Mock
 const updateAnnotationStatusMock = updateAnnotationStatus as Mock
 
-const appDetail = {
+const appDetail = createAppDetailFixture({
   id: 'app-id',
   mode: AppModeEnum.CHAT,
-} as App
+})
 
 const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-1',

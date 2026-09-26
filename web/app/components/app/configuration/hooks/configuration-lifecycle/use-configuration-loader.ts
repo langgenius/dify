@@ -3,7 +3,7 @@ import type { ConfigurationPublishConfig } from './types'
 import type { Collection } from '@/app/components/tools/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { AppModeEnum } from '@/types/app'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { basePath } from '@/utils/var'
 import { loadConfigurationState } from './load'
 
@@ -22,11 +22,13 @@ export function useConfigurationLoader({
   appId,
   ...operations
 }: ConfigurationLoaderOperations & { appId: string }) {
+  const [loadFailure, setLoadFailure] = useState<{ error: unknown } | null>(null)
   const operationsRef = useRef(operations)
   operationsRef.current = operations
 
   useEffect(() => {
     const current = operationsRef.current
+    let cancelled = false
     void (async () => {
       const configurationState = await loadConfigurationState({
         appId,
@@ -34,6 +36,8 @@ export function useConfigurationLoader({
         currentRerankModel: current.currentRerankModel,
         currentRerankProvider: current.currentRerankProvider,
       })
+
+      if (cancelled) return
 
       current.setCollectionList(configurationState.collectionList)
       current.setMode(configurationState.mode)
@@ -43,6 +47,13 @@ export function useConfigurationLoader({
 
       current.setPublishedConfig(configurationState.publishedConfig)
       current.setHasFetchedDetail(true)
-    })()
+    })().catch((error: unknown) => {
+      if (!cancelled) setLoadFailure({ error })
+    })
+    return () => {
+      cancelled = true
+    }
   }, [appId])
+
+  if (loadFailure) throw loadFailure.error
 }

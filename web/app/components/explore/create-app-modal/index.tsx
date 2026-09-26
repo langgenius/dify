@@ -1,6 +1,9 @@
 'use client'
+import type {
+  AppDetailWithSite,
+  UpdateAppPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -28,27 +31,17 @@ export type CreateAppModalProps = {
   isEditModal?: boolean
   appName: string
   appDescription: string
-  appIconType: AppIconType | null
-  appIcon: string
+  appIconType: AppDetailWithSite['icon_type']
+  appIcon: AppDetailWithSite['icon']
   appIconBackground?: string | null
   appIconUrl?: string | null
   appMode?: string
   appUseIconAsAnswerIcon?: boolean
   max_active_requests?: number | null
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string
-    description: string
-    use_icon_as_answer_icon?: boolean
-    max_active_requests?: number | null
-  }) => Promise<void>
+  onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
   onHide: () => void
 }
-
-type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
@@ -74,11 +67,12 @@ const CreateAppModal = ({
   const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
-  const [appIcon, setAppIcon] = useState(() =>
-    appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
-  )
+  const [appIcon, setAppIcon] = useState(() => ({
+    icon_type: appIconType,
+    icon: _appIcon,
+    icon_background: appIconBackground,
+    icon_url: appIconUrl,
+  }))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
@@ -116,11 +110,11 @@ const CreateAppModal = ({
     }
     const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
     const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
-    const payload: CreateAppPayload = {
+    const payload: UpdateAppPayload = {
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_type: appIcon.icon_type,
+      icon: appIcon.icon,
+      icon_background: appIcon.icon_background,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
@@ -209,10 +203,10 @@ const CreateAppModal = ({
                     setShowAppIconPicker(true)
                   }}
                   className="cursor-pointer"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                  iconType={appIcon.icon_type === 'link' ? 'image' : appIcon.icon_type}
+                  icon={appIcon.icon ?? undefined}
+                  background={appIcon.icon_background}
+                  imageUrl={appIcon.icon_type === 'link' ? appIcon.icon : appIcon.icon_url}
                 />
                 <Input
                   id={nameInputId}
@@ -315,13 +309,18 @@ const CreateAppModal = ({
         <AppIconPicker
           open={showAppIconPicker}
           initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
+            appIcon.icon_type === 'emoji' && appIcon.icon
+              ? { icon: appIcon.icon, background: appIcon.icon_background }
               : undefined
           }
           onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
-            setAppIcon(payload)
+            setAppIcon({
+              icon_type: payload.type,
+              icon: payload.type === 'image' ? payload.fileId : payload.icon,
+              icon_background: payload.type === 'emoji' ? payload.background : undefined,
+              icon_url: payload.type === 'image' ? payload.url : undefined,
+            })
           }}
         />
       )}

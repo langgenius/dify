@@ -93,6 +93,28 @@ describe('useImportDSL', () => {
     mockResolveImportedAppRedirectionTarget.mockImplementation(async (target) => target)
   })
 
+  it('should preserve nullable app metadata in the import request', async () => {
+    mockImportDSL.mockResolvedValue({ id: 'import-1', status: DSLImportStatus.PENDING })
+    const payload = {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: 'app: demo',
+      name: 'Imported app',
+      icon_type: null,
+      icon: null,
+      icon_background: null,
+      description: null,
+    }
+    const onPending = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(payload, { onPending })
+    })
+
+    expect(mockImportDSL).toHaveBeenCalledWith(payload)
+    expect(onPending).toHaveBeenCalledWith({ id: 'import-1', status: DSLImportStatus.PENDING })
+  })
+
   it('should show response warnings when an import completes with warnings', async () => {
     const completedResponse = {
       id: 'import-1',

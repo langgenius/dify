@@ -1,4 +1,5 @@
 'use client'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,7 +21,7 @@ type IShareLinkProps = {
   onClose: () => void
   api_base_url: string
   appId: string
-  mode?: AppModeEnum
+  mode?: AppMode
   sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 

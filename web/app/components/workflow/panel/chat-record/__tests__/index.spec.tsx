@@ -1,10 +1,10 @@
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fetchConversationMessages } from '@/service/debug'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import ChatRecord from '../index'
 
 vi.mock('@/service/debug', () => ({
@@ -24,7 +24,7 @@ describe('ChatRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: { id: 'app-1' } as App,
+      appDetail: createAppDetailFixture(),
     })
   })
 

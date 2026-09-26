@@ -1,6 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { VisionSettings } from '@/types/app'
+import { zAppModelConfigPayload } from '@dify/contracts/api/console/apps/zod.gen'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
   AgentStrategy,
@@ -10,6 +12,7 @@ import {
   RETRIEVE_TYPE,
   TransferMethod,
 } from '@/types/app'
+import { buildConfigurationFeaturesData } from '../../utils'
 import {
   buildConfigurationDatasetConfigs,
   createDatasetSelectHandler,
@@ -38,8 +41,10 @@ const baseVisionConfig: VisionSettings = {
   transfer_methods: [TransferMethod.remote_url],
 }
 
-vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: { byAppId: { get: (...args: unknown[]) => mockFetchAppDetailDirect(...args) } },
+  },
 }))
 
 vi.mock('@/service/datasets', () => ({
@@ -86,13 +91,127 @@ describe('useConfiguration utils', () => {
     })
   })
 
+  it('should preserve persisted settings when loading and publishing without edits', async () => {
+    const chatPrompt = {
+      prompt: [{ role: 'tool', text: 'Tool result', name: 'lookup' }],
+      vendor: { version: 1 },
+    }
+    const completionPrompt = {
+      prompt: { text: 'Complete this', prefix: 'custom' },
+      conversation_histories_role: {
+        user_prefix: 'User',
+        assistant_prefix: 'Assistant',
+        separator: '\n',
+      },
+    }
+    const agentMode = {
+      enabled: true,
+      strategy: 'react' as const,
+      prompt: { first_prompt: 'Plan', next_iteration: 'Continue' },
+      extension: { flags: [true, 'custom'] },
+      tools: [
+        { google_search: { enabled: true } },
+        {
+          enabled: true,
+          provider_id: 'custom-tool',
+          provider_type: 'api' as const,
+          provider_name: 'custom-tool',
+          tool_name: 'lookup',
+          tool_parameters: { nested: { count: 2 } },
+          extension: { protocol: 'custom' },
+        },
+      ],
+    }
+    const externalTools = [
+      {
+        enabled: true as const,
+        type: 'custom',
+        variable: 'lookup',
+        config: { options: { retries: 2, flags: [true, 'fast'] } },
+      },
+    ]
+    mockFetchCollectionList.mockResolvedValue([])
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetailFixture({
+        mode: AppModeEnum.AGENT_CHAT,
+        model_config: createAppModelConfigFixture({
+          model: {
+            provider: 'langgenius/openai/openai',
+            name: 'gpt-4o',
+            mode: 'chat',
+            completion_params: { temperature: 0.7 },
+          },
+          prompt_type: 'advanced',
+          chat_prompt_config: chatPrompt,
+          completion_prompt_config: completionPrompt,
+          agent_mode: agentMode,
+          external_data_tools: externalTools,
+          file_upload: {
+            enabled: true,
+            allowed_file_upload_methods: ['datasource_file', 'tool_file'],
+            image: { enabled: true, transfer_methods: ['datasource_file', 'tool_file'] },
+          },
+          dataset_configs: {
+            retrieval_model: 'multiple',
+            metadata_filtering_conditions: {
+              logical_operator: 'and',
+              conditions: [
+                { id: 'tags', name: 'tags', comparison_operator: 'in', value: ['a', 'b'] },
+              ],
+            },
+          },
+        }),
+      }),
+    )
+
+    const loaded = await loadConfigurationState({ appId: 'app-1' })
+    const published = loaded.publishedConfig
+    const body = buildPublishBody({
+      chatPromptConfig: published.chatPromptConfig,
+      completionParams: published.completionParams,
+      completionPromptConfig: published.completionPromptConfig,
+      dataSets: [],
+      datasetConfigs: published.datasetConfigs,
+      externalDataToolsConfig: published.externalDataToolsConfig,
+      features: buildConfigurationFeaturesData(published.modelConfig, undefined),
+      isAdvancedMode: true,
+      isFunctionCall: false,
+      modelConfig: published.modelConfig,
+      modelId: published.modelConfig.model_id,
+      modelProvider: published.modelConfig.provider,
+      promptMode: published.promptMode,
+      promptVariables: published.modelConfig.configs.prompt_variables,
+      promptTemplate: published.modelConfig.configs.prompt_template,
+      resolvedModelModeType: published.modelConfig.mode,
+    })
+    expect(zAppModelConfigPayload.parse(body)).toEqual(body)
+    expect(body.completion_prompt_config?.prompt).not.toHaveProperty('role')
+    expect(body.chat_prompt_config).toEqual(chatPrompt)
+    expect(body.completion_prompt_config).toEqual(completionPrompt)
+    expect(body.agent_mode).toEqual(
+      expect.objectContaining({ prompt: agentMode.prompt, extension: agentMode.extension }),
+    )
+    expect(body.agent_mode.tools).toEqual(
+      expect.arrayContaining(agentMode.tools.map((tool) => expect.objectContaining(tool))),
+    )
+    expect(body.external_data_tools).toEqual(externalTools)
+    expect(loaded.externalDataToolsConfig).toEqual(published.externalDataToolsConfig)
+    expect(body.file_upload.allowed_file_upload_methods).toEqual(['datasource_file', 'tool_file'])
+    expect(body.file_upload.image?.transfer_methods).toEqual(['datasource_file', 'tool_file'])
+    expect(body.dataset_configs.metadata_filtering_conditions?.conditions?.[0]?.value).toEqual([
+      'a',
+      'b',
+    ])
+    expect(body).not.toHaveProperty('system_parameters')
+  })
+
   it('should build the published config with external tools and agent metadata', () => {
     const publishedConfig = buildPublishedConfig({
-      backendModelConfig: {
+      backendModelConfig: createAppModelConfigFixture({
         pre_prompt: 'hello {{name}}',
         user_input_form: [
           {
-            text_input: {
+            'text-input': {
               variable: 'name',
               label: 'Name',
               required: true,
@@ -106,10 +225,10 @@ describe('useConfiguration utils', () => {
         sensitive_word_avoidance: { enabled: false },
         speech_to_text: { enabled: false },
         text_to_speech: { enabled: false, voice: '', language: '' },
-        file_upload: null,
+        file_upload: {},
         suggested_questions_after_answer: { enabled: false },
         retriever_resource: { enabled: false },
-        annotation_reply: null,
+        annotation_reply: { enabled: false },
         external_data_tools: [
           {
             enabled: true,
@@ -118,16 +237,11 @@ describe('useConfiguration utils', () => {
             label: 'Search',
             type: 'search',
             variable: 'search',
+            config: {},
           },
         ],
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
         },
         model: {
@@ -137,6 +251,7 @@ describe('useConfiguration utils', () => {
           completion_params: { temperature: 0.7 },
         },
         agent_mode: {
+          enabled: false,
           strategy: AgentStrategy.react,
           tools: [
             {
@@ -145,10 +260,11 @@ describe('useConfiguration utils', () => {
               provider_name: 'builtin/search',
               provider_type: 'builtin',
               tool_name: 'search',
+              tool_parameters: {},
             },
           ],
         },
-      } as any,
+      }),
       collectionList: [
         {
           id: 'tool-1',
@@ -160,7 +276,7 @@ describe('useConfiguration utils', () => {
         retrieval_model: RETRIEVE_TYPE.multiWay,
         top_k: 4,
       } as any,
-      deletedTools: [{ provider_id: 'tool-1', tool_name: 'search' }],
+      deletedTools: [{ type: 'tool', provider_id: 'tool-1', tool_name: 'search' }],
       mode: AppModeEnum.AGENT_CHAT,
       nextDataSets: [{ id: 'dataset-1' }] as any,
     })
@@ -186,13 +302,14 @@ describe('useConfiguration utils', () => {
         isDeleted: true,
         notAuthor: true,
         tool_name: 'search',
+        tool_parameters: {},
       }),
     )
   })
 
   it('should normalize an empty chat prompt config for completion apps', () => {
     const publishedConfig = buildPublishedConfig({
-      backendModelConfig: {
+      backendModelConfig: createAppModelConfigFixture({
         chat_prompt_config: {},
         completion_prompt_config: {
           prompt: { text: 'completion' },
@@ -202,6 +319,7 @@ describe('useConfiguration utils', () => {
           },
         },
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
         },
         external_data_tools: [],
@@ -212,7 +330,7 @@ describe('useConfiguration utils', () => {
           completion_params: {},
         },
         user_input_form: [],
-      } as any,
+      }),
       collectionList: [],
       datasetConfigs: {
         datasets: { datasets: [] },
@@ -228,12 +346,13 @@ describe('useConfiguration utils', () => {
 
   it('should normalize an empty completion prompt config for chat apps', () => {
     const publishedConfig = buildPublishedConfig({
-      backendModelConfig: {
+      backendModelConfig: createAppModelConfigFixture({
         chat_prompt_config: {
           prompt: [{ role: 'system', text: 'chat' }],
         },
         completion_prompt_config: {},
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
         },
         external_data_tools: [],
@@ -244,7 +363,7 @@ describe('useConfiguration utils', () => {
           completion_params: {},
         },
         user_input_form: [],
-      } as any,
+      }),
       collectionList: [],
       datasetConfigs: {
         datasets: { datasets: [] },
@@ -262,15 +381,16 @@ describe('useConfiguration utils', () => {
 
   it('should build dataset configs with reranking defaults', () => {
     const datasetConfigs = buildConfigurationDatasetConfigs({
-      backendModelConfig: {
+      backendModelConfig: createAppModelConfigFixture({
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
           reranking_model: {
             reranking_model_name: 'rerank-1',
             reranking_provider_name: 'langgenius/cohere/cohere',
           },
         },
-      } as any,
+      }),
       currentRerankModel: 'rerank-1',
       currentRerankProvider: 'langgenius/cohere/cohere',
       nextDataSets: [],
@@ -334,13 +454,6 @@ describe('useConfiguration utils', () => {
           strategy: AgentStrategy.react,
           tools: [],
         },
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
       } as any,
       modelId: 'gpt-4o',
       modelProvider: 'langgenius/openai/openai',
@@ -384,7 +497,7 @@ describe('useConfiguration utils', () => {
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.CHAT,
-      model_config: {
+      model_config: createAppModelConfigFixture({
         prompt_type: 'advanced',
         chat_prompt_config: {
           prompt: [{ role: 'system', text: 'hi' }],
@@ -397,8 +510,9 @@ describe('useConfiguration utils', () => {
           },
         },
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: {
-            datasets: [{ id: 'dataset-1' }],
+            datasets: [{ dataset: { id: 'dataset-1', enabled: true } }],
           },
         },
         model: {
@@ -415,6 +529,8 @@ describe('useConfiguration utils', () => {
         retriever_resource: { enabled: true },
         annotation_reply: {
           enabled: true,
+          id: 'annotation-1',
+          score_threshold: 0.9,
           embedding_model: {
             embedding_provider_name: 'langgenius/openai/openai',
             embedding_model_name: 'text-embedding-3-small',
@@ -424,14 +540,7 @@ describe('useConfiguration utils', () => {
         external_data_tools: [],
         user_input_form: [],
         pre_prompt: '',
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
-      },
+      }),
     })
     mockFetchDatasets.mockResolvedValue({
       data: [{ id: 'dataset-1', name: 'Dataset One' }],
@@ -443,7 +552,7 @@ describe('useConfiguration utils', () => {
     })
 
     expect(mockFetchCollectionList).toHaveBeenCalledTimes(1)
-    expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+    expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     expect(mockFetchDatasets).toHaveBeenCalledWith({
       params: {
         ids: ['dataset-1'],
@@ -473,14 +582,16 @@ describe('useConfiguration utils', () => {
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.AGENT_CHAT,
-      model_config: {
+      model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
         completion_prompt_config: undefined,
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
         },
         agent_mode: {
+          enabled: false,
           tools: [
             {
               dataset: {
@@ -496,30 +607,17 @@ describe('useConfiguration utils', () => {
           mode: ModelModeType.chat,
           completion_params: {},
         },
-        annotation_reply: {
-          enabled: false,
-          embedding_model: {
-            embedding_provider_name: 'langgenius/openai/openai',
-            embedding_model_name: 'text-embedding-3-small',
-          },
-        },
+        annotation_reply: { enabled: false },
         more_like_this: undefined,
         speech_to_text: undefined,
         text_to_speech: undefined,
         retriever_resource: undefined,
         suggested_questions: undefined,
         suggested_questions_after_answer: undefined,
-        external_data_tools: undefined,
+        external_data_tools: [],
         user_input_form: [],
         pre_prompt: '',
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
-      },
+      }),
     })
 
     const state = await loadConfigurationState({ appId: 'app-2' })
@@ -540,16 +638,17 @@ describe('useConfiguration utils', () => {
     expect(state.chatPromptConfig).toEqual(expect.any(Object))
   })
 
-  it('should keep annotation config undefined when app detail does not include annotation settings', async () => {
+  it('should initialize the disabled annotation draft from the response', async () => {
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.CHAT,
-      model_config: {
+      model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
         completion_prompt_config: undefined,
         dataset_configs: {
+          retrieval_model: 'multiple',
           datasets: { datasets: [] },
         },
         model: {
@@ -564,22 +663,15 @@ describe('useConfiguration utils', () => {
         retriever_resource: undefined,
         suggested_questions: undefined,
         suggested_questions_after_answer: undefined,
-        external_data_tools: undefined,
+        external_data_tools: [],
         user_input_form: [],
         pre_prompt: '',
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
-      },
+      }),
     })
 
     const state = await loadConfigurationState({ appId: 'app-3' })
 
-    expect(state.annotationConfig).toBeUndefined()
+    expect(state.annotationConfig).toEqual(expect.objectContaining({ enabled: false, id: '' }))
   })
 
   it('should hydrate selected datasets and open the rerank modal when selection changes', () => {
@@ -737,6 +829,48 @@ describe('useConfiguration utils', () => {
     expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
   })
 
+  it('reports an invalid chat prompt without publishing or replacing the saved configuration', async () => {
+    const backendModelConfig = createAppModelConfigFixture({
+      model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+    })
+    const config = buildPublishedConfig({
+      backendModelConfig,
+      collectionList: [],
+      datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
+      mode: AppModeEnum.CHAT,
+      nextDataSets: [],
+    })
+    const setPublishedConfig = vi.fn()
+    const updateModelConfig = vi.fn()
+    const onPublish = createPublishHandler({
+      appId: 'app-1',
+      chatPromptConfig: { prompt: [{ text: 'Missing role' }] },
+      completionParamsState: config.completionParams,
+      completionPromptConfig: config.completionPromptConfig,
+      contextVarEmpty: false,
+      dataSets: [],
+      datasetConfigs: config.datasetConfigs,
+      externalDataToolsConfig: [],
+      hasSetBlockStatus: { history: true, query: true },
+      isAdvancedMode: true,
+      isFunctionCall: false,
+      mode: AppModeEnum.CHAT,
+      modelConfig: config.modelConfig,
+      promptEmpty: false,
+      promptMode: 'advanced',
+      resolvedModelModeType: ModelModeType.chat,
+      setCanReturnToSimpleMode: vi.fn(),
+      setPublishedConfig,
+      t,
+    })
+
+    await expect(onPublish(updateModelConfig)).rejects.toThrow()
+    expect(mockToastError).toHaveBeenCalledWith('api.actionFailed')
+    expect(updateModelConfig).not.toHaveBeenCalled()
+    expect(setPublishedConfig).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+  })
+
   it('should validate and publish configuration changes', async () => {
     const setPublishedConfig = vi.fn()
     const setCanReturnToSimpleMode = vi.fn()
@@ -782,13 +916,6 @@ describe('useConfiguration utils', () => {
         },
         model_id: 'gpt-4o',
         provider: 'langgenius/openai/openai',
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
       } as any,
       promptEmpty: false,
       promptMode: 'advanced' as any,
@@ -833,7 +960,7 @@ describe('useConfiguration utils', () => {
             strategy: AgentStrategy.functionCall,
           }),
         }),
-        url: '/apps/app-1/model-config',
+        params: { app_id: 'app-1' },
       }),
     )
     expect(setPublishedConfig).toHaveBeenCalledWith(
@@ -891,13 +1018,6 @@ describe('useConfiguration utils', () => {
           },
           model_id: 'gpt-4o',
           provider: 'langgenius/openai/openai',
-          system_parameters: {
-            audio_file_size_limit: 1,
-            file_size_limit: 1,
-            image_file_size_limit: 1,
-            video_file_size_limit: 1,
-            workflow_file_upload_limit: 1,
-          },
         } as any,
         promptEmpty: false,
         promptMode: 'advanced' as any,

@@ -1,6 +1,7 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { App } from '@/types/app'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -32,7 +33,7 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 
 export type ILogsProps = {
-  appDetail: App
+  appDetail: AppDetailWithSite
 }
 
 export type QueryParam = {

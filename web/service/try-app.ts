@@ -39,7 +39,7 @@ const getStringArray = (value: unknown) => {
 const getStringRecord = (value: unknown) => {
   if (!isRecord(value)) return undefined
 
-  const record: Record<string, string | undefined> = {}
+  const record: Record<string, string> = {}
   Object.entries(value).forEach(([key, item]) => {
     if (typeof item === 'string') record[key] = item
   })
