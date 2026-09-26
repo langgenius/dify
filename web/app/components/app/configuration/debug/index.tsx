@@ -7,6 +7,7 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import {
+  zAppChatPromptPayload,
   zAppDatasetConfigPayload,
   zAppFileUploadPayload,
   zAppUserInputFormPayload,
@@ -236,12 +237,20 @@ const Debug: FC<IDebug> = ({
     }))
     const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
 
+    const chatPrompt = zAppChatPromptPayload.safeParse(
+      isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+    )
+    if (!chatPrompt.success) {
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      return false
+    }
+
     const fileUpload = { ...features.file }
     delete fileUpload.fileUploadConfig
     const postModelConfig: AppModelConfigPayload = {
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
-      chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+      chat_prompt_config: chatPrompt.data,
       completion_prompt_config: isAdvancedMode
         ? completionPromptConfig
         : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
