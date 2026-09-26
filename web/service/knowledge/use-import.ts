@@ -13,10 +13,10 @@ type PreImportNotionPagesResponse = {
   next_cursor?: string | null
 }
 
-export const PRE_IMPORT_NOTION_PAGES_QUERY_KEY = 'notion-pre-import-pages'
-export const NOTION_PRE_IMPORT_PAGE_SIZE = 50
+const PRE_IMPORT_NOTION_PAGES_QUERY_KEY = 'notion-pre-import-pages'
+const NOTION_PRE_IMPORT_PAGE_SIZE = 50
 
-export const mergeNotionPreImportPages = (
+const mergeNotionPreImportPages = (
   pages: PreImportNotionPagesResponse[],
 ): DataSourceNotionWorkspace[] => {
   const byWorkspace = new Map<string, DataSourceNotionWorkspace>()
@@ -38,7 +38,15 @@ export const usePreImportNotionPages = ({
   datasetId,
   credentialId,
 }: PreImportNotionPagesParams) => {
-  const query = useInfiniteQuery({
+  const {
+    data,
+    dataUpdatedAt,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
     queryKey: [PRE_IMPORT_NOTION_PAGES_QUERY_KEY, datasetId, credentialId],
     queryFn: async ({ pageParam }: { pageParam?: string }) => {
       return get<PreImportNotionPagesResponse>('/notion/pre-import/pages', {
@@ -57,21 +65,21 @@ export const usePreImportNotionPages = ({
   })
 
   useEffect(() => {
-    if (query.hasNextPage && !query.isFetchingNextPage && !query.isLoading) {
-      void query.fetchNextPage()
+    if (hasNextPage && !isFetchingNextPage && !isLoading) {
+      void fetchNextPage()
     }
-  }, [query.dataUpdatedAt, query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage, query.isLoading])
+  }, [dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
   const notion_info = useMemo(
-    () => (query.data ? mergeNotionPreImportPages(query.data.pages) : undefined),
-    [query.data],
+    () => (data ? mergeNotionPreImportPages(data.pages) : undefined),
+    [data],
   )
 
   return {
     data: notion_info ? { notion_info } : undefined,
-    isFetching: query.isLoading,
-    isFetchingNextPage: query.isFetchingNextPage,
-    isError: query.isError,
+    isFetching: isLoading,
+    isFetchingNextPage,
+    isError,
   }
 }
 
