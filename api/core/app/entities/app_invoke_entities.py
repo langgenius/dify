@@ -103,6 +103,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    workflow_tool_invocation_id: str | None = None
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -338,6 +339,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    # Legacy synchronous Tool callers cannot resume a paused execution.
+    allow_human_input: bool = True
 
     class SingleIterationRunEntity(BaseModel):
         """

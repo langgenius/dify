@@ -1,0 +1,1032 @@
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from functools import partial
+from types import SimpleNamespace
+from typing import cast
+from unittest.mock import MagicMock
+
+import pytest
+
+from core.helper.code_executor.code_executor import CodeExecutionError
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.system_variables import SystemVariableKey, system_variable_selector
+from core.workflow.workflow_tool_container_handler import (
+    WorkflowToolContainerHandler,
+    WorkflowToolNestedContainerHandler,
+)
+from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
+from core.workflow.workflow_tool_node import DifyWorkflowToolNode
+from enums import WorkflowKind
+from graphon.engine import Engine
+from graphon.engine.command import AbortCommand, InMemoryChannel
+from graphon.engine.event.processor import NodeEventProcessor
+from graphon.engine.event.stream import EventStream
+from graphon.engine.frame import ExecutionFrame, FrameRegistry
+from graphon.engine.ready_queue import ResumeTask, StartTask
+from graphon.engine.worker import NodeEventTask
+from graphon.engine_events import NodeRunExceptionEvent, NodeRunFailedEvent, NodeRunRetryEvent, NodeRunSucceededEvent
+from graphon.engine_events.base import EngineEvent, NodeEvent
+from graphon.engine_events.graph import (
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
+    GraphRunSucceededEvent,
+)
+from graphon.engine_events.node import NodeRunPauseRequestedEvent
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.graph import Graph
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.container_effects import (
+    ContainerExecutionResult,
+    ContainerNodeRunResult,
+    CustomContainerRequest,
+    LoopFrameRequest,
+    build_container_value,
+)
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.protocols import ToolFileManagerProtocol
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.exc import ToolNodeError
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime.container_state import create_container_run_state
+from graphon.runtime.execution import ROOT_FRAME_ID
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
+
+
+def _workflow_tool_node(
+    runtime_state: RuntimeState | None = None,
+    *,
+    app_id: str = "outer-app",
+    version: str = "1",
+    tool_node_version: str | None = None,
+) -> tuple[DifyWorkflowToolNode, MagicMock, WorkflowToolContainerPayload]:
+    graph_config = {
+        "nodes": [
+            {
+                "id": "tool",
+                "data": {
+                    "type": "tool",
+                    "title": "Workflow Tool",
+                    "provider_id": "workflow-provider",
+                    "provider_type": "workflow",
+                    "provider_name": "workflow-provider",
+                    "tool_name": "nested-workflow",
+                    "tool_label": "Nested Workflow",
+                    "tool_configurations": dict[str, object](),
+                    "tool_parameters": dict[str, object](),
+                    "version": version,
+                    "tool_node_version": tool_node_version,
+                },
+            }
+        ],
+        "edges": list[dict[str, object]](),
+    }
+    init_params = build_test_graph_init_params(
+        workflow_id="outer-workflow",
+        graph_config=graph_config,
+        call_depth=2,
+        app_id=app_id,
+    )
+    if runtime_state is None:
+        runtime_state = RuntimeState(
+            workflow_id="outer-workflow",
+            variable_pool=VariablePool(),
+            start_at=1,
+        )
+    payload = WorkflowToolContainerPayload(
+        source_app_id="source-app",
+        source_workflow_id="source-workflow",
+        source_workflow_version="1",
+        inputs={"question": "hello"},
+        inputs_for_log={"question": "hello"},
+        call_depth=3,
+    )
+    runtime = MagicMock()
+    runtime.get_runtime.return_value = ToolRuntimeHandle(raw=object())
+    runtime.get_runtime_parameters.return_value = list[object]()
+    runtime.build_workflow_tool_container_payload.return_value = payload
+    node = DifyWorkflowToolNode(
+        node_id="tool",
+        data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
+        init_params=init_params,
+        runtime_state=runtime_state,
+        tool_file_manager=MagicMock(spec=ToolFileManagerProtocol),
+        runtime=runtime,
+    )
+    node.bind_execution_id("tool-execution")
+    return node, runtime, payload
+
+
+def _outer_graph(node: DifyWorkflowToolNode) -> Graph:
+    start = StartNode(
+        node_id="outer-start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
+    )
+    return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
+
+
+def test_workflow_tool_node_requests_child_container_and_resumes_successfully() -> None:
+    node, runtime, payload = _workflow_tool_node()
+
+    initial_events = list(node._run())
+
+    assert initial_events == [CustomContainerRequest(payload=payload.model_dump_json())]
+    runtime.get_runtime.assert_called_once_with(
+        node_id="tool",
+        node_data=node.node_data,
+        variable_pool=None,
+        node_execution_id="tool-execution",
+    )
+    runtime.build_workflow_tool_container_payload.assert_called_once_with(
+        tool_runtime=runtime.get_runtime.return_value,
+        tool_parameters={},
+        inputs_for_log={},
+        workflow_call_depth=2,
+    )
+
+    result = ContainerExecutionResult(
+        metadata={},
+        steps=2,
+        node_run_result=ContainerNodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"question": build_container_value("hello")},
+            outputs={
+                "text": build_container_value("done"),
+                "answer": build_container_value(42),
+            },
+        ),
+    )
+
+    resumed_events = list(node._resume_container_events(result=result))
+
+    assert resumed_events[:2] == [
+        StreamChunkEvent(selector=["tool", "text"], chunk="done", is_final=False),
+        StreamChunkEvent(selector=["tool", "text"], chunk="", is_final=True),
+    ]
+    completed = resumed_events[2]
+    assert isinstance(completed, StreamCompletedEvent)
+    assert completed.node_run_result.inputs == {"question": "hello"}
+    assert completed.node_run_result.outputs == {"text": "done", "answer": 42}
+    assert node.runtime_state.node_run_steps == 0
+    assert completed.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] == {
+        "provider_type": ToolProviderType.WORKFLOW.value,
+        "provider_id": "workflow-provider",
+        "plugin_unique_identifier": None,
+    }
+
+
+def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> None:
+    node, runtime, _ = _workflow_tool_node(version="2")
+    runtime.get_runtime.side_effect = ToolNodeError("runtime unavailable")
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    completed = events[0]
+    assert isinstance(completed, StreamCompletedEvent)
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert completed.node_run_result.error == "Failed to get tool runtime: runtime unavailable"
+    runtime.get_runtime.assert_called_once_with(
+        node_id="tool",
+        node_data=node.node_data,
+        variable_pool=node.runtime_state.variable_pool,
+        node_execution_id="tool-execution",
+    )
+
+
+def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built() -> None:
+    node, runtime, _ = _workflow_tool_node(tool_node_version="1")
+    runtime.build_workflow_tool_container_payload.side_effect = ToolNodeError("invalid source workflow")
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    completed = events[0]
+    assert isinstance(completed, StreamCompletedEvent)
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert completed.node_run_result.error == "Failed to prepare Workflow Tool: invalid source workflow"
+
+
+def test_workflow_tool_node_rejects_non_execution_result() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = LoopFrameRequest(
+        inputs={},
+        outputs={},
+        loop_count=0,
+        root_node_id="loop",
+        loop_variable_selectors={},
+        loop_node_ids=frozenset(),
+        index=0,
+    )
+
+    with pytest.raises(TypeError, match="Unsupported Workflow Tool container result LoopFrameRequest"):
+        list(node._resume_container_events(result=result))
+
+
+def test_workflow_tool_node_resumes_failed_result_without_chunks() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = ContainerExecutionResult(
+        metadata={},
+        steps=1,
+        node_run_result=ContainerNodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="child failed",
+        ),
+    )
+
+    events = list(node._resume_container_events(result=result))
+
+    assert len(events) == 1
+    assert isinstance(events[0], StreamCompletedEvent)
+    assert events[0].node_run_result.error == "child failed"
+
+
+def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = ContainerExecutionResult(
+        metadata={},
+        steps=0,
+        node_run_result=ContainerNodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            outputs={"text": build_container_value("")},
+        ),
+    )
+
+    events = list(node._resume_container_events(result=result))
+
+    assert events[:1] == [StreamChunkEvent(selector=["tool", "text"], chunk="", is_final=True)]
+    assert isinstance(events[1], StreamCompletedEvent)
+
+
+def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
+    node, _, _ = _workflow_tool_node()
+    factory = object.__new__(DifyNodeFactory)
+    factory._use_workflow_tool_containers = True
+    assert (
+        factory._resolve_node_class_for_factory(
+            node_type=BuiltinNodeTypes.TOOL,
+            node_version="1",
+            node_data=node.node_data,
+        )
+        is DifyWorkflowToolNode
+    )
+
+    factory._use_workflow_tool_containers = False
+    assert (
+        factory._resolve_node_class_for_factory(
+            node_type=BuiltinNodeTypes.TOOL,
+            node_version="1",
+            node_data=node.node_data,
+        )
+        is ToolNode
+    )
+
+
+def _workflow_tool_source() -> WorkflowToolSource:
+    source_graph = {
+        "nodes": [
+            {
+                "id": "source-start",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [
+                        {
+                            "variable": "answer",
+                            "label": "Answer",
+                            "type": "text-input",
+                            "required": False,
+                            "default": "fallback",
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "source-end",
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [
+                        {
+                            "variable": "answer",
+                            "value_selector": ["source-start", "answer"],
+                        }
+                    ],
+                },
+            },
+        ],
+        "edges": [
+            {
+                "id": "source-edge",
+                "source": "source-start",
+                "target": "source-end",
+            }
+        ],
+    }
+    return WorkflowToolSource(
+        app_id="source-app",
+        workflow_id="source-workflow",
+        graph_config=source_graph,
+        features_dict={},
+        environment_variables=[],
+        workflow_kind=WorkflowKind.STANDARD,
+    )
+
+
+def _human_input_workflow_tool_source() -> WorkflowToolSource:
+    human_input = HumanInputNodeData(
+        title="Approval",
+        form_content="Approve this run?",
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+    )
+    source_graph = {
+        "nodes": [
+            {
+                "id": "source-start",
+                "data": {"type": "start", "title": "Start", "variables": list[object]()},
+            },
+            {
+                "id": "source-human",
+                "data": human_input.model_dump(mode="json"),
+            },
+            {
+                "id": "source-end",
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [
+                        {
+                            "variable": "decision",
+                            "value_selector": ["source-human", "__action_id"],
+                        }
+                    ],
+                },
+            },
+        ],
+        "edges": [
+            {
+                "id": "source-edge-start-human",
+                "source": "source-start",
+                "target": "source-human",
+            },
+            {
+                "id": "source-edge-human-end",
+                "source": "source-human",
+                "sourceHandle": "approve",
+                "target": "source-end",
+            },
+        ],
+    }
+    return replace(_workflow_tool_source(), graph_config=source_graph)
+
+
+def _container_handler(
+    *,
+    inputs: dict[str, object] | None = None,
+) -> tuple[
+    WorkflowToolContainerHandler,
+    FrameRegistry,
+    RuntimeState,
+    CustomContainerRequest,
+    dict[str, WorkflowToolSource],
+]:
+    source = _workflow_tool_source()
+    parent_pool = VariablePool()
+    parent_pool.add(system_variable_selector(SystemVariableKey.USER_ID), "user")
+    parent_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "outer-execution")
+    parent_pool.add(("env", "outer-secret"), "must-not-leak")
+    parent_pool.add(("source-start", "stale"), "must-not-leak")
+    parent_state = RuntimeState(
+        workflow_id="outer-workflow",
+        variable_pool=parent_pool,
+        start_at=1,
+    )
+    parent_node = SimpleNamespace(
+        node_type=BuiltinNodeTypes.TOOL,
+        workflow_id="outer-workflow",
+        run_context=build_test_run_context(
+            tenant_id="tenant",
+            app_id="outer-app",
+        ),
+    )
+    parent_graph = SimpleNamespace(nodes={"tool": parent_node}, node_factory=None)
+    frame_registry = FrameRegistry()
+    frame_registry.register(
+        ExecutionFrame(
+            frame_id=ROOT_FRAME_ID,
+            graph=cast(Graph, parent_graph),
+            state=parent_state,
+            scheduler=MagicMock(),
+            failure_handler=MagicMock(),
+        )
+    )
+    source_repository = {}
+    source_repository["source-workflow"] = source
+    payload = WorkflowToolContainerPayload(
+        source_app_id=source.app_id,
+        source_workflow_id=source.workflow_id,
+        source_workflow_version="1",
+        inputs={"answer": "ok"} if inputs is None else inputs,
+        inputs_for_log={"answer": "ok"} if inputs is None else inputs,
+        call_depth=1,
+    )
+    request = CustomContainerRequest(payload=payload.model_dump_json())
+    parent_state.put_container_run(
+        create_container_run_state(
+            invocation_id="invocation",
+            frame_id=ROOT_FRAME_ID,
+            node_id="tool",
+            started_at=datetime.now(UTC).replace(tzinfo=None),
+            request=request,
+        )
+    )
+    return (
+        WorkflowToolContainerHandler(frame_registry, sources=source_repository),
+        frame_registry,
+        parent_state,
+        request,
+        source_repository,
+    )
+
+
+def _dispatch_next_node(
+    *,
+    expected_node_id: str,
+    runtime_state: RuntimeState,
+    frame_registry: FrameRegistry,
+    processor: NodeEventProcessor,
+) -> None:
+    task = runtime_state.ready_queue.get(timeout=0.01)
+    assert isinstance(task, StartTask)
+    assert task.node_id == expected_node_id
+    frame = frame_registry[task.frame_id]
+    node = frame.graph.nodes[task.node_id]
+    execution = runtime_state.graph_execution.get_or_create_node_execution(
+        frame_id=frame.frame_id,
+        node_id=node.id,
+    )
+    node.bind_execution_id(execution.execution_id)
+    for event in node.run():
+        assert isinstance(event, NodeEvent)
+        processor.dispatch(NodeEventTask(frame_id=frame.frame_id, event=event))
+
+
+def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler()
+    handler.handle_request(invocation_id="invocation", request=request)
+    frame_registry["invocation:workflow-tool"].state.variable_pool.add(
+        ("__workflow_tool_container__", "failure"),
+        {"legitimate": True},
+    )
+    event_stream = MagicMock(spec=EventStream)
+    processor = NodeEventProcessor(
+        graph_execution=runtime_state.graph_execution,
+        event_stream=event_stream,
+        frame_registry=frame_registry,
+        container_handlers={BuiltinNodeTypes.TOOL: handler},
+    )
+
+    _dispatch_next_node(
+        expected_node_id="source-start",
+        runtime_state=runtime_state,
+        frame_registry=frame_registry,
+        processor=processor,
+    )
+    _dispatch_next_node(
+        expected_node_id="source-end",
+        runtime_state=runtime_state,
+        frame_registry=frame_registry,
+        processor=processor,
+    )
+
+    resume_task = runtime_state.ready_queue.get(timeout=0.01)
+    assert isinstance(resume_task, ResumeTask)
+    assert isinstance(resume_task.result, ContainerExecutionResult)
+    assert resume_task.result.steps == 2
+    outputs = {key: value.to_object() for key, value in resume_task.result.node_run_result.outputs.items()}
+    assert outputs == {
+        "answer": "ok",
+        "text": '{"answer": "ok"}',
+        "files": [],
+        "json": [{"answer": "ok"}],
+    }
+    assert not any(isinstance(call.args[0], NodeEvent) for call in event_stream.collect.call_args_list)
+    with pytest.raises(KeyError):
+        frame_registry["invocation:workflow-tool"]
+    with pytest.raises(KeyError):
+        runtime_state.get_container_frame("invocation:workflow-tool")
+
+
+def test_workflow_tool_handler_restores_child_failure() -> None:
+    handler, frame_registry, runtime_state, request, source_repository = _container_handler()
+    handler.handle_request(invocation_id="invocation", request=request)
+    frame_id = "invocation:workflow-tool"
+    frame = frame_registry[frame_id]
+    now = datetime.now(UTC).replace(tzinfo=None)
+    handler.record_frame_failure(
+        frame=frame,
+        event=NodeRunFailedEvent(
+            id="failed-execution",
+            node_id="source-start",
+            node_type=BuiltinNodeTypes.START,
+            error="source failed",
+            start_at=now,
+            finished_at=now,
+            node_run_result=ContainerNodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error="source failed",
+                error_type="RuntimeError",
+            ).to_node_run_result(),
+        ),
+    )
+    frame_state = runtime_state.get_container_frame(frame_id)
+    frame_state = frame_state.model_copy(update={"runtime_data": frame.state.snapshot_frame()})
+    runtime_state.put_container_frame(frame_state)
+    frame_registry.remove(frame_id)
+
+    restored_handler = WorkflowToolContainerHandler(frame_registry, sources=source_repository)
+    restored_handler.restore_frame(frame_state)
+    restored_handler.complete_frame_if_ready(frame_registry[frame_id])
+
+    tasks = [runtime_state.ready_queue.get(timeout=0.01) for _ in range(2)]
+    resume_task = next(task for task in tasks if isinstance(task, ResumeTask))
+    assert isinstance(resume_task.result, ContainerExecutionResult)
+    assert resume_task.result.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert {key: value.to_object() for key, value in resume_task.result.node_run_result.inputs.items()} == {
+        "answer": "ok"
+    }
+    assert resume_task.result.node_run_result.error == "source failed"
+    assert resume_task.result.node_run_result.error_type == "RuntimeError"
+
+
+def test_workflow_tool_handler_isolates_child_variable_pool() -> None:
+    handler, frame_registry, _, request, _ = _container_handler()
+
+    handler.handle_request(invocation_id="invocation", request=request)
+
+    child_pool = frame_registry["invocation:workflow-tool"].state.variable_pool
+    assert child_pool.get(system_variable_selector(SystemVariableKey.USER_ID)).to_object() == "user"  # type: ignore[union-attr]
+    assert child_pool.get(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID)).to_object() == (  # type: ignore[union-attr]
+        "outer-execution"
+    )
+    assert child_pool.get(system_variable_selector(SystemVariableKey.APP_ID)).to_object() == (  # type: ignore[union-attr]
+        "source-app"
+    )
+    assert child_pool.get(("env", "outer-secret")) is None
+    assert child_pool.get(("source-start", "stale")) is None
+
+
+def test_workflow_tool_handler_applies_start_input_defaults() -> None:
+    handler, frame_registry, _, request, _ = _container_handler(inputs={})
+
+    handler.handle_request(invocation_id="invocation", request=request)
+
+    answer = frame_registry["invocation:workflow-tool"].state.variable_pool.get(("source-start", "answer"))
+    assert answer is not None
+    assert answer.to_object() == "fallback"
+
+
+def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() -> None:
+    handler, _, runtime_state, request, _ = _container_handler(inputs={"answer": 42})
+
+    handler.handle_request(invocation_id="invocation", request=request)
+
+    resume_task = runtime_state.ready_queue.get(timeout=0.01)
+    assert isinstance(resume_task, ResumeTask)
+    assert isinstance(resume_task.result, ContainerExecutionResult)
+    assert resume_task.result.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert {key: value.to_object() for key, value in resume_task.result.node_run_result.inputs.items()} == {
+        "answer": 42
+    }
+    assert resume_task.result.node_run_result.error_type == "ValueError"
+
+
+def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events() -> None:
+    _, frame_registry, _, request, repository = _container_handler()
+    persisted: list[NodeEvent] = []
+    event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
+    workflow_tool_handler = WorkflowToolContainerHandler(
+        frame_registry,
+        sources=repository,
+        event_listener_factory=lambda *_: persisted.append,
+        event_listeners=event_listeners,
+    )
+    workflow_tool_handler.handle_request(invocation_id="invocation", request=request)
+    built_in_handler = MagicMock()
+    built_in_handler.node_type = BuiltinNodeTypes.LOOP
+    built_in_handler.should_emit.return_value = True
+    hidden_event_listener = MagicMock()
+    nested_handler = WorkflowToolNestedContainerHandler(
+        frame_registry,
+        handler_factory=lambda _: built_in_handler,
+        hidden_event_listener=hidden_event_listener,
+        event_listeners=event_listeners,
+    )
+    event = NodeRunSucceededEvent(
+        id="source-execution",
+        node_id="source-start",
+        node_type=BuiltinNodeTypes.START,
+        start_at=datetime.now(UTC).replace(tzinfo=None),
+        container_id="nested-container",
+    )
+
+    workflow_tool_handler.prepare_frame_event(
+        frame=frame_registry["invocation:workflow-tool"],
+        event=event,
+    )
+
+    assert nested_handler.should_emit(event=event) is False
+    hidden_event_listener.assert_called_once_with(event)
+    assert len(persisted) == 1
+    assert persisted[0].container_id == "nested-container"
+    assert persisted[0].node_run_result.process_data["workflow_tool_invocation_id"] == "invocation"
+    assert "__dify_workflow_tool_child__" not in persisted[0].node_run_result.process_data
+
+    # Another Workflow Tool inside this container owns its own source events.
+    inner_events: list[NodeEvent] = []
+    event_listeners["inner-tool-frame"] = inner_events.append
+    inner_event = event.model_copy(deep=True)
+    inner_event.node_run_result.process_data = {}
+    workflow_tool_handler.prepare_frame_event(
+        frame=replace(frame_registry["invocation:workflow-tool"], frame_id="inner-tool-frame"), event=inner_event
+    )
+    workflow_tool_handler.prepare_frame_event(frame=frame_registry["invocation:workflow-tool"], event=inner_event)
+    assert nested_handler.should_emit(event=inner_event) is False
+    assert inner_events == [inner_event]
+    assert len(persisted) == 1
+
+    unmarked_event = event.model_copy(deep=True)
+    unmarked_event.node_run_result.process_data = {}
+    assert nested_handler.should_emit(event=unmarked_event) is True
+    assert len(persisted) == 1
+
+
+@pytest.mark.parametrize(
+    "source_metadata",
+    [{}, {WorkflowNodeExecutionMetadataKey.LOOP_ID: "source-loop", WorkflowNodeExecutionMetadataKey.LOOP_INDEX: 1}],
+)
+def test_workflow_tool_persistence_keeps_source_container_metadata(
+    source_metadata: dict[WorkflowNodeExecutionMetadataKey, str | int],
+) -> None:
+    _, frames, _, request, repository = _container_handler()
+    persisted: list[NodeEvent] = []
+    handler = WorkflowToolContainerHandler(
+        frames, sources=repository, event_listener_factory=lambda *_: persisted.append
+    )
+    handler.handle_request(invocation_id="invocation", request=request)
+    event = NodeRunSucceededEvent(
+        id="source-execution",
+        node_id="source-start",
+        node_type=BuiltinNodeTypes.START,
+        start_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    event.node_run_result.metadata = source_metadata.copy()
+    handler.prepare_frame_event(frame=frames["invocation:workflow-tool"], event=event)
+    # Ancestors outside the Tool source add their own ownership before collection.
+    event.node_run_result.metadata.update(
+        {
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: "outer-iteration",
+            WorkflowNodeExecutionMetadataKey.ITERATION_INDEX: 2,
+        }
+    )
+    event.node_run_result.outputs = {"normalized": True}
+
+    assert handler.should_emit(event=event) is False
+
+    assert persisted[0].node_run_result.metadata == source_metadata
+    assert persisted[0].node_run_result.outputs == {"normalized": True}
+
+
+@pytest.mark.parametrize(
+    ("child_error_strategy", "tool_error_strategy", "terminal_type", "expected_count", "expected_output", "retry_once"),
+    [
+        pytest.param(
+            ErrorStrategy.DEFAULT_VALUE,
+            None,
+            GraphRunSucceededEvent,
+            0,
+            '{"answer": "child fallback"}',
+            False,
+            id="child-handles-failure",
+        ),
+        pytest.param(None, None, GraphRunFailedEvent, 1, None, False, id="unhandled-failure"),
+        pytest.param(
+            None,
+            ErrorStrategy.DEFAULT_VALUE,
+            GraphRunPartialSucceededEvent,
+            1,
+            "tool fallback",
+            False,
+            id="tool-default-value",
+        ),
+        pytest.param(
+            None,
+            ErrorStrategy.FAIL_BRANCH,
+            GraphRunPartialSucceededEvent,
+            1,
+            "source code failed",
+            False,
+            id="tool-fail-branch",
+        ),
+        pytest.param(None, None, GraphRunSucceededEvent, 0, '{"answer": "retried output"}', True, id="child-retries"),
+    ],
+)
+def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    child_error_strategy: ErrorStrategy | None,
+    tool_error_strategy: ErrorStrategy | None,
+    terminal_type: type[GraphRunSucceededEvent | GraphRunFailedEvent | GraphRunPartialSucceededEvent],
+    expected_count: int,
+    expected_output: str | None,
+    retry_once: bool,
+) -> None:
+    execute = MagicMock(side_effect=[CodeExecutionError("source code failed"), {"output": "retried output"}])
+    monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
+    source = _workflow_tool_source()
+    source_graph = dict(source.graph_config)
+    source_graph["nodes"].insert(
+        1,
+        {
+            "id": "source-code",
+            "data": {
+                "type": "code",
+                "title": "Code",
+                "code_language": "python3",
+                "code": "def main(): return {'output': 'retried output'}",
+                "outputs": {"output": {"type": "string"}},
+                "variables": [],
+                "error_strategy": child_error_strategy,
+                "default_value": [{"key": "output", "type": "string", "value": "child fallback"}],
+                "retry_config": {"retry_enabled": retry_once, "max_retries": 1, "retry_interval": 0},
+            },
+        },
+    )
+    source_graph["nodes"][-1]["data"]["outputs"][0]["value_selector"] = ["source-code", "output"]
+    source_graph["edges"] = [
+        {"id": "start-code", "source": "source-start", "target": "source-code"},
+        {"id": "code-end", "source": "source-code", "target": "source-end"},
+    ]
+    repository = {}
+    repository["source-workflow"] = replace(source, graph_config=source_graph)
+    node, _, _ = _workflow_tool_node()
+    node.node_data.error_strategy = tool_error_strategy
+    node.node_data.default_value = [DefaultValue(key="text", type=DefaultValueType.STRING, value="tool fallback")]
+    start = StartNode(
+        node_id="outer-start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
+    )
+    end = EndNode(
+        node_id="outer-end",
+        data=EndNodeData.model_validate(
+            {
+                "title": "End",
+                "outputs": [
+                    {
+                        "variable": "answer",
+                        "value_selector": [
+                            "tool",
+                            "error_message" if tool_error_strategy == ErrorStrategy.FAIL_BRANCH else "text",
+                        ],
+                    }
+                ],
+            }
+        ),
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
+    )
+    graph = (
+        Graph.new()
+        .add_root(start)
+        .add_node(node)
+        .add_node(end, source_handle="fail-branch" if tool_error_strategy == ErrorStrategy.FAIL_BRANCH else "source")
+        .build()
+    )
+    persisted: list[NodeEvent] = []
+    engine = Engine(
+        graph=graph,
+        runtime_state=node.runtime_state,
+        command_channel=InMemoryChannel(),
+        workers=1,
+        container_handler_factories=(
+            partial(
+                WorkflowToolContainerHandler,
+                sources=repository,
+                event_listener_factory=lambda *_: persisted.append,
+            ),
+        ),
+    )
+    events: list[EngineEvent] = []
+    if terminal_type is GraphRunFailedEvent:
+        with pytest.raises(RuntimeError, match="source code failed"):
+            events.extend(engine.run())
+    else:
+        events.extend(engine.run())
+
+    assert execute.call_count == (2 if retry_once else 1)
+    assert isinstance(events[-1], terminal_type)
+    assert node.runtime_state.graph_execution.exceptions_count == expected_count
+    if isinstance(events[-1], GraphRunFailedEvent):
+        assert events[-1].error == "source code failed"
+        assert not any(isinstance(event, NodeRunSucceededEvent) and event.node_id == end.id for event in events)
+    else:
+        assert isinstance(events[-1], GraphRunSucceededEvent | GraphRunPartialSucceededEvent)
+        assert events[-1].outputs == {"answer": expected_output}
+    if tool_error_strategy is not None:
+        assert any(isinstance(event, NodeRunExceptionEvent) and event.node_id == node.id for event in events)
+    if isinstance(events[-1], GraphRunFailedEvent | GraphRunPartialSucceededEvent):
+        assert events[-1].exceptions_count == expected_count
+    if child_error_strategy is not None:
+        assert any(isinstance(event, NodeRunExceptionEvent) and event.node_id == "source-code" for event in persisted)
+    if retry_once:
+        assert [event.retry_index for event in persisted if isinstance(event, NodeRunRetryEvent)] == [1]
+        assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "source-code" for event in persisted)
+
+
+@pytest.mark.parametrize("outcome", ["paused", "resumed", "abort-on-resume", "stopped"])
+def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+) -> None:
+    command_channel = InMemoryChannel()
+
+    def stop_on_human_input(event: NodeEvent, *, channel: InMemoryChannel, should_stop: bool) -> None:
+        if should_stop and isinstance(event, NodeRunPauseRequestedEvent):
+            channel.send_command(AbortCommand())
+
+    source_repository = {"source-workflow": _human_input_workflow_tool_source()}
+    handler_factory = partial(
+        WorkflowToolContainerHandler,
+        sources=source_repository,
+        hidden_event_listener=partial(stop_on_human_input, channel=command_channel, should_stop=outcome == "stopped"),
+    )
+    form_repository = MagicMock(spec=HumanInputFormRepository)
+    form_repository.get_form.return_value = None
+    form = MagicMock(spec=HumanInputFormEntity)
+
+    def create_form(params: FormCreateParams) -> HumanInputFormEntity:
+        form.id = params.form_id
+        return form
+
+    form_repository.create_form.side_effect = create_form
+    human_input_app_ids: list[str] = []
+
+    def build_human_input_callback(
+        factory: DifyNodeFactory,
+        *,
+        node_data: HumanInputNodeData,
+        execution_id_getter: Callable[[], str | None],
+    ) -> DifyHITLCallback:
+        human_input_app_ids.append(factory._human_input_runtime._run_context.app_id)
+        return DifyHITLCallback(
+            form_repository=form_repository,
+            node_data=node_data,
+            execution_id_getter=execution_id_getter,
+        )
+
+    monkeypatch.setattr(DifyNodeFactory, "_build_human_input_callback", build_human_input_callback)
+
+    outer_pool = VariablePool()
+    outer_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "outer-execution")
+    outer_pool.add(system_variable_selector(SystemVariableKey.APP_ID), "outer-app")
+    outer_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_ID), "outer-workflow")
+    initial_state = RuntimeState(
+        workflow_id="outer-workflow",
+        variable_pool=outer_pool,
+        start_at=1,
+    )
+    initial_node, _, _ = _workflow_tool_node(initial_state, app_id="intermediate-app")
+    initial_graph = _outer_graph(initial_node)
+    initial_owner_factory = object.__new__(DifyNodeFactory)
+    initial_owner_factory._execution_driver = None
+    initial_owner_factory.workflow_tools = {}
+    initial_owner_factory._human_input_run_context = DifyNodeFactory._resolve_dify_context(
+        build_test_run_context(app_id="outer-app")
+    )
+    initial_graph.node_factory = initial_owner_factory
+    initial_events = list(
+        Engine(
+            graph=initial_graph,
+            runtime_state=initial_state,
+            command_channel=command_channel,
+            workers=1,
+            container_handler_factories=(handler_factory,),
+        ).run()
+    )
+
+    paused = initial_events[-1]
+    if outcome == "stopped":
+        assert isinstance(paused, GraphRunAbortedEvent)
+        return
+    assert isinstance(paused, GraphRunPausedEvent)
+    assert len(paused.reasons) == 1
+    reason = paused.reasons[0]
+    assert isinstance(reason, HitlRequired)
+    assert reason.node_id == "source-human"
+    assert reason.node_title == "Approval"
+    assert all(
+        not isinstance(event, NodeEvent) or event.node_id not in {"source-start", "source-human"}
+        for event in initial_events
+    )
+    form_repository.create_form.assert_called_once()
+    create_params = form_repository.create_form.call_args.args[0]
+    assert create_params.node_id == "source-human"
+    assert create_params.workflow_execution_id == "outer-execution"
+    child_frames = list(initial_state.container_frames())
+    assert len(child_frames) == 1
+    child_execution = initial_state.graph_execution.node_executions[(child_frames[0].frame_id, "source-human")]
+    assert create_params.form_id == child_execution.execution_id
+    assert human_input_app_ids == ["outer-app"]
+
+    if outcome == "paused":
+        return
+
+    restored_state = RuntimeState.from_snapshot(initial_state.dumps())
+    assert (
+        resolve_human_input_node_id(
+            node_id=reason.node_id,
+            form_id=reason.session_id,
+            variable_pool=restored_state.variable_pool,
+        )
+        == "tool"
+    )
+    restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
+    restored_graph = _outer_graph(restored_node)
+    restored_owner_factory = object.__new__(DifyNodeFactory)
+    restored_owner_factory._execution_driver = None
+    restored_owner_factory.workflow_tools = {}
+    restored_owner_factory._human_input_run_context = initial_owner_factory.human_input_run_context
+    restored_graph.node_factory = restored_owner_factory
+    form.status = HumanInputFormStatus.WAITING if outcome == "abort-on-resume" else HumanInputFormStatus.SUBMITTED
+    form.submitted = outcome != "abort-on-resume"
+    form.created_at = datetime.now(UTC).replace(tzinfo=None)
+    form.expiration_time = form.created_at + timedelta(hours=1)
+    form.selected_action_id = "approve"
+    form.submitted_data = dict[str, object]()
+    form.rendered_content = "Approve this run?"
+    form_repository.get_form.side_effect = lambda _node_id, *, form_id: form if form_id == form.id else None
+    resumed_channel = InMemoryChannel()
+    resumed_handler_factory = partial(
+        WorkflowToolContainerHandler,
+        sources=source_repository,
+        hidden_event_listener=partial(
+            stop_on_human_input, channel=resumed_channel, should_stop=outcome == "abort-on-resume"
+        ),
+    )
+    resumed_events = list(
+        Engine(
+            graph=restored_graph,
+            runtime_state=restored_state,
+            command_channel=resumed_channel,
+            workers=1,
+            container_handler_factories=(resumed_handler_factory,),
+        ).run()
+    )
+
+    if outcome == "abort-on-resume":
+        assert isinstance(resumed_events[-1], GraphRunAbortedEvent)
+        return
+    assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
+    tool_succeeded = next(
+        event for event in resumed_events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool"
+    )
+    assert tool_succeeded.node_run_result.outputs["decision"] == "approve"
+    assert json.loads(tool_succeeded.node_run_result.outputs["text"]) == {"decision": "approve"}
+    form_repository.create_form.assert_called_once()
+    assert human_input_app_ids == ["outer-app", "outer-app"]
+    assert all(
+        not isinstance(event, NodeEvent) or event.node_id not in {"source-human", "source-end"}
+        for event in resumed_events
+    )
+    assert list(restored_state.container_frames()) == []
+    assert list(restored_state.container_runs()) == []
