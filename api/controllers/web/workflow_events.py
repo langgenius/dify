@@ -6,7 +6,6 @@ import json
 from collections.abc import Generator
 
 from flask import Response, request
-from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
@@ -18,7 +17,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -40,7 +39,7 @@ class WorkflowEventsApi(WebApiResource):
         Returns Server-Sent Events stream.
         """
         workflow_run_id = task_id
-        session_maker = sessionmaker(db.engine)
+        session_maker = session_factory.get_session_maker()
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
