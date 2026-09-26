@@ -31,7 +31,7 @@ def _bind_trace_database(
 
 
 def _make_workflow_run() -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         workflow_id="wf-1",
         tenant_id="tenant-1",
         id="run-1",
@@ -45,7 +45,6 @@ def _make_workflow_run() -> WorkflowRun:
         error=None,
         total_tokens=0,
         total_steps=0,
-        created_at=datetime(2026, 1, 1, 0, 0, 0),
         finished_at=datetime(2026, 1, 1, 0, 0, 1),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         app_id="app-1",
@@ -53,6 +52,8 @@ def _make_workflow_run() -> WorkflowRun:
         created_by="user-1",
         exceptions_count=0,
     )
+    workflow_run.created_at = datetime(2026, 1, 1, 0, 0, 0)
+    return workflow_run
 
 
 def _make_message_data():

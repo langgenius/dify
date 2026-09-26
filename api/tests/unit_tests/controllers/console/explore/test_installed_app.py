@@ -139,11 +139,11 @@ def _publish(session: Session, app: App) -> None:
             kind=WorkflowKind.STANDARD,
             version="1",
             graph='{"nodes":[],"edges":[]}',
-            features="{}",
+            _features="{}",
             created_by=str(uuid4()),
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         session.flush()

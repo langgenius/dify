@@ -22,6 +22,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagB
 from models.workflow import Workflow, WorkflowType
 from repositories.app.response import app_record
 from services.app_service import AppResponseView
+from tests.unit_tests.model_factories import make_workflow
 
 
 @pytest.fixture
@@ -86,21 +87,22 @@ def _app(
 
 
 def _workflow(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID) -> Workflow:
-    return Workflow(
-        id=WORKFLOW_ID,
+    workflow = make_workflow(
+        workflow_id=WORKFLOW_ID,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({}),
+        graph={"nodes": [], "edges": []},
+        features={},
         created_by=ACCOUNT_ID,
-        created_at=_ts(8),
-        updated_by=ACCOUNT_ID,
-        updated_at=_ts(9),
         environment_variables=[],
         conversation_variables=[],
     )
+    workflow.created_at = _ts(8)
+    workflow.updated_by = ACCOUNT_ID
+    workflow.updated_at = _ts(9)
+    return workflow
 
 
 def _persist_response_graph(session: Session) -> App:
