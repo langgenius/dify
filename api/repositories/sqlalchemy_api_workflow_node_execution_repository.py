@@ -9,12 +9,12 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, cast, override
 
-from sqlalchemy import asc, delete, desc, func, or_, select
+from sqlalchemy import String, asc, delete, desc, func, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import storage
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
@@ -132,6 +132,49 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
+
+    @override
+    def get_workflow_tool_executions(
+        self,
+        tenant_id: str,
+        workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        with self._session_maker() as session:
+            parent = session.execute(
+                select(
+                    func.coalesce(
+                        func.nullif(WorkflowNodeExecutionModel.node_execution_id, ""),
+                        WorkflowNodeExecutionModel.id.cast(String),
+                    ),
+                    WorkflowNodeExecutionModel.workflow_id,
+                )
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.node_type == BuiltinNodeTypes.TOOL,
+                    or_(
+                        WorkflowNodeExecutionModel.id.cast(String) == parent_node_execution_id,
+                        WorkflowNodeExecutionModel.node_execution_id == parent_node_execution_id,
+                    ),
+                )
+                .limit(1)
+            ).one_or_none()
+            if parent is None:
+                return []
+            parent_execution_id, parent_workflow_id = parent
+            stmt = (
+                WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                    WorkflowNodeExecutionModel.triggered_from_node_execution_id == parent_execution_id,
+                    WorkflowNodeExecutionModel.triggered_from_workflow_id == parent_workflow_id,
+                )
+                .order_by(WorkflowNodeExecutionModel.created_at, WorkflowNodeExecutionModel.index)
+            )
+            return session.scalars(stmt).all()
 
     @override
     def get_execution_snapshots_by_workflow_run(
