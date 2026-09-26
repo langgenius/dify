@@ -1,9 +1,10 @@
 import type { Var } from '../../../types'
 import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockEnum, VarType } from '../../../types'
 import ConditionAdd from '../components/condition-add'
 import ConditionFilesListValue from '../components/condition-files-list-value'
@@ -218,7 +219,9 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onSelectVariable = vi.fn()
 
-      render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />)
+      renderWithConsoleQuery(
+        <ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />,
+      )
 
       await user.click(
         screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
@@ -236,7 +239,7 @@ describe('if-else path', () => {
       const onNumberVarTypeChange = vi.fn()
       const onValueChange = vi.fn()
 
-      render(
+      renderWithConsoleQuery(
         <div>
           <ConditionOperator
             varType={VarType.string}
@@ -269,7 +272,7 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onToggleConditionLogicalOperator = vi.fn()
 
-      render(
+      renderWithConsoleQuery(
         <ConditionList
           caseId="case-1"
           caseItem={{
@@ -310,7 +313,7 @@ describe('if-else path', () => {
 
   describe('Display rendering', () => {
     it('should render formatted condition values and file sub-conditions', () => {
-      render(
+      renderWithConsoleQuery(
         <div>
           <ConditionValue
             variableSelector={['node-1', 'answer']}
@@ -350,7 +353,7 @@ describe('if-else path', () => {
     })
 
     it('should render node cases, missing setup state, and else handles', () => {
-      render(
+      renderWithConsoleQuery(
         <Node
           id="if-else-node"
           {...baseNodeProps}
@@ -411,7 +414,7 @@ describe('if-else path', () => {
         }),
       )
 
-      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />)
+      renderWithConsoleQuery(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />)
 
       await user.click(screen.getByRole('button', { name: /elif/i }))
 

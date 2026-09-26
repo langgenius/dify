@@ -1535,7 +1535,6 @@ export default interface Resources {
     'actionMsg.generatedUnsuccessfully': 'Generated unsuccessfully'
     'actionMsg.modifiedSuccessfully': 'Modified successfully'
     'actionMsg.modifiedUnsuccessfully': 'Modified unsuccessfully'
-    'actionMsg.noModification': 'No modifications at the moment.'
     'actionMsg.payCancelled': 'Payment cancelled'
     'actionMsg.paySucceeded': 'Payment succeeded'
     'agentStrategyPage.description': 'Define how your AI agent reasons and makes decisions — including how it selects tools, handles results, and solves problems autonomously.'

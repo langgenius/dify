@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Tạo không thành công",
   "actionMsg.modifiedSuccessfully": "Chỉnh sửa thành công",
   "actionMsg.modifiedUnsuccessfully": "Chỉnh sửa không thành công",
-  "actionMsg.noModification": "Hiện không có sự thay đổi.",
   "actionMsg.payCancelled": "Thanh toán đã hủy",
   "actionMsg.paySucceeded": "Thanh toán thành công",
   "agentStrategyPage.description": "Xác định cách AI Agent suy luận và ra quyết định — bao gồm cách chọn công cụ, xử lý kết quả và tự động giải quyết vấn đề.",

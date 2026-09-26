@@ -28,13 +28,14 @@ import { useNodesMetaData } from './use-nodes-meta-data'
 
 export const useIsChatMode = () => {
   const appId = useStore((state) => state.appId)
-  const { data: appDetail } = useQuery(
+  const { data: isChatMode } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode === AppModeEnum.ADVANCED_CHAT,
     }),
   )
 
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  return isChatMode ?? false
 }
 
 export const useWorkflow = () => {
