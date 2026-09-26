@@ -66,7 +66,9 @@ class TestBatchCreateSegmentToIndexTask:
 
             # Mock embedding model for high quality indexing
             mock_embedding_model = MagicMock()
-            mock_embedding_model.get_text_embedding_num_tokens.return_value = [10, 15, 20]
+            mock_embedding_model.get_text_embedding_num_tokens.side_effect = lambda *, texts: [
+                len(text) for text in texts
+            ]
             mock_model_manager_instance = MagicMock()
             mock_model_manager_instance.get_model_instance.return_value = mock_embedding_model
             mock_model_manager.return_value = mock_model_manager_instance
