@@ -22,10 +22,12 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from controllers.common import session as controller_session
 from controllers.console.app import model_config as model_config_module
+from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
 from core.app.app_config.easy_ui_based_app.model_config import manager as model_config_manager_module
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
+from fields.app_model_config_response import AppModelConfigResponse
 from libs.external_api import ExternalApi
 from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID
@@ -153,6 +155,23 @@ def model_config_http(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) 
     return _ModelConfigHttp(http_app.test_client(), app_model, sqlite_session, validate_configuration, signal)
 
 
+@pytest.fixture
+def real_model_config_validation(model_config_http: _ModelConfigHttp, monkeypatch: pytest.MonkeyPatch) -> None:
+    assembly = MagicMock()
+    assembly.model_provider_factory.get_providers.return_value = [SimpleNamespace(provider="langgenius/openai/openai")]
+    assembly.provider_manager.get_configurations.return_value.get_models.return_value = [
+        SimpleNamespace(model="gpt-4o-mini", model_properties={"mode": "chat"})
+    ]
+    monkeypatch.setattr(model_config_manager_module, "create_plugin_model_assembly", lambda **_kwargs: assembly)
+    monkeypatch.setattr(DatasetConfigManager, "is_dataset_exists", lambda *_args: True)
+    monkeypatch.setattr(
+        model_config_module.ToolManager,
+        "get_agent_tool_runtime",
+        MagicMock(side_effect=ValueError("Tool provider is unavailable in this test")),
+    )
+    model_config_http.validate_configuration.return_value = DEFAULT
+
+
 def test_post_preserves_configuration_wire_for_business_validation(model_config_http: _ModelConfigHttp) -> None:
     payload = _model_config_payload(
         model={
@@ -183,7 +202,14 @@ def test_post_preserves_configuration_wire_for_business_validation(model_config_
             "score_threshold": 0,
             "score_threshold_enabled": False,
             "datasets": {"datasets": [{"dataset": {"id": "dataset-1", "enabled": True}}]},
-            "weights": {"vector_setting": {"vector_weight": 0.7}, "keyword_setting": {"keyword_weight": 0.3}},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.7,
+                    "embedding_provider_name": "provider",
+                    "embedding_model_name": "model",
+                },
+                "keyword_setting": {"keyword_weight": 0.3},
+            },
         },
         agent_mode={
             "enabled": True,
@@ -326,6 +352,190 @@ def test_post_preserves_existing_publish_results(
     assert model_config_http.signal.call_args.kwargs["session"] is model_config_http.session
 
 
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT])
+@pytest.mark.usefixtures("real_model_config_validation")
+@pytest.mark.parametrize(
+    ("fields", "stored_path", "expected_value"),
+    [
+        (
+            {
+                "chat_prompt_config": {"prompt": [{"text": "Chat", "role": "system"}]},
+                "completion_prompt_config": {"prompt": {"text": "Completion"}},
+            },
+            ("completion_prompt_config", "prompt"),
+            {"text": "Completion"},
+        ),
+        (
+            {"text_to_speech": {}, "suggested_questions_after_answer": {}},
+            ("text_to_speech",),
+            {"enabled": False, "voice": "", "language": ""},
+        ),
+        (
+            {
+                "user_input_form": [
+                    {
+                        "text-input": {
+                            "label": "Topic",
+                            "variable": "topic",
+                            "max_length": None,
+                            "json_schema": None,
+                            "icon": None,
+                            "extension": {"values": [None, False, 0]},
+                        }
+                    }
+                ]
+            },
+            ("user_input_form",),
+            [
+                {
+                    "text-input": {
+                        "label": "Topic",
+                        "variable": "topic",
+                        "max_length": None,
+                        "json_schema": None,
+                        "icon": None,
+                        "required": False,
+                        "extension": {"values": [None, False, 0]},
+                    }
+                }
+            ],
+        ),
+        (
+            {"user_input_form": [{"select": {"label": "Topic", "variable": "topic", "options": None}}]},
+            ("user_input_form",),
+            [{"select": {"label": "Topic", "variable": "topic", "options": [], "required": False}}],
+        ),
+        (
+            {"dataset_configs": {"datasets": {}}},
+            ("dataset_configs", "datasets"),
+            {"strategy": "router", "datasets": []},
+        ),
+        (
+            {"file_upload": {"image_config": {"enabled": None}}},
+            ("file_upload",),
+            {"image_config": {"enabled": None}},
+        ),
+        (
+            {
+                "agent_mode": {
+                    "strategy": "react",
+                    "tools": [
+                        {
+                            "enabled": None,
+                            "provider_type": "builtin",
+                            "provider_id": "time",
+                            "tool_name": "time",
+                            "tool_parameters": {},
+                            "credential_id": None,
+                            "plugin_unique_identifier": None,
+                        }
+                    ],
+                    "prompt": None,
+                }
+            },
+            ("agent_mode", "tools"),
+            [
+                {
+                    "provider_type": "builtin",
+                    "provider_id": "time",
+                    "tool_name": "time",
+                    "tool_parameters": {},
+                    "credential_id": None,
+                    "plugin_unique_identifier": None,
+                    "enabled": False,
+                }
+            ],
+        ),
+    ],
+    ids=[
+        "completion-prompt-without-role",
+        "omitted-feature-options",
+        "nullable-input-values-and-json-extensions",
+        "select-null-options",
+        "empty-dataset-collection",
+        "image-config-null-extension",
+        "nullable-agent-credentials-and-prompt",
+    ],
+)
+def test_post_persists_readable_configuration_variants(
+    model_config_http: _ModelConfigHttp,
+    app_mode: AppMode,
+    fields: dict[str, object],
+    stored_path: tuple[str, ...],
+    expected_value: object,
+) -> None:
+    model_config_http.app_model.mode = app_mode
+
+    response = model_config_http.client.post("/apps/app-1/model-config", json=_model_config_payload(**deepcopy(fields)))
+
+    assert response.status_code == 200, response.get_json()
+    stored_config = model_config_http.session.get(AppModelConfig, model_config_http.app_model.app_model_config_id)
+    assert stored_config is not None
+    wire = stored_config.to_dict(annotation_reply={"enabled": False})
+    AppModelConfigResponse.model_validate(
+        {
+            **wire,
+            "created_by": stored_config.created_by,
+            "created_at": stored_config.created_at,
+            "updated_by": stored_config.updated_by,
+            "updated_at": stored_config.updated_at,
+        }
+    )
+    actual: object = wire
+    for key in stored_path:
+        assert isinstance(actual, dict)
+        actual = actual[key]
+    assert actual == expected_value
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("strategy", ["router", "react"])
+@pytest.mark.usefixtures("real_model_config_validation")
+def test_post_keeps_legacy_tools_readable_across_planning_strategies(
+    model_config_http: _ModelConfigHttp, app_mode: AppMode, strategy: str
+) -> None:
+    model_config_http.app_model.mode = app_mode
+    tools = [
+        {
+            "extension": {"values": [None, False]},
+            "dataset": {"id": "00000000-0000-0000-0000-000000000001", "enabled": None},
+        },
+        {"google_search": {"enabled": None}},
+        {"web_reader": {}},
+        {"wikipedia": {"enabled": False}},
+        {"current_datetime": {"enabled": True}},
+        {"sensitive-word-avoidance": {"enabled": False, "words": [], "canned_response": ""}},
+    ]
+
+    response = model_config_http.client.post(
+        "/apps/app-1/model-config", json=_model_config_payload(agent_mode={"strategy": strategy, "tools": tools})
+    )
+
+    assert response.status_code == 200, response.get_json()
+    stored_config = model_config_http.session.get(AppModelConfig, model_config_http.app_model.app_model_config_id)
+    assert stored_config is not None
+    AppModelConfigResponse.model_validate(
+        {
+            **stored_config.to_dict(annotation_reply={"enabled": False}),
+            "created_by": stored_config.created_by,
+            "created_at": stored_config.created_at,
+            "updated_by": stored_config.updated_by,
+            "updated_at": stored_config.updated_at,
+        }
+    )
+    assert stored_config.agent_mode_dict["tools"] == [
+        {
+            "dataset": {"id": "00000000-0000-0000-0000-000000000001", "enabled": False},
+            "extension": {"values": [None, False]},
+        },
+        {"google_search": {"enabled": False}},
+        {"web_reader": {"enabled": False}},
+        {"wikipedia": {"enabled": False}},
+        {"current_datetime": {"enabled": True}},
+        {"sensitive-word-avoidance": {"enabled": False, "words": [], "canned_response": ""}},
+    ]
+
+
 @pytest.mark.parametrize(
     "invalid_fields",
     [
@@ -352,6 +562,36 @@ def test_post_preserves_existing_publish_results(
         {"file_upload": {"image": {"transfer_methods": "remote_url"}}},
         {"speech_to_text": {"enabled": {"invalid": True}}},
         {"external_data_tools": [{"enabled": True, "type": "api", "config": []}]},
+        {"chat_prompt_config": {"prompt": [{"text": "Missing role"}]}},
+        {"chat_prompt_config": {"prompt": None}},
+        {"completion_prompt_config": {"conversation_histories_role": {"user_prefix": "Human"}}},
+        {"text_to_speech": {"voice": None}},
+        {"suggested_questions_after_answer": {"model": None}},
+        {
+            "suggested_questions_after_answer": {
+                "model": {"provider": "provider", "name": "model", "completion_params": None}
+            }
+        },
+        {"file_upload": {"allowed_file_types": None}},
+        {"user_input_form": [{"text-input": {"label": "Topic", "variable": "topic", "options": None}}]},
+        {"dataset_configs": {"datasets": {"datasets": [{"dataset": {"enabled": None}}]}}},
+        {"file_upload": {"image": {"enabled": None}}},
+        {"dataset_configs": {"datasets": {"strategy": "router"}}},
+        {"dataset_configs": {"weights": {"vector_setting": {"vector_weight": 0.7}}}},
+        {"dataset_configs": {"metadata_filtering_conditions": {"conditions": [{"comparison_operator": "is"}]}}},
+        {"dataset_configs": {"retrieval_model": "unsupported"}},
+        {
+            "dataset_configs": {
+                "metadata_filtering_conditions": {
+                    "conditions": [{"name": "topic", "comparison_operator": "unsupported"}]
+                }
+            }
+        },
+        {"suggested_questions_after_answer": {"model": {"provider": "p", "name": "m", "mode": "unsupported"}}},
+        {"agent_mode": {"tools": [{}]}},
+        {"agent_mode": {"tools": [{"enabled": False}]}},
+        {"agent_mode": {"tools": [{"provider_type": "builtin", "provider_id": "time", "tool_name": "time"}]}},
+        {"agent_mode": {"tools": [{"dataset": None}]}},
     ],
     ids=[
         "model-string",
@@ -366,6 +606,26 @@ def test_post_preserves_existing_publish_results(
         "image-transfer-methods-string",
         "feature-enabled-object",
         "external-tool-config-list",
+        "chat-prompt-role-missing",
+        "chat-prompt-null",
+        "completion-assistant-prefix-missing",
+        "text-to-speech-voice-null",
+        "suggested-model-null",
+        "suggested-completion-params-null",
+        "allowed-file-types-null",
+        "text-input-options-null",
+        "modern-dataset-enabled-null",
+        "legacy-image-enabled-null",
+        "dataset-list-missing",
+        "retrieval-weights-incomplete",
+        "metadata-condition-name-missing",
+        "retrieval-mode-unsupported",
+        "metadata-comparison-unsupported",
+        "suggested-model-mode-unsupported",
+        "empty-agent-tool",
+        "agent-tool-only-enabled",
+        "provider-tool-parameters-missing",
+        "legacy-dataset-null",
     ],
 )
 def test_post_rejects_invalid_wire_before_business_validation(

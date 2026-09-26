@@ -48,6 +48,69 @@ describe('generated app model-config write contract', () => {
     }
   })
 
+  it('preserves omitted and nullable values according to their configuration variant', () => {
+    const body = {
+      model,
+      completion_prompt_config: { prompt: { text: 'Completion without a role' } },
+      text_to_speech: {},
+      dataset_configs: { datasets: {} },
+      agent_mode: { tools: [{ dataset: { enabled: null } }] },
+      file_upload: { image_config: { enabled: null } },
+      user_input_form: [
+        {
+          'text-input': {
+            label: 'Topic',
+            variable: 'topic',
+            max_length: null,
+            json_schema: null,
+            extension: { values: [false, null, 0] },
+          },
+        },
+        { select: { label: 'Choice', variable: 'choice', options: null } },
+      ],
+    } satisfies AppModelConfigPayload
+
+    expect(zAppModelConfigPayload.parse(body)).toEqual(body)
+  })
+
+  it('rejects structures that cannot be persisted as readable configuration', () => {
+    const invalidVoice: AppModelConfigPayload = {
+      model,
+      // @ts-expect-error Omission preserves the domain default; an explicit null is invalid.
+      text_to_speech: { voice: null },
+    }
+    const missingRole: AppModelConfigPayload = {
+      model,
+      // @ts-expect-error A chat message requires its role, unlike a completion prompt.
+      chat_prompt_config: { prompt: [{ text: 'Missing role' }] },
+    }
+    const invalidClientVoice: InferContractRouterInputs<
+      typeof apps
+    >['byAppId']['modelConfig']['post'] = {
+      params: { app_id: 'app-1' },
+      body: {
+        model,
+        // @ts-expect-error The Zod-derived client input also distinguishes omitted from null.
+        text_to_speech: { voice: null },
+      },
+    }
+    for (const invalidBody of [
+      invalidVoice,
+      missingRole,
+      invalidClientVoice.body,
+      { model, dataset_configs: { datasets: { strategy: 'router' } } },
+      { model, dataset_configs: { datasets: { datasets: [{ dataset: { enabled: null } }] } } },
+      { model, dataset_configs: { retrieval_model: 'unsupported' } },
+      { model, file_upload: { image: { enabled: null } } },
+      {
+        model,
+        user_input_form: [{ 'text-input': { label: 'Topic', variable: 'topic', options: null } }],
+      },
+    ]) {
+      expect(zAppModelConfigPayload.safeParse(invalidBody).success).toBe(false)
+    }
+  })
+
   it('types and validates the fixed configuration fields', () => {
     const body = {
       model,

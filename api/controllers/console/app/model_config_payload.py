@@ -1,65 +1,76 @@
-from typing import Literal
+from typing import Literal, NotRequired
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, with_config
+from typing_extensions import TypedDict
 
+from core.entities.agent_entities import PlanningStrategy
+from core.rag.entities.metadata_entities import SupportedComparisonOperator
+from core.rag.rerank.rerank_type import RerankMode
+from core.tools.entities.tool_entities import ToolProviderType
 from graphon.file.enums import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode
 
 # The recursive schema also keeps generated clients from turning JSON values into `any`.
 type AppConfigJsonValue = str | int | float | bool | None | list[AppConfigJsonValue] | dict[str, AppConfigJsonValue]
 
 
-class AppExtensibleConfigPayload(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    # Pydantic requires a dict annotation for typed extras, despite BaseModel's nullable attribute.
-    # https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.extra
-    # pyrefly: ignore[bad-override-mutable-attribute]
-    __pydantic_extra__: dict[str, AppConfigJsonValue] = Field(init=False)
-
-
-class AppModelSelectionPayload(AppExtensibleConfigPayload):
+# Mypy does not yet support PEP 728 extra_items; pyrefly and Pydantic check these declarations.
+# https://github.com/python/mypy/issues/18176
+class AppModelSelectionPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
     provider: str
     name: str
     completion_params: dict[str, AppConfigJsonValue]
-    mode: str | None = None
+    mode: NotRequired[str | None]
 
 
 # These config managers persist nested extensions alongside their known fields.
 # Keep those JSON values when an existing configuration is published again.
-class AppPromptMessagePayload(AppExtensibleConfigPayload):
+class AppPromptMessagePayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
     text: str
-    role: str | None = None
+    role: str
 
 
-class AppChatPromptPayload(AppExtensibleConfigPayload):
-    prompt: list[AppPromptMessagePayload] | None = None
+class AppChatPromptPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    prompt: NotRequired[list[AppPromptMessagePayload]]
 
 
-class AppConversationRolesPayload(AppExtensibleConfigPayload):
-    user_prefix: str | None = None
-    assistant_prefix: str | None = None
+class AppConversationRolesPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    user_prefix: str
+    assistant_prefix: str
 
 
-class AppCompletionPromptPayload(AppExtensibleConfigPayload):
-    prompt: AppPromptMessagePayload | None = None
-    conversation_histories_role: AppConversationRolesPayload | None = None
+class AppCompletionPromptTextPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    text: str
 
 
-class AppInputFieldPayload(AppExtensibleConfigPayload):
+class AppCompletionPromptPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    prompt: NotRequired[AppCompletionPromptTextPayload]
+    conversation_histories_role: NotRequired[AppConversationRolesPayload]
+
+
+@with_config(ConfigDict(extra="allow"))
+class AppInputFieldBasePayload(TypedDict):
     label: str
     variable: str
-    description: str | None = None
-    required: bool | None = None
-    default: AppConfigJsonValue = None
-    max_length: int | None = None
-    options: list[str] | None = None
-    hide: bool | None = None
-    type: str | None = None
-    enabled: bool | None = None
-    config: dict[str, AppConfigJsonValue] | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    json_schema: str | dict[str, AppConfigJsonValue] | None = None
+    description: NotRequired[str]
+    required: NotRequired[bool | None]
+    default: NotRequired[AppConfigJsonValue]
+    max_length: NotRequired[int | None]
+    hide: NotRequired[bool]
+    type: NotRequired[str]
+    enabled: NotRequired[bool]
+    config: NotRequired[dict[str, AppConfigJsonValue]]
+    icon: NotRequired[str | None]
+    icon_background: NotRequired[str | None]
+    json_schema: NotRequired[str | dict[str, AppConfigJsonValue] | None]
+
+
+class AppInputFieldPayload(AppInputFieldBasePayload, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    options: NotRequired[list[str]]
+
+
+class AppSelectFieldPayload(AppInputFieldBasePayload, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    options: NotRequired[list[str] | None]
 
 
 class AppTextInputPayload(BaseModel):
@@ -71,7 +82,7 @@ class AppTextInputPayload(BaseModel):
 class AppSelectInputPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    select: AppInputFieldPayload
+    select: AppSelectFieldPayload
 
 
 class AppParagraphInputPayload(BaseModel):
@@ -108,40 +119,40 @@ type AppUserInputFormPayload = (
 )
 
 
-class AppFeaturePayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
+class AppFeaturePayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
 
 
-class AppSuggestedQuestionsModelPayload(AppExtensibleConfigPayload):
+class AppSuggestedQuestionsModelPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
     provider: str
     name: str
-    mode: str | None = None
-    completion_params: dict[str, AppConfigJsonValue] | None = None
+    mode: NotRequired[LLMMode | Literal[""]]
+    completion_params: NotRequired[dict[str, AppConfigJsonValue]]
 
 
-class AppSuggestedQuestionsPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    prompt: str | None = None
-    model: AppSuggestedQuestionsModelPayload | None = None
+class AppSuggestedQuestionsPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    prompt: NotRequired[str]
+    model: NotRequired[AppSuggestedQuestionsModelPayload]
 
 
-class AppTextToSpeechPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    voice: str | None = None
-    language: str | None = None
-    autoPlay: Literal["enabled", "disabled"] | None = None
+class AppTextToSpeechPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    voice: NotRequired[str]
+    language: NotRequired[str]
+    autoPlay: NotRequired[Literal["enabled", "disabled"]]
 
 
-class AppModerationContentPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    preset_response: str | None = None
+class AppModerationContentPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    preset_response: NotRequired[str | None]
 
 
-class AppModerationConfigPayload(AppExtensibleConfigPayload):
-    inputs_config: AppModerationContentPayload | None = None
-    outputs_config: AppModerationContentPayload | None = None
-    keywords: str | None = None
-    api_based_extension_id: str | None = None
+class AppModerationConfigPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    inputs_config: NotRequired[AppModerationContentPayload | None]
+    outputs_config: NotRequired[AppModerationContentPayload | None]
+    keywords: NotRequired[str | None]
+    api_based_extension_id: NotRequired[str | None]
 
 
 class AppModerationPayload(BaseModel):
@@ -150,150 +161,203 @@ class AppModerationPayload(BaseModel):
     config: AppModerationConfigPayload | None = None
 
 
-class AppExternalDataToolPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    type: str | None = None
-    label: str | None = None
-    variable: str | None = None
-    config: dict[str, AppConfigJsonValue] | None = None
-    icon: str | None = None
-    icon_background: str | None = None
+class AppExternalDataToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    type: NotRequired[str]
+    label: NotRequired[str]
+    variable: NotRequired[str]
+    config: NotRequired[dict[str, AppConfigJsonValue]]
+    icon: NotRequired[str]
+    icon_background: NotRequired[str]
 
 
-class AppDatasetSelectionPayload(AppExtensibleConfigPayload):
-    id: str | None = None
-    enabled: bool | None = None
+class AppDatasetSelectionPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    id: NotRequired[str]
+    enabled: NotRequired[bool]
 
 
-class AppDatasetToolPayload(AppExtensibleConfigPayload):
-    dataset: AppDatasetSelectionPayload | None = None
+class AppLegacyDatasetSelectionPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    id: NotRequired[str]
+    enabled: NotRequired[bool | None]
 
 
-class AppDatasetCollectionPayload(AppExtensibleConfigPayload):
-    strategy: str | None = None
-    datasets: list[AppDatasetToolPayload] | None = None
+class AppDatasetToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    dataset: AppDatasetSelectionPayload
 
 
-class AppRerankingModelPayload(AppExtensibleConfigPayload):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
+class AppEmptyDatasetCollectionPayload(TypedDict, closed=True):
+    pass
 
 
-class AppVectorWeightPayload(AppExtensibleConfigPayload):
-    vector_weight: float | None = None
-    embedding_provider_name: str | None = None
-    embedding_model_name: str | None = None
+class AppDatasetCollectionPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    strategy: NotRequired[str]
+    datasets: list[AppDatasetToolPayload]
 
 
-class AppKeywordWeightPayload(AppExtensibleConfigPayload):
-    keyword_weight: float | None = None
+class AppRerankingModelPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    reranking_provider_name: NotRequired[str]
+    reranking_model_name: NotRequired[str]
 
 
-class AppRetrievalWeightsPayload(AppExtensibleConfigPayload):
-    weight_type: str | None = None
-    vector_setting: AppVectorWeightPayload | None = None
-    keyword_setting: AppKeywordWeightPayload | None = None
+class AppVectorWeightPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
 
 
-class AppMetadataModelPayload(AppExtensibleConfigPayload):
-    provider: str | None = None
-    name: str | None = None
-    mode: str | None = None
-    completion_params: dict[str, AppConfigJsonValue] | None = None
+class AppKeywordWeightPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    keyword_weight: float
 
 
-class AppMetadataConditionPayload(AppExtensibleConfigPayload):
-    id: str | None = None
-    name: str | None = None
-    metadata_id: str | None = None
-    comparison_operator: str | None = None
-    value: str | int | float | list[str] | None = None
+class AppRetrievalWeightsPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    weight_type: NotRequired[Literal["semantic_first", "keyword_first", "customized"]]
+    vector_setting: AppVectorWeightPayload
+    keyword_setting: AppKeywordWeightPayload
 
 
-class AppMetadataFilteringPayload(AppExtensibleConfigPayload):
-    logical_operator: str | None = None
-    conditions: list[AppMetadataConditionPayload] | None = None
+class AppMetadataModelPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    provider: NotRequired[str]
+    name: NotRequired[str]
+    mode: NotRequired[LLMMode | Literal[""]]
+    completion_params: NotRequired[dict[str, AppConfigJsonValue]]
 
 
-class AppDatasetConfigPayload(AppExtensibleConfigPayload):
-    retrieval_model: str | None = None
-    datasets: AppDatasetCollectionPayload | None = None
-    top_k: int | None = None
-    score_threshold: float | None = None
-    score_threshold_enabled: bool | None = None
-    reranking_model: AppRerankingModelPayload | None = None
-    weights: AppRetrievalWeightsPayload | None = None
-    reranking_enabled: bool | None = None
-    reranking_enable: bool | None = None
-    reranking_mode: str | None = None
-    metadata_filtering_mode: str | None = None
-    metadata_model_config: AppMetadataModelPayload | None = None
-    metadata_filtering_conditions: AppMetadataFilteringPayload | None = None
+class AppMetadataConditionPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    id: NotRequired[str]
+    name: str
+    metadata_id: NotRequired[str]
+    comparison_operator: SupportedComparisonOperator
+    value: NotRequired[str | int | float | list[str] | None]
 
 
-class AppAgentPromptPayload(AppExtensibleConfigPayload):
-    first_prompt: str | None = None
-    next_iteration: str | None = None
+class AppMetadataFilteringPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    logical_operator: NotRequired[Literal["and", "or"] | None]
+    conditions: NotRequired[list[AppMetadataConditionPayload] | None]
 
 
-class AppAgentToolPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    provider_type: str | None = None
-    provider_id: str | None = None
-    provider_name: str | None = None
-    tool_name: str | None = None
-    tool_label: str | None = None
-    tool_parameters: dict[str, AppConfigJsonValue] | None = None
-    plugin_unique_identifier: str | None = None
-    credential_id: str | None = None
-    isDeleted: bool | None = None
-    notAuthor: bool | None = None
-    dataset: AppDatasetSelectionPayload | None = None
-    google_search: AppFeaturePayload | None = None
-    web_reader: AppFeaturePayload | None = None
-    wikipedia: AppFeaturePayload | None = None
-    current_datetime: AppFeaturePayload | None = None
+class AppDatasetConfigPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    retrieval_model: NotRequired[Literal["single", "multiple"]]
+    datasets: NotRequired[AppDatasetCollectionPayload | AppEmptyDatasetCollectionPayload | None]
+    top_k: NotRequired[int]
+    score_threshold: NotRequired[float | None]
+    score_threshold_enabled: NotRequired[bool]
+    reranking_model: NotRequired[AppRerankingModelPayload | None]
+    weights: NotRequired[AppRetrievalWeightsPayload | None]
+    reranking_enabled: NotRequired[bool]
+    reranking_enable: NotRequired[bool]
+    reranking_mode: NotRequired[RerankMode]
+    metadata_filtering_mode: NotRequired[Literal["disabled", "automatic", "manual"]]
+    metadata_model_config: NotRequired[AppMetadataModelPayload | None]
+    metadata_filtering_conditions: NotRequired[AppMetadataFilteringPayload | None]
 
 
-class AppAgentModePayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    strategy: str | None = None
-    max_iteration: int | None = None
-    tools: list[AppAgentToolPayload] | None = None
-    prompt: AppAgentPromptPayload | str | None = None
+class AppAgentPromptPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    first_prompt: NotRequired[str]
+    next_iteration: NotRequired[str]
 
 
-class AppImageUploadPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    number_limits: int | None = None
-    detail: Literal["low", "high"] | None = None
-    transfer_methods: list[FileTransferMethod] | None = None
+class AppProviderAgentToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    provider_type: ToolProviderType
+    provider_id: str
+    provider_name: NotRequired[str]
+    tool_name: str
+    tool_label: NotRequired[str]
+    tool_parameters: dict[str, AppConfigJsonValue]
+    plugin_unique_identifier: NotRequired[str | None]
+    credential_id: NotRequired[str | None]
+    isDeleted: NotRequired[bool]
+    notAuthor: NotRequired[bool]
 
 
-class AppFileTypeUploadPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    number_limits: int | None = None
-    transfer_methods: list[FileTransferMethod] | None = None
+class AppLegacyDatasetToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    dataset: AppLegacyDatasetSelectionPayload
 
 
-class AppFilePreviewPayload(AppExtensibleConfigPayload):
-    mode: str | None = None
-    file_type_list: list[str] | None = None
+class AppLegacyGoogleSearchToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    google_search: AppFeaturePayload
 
 
-class AppFileUploadPayload(AppExtensibleConfigPayload):
-    enabled: bool | None = None
-    image: AppImageUploadPayload | None = None
-    image_config: AppImageUploadPayload | None = None
-    document: AppFileTypeUploadPayload | None = None
-    audio: AppFileTypeUploadPayload | None = None
-    video: AppFileTypeUploadPayload | None = None
-    custom: AppFileTypeUploadPayload | None = None
-    preview_config: AppFilePreviewPayload | None = None
-    allowed_file_types: list[FileType] | None = None
-    allowed_file_extensions: list[str] | None = None
-    allowed_file_upload_methods: list[FileTransferMethod] | None = None
-    number_limits: int | None = None
+class AppLegacyWebReaderToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    web_reader: AppFeaturePayload
+
+
+class AppLegacyWikipediaToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    wikipedia: AppFeaturePayload
+
+
+class AppLegacyCurrentDatetimeToolPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    current_datetime: AppFeaturePayload
+
+
+class AppLegacySensitiveWordConfigPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: bool
+    words: list[str]
+    canned_response: str
+
+
+AppLegacySensitiveWordToolPayload = TypedDict(  # type: ignore[misc]
+    "AppLegacySensitiveWordToolPayload",
+    {"sensitive-word-avoidance": AppLegacySensitiveWordConfigPayload},
+    extra_items=AppConfigJsonValue,
+)
+
+type AppAgentToolPayload = (
+    AppProviderAgentToolPayload
+    | AppLegacyDatasetToolPayload
+    | AppLegacyGoogleSearchToolPayload
+    | AppLegacyWebReaderToolPayload
+    | AppLegacyWikipediaToolPayload
+    | AppLegacyCurrentDatetimeToolPayload
+    | AppLegacySensitiveWordToolPayload
+)
+
+
+class AppAgentModePayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    strategy: NotRequired[PlanningStrategy | Literal["cot", "function-calling", ""] | None]
+    max_iteration: NotRequired[int]
+    tools: NotRequired[list[AppAgentToolPayload] | None]
+    prompt: NotRequired[AppAgentPromptPayload | str | None]
+
+
+class AppImageUploadPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool]
+    number_limits: NotRequired[int]
+    detail: NotRequired[Literal["low", "high"] | None]
+    transfer_methods: NotRequired[list[FileTransferMethod]]
+
+
+class AppImageConfigPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    number_limits: NotRequired[int]
+    detail: NotRequired[Literal["low", "high"] | None]
+    transfer_methods: NotRequired[list[FileTransferMethod]]
+
+
+class AppFileTypeUploadPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool | None]
+    number_limits: NotRequired[int | None]
+    transfer_methods: NotRequired[list[FileTransferMethod] | None]
+
+
+class AppFilePreviewPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    mode: NotRequired[str | None]
+    file_type_list: NotRequired[list[str] | None]
+
+
+class AppFileUploadPayload(TypedDict, extra_items=AppConfigJsonValue):  # type: ignore[call-arg]
+    enabled: NotRequired[bool]
+    image: NotRequired[AppImageUploadPayload]
+    image_config: NotRequired[AppImageConfigPayload | None]
+    document: NotRequired[AppFileTypeUploadPayload | None]
+    audio: NotRequired[AppFileTypeUploadPayload | None]
+    video: NotRequired[AppFileTypeUploadPayload | None]
+    custom: NotRequired[AppFileTypeUploadPayload | None]
+    preview_config: NotRequired[AppFilePreviewPayload | None]
+    allowed_file_types: NotRequired[list[FileType]]
+    allowed_file_extensions: NotRequired[list[str]]
+    allowed_file_upload_methods: NotRequired[list[FileTransferMethod]]
+    number_limits: NotRequired[int]
 
 
 class AppModelConfigPayload(BaseModel):
