@@ -197,6 +197,7 @@
   "operation.openInNewTab": "नए टैब में खोलें",
   "operation.params": "पैरामीटर",
   "operation.pause": "रोकें",
+  "operation.pdfLoadFailed": "PDF लोड नहीं हो सका। कृपया पुनः प्रयास करें।",
   "operation.play": "चलाएं",
   "operation.refresh": "पुनः प्रारंभ करें",
   "operation.regenerate": "पुनर्जन्म",
