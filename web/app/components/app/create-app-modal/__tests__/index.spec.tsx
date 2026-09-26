@@ -11,9 +11,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
-const ahooksMocks = vi.hoisted(() => ({
-  keyPressHandlers: [] as Array<() => void>,
-}))
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
@@ -29,12 +26,6 @@ vi.mock('ahooks', () => ({
     return { run, cancel, flush }
   },
   useHover: () => false,
-}))
-vi.mock('@tanstack/react-hotkeys', () => ({
-  formatForDisplay: (key: string) => key,
-  useHotkey: (_hotkey: string, handler: () => void) => {
-    ahooksMocks.keyPressHandlers.push(handler)
-  },
 }))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
@@ -138,7 +129,6 @@ function render(ui: ReactElement) {
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
     mockConsoleStateReader.mockReturnValue({
@@ -281,7 +271,9 @@ describe('CreateAppModal', () => {
       target: { value: 'Created from shortcut' },
     })
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -295,12 +287,15 @@ describe('CreateAppModal', () => {
     })
   })
 
-  it('shows validation feedback when the keyboard shortcut runs without a name', () => {
+  it('keeps creation unavailable from both the button and shortcut without a name', () => {
     renderModal()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
-    expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
+    expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
+    expect(mockToastError).not.toHaveBeenCalled()
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
@@ -320,7 +315,9 @@ describe('CreateAppModal', () => {
 
     expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })

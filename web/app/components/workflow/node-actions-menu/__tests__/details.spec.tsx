@@ -1,9 +1,10 @@
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { screen, waitFor } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -105,14 +106,14 @@ function renderDropdownContent({
   return renderWorkflowFlowComponent(
     <DropdownMenu open>
       <DropdownMenuTrigger render={<button type="button">open</button>} />
-      <DropdownMenuContent>
+      <DropdownMenuPortal>
         <NodeActionsDropdownContent
           id="node-1"
           data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
           onClose={onClose}
           showHelpLink={showHelpLink}
         />
-      </DropdownMenuContent>
+      </DropdownMenuPortal>
     </DropdownMenu>,
     {
       nodes: [],
@@ -203,6 +204,16 @@ describe('node actions menu details', () => {
     await user.click(changeNode)
     const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
     await waitFor(() => expect(search).toHaveFocus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(`{${mod}>}cd{/${mod}}{Delete}`)
+    const replacement = screen.getByRole('button', { name: 'HTTP Request' })
+    act(() => replacement.focus())
+    await user.keyboard(`{${mod}>}cd{/${mod}}{Delete}`)
+    expect(handleNodesCopy).not.toHaveBeenCalled()
+    expect(handleNodesDuplicate).not.toHaveBeenCalled()
+    expect(handleNodeDelete).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    act(() => search.focus())
     await user.keyboard('{ArrowDown}')
     expect(search).toHaveFocus()
     await user.keyboard('{Escape}')
@@ -290,7 +301,7 @@ describe('node actions menu details', () => {
     const { rerender } = renderWorkflowFlowComponent(
       <DropdownMenu open>
         <DropdownMenuTrigger render={<button type="button">open</button>} />
-        <DropdownMenuContent>
+        <DropdownMenuPortal>
           <NodeActionsDropdownContent
             id="node-2"
             data={
@@ -305,7 +316,7 @@ describe('node actions menu details', () => {
             onClose={vi.fn()}
             showHelpLink={false}
           />
-        </DropdownMenuContent>
+        </DropdownMenuPortal>
       </DropdownMenu>,
       {
         nodes: [],
@@ -332,14 +343,14 @@ describe('node actions menu details', () => {
     rerender(
       <DropdownMenu open>
         <DropdownMenuTrigger render={<button type="button">open</button>} />
-        <DropdownMenuContent>
+        <DropdownMenuPortal>
           <NodeActionsDropdownContent
             id="node-3"
             data={{ type: BlockEnum.End, title: 'Read only node', desc: '' } as any}
             onClose={vi.fn()}
             showHelpLink={false}
           />
-        </DropdownMenuContent>
+        </DropdownMenuPortal>
       </DropdownMenu>,
     )
 

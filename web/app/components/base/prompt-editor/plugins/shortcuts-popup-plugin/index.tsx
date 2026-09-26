@@ -1,8 +1,10 @@
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { LexicalCommand } from 'lexical'
 import type { CSSProperties } from 'react'
 import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { $getSelection, $isRangeSelection } from 'lexical'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
@@ -13,13 +15,6 @@ export type ShortcutPopupInsertHandler = <Payload>(
   params: Payload,
 ) => void
 export type ShortcutPopupDisplayMode = 'selection' | 'workflow-panel-adjacent-center'
-
-// Hotkey can be:
-// - string: 'mod+/'
-// - string[]: ['mod', '/']
-// - string[][]: [['mod', '/'], ['mod', 'shift', '/']] (any combo matches)
-// - function: custom matcher
-export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boolean)
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
@@ -99,87 +94,8 @@ function subscribeWorkflowPanelAdjacentPlacement(callback: () => void) {
   }
 }
 
-const META_ALIASES = new Set(['meta', 'cmd', 'command'])
-const CTRL_ALIASES = new Set(['ctrl'])
-const ALT_ALIASES = new Set(['alt', 'option'])
-const SHIFT_ALIASES = new Set(['shift'])
-
-function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
-  /* v8 ignore next 2 -- plugin always provides a default hotkey ('mod+/'); undefined hotkey is not reachable via public props flow. @preserve */
-  if (!hotkey) return false
-
-  if (typeof hotkey === 'function') return hotkey(event)
-
-  const matchCombo = (tokens: string[]) => {
-    const parts = tokens.map((t) => t.toLowerCase().trim()).filter(Boolean)
-    let expectedKey: string | null = null
-
-    let needMod = false
-    let needCtrl = false
-    let needMeta = false
-    let needAlt = false
-    let needShift = false
-
-    for (const p of parts) {
-      if (p === 'mod') {
-        needMod = true
-        continue
-      }
-      if (CTRL_ALIASES.has(p)) {
-        needCtrl = true
-        continue
-      }
-      if (META_ALIASES.has(p)) {
-        needMeta = true
-        continue
-      }
-      if (ALT_ALIASES.has(p)) {
-        needAlt = true
-        continue
-      }
-      if (SHIFT_ALIASES.has(p)) {
-        needShift = true
-        continue
-      }
-      expectedKey = p
-    }
-
-    if (needMod && !(event.metaKey || event.ctrlKey)) return false
-    if (needCtrl && !event.ctrlKey) return false
-    if (needMeta && !event.metaKey) return false
-    if (needAlt && !event.altKey) return false
-    if (needShift && !event.shiftKey) return false
-
-    if (expectedKey) {
-      const k = event.key.toLowerCase()
-      const normalized = k === ' ' ? 'space' : k
-      if (normalized !== expectedKey) return false
-    }
-
-    return true
-  }
-
-  if (Array.isArray(hotkey)) {
-    const isNested = hotkey.length > 0 && Array.isArray((hotkey as unknown[])[0])
-    if (isNested) {
-      const combos = hotkey as string[][]
-      return combos.some((tokens) => matchCombo(tokens))
-    } else {
-      const tokens = hotkey as string[]
-      return matchCombo(tokens)
-    }
-  }
-
-  const tokensFromString = hotkey
-    .toLowerCase()
-    .split('+')
-    .map((t) => t.trim())
-    .filter(Boolean)
-  return matchCombo(tokensFromString)
-}
-
 export default function ShortcutsPopupPlugin({
-  hotkey = 'mod+/',
+  hotkey = 'Mod+/',
   children,
   className,
   container,
@@ -303,6 +219,9 @@ export default function ShortcutsPopupPlugin({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.repeat) return
+      if (!isEditorFocused()) return
+
       if (open && event.key === 'Escape') {
         event.stopPropagation()
         event.preventDefault()
@@ -310,17 +229,18 @@ export default function ShortcutsPopupPlugin({
         return
       }
 
-      if (!isEditorFocused()) return
-
-      if (matchHotkey(event, hotkey)) {
+      if (matchesKeyboardEvent(event, hotkey)) {
         event.preventDefault()
+        event.stopPropagation()
         openPortal()
       }
     }
 
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [hotkey, open, isEditorFocused, openPortal, closePortal])
+    return editor.registerRootListener((root, previousRoot) => {
+      previousRoot?.removeEventListener('keydown', handleKeyDown, true)
+      root?.addEventListener('keydown', handleKeyDown, true)
+    })
+  }, [editor, hotkey, open, isEditorFocused, openPortal, closePortal])
 
   useEffect(() => {
     if (!open) return
@@ -365,8 +285,17 @@ export default function ShortcutsPopupPlugin({
     : {}
 
   return createPortal(
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- The popup delegates Escape dismissal after its nested widgets handle the event.
     <div
       data-testid="shortcuts-popup"
+      onKeyDown={(event) => {
+        if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
+          return
+        event.preventDefault()
+        event.stopPropagation()
+        closePortal()
+        editor.focus()
+      }}
       ref={(node) => {
         portalRef.current = node
         if (!isFixedPanelAdjacent) refs.setFloating(node)

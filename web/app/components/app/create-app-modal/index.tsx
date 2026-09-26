@@ -52,6 +52,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const nameInputId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
   const [appIcon, setAppIcon] = useState<AppIconSelection>({
@@ -165,19 +166,30 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+  const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,
-    () => {
-      if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       handleCreateApp()
     },
     {
+      target: contentRef,
+      enabled: !createDisabled && !isCreating && !showAppIconPicker,
       ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
   return (
     <>
-      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
+      <div
+        ref={contentRef}
+        className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
+      >
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-34.75" />
@@ -371,16 +383,16 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
-                  disabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull || !name}
+                  disabled={createDisabled}
                   loading={isCreating}
                   variant="primary"
                   onClick={handleCreateApp}
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
-                    {CREATE_APP_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

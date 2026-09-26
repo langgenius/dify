@@ -110,10 +110,22 @@ export function DetailSidebarFrame({
     }
   }, [])
 
-  useHotkey(DETAIL_SIDEBAR_TOGGLE_HOTKEY, handleToggleDetailNavigation, {
-    ignoreInputs: true,
-    preventDefault: true,
-  })
+  useHotkey(
+    DETAIL_SIDEBAR_TOGGLE_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleToggleDetailNavigation()
+    },
+    {
+      ignoreInputs: true,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   return (
     <div

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { CommentIcon } from '../comment-icon'
+import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
 const storeState = vi.hoisted(() => ({
@@ -53,12 +54,39 @@ const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
 describe('Comment thread focus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    storeState.mentionableUsersCache['app-1'] = []
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
+
+  it.each(['draft', 'thread'] as const)(
+    'dismisses mentions before closing the %s',
+    async (kind) => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const onClose = vi.fn()
+      storeState.mentionableUsersCache['app-1'] = [
+        { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+      ]
+      renderWithAccountProfile(
+        kind === 'draft' ? (
+          <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
+        ) : (
+          <CommentThread comment={createComment()} onClose={onClose} onReply={() => {}} />
+        ),
+      )
+      await user.click(screen.getByRole('textbox'))
+      await user.type(screen.getByRole('textbox'), '@')
+      expect(screen.getByText('Bob')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      expect(screen.queryByText('Bob')).not.toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
+      await user.keyboard('{Escape}')
+      expect(onClose).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it('keeps focus on the marker after saving a keyboard move with its thread open', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -95,6 +123,7 @@ describe('Comment thread focus', () => {
     await user.keyboard('{Enter}')
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('textbox')).toHaveFocus()
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true')
 
     act(() => marker.focus())
     await user.keyboard('{ArrowRight}')

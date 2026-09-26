@@ -1,4 +1,5 @@
 import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
@@ -10,6 +11,7 @@ const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
 const SAVE_HOTKEY = 'Mod+S' satisfies Hotkey
 
 type ActionButtonsProps = {
+  target: RefObject<HTMLDivElement | null>
   handleCancel: () => void
   handleSave: () => void
   loading: boolean
@@ -20,6 +22,7 @@ type ActionButtonsProps = {
 }
 
 export function ActionButtons({
+  target,
   handleCancel,
   handleSave,
   loading,
@@ -32,16 +35,40 @@ export function ActionButtons({
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
 
-  useHotkey(CANCEL_HOTKEY, (e) => {
-    e.preventDefault()
-    handleCancel()
-  })
+  useHotkey(
+    CANCEL_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleCancel()
+    },
+    {
+      target,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
-  useHotkey(SAVE_HOTKEY, (e) => {
-    e.preventDefault()
-    if (loading) return
-    handleSave()
-  })
+  useHotkey(
+    SAVE_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleSave()
+    },
+    {
+      target,
+      enabled: !loading,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   const isParentChildParagraphMode =
     docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
@@ -72,9 +99,9 @@ export function ActionButtons({
             {t(($) => $['operation.save'], { ns: 'common' })}
           </span>
           <KbdGroup>
-            {SAVE_HOTKEY.split('+').map((key) => (
+            {formatForDisplay(SAVE_HOTKEY, { parts: true }).map((key) => (
               <Kbd key={key} color="white">
-                {formatForDisplay(key)}
+                {key}
               </Kbd>
             ))}
           </KbdGroup>

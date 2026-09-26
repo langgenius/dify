@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
@@ -50,8 +49,9 @@ const fetchImageAsPng = async (url: string): Promise<Blob> => {
   }
 }
 
-const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
-  const { t } = useTranslation(['common'])
+function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePreviewProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -184,10 +184,18 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn)
-  useHotkey('ArrowDown', zoomOut)
-  useHotkey('ArrowLeft', onPrev || noop)
-  useHotkey('ArrowRight', onNext || noop)
+  useHotkey('ArrowUp', zoomIn, { target: previewRef })
+  useHotkey('ArrowDown', zoomOut, { target: previewRef })
+  useHotkey('ArrowLeft', () => onPrev?.(), {
+    target: previewRef,
+    enabled: !!onPrev,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', () => onNext?.(), {
+    target: previewRef,
+    enabled: !!onNext,
+    requireReset: true,
+  })
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
@@ -197,16 +205,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
   const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-      disablePointerDismissal
-    >
-      <DialogContent
-        className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
-        backdropProps={{ className: 'bg-transparent!' }}
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={title.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
+        className="image-preview-container fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
       >
         <div
           data-testid="image-preview-container"
@@ -327,7 +331,23 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
           />
           <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
-      </DialogContent>
+      </DialogPopup>
+    </>
+  )
+}
+
+function ImagePreview(props: ImagePreviewProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <ImagePreviewContent {...props} />
+      </DialogPortal>
     </Dialog>
   )
 }

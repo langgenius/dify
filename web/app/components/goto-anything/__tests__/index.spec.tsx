@@ -303,6 +303,21 @@ describe('GotoAnything', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
+    it('should leave a consumed shortcut to its local owner', () => {
+      renderGotoAnything(
+        <>
+          <button type="button" onKeyDown={(event) => event.preventDefault()}>
+            Local command
+          </button>
+          <GotoAnything />
+        </>,
+      )
+
+      triggerSearchShortcut(screen.getByRole('button', { name: 'Local command' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
     it.each(['shiftKey', 'altKey'] as const)('should ignore Mod+K with %s', (extraModifier) => {
       renderGotoAnything(<GotoAnything />)
 

@@ -540,8 +540,8 @@ export function GotoAnything() {
                   />
                 </div>
                 <KbdGroup>
-                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-                    <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
                   ))}
                 </KbdGroup>
               </AutocompleteInputGroup>

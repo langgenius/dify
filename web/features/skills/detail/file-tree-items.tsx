@@ -4,7 +4,7 @@ import type {
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { DragEvent, MouseEvent, ReactElement } from 'react'
+import type { DragEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react'
 import type { SkillDropTarget } from './file-tree-dnd'
 import type { FileTreeInlineAction, FileTreeNode } from './shared'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,12 +23,14 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setSkillFileDragPreview } from './file-tree-drag-preview'
 import {
   getDraggedSkillPaths,
   getSkillFileIconClass,
+  isEditableKeyboardTarget,
   skillFileDragPathsType,
   skillFileDragType,
   skillFileHotkeys,
@@ -164,7 +166,7 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.cut.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.cut.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
@@ -179,7 +181,7 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.copy.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.copy.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
@@ -255,6 +257,7 @@ function FileActions({
   onCreateFolder,
   onCut,
   onDelete,
+  onMenuKeyDown,
   onRename,
   onUploadFiles,
 }: {
@@ -265,6 +268,7 @@ function FileActions({
   onCreateFolder: () => void
   onCut: (path: string) => void
   onDelete: () => void
+  onMenuKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onRename: () => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
 }) {
@@ -284,7 +288,12 @@ function FileActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
+        <DropdownMenuContent
+          data-skill-file-menu
+          onKeyDown={onMenuKeyDown}
+          placement="bottom-end"
+          className={skillFileMenuPopupClassName}
+        >
           <FileActionMenuItems
             kind="dropdown"
             node={node}
@@ -419,6 +428,25 @@ export function FileTreeItem({
       ? inlineAction
       : undefined
 
+  const handleMenuKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (readonly || inlineActionLoading || inlineAction || node.type !== 'file') return
+    if (event.defaultPrevented) return
+    if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    const action = matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.copy.command)
+      ? onCopy
+      : matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.cut.command)
+        ? onCut
+        : undefined
+    if (!action) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    if (event.repeat) return
+    action(node.path)
+  }
+
   useEffect(
     () => () => {
       if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
@@ -513,7 +541,11 @@ export function FileTreeItem({
       <>
         <ContextMenu>
           <ContextMenuTrigger render={trigger} />
-          <ContextMenuContent className={skillFileMenuPopupClassName}>
+          <ContextMenuContent
+            data-skill-file-menu
+            className={skillFileMenuPopupClassName}
+            onKeyDown={handleMenuKeyDown}
+          >
             <FileActionMenuItems
               kind="context"
               node={node}
@@ -597,6 +629,7 @@ export function FileTreeItem({
                   onCreateFolder={() => onCreate('directory', node.path)}
                   onCut={onCut}
                   onDelete={() => onDelete(node)}
+                  onMenuKeyDown={handleMenuKeyDown}
                   onRename={() => onRename(node)}
                   onUploadFiles={onUploadFiles}
                   visible={actionsVisible}
@@ -717,6 +750,7 @@ export function FileTreeItem({
                 onCreateFolder={() => onCreate('directory', node.path)}
                 onCut={onCut}
                 onDelete={() => onDelete(node)}
+                onMenuKeyDown={handleMenuKeyDown}
                 onRename={() => onRename(node)}
                 onUploadFiles={onUploadFiles}
                 visible={actionsVisible}

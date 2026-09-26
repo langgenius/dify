@@ -1,380 +1,164 @@
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useRef } from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
 import { ActionButtons } from '../action-buttons'
 
-const mockUseHotkey = vi.fn()
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, callback: (e: KeyboardEvent) => void, options?: object) => {
-      mockUseHotkey(hotkey, callback, options)
-    },
-  }
-})
-
-// Create wrapper component for providing context
-const createWrapper = (contextValue: {
-  docForm?: ChunkingMode
-  parentMode?: 'paragraph' | 'full-doc'
-}) => {
-  return ({ children }: { children: React.ReactNode }) => (
-    <DocumentContext.Provider value={contextValue}>{children}</DocumentContext.Provider>
+function Editor({
+  label = 'Chunk content',
+  ...props
+}: Omit<ComponentProps<typeof ActionButtons>, 'target'> & { label?: string }) {
+  const target = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={target}>
+      <textarea aria-label={label} />
+      <ActionButtons {...props} target={target} />
+    </div>
   )
 }
 
-const getEscCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const escCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Escape')
-  return escCall?.[1]
-}
-
-const getCtrlSCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const ctrlSCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Mod+S')
-  return ctrlSCall?.[1]
+function pressKey(target: HTMLElement, key: string, options: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options })
+  fireEvent(target, event)
+  fireEvent.keyUp(target, { key, ...options })
+  return event
 }
 
 describe('ActionButtons', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseHotkey.mockClear()
+  it('saves and cancels through the same actions as the buttons inside its editor', () => {
+    const handleSave = vi.fn()
+    const handleCancel = vi.fn()
+    render(<Editor handleSave={handleSave} handleCancel={handleCancel} loading={false} />)
+    const input = screen.getByRole('textbox')
+    expect(pressKey(input, 's', { ctrlKey: true }).defaultPrevented).toBe(true)
+    expect(pressKey(input, 'Escape').defaultPrevented).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /operation.save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/ }))
+    expect(handleSave).toHaveBeenCalledTimes(2)
+    expect(handleCancel).toHaveBeenCalledTimes(2)
   })
 
-  describe('Rendering', () => {
-    it('should render cancel button', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
-    })
-
-    it('should render save button', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
-    })
-
-    it('should render ESC keyboard hint on cancel button', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      expect(screen.getByText('Esc'))!.toBeInTheDocument()
-    })
-
-    it('should render S keyboard hint on save button', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      expect(screen.getByText('S'))!.toBeInTheDocument()
-    })
+  it('only handles shortcuts originating inside its own editor', () => {
+    const firstSave = vi.fn()
+    const secondSave = vi.fn()
+    const handleCancel = vi.fn()
+    render(
+      <>
+        <Editor
+          label="First chunk"
+          handleSave={firstSave}
+          handleCancel={handleCancel}
+          loading={false}
+        />
+        <Editor
+          label="Second chunk"
+          handleSave={secondSave}
+          handleCancel={handleCancel}
+          loading={false}
+        />
+        <input aria-label="Outside editor" />
+      </>,
+    )
+    pressKey(screen.getByRole('textbox', { name: 'Second chunk' }), 's', { ctrlKey: true })
+    expect(
+      pressKey(screen.getByRole('textbox', { name: 'Outside editor' }), 'Escape').defaultPrevented,
+    ).toBe(false)
+    expect(secondSave).toHaveBeenCalledTimes(1)
+    expect(firstSave).not.toHaveBeenCalled()
+    expect(handleCancel).not.toHaveBeenCalled()
   })
 
-  describe('User Interactions', () => {
-    it('should call handleCancel when cancel button is clicked', () => {
-      const mockHandleCancel = vi.fn()
-      render(
-        <ActionButtons handleCancel={mockHandleCancel} handleSave={vi.fn()} loading={false} />,
-        { wrapper: createWrapper({}) },
-      )
-
-      const cancelButton = screen.getAllByRole('button')[0]
-      fireEvent.click(cancelButton!)
-
-      expect(mockHandleCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call handleSave when save button is clicked', () => {
-      const mockHandleSave = vi.fn()
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      const buttons = screen.getAllByRole('button')
-      const saveButton = buttons[buttons.length - 1] // Save button is last
-      fireEvent.click(saveButton!)
-
-      expect(mockHandleSave).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable save button when loading is true', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={true} />, {
-        wrapper: createWrapper({}),
-      })
-
-      const buttons = screen.getAllByRole('button')
-      const saveButton = buttons[buttons.length - 1]
-      expect(saveButton)!.toBeDisabled()
-    })
+  it('disables saving from both the button and keyboard while loading', () => {
+    const handleSave = vi.fn()
+    render(<Editor handleSave={handleSave} handleCancel={vi.fn()} loading />)
+    expect(screen.getByRole('button', { name: /operation.save/ })).toBeDisabled()
+    expect(pressKey(screen.getByRole('textbox'), 's', { ctrlKey: true }).defaultPrevented).toBe(
+      false,
+    )
+    expect(handleSave).not.toHaveBeenCalled()
   })
 
-  // Regeneration button tests
-  describe('Regeneration Button', () => {
-    it('should show regeneration button in parent-child paragraph mode for edit action', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="edit"
-          isChildChunk={false}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
-    })
-
-    it('should not show regeneration button when isChildChunk is true', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="edit"
-          isChildChunk={true}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      expect(screen.queryByText(/operation\.saveAndRegenerate/i)).not.toBeInTheDocument()
-    })
-
-    it('should not show regeneration button when showRegenerationButton is false', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="edit"
-          isChildChunk={false}
-          showRegenerationButton={false}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      expect(screen.queryByText(/operation\.saveAndRegenerate/i)).not.toBeInTheDocument()
-    })
-
-    it('should not show regeneration button when actionType is add', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="add"
-          isChildChunk={false}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      expect(screen.queryByText(/operation\.saveAndRegenerate/i)).not.toBeInTheDocument()
-    })
-
-    it('should call handleRegeneration when regeneration button is clicked', () => {
-      const mockHandleRegeneration = vi.fn()
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={mockHandleRegeneration}
-          loading={false}
-          actionType="edit"
-          isChildChunk={false}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      const regenerationButton = screen.getByText(/operation\.saveAndRegenerate/i).closest('button')
-      if (regenerationButton) fireEvent.click(regenerationButton)
-
-      expect(mockHandleRegeneration).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable regeneration button when loading is true', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={true}
-          actionType="edit"
-          isChildChunk={false}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      const regenerationButton = screen.getByText(/operation\.saveAndRegenerate/i).closest('button')
-      expect(regenerationButton)!.toBeDisabled()
-    })
+  it('ignores composing events and events claimed before they reach the editor', () => {
+    const handleSave = vi.fn()
+    const handleCancel = vi.fn()
+    render(<Editor handleSave={handleSave} handleCancel={handleCancel} loading={false} />)
+    const input = screen.getByRole('textbox')
+    pressKey(input, 's', { ctrlKey: true, isComposing: true })
+    input.addEventListener('keydown', (event) => event.preventDefault(), { once: true })
+    pressKey(input, 's', { ctrlKey: true })
+    expect(handleSave).not.toHaveBeenCalled()
+    expect(handleCancel).not.toHaveBeenCalled()
   })
 
-  // Default props tests
-  describe('Default Props', () => {
-    it('should use default actionType of edit', () => {
-      // Arrange & Act - when not specifying actionType and other conditions are met
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      // Assert - regeneration button should show with default actionType='edit'
-      // Assert - regeneration button should show with default actionType='edit'
-      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
+  it('consumes repeated save keys without repeating the save action', () => {
+    const handleSave = vi.fn()
+    render(<Editor handleSave={handleSave} handleCancel={vi.fn()} loading={false} />)
+    const input = screen.getByRole('textbox')
+    fireEvent.keyDown(input, { key: 's', ctrlKey: true })
+    const repeatedSave = new KeyboardEvent('keydown', {
+      key: 's',
+      ctrlKey: true,
+      repeat: true,
+      bubbles: true,
+      cancelable: true,
     })
-
-    it('should use default isChildChunk of false', () => {
-      // Arrange & Act - when not specifying isChildChunk
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="edit"
-          showRegenerationButton={true}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      // Assert - regeneration button should show with default isChildChunk=false
-      // Assert - regeneration button should show with default isChildChunk=false
-      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
-    })
-
-    it('should use default showRegenerationButton of true', () => {
-      // Arrange & Act - when not specifying showRegenerationButton
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          handleRegeneration={vi.fn()}
-          loading={false}
-          actionType="edit"
-          isChildChunk={false}
-        />,
-        { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
-      )
-
-      // Assert - regeneration button should show with default showRegenerationButton=true
-      // Assert - regeneration button should show with default showRegenerationButton=true
-      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
-    })
+    fireEvent(input, repeatedSave)
+    expect(repeatedSave.defaultPrevented).toBe(true)
+    expect(handleSave).toHaveBeenCalledTimes(1)
+    fireEvent.keyUp(input, { key: 's', ctrlKey: true })
+    pressKey(input, 's', { ctrlKey: true })
+    expect(handleSave).toHaveBeenCalledTimes(2)
   })
 
-  describe('Edge Cases', () => {
-    it('should handle missing context values gracefully', () => {
-      // Arrange & Act & Assert - should not throw
-      expect(() => {
-        render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-          wrapper: createWrapper({}),
-        })
-      }).not.toThrow()
-    })
-
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(
-        <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />,
-        { wrapper: createWrapper({}) },
-      )
-
-      rerender(
-        <DocumentContext.Provider value={{}}>
-          <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={true} />
+  it.each([
+    {
+      actionType: 'edit' as const,
+      isChildChunk: false,
+      showRegenerationButton: true,
+      visible: true,
+    },
+    {
+      actionType: 'add' as const,
+      isChildChunk: false,
+      showRegenerationButton: true,
+      visible: false,
+    },
+    {
+      actionType: 'edit' as const,
+      isChildChunk: true,
+      showRegenerationButton: true,
+      visible: false,
+    },
+    {
+      actionType: 'edit' as const,
+      isChildChunk: false,
+      showRegenerationButton: false,
+      visible: false,
+    },
+  ])(
+    'offers regeneration only for eligible parent chunks: $actionType / $isChildChunk / $showRegenerationButton',
+    ({ visible, ...props }) => {
+      const handleRegeneration = vi.fn()
+      render(
+        <DocumentContext.Provider
+          value={{ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }}
+        >
+          <Editor
+            {...props}
+            handleSave={vi.fn()}
+            handleCancel={vi.fn()}
+            handleRegeneration={handleRegeneration}
+            loading={false}
+          />
         </DocumentContext.Provider>,
       )
-
-      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
-      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Keyboard Shortcuts', () => {
-    it('should display ctrl key hint on save button', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      const kbdElements = document.querySelectorAll('kbd')
-      expect(kbdElements.length).toBeGreaterThan(0)
-    })
-
-    it('should call handleCancel and preventDefault when ESC key is pressed', () => {
-      const mockHandleCancel = vi.fn()
-      const mockPreventDefault = vi.fn()
-      render(
-        <ActionButtons handleCancel={mockHandleCancel} handleSave={vi.fn()} loading={false} />,
-        { wrapper: createWrapper({}) },
-      )
-
-      // Act - get the ESC callback and invoke it
-      const escCallback = getEscCallback()
-      expect(escCallback).toBeDefined()
-      escCallback!({ preventDefault: mockPreventDefault } as unknown as KeyboardEvent)
-
-      expect(mockPreventDefault).toHaveBeenCalledTimes(1)
-      expect(mockHandleCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call handleSave and preventDefault when Ctrl+S is pressed and not loading', () => {
-      const mockHandleSave = vi.fn()
-      const mockPreventDefault = vi.fn()
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      // Act - get the Ctrl+S callback and invoke it
-      const ctrlSCallback = getCtrlSCallback()
-      expect(ctrlSCallback).toBeDefined()
-      ctrlSCallback!({ preventDefault: mockPreventDefault } as unknown as KeyboardEvent)
-
-      expect(mockPreventDefault).toHaveBeenCalledTimes(1)
-      expect(mockHandleSave).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not call handleSave when Ctrl+S is pressed while loading', () => {
-      const mockHandleSave = vi.fn()
-      const mockPreventDefault = vi.fn()
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={true} />, {
-        wrapper: createWrapper({}),
-      })
-
-      // Act - get the Ctrl+S callback and invoke it
-      const ctrlSCallback = getCtrlSCallback()
-      expect(ctrlSCallback).toBeDefined()
-      ctrlSCallback!({ preventDefault: mockPreventDefault } as unknown as KeyboardEvent)
-
-      expect(mockPreventDefault).toHaveBeenCalledTimes(1)
-      expect(mockHandleSave).not.toHaveBeenCalled()
-    })
-
-    it('should register the Mod+S hotkey', () => {
-      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
-        wrapper: createWrapper({}),
-      })
-
-      const ctrlSCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Mod+S')
-      expect(ctrlSCall).toBeDefined()
-    })
-  })
+      const button = screen.queryByRole('button', { name: /operation.saveAndRegenerate/ })
+      expect(Boolean(button)).toBe(visible)
+      if (button) {
+        fireEvent.click(button)
+        expect(handleRegeneration).toHaveBeenCalledOnce()
+      }
+    },
+  )
 })

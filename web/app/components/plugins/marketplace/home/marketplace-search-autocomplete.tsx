@@ -352,7 +352,13 @@ export function MarketplaceSearchAutocomplete({
             size="large"
             type="text"
             onKeyDownCapture={(event) => {
-              if (event.key !== 'Enter' || !inputName) return
+              if (
+                event.defaultPrevented ||
+                event.nativeEvent.isComposing ||
+                event.key !== 'Enter' ||
+                !inputName
+              )
+                return
               if (keyboardHighlightedRef.current) return
               event.preventDefault()
               event.stopPropagation()

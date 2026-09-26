@@ -37,18 +37,6 @@ vi.mock('@/features/system-features/state', async () => {
   return { deploymentEditionAtom: atom('CLOUD') }
 })
 
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: (event: { preventDefault: () => void }) => void
-        options?: { enabled?: boolean; ignoreInputs?: boolean }
-      }
-    >(),
-)
-
-const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display:${hotkey}`))
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
 const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
 const restoreVersionMutation = vi.hoisted(() =>
@@ -75,27 +63,6 @@ const composerQuery = vi.hoisted(() => ({
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    formatForDisplay: mockFormatForDisplay,
-    useHotkey: (
-      hotkey: string,
-      callback: (event: { preventDefault: () => void }) => void,
-      options?: { enabled?: boolean; ignoreInputs?: boolean },
-    ) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: mockFormatTimeFromNow,
-  }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -373,10 +340,13 @@ function renderPublishBar({
   }
 }
 
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({ formatTimeFromNow: mockFormatTimeFromNow }),
+}))
+
 describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyRegistrations.clear()
     restoreAccess.canRestore = true
     restoreAccess.plan = 'professional'
     restoreVersionMutation.mockResolvedValue({
@@ -403,13 +373,9 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('display:Mod')).toBeInTheDocument()
-    expect(screen.getByText('display:Shift')).toBeInTheDocument()
-    expect(screen.getByText('display:P')).toBeInTheDocument()
-    expect(mockFormatForDisplay).toHaveBeenCalledWith('Mod')
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
+    expect(screen.getByText('Ctrl')).toBeInTheDocument()
+    expect(screen.getByText('Shift')).toBeInTheDocument()
+    expect(screen.getByText('P')).toBeInTheDocument()
   })
 
   it('should allow publish request when knowledge retrieval validation fails', async () => {
@@ -438,9 +404,6 @@ describe('AgentConfigurePublishBar', () => {
         'common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}',
       ),
     ).not.toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -638,11 +601,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
     ).toBeDisabled()
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
 
     fireEvent.click(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
@@ -661,9 +620,6 @@ describe('AgentConfigurePublishBar', () => {
       expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
     })
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
   })
 
   it('should fail closed when refreshing cached Composer state fails', async () => {
@@ -680,9 +636,6 @@ describe('AgentConfigurePublishBar', () => {
         }),
       ).toBeDisabled()
     })
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
   })
 
   it('should show unpublished state from local draft changes even when active config is published', () => {
@@ -700,9 +653,6 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
     ).toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
   })
 
   it('should initialize unpublished state when active config is not published', async () => {
@@ -720,9 +670,6 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
     ).toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -894,10 +841,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
     ).not.toHaveAttribute('aria-busy')
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
   })
 
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
@@ -961,9 +904,9 @@ describe('AgentConfigurePublishBar', () => {
       'noopener noreferrer',
     )
     expect(within(impactDetails).getAllByText('just now')).toHaveLength(2)
-    expect(screen.getByText('display:Mod')).toBeInTheDocument()
-    expect(screen.getByText('display:Shift')).toBeInTheDocument()
-    expect(screen.getByText('display:P')).toBeInTheDocument()
+    expect(screen.getByText('Ctrl')).toBeInTheDocument()
+    expect(screen.getByText('Shift')).toBeInTheDocument()
+    expect(screen.getByText('P')).toBeInTheDocument()
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
@@ -1098,10 +1041,10 @@ describe('AgentConfigurePublishBar', () => {
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
-    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
 
     await act(async () => {
-      await publishShortcut?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(onPublish).not.toHaveBeenCalled()
@@ -1112,7 +1055,8 @@ describe('AgentConfigurePublishBar', () => {
     ).toBeInTheDocument()
 
     await act(async () => {
-      await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(onPublish).toHaveBeenCalledTimes(1)
@@ -1123,10 +1067,10 @@ describe('AgentConfigurePublishBar', () => {
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
     })
-    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
 
     await act(async () => {
-      await publishShortcut?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(

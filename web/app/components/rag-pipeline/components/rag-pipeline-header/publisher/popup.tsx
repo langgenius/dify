@@ -18,7 +18,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -65,6 +65,7 @@ export function Popup({
   isPublishingAsCustomizedPipeline = false,
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
+  const popupRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['billing', 'common', 'datasetPipeline', 'pipeline', 'workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -195,9 +196,10 @@ export function Popup({
     ],
   )
   useHotkey(RAG_PIPELINE_PUBLISH_HOTKEY, () => void handlePublish(), {
-    enabled: !published && !publishing,
+    target: popupRef,
+    enabled: !published && !publishing && !confirmVisible,
     ignoreInputs: true,
-    preventDefault: true,
+    requireReset: true,
   })
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (isAllowPublishAsCustomKnowledgePipelineTemplate === undefined) return
@@ -217,6 +219,7 @@ export function Popup({
   ])
   return (
     <div
+      ref={popupRef}
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
         isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
@@ -253,9 +256,9 @@ export function Popup({
             <div className="flex gap-1">
               <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
               <KbdGroup>
-                {RAG_PIPELINE_PUBLISH_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(RAG_PIPELINE_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>

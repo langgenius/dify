@@ -1,45 +1,9 @@
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { expectLoadingButton } from '@/test/button'
 import { CreateSnippetDialog } from '../create-snippet-dialog'
-
-let capturedKeyPressHandler: (() => void) | undefined
-let capturedHotkey: string | undefined
-let capturedHotkeyOptions:
-  | {
-      enabled?: boolean
-      ignoreInputs?: boolean
-      preventDefault?: boolean
-      stopPropagation?: boolean
-      target?: React.RefObject<HTMLElement | null>
-    }
-  | undefined
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      handler: () => void,
-      options?: {
-        enabled?: boolean
-        ignoreInputs?: boolean
-        preventDefault?: boolean
-        stopPropagation?: boolean
-        target?: React.RefObject<HTMLElement | null>
-      },
-    ) => {
-      capturedHotkey = hotkey
-      capturedKeyPressHandler = () => {
-        if (options?.enabled !== false) handler()
-      }
-      capturedHotkeyOptions = options
-    },
-  }
-})
 
 const selectedGraph: SnippetCanvasData = {
   nodes: [],
@@ -59,9 +23,6 @@ const inputFields: SnippetInputField[] = [
 describe('CreateSnippetDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedKeyPressHandler = undefined
-    capturedHotkey = undefined
-    capturedHotkeyOptions = undefined
   })
 
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
@@ -177,7 +138,14 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).not.toHaveBeenCalled()
 
@@ -191,7 +159,14 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).not.toHaveBeenCalled()
 
@@ -204,21 +179,85 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Keyboard snippet',
       }),
     )
-    expect(capturedHotkeyOptions).toMatchObject({
-      enabled: true,
-      ignoreInputs: false,
-      preventDefault: false,
-      stopPropagation: false,
-    })
-    expect(capturedHotkeyOptions?.target?.current).toBe(screen.getByRole('dialog'))
-    expect(capturedHotkey).toBe('Mod+Enter')
+  })
+
+  it('handles the first shortcut after opening and reopening its portal without a draft change', async () => {
+    const onConfirm = vi.fn()
+    const props = {
+      initialValue: { name: 'Portal snippet' },
+      onClose: vi.fn(),
+      onConfirm,
+    }
+    const { rerender } = render(<CreateSnippetDialog {...props} isOpen={false} />)
+    for (let opened = 1; opened <= 2; opened++) {
+      rerender(<CreateSnippetDialog {...props} isOpen />)
+      const input = await screen.findByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+      const repeat = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        repeat: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(input, repeat)
+      expect(repeat.defaultPrevented).toBe(true)
+      expect(onConfirm).toHaveBeenCalledTimes(opened - 1)
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+      rerender(<CreateSnippetDialog {...props} isOpen={false} />)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+    }
+  })
+
+  it('lets a child React handler claim the shortcut before the dialog action', () => {
+    const onConfirm = vi.fn()
+    render(
+      <CreateSnippetDialog
+        isOpen
+        initialValue={{ name: 'Nested control' }}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+    const dialog = screen.getByRole('dialog')
+    const childContainer = document.createElement('div')
+    dialog.append(childContainer)
+    const childClaim = vi.fn((event: React.KeyboardEvent<HTMLButtonElement>) =>
+      event.preventDefault(),
+    )
+    const child = render(
+      <button type="button" onKeyDown={childClaim}>
+        Child action
+      </button>,
+      { container: childContainer },
+    )
+    const options = { key: 'Enter', ctrlKey: true }
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
+    expect(childClaim).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
+
+    child.rerender(<button type="button">Child action</button>)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
+    expect(onConfirm).toHaveBeenCalledOnce()
+
+    child.unmount()
   })
 
   it('should disable form controls while submitting', () => {

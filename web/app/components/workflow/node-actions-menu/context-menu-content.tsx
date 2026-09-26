@@ -1,5 +1,6 @@
 import type { NodeActionsMenuProps } from './types'
 import {
+  ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLinkItem,
@@ -12,11 +13,15 @@ import {
   PopoverPositioner,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ChangeBlockPopup } from './change-block-popup'
 import {
   NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
+  NODE_ACTIONS_MENU_WIDTH_CLASS_NAME,
   NodeActionsMenuAbout,
   NodeActionsMenuItemContent,
 } from './shared'
@@ -25,6 +30,8 @@ import { useNodeActionsMenuModel } from './use-node-actions-menu-model'
 export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const model = useNodeActionsMenuModel(props)
+  const flowStore = useStoreApi()
+  const deletingRef = useRef(false)
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton
   const hasDeleteGroup = !model.nodesReadOnly && !model.isUndeletable
@@ -32,8 +39,24 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
     ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
     : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
+  function handleDelete() {
+    deletingRef.current = true
+    model.handleDelete()
+  }
+
   return (
-    <>
+    <ContextMenuContent
+      finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
+      className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
+      sideOffset={4}
+      onKeyDown={(event) =>
+        handleWorkflowMenuKeyDown(event, [
+          ['workflow.copy', hasEditGroup ? model.handleCopy : undefined],
+          ['workflow.duplicate', hasEditGroup ? model.handleDuplicate : undefined],
+          ['workflow.delete', hasDeleteGroup ? handleDelete : undefined],
+        ])
+      }
+    >
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
@@ -94,7 +117,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
         <ContextMenuGroup>
           <ContextMenuItem
             className={NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME}
-            onClick={model.handleDelete}
+            onClick={handleDelete}
           >
             <NodeActionsMenuItemContent shortcut="workflow.delete">
               {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -128,6 +151,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
         description={model.about.description}
         author={`${t(($) => $['panel.createdBy'], { ns: 'workflow' })} ${model.about.author}`}
       />
-    </>
+    </ContextMenuContent>
   )
 }

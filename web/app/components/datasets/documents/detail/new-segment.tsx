@@ -4,7 +4,7 @@ import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { toast } from '@/app/notifications'
@@ -35,6 +35,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChunk,
 }) => {
+  const editorRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
@@ -138,7 +139,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -160,6 +161,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             <>
               <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
                 loading={loading}
@@ -230,6 +232,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
           <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}
             loading={loading}

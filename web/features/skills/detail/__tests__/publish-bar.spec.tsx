@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SkillPublishBar } from '../publish-bar'
@@ -47,6 +47,32 @@ describe('SkillPublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.published' }),
     ).toBeDisabled()
+    expect(fireEvent.keyDown(document.body, { key: 'P', ctrlKey: true, shiftKey: true })).toBe(true)
+    expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('publishes from page inputs while preserving IME, local ownership, and repeat defaults', () => {
+    render(
+      <>
+        <SkillPublishBar
+          metaLabel="Saved just now"
+          state="draft"
+          onOpenVersions={onOpenVersions}
+          onPublish={onPublish}
+        />
+        <input aria-label="Description" />
+        <input aria-label="Editor command" onKeyDown={(event) => event.preventDefault()} />
+      </>,
+    )
+    const input = screen.getByRole('textbox', { name: 'Description' })
+    const binding = { key: 'P', ctrlKey: true, shiftKey: true }
+    expect(fireEvent.keyDown(input, { ...binding, isComposing: true })).toBe(true)
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Editor command' }), binding)
+    expect(onPublish).not.toHaveBeenCalled()
+
+    expect(fireEvent.keyDown(input, binding)).toBe(false)
+    expect(fireEvent.keyDown(input, { ...binding, repeat: true })).toBe(false)
+    expect(onPublish).toHaveBeenCalledOnce()
   })
 
   it('labels an edited published skill as an unpublished update', () => {

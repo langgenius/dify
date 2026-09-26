@@ -17,7 +17,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
@@ -94,7 +94,6 @@ function CreateFromDSLModal({
 }: CreateFromDSLModalProps) {
   const { push } = useRouter()
   const { t } = useTranslation(['app', 'common'])
-  const formRef = useRef<HTMLFormElement>(null)
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -291,11 +290,6 @@ function CreateFromDSLModal({
     isAppsFull ||
     (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
 
-  useHotkey(CREATE_FROM_DSL_HOTKEY, () => formRef.current?.requestSubmit(), {
-    enabled: show && !createDisabled && !isImporting && !pendingImport,
-    ignoreInputs: false,
-  })
-
   return (
     <>
       <Dialog
@@ -325,7 +319,27 @@ function CreateFromDSLModal({
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
               </IconButton>
             </div>
-            <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
+            <Form<ImportFormValues>
+              onFormSubmit={handleSubmit}
+              onKeyDown={(event) => {
+                if (
+                  !show ||
+                  createDisabled ||
+                  isImporting ||
+                  !!pendingImport ||
+                  event.defaultPrevented ||
+                  event.nativeEvent.isComposing ||
+                  !(event.target instanceof Node) ||
+                  !event.currentTarget.contains(event.target) ||
+                  !matchesKeyboardEvent(event.nativeEvent, CREATE_FROM_DSL_HOTKEY)
+                )
+                  return
+                event.preventDefault()
+                event.stopPropagation()
+                if (event.repeat) return
+                event.currentTarget.requestSubmit()
+              }}
+            >
               <Tabs value={currentTab} onValueChange={handleTabChange}>
                 <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
                   <TabsTab
@@ -394,9 +408,9 @@ function CreateFromDSLModal({
                 >
                   <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
-                    {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

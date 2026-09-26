@@ -18,11 +18,17 @@ export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
 
   useHotkey(
     VERSION_HISTORY_HOTKEY,
-    () => {
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       void onClick()
     },
     {
       ignoreInputs: true,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
 

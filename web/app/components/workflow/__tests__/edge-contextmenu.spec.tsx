@@ -1,8 +1,7 @@
 import type { Edge, Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEffect } from 'react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
@@ -90,23 +89,9 @@ const hooksStoreProps = {
 }
 
 const EdgeMenuHarness = () => {
-  const { handleEdgeContextMenu, handleEdgeDelete } = useEdgesInteractions()
+  const { handleEdgeContextMenu } = useEdgesInteractions()
   const edges = useEdges() as Edge[]
   const reactFlowStore = useStoreApi()
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return
-
-      e.preventDefault()
-      handleEdgeDelete()
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleEdgeDelete])
 
   return (
     <div>
@@ -283,6 +268,7 @@ describe('EdgeContextmenu', () => {
   ])(
     'should delete the right-clicked edge with %s after switching from a selected node',
     async (_, key) => {
+      const user = userEvent.setup()
       renderEdgeMenu({
         nodes: [
           createNode({
@@ -304,7 +290,9 @@ describe('EdgeContextmenu', () => {
 
       expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-      fireEvent.keyDown(document.body, { key })
+      const item = screen.getByRole('menuitem', { name: /common\.operation\.delete/i })
+      act(() => item.focus())
+      await user.keyboard(`{${key}}`)
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -318,6 +306,7 @@ describe('EdgeContextmenu', () => {
   )
 
   it('should keep bundled multi-selection nodes intact when delete runs after right-clicking an edge', async () => {
+    const user = userEvent.setup()
     renderEdgeMenu({
       nodes: [
         createNode({
@@ -341,7 +330,9 @@ describe('EdgeContextmenu', () => {
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.keyDown(document.body, { key: 'Delete' })
+    const item = screen.getByRole('menuitem', { name: /common\.operation\.delete/i })
+    act(() => item.focus())
+    await user.keyboard('{Delete}')
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()

@@ -1,39 +1,18 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { HotkeysProvider } from '@tanstack/react-hotkeys'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VersionHistoryButton } from '../version-history-button'
 
 let mockTheme: 'light' | 'dark' = 'light'
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: () => void
-        options?: { ignoreInputs?: boolean }
-      }
-    >(),
-)
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
     theme: mockTheme,
   }),
 }))
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, callback: () => void, options?: { ignoreInputs?: boolean }) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
-
 describe('VersionHistoryButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyRegistrations.clear()
     mockTheme = 'light'
   })
 
@@ -46,18 +25,35 @@ describe('VersionHistoryButton', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('should trigger onClick when the version history shortcut is pressed', async () => {
+  it('opens history once per press from the page and respects editable and handled keys', async () => {
+    const user = userEvent.setup()
     const onClick = vi.fn()
-    render(<VersionHistoryButton onClick={onClick} />)
-
-    await act(async () => {
-      hotkeyRegistrations.get('Mod+Shift+H')?.callback()
-    })
-
-    expect(onClick).toHaveBeenCalledTimes(1)
-    expect(hotkeyRegistrations.get('Mod+Shift+H')?.options).toEqual(
-      expect.objectContaining({ ignoreInputs: true }),
+    render(
+      <HotkeysProvider defaultOptions={{ hotkey: { platform: 'windows' } }}>
+        <VersionHistoryButton onClick={onClick} />
+        <input aria-label="Prompt" />
+        <button onKeyDown={(event) => event.preventDefault()}>Local control</button>
+      </HotkeysProvider>,
     )
+    for (const repeat of [false, true, true]) {
+      const event = new KeyboardEvent('keydown', {
+        key: 'h',
+        ctrlKey: true,
+        shiftKey: true,
+        repeat,
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(document.body, event)
+      expect(event.defaultPrevented).toBe(true)
+    }
+    fireEvent.keyUp(document.body, { key: 'h', ctrlKey: true, shiftKey: true })
+    expect(onClick).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('textbox', { name: 'Prompt' }))
+    await user.keyboard('{Control>}{Shift>}h{/Shift}{/Control}')
+    await user.click(screen.getByRole('button', { name: 'Local control' }))
+    await user.keyboard('{Control>}{Shift>}h{/Shift}{/Control}')
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 
   it('should render the tooltip popup content on hover', async () => {

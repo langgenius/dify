@@ -95,7 +95,6 @@ export function PublisherContent({
     onClose: closePublisher,
     onPublish,
     onRestore,
-    publishDisabled,
     publishedAt,
     supportsMultiEnvironment,
   })
@@ -202,6 +201,7 @@ export function PublisherContent({
             handlePublish: publish.handlePublish,
             handleRestore: publish.handleRestore,
             isChatApp: publish.isChatApp,
+            isPublishing: publish.isPublishing,
             isWorkflowApp: publish.isWorkflowApp,
             multipleModelConfigs,
             onEditVersion: versionInfo.openEditor,

@@ -1,12 +1,16 @@
 'use client'
 
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { useEffect, useRef } from 'react'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import EmbeddedMarketplaceSearch from './embedded-marketplace-search'
 import styles from './home-sticky.module.css'
 import { preserveStickySearchScroll } from './preserve-sticky-search-scroll'
+
+const SEARCH_HOTKEY = 'Mod+K' satisfies Hotkey
 
 type HomeSearchProps = {
   children?: ReactNode
@@ -38,19 +42,23 @@ const HomeSearch = ({
     return preserveStickySearchScroll(searchRoot, container)
   }, [])
 
-  useEffect(() => {
-    if (!enableSearchShortcut) return
-
-    const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || (!event.metaKey && !event.ctrlKey)) return
+  useHotkey(
+    SEARCH_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
 
       event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       searchRef.current?.querySelector('input')?.focus({ preventScroll: true })
-    }
-
-    document.addEventListener('keydown', handleGlobalSearchShortcut)
-    return () => document.removeEventListener('keydown', handleGlobalSearchShortcut)
-  }, [enableSearchShortcut])
+    },
+    {
+      enabled: enableSearchShortcut,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   return (
     <div
