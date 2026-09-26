@@ -1162,6 +1162,45 @@ class TestSegmentApiGet(SQLiteEndpointTest):
         assert response["total"] == total
         assert response["page"] == 1
 
+    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_pagination_clamping(
+        self,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """Test limit parameter > 100 is clamped by clamp_pagination in SegmentApi.get."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict()]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit=500",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["limit"] == 100
+        assert response["page"] == 1
+        assert response["has_more"] is False
+
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     def test_list_segments_dataset_not_found(self, mock_account_fn, app, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
