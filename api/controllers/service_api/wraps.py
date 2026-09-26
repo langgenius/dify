@@ -276,6 +276,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            if api_token.tenant_id is None:
+                raise Forbidden("API token is not associated with a workspace")
 
             if resource == "knowledge":
                 tenant_id = api_token.tenant_id

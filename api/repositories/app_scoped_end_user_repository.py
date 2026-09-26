@@ -119,7 +119,7 @@ class AppScopedEndUserRepo(AppScopedEndUserQuery, AppScopedEndUserRepository[End
             tenant_id=command.tenant_id,
             app_id=command.app_id,
             type=EndUserType(command.type),
-            is_anonymous=command.is_anonymous,
+            _is_anonymous=command.is_anonymous,
             session_id=command.session_id,
             external_user_id=command.external_user_id,
         )
@@ -138,7 +138,7 @@ class AppScopedEndUserRepo(AppScopedEndUserQuery, AppScopedEndUserRepository[End
                 tenant_id=command.tenant_id,
                 app_id=command.app_id,
                 type=EndUserType(command.type),
-                is_anonymous=command.is_anonymous,
+                _is_anonymous=command.is_anonymous,
                 session_id=command.session_id,
                 external_user_id=command.external_user_id,
             )

@@ -57,7 +57,7 @@ def _message(
     created_at: datetime | None = None,
 ) -> Message:
     timestamp = created_at or naive_utc_now()
-    return make_message(
+    message = make_message(
         message_id=message_id,
         app_id=app_id,
         conversation_id=conversation_id,
@@ -76,9 +76,10 @@ def _message(
         message_tokens=3,
         answer_tokens=4,
         provider_response_latency=1.25,
-        created_at=timestamp,
-        updated_at=timestamp,
     )
+    message.created_at = timestamp
+    message.updated_at = timestamp
+    return message
 
 
 def _feedback(

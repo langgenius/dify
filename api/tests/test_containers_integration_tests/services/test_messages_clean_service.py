@@ -180,7 +180,7 @@ class TestMessagesCleanServiceIntegration:
             model_id="gpt-3.5-turbo",
             mode="chat",
             name="Test conversation",
-            inputs={},
+            _inputs={},
             status="normal",
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
@@ -202,7 +202,7 @@ class TestMessagesCleanServiceIntegration:
             conversation_id=conversation.id,
             model_provider="openai",
             model_id="gpt-3.5-turbo",
-            inputs={},
+            _inputs={},
             query="Test query",
             answer="Test answer",
             message=[{"role": "user", "text": "Test message"}],
@@ -214,8 +214,8 @@ class TestMessagesCleanServiceIntegration:
             currency="USD",
             from_source=ConversationFromSource.API,
             from_account_id=conversation.from_end_user_id,
-            created_at=created_at,
         )
+        message.created_at = created_at
         db_session_with_containers.add(message)
         db_session_with_containers.flush()
 

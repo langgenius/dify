@@ -163,7 +163,7 @@ def harness(
             app_model_config_id=config.id,
             mode=AppMode.CHAT,
             name="Trial conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=account.id,
         )
@@ -172,7 +172,7 @@ def harness(
         message = Message(
             app_id=target.id,
             conversation_id=conversation.id,
-            inputs={},
+            _inputs={},
             query="What is a trial?",
             message={},
             message_unit_price=Decimal(0),

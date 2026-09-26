@@ -93,7 +93,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
     message = Message(
         app_id=app.id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="Human input query",
         message={"messages": []},
         answer="Human input answer",

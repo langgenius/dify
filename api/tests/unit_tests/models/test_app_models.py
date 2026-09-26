@@ -738,8 +738,8 @@ class TestConversationModel:
             answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.API,
-            created_at=datetime(2024, 1, 1),
         )
+        first_message.created_at = datetime(2024, 1, 1)
         first_message._inputs = {}
         later_message = Message(
             app_id=conversation.app_id,
@@ -751,8 +751,8 @@ class TestConversationModel:
             answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.API,
-            created_at=datetime(2024, 1, 2),
         )
+        later_message.created_at = datetime(2024, 1, 2)
         later_message._inputs = {}
         sqlite_session.add_all([later_message, first_message])
         sqlite_session.flush()
@@ -1039,9 +1039,9 @@ class TestMessageModel:
             status="normal",
             id=str(uuid4()),
             _inputs={"query": "test"},
-            created_at=now,
-            updated_at=now,
         )
+        message.created_at = now
+        message.updated_at = now
 
         # Act
         result = message.to_dict(session=sqlite_session)
