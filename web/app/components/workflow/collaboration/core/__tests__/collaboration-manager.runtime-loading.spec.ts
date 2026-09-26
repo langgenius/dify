@@ -93,7 +93,7 @@ describe('CollaborationManager CRDT runtime loading', () => {
       .mockImplementation(() => undefined)
 
     const firstStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -101,7 +101,7 @@ describe('CollaborationManager CRDT runtime loading', () => {
         setEdges: vi.fn(),
       }),
     }
-    const secondStore = { ...firstStore, sourceStore: {} }
+    const secondStore = { ...firstStore, sourceStore: { getState: vi.fn() } }
     const [firstConnectionId, secondConnectionId] = await Promise.all([
       manager.connect('app-concurrent', firstStore),
       manager.connect('app-concurrent', secondStore),
