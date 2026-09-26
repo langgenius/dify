@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol, cast
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -16,6 +17,12 @@ from models import App, Tenant
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+class _DecoratedPost(Protocol):
+    """Route arguments accepted after the endpoint decorators inject their values."""
+
+    def post(self, *, app_id: str, node_id: str) -> object: ...
 
 
 def _make_account() -> Account:
@@ -232,7 +239,9 @@ def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch
         json={"delivery_method_id": "bad"},
     ):
         with pytest.raises(ValueError):
-            workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+            cast(_DecoratedPost, workflow_module.WorkflowDraftHumanInputDeliveryTestApi()).post(
+                app_id=app_model.id, node_id="node-1"
+            )
 
 
 def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -246,4 +255,6 @@ def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest
         json={"inputs": ["not-a-dict"]},
     ):
         with pytest.raises(UnprocessableEntity):
-            workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+            cast(_DecoratedPost, workflow_module.AdvancedChatDraftHumanInputFormPreviewApi()).post(
+                app_id=app_model.id, node_id="node-1"
+            )

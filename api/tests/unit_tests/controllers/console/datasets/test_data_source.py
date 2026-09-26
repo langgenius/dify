@@ -23,8 +23,8 @@ from models.enums import DataSourceType
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
 
-def unwrap(func: object) -> ControllerMethod:
-    return cast(ControllerMethod, inspect.unwrap(cast(Callable[..., object], func)))
+def unwrap(func: Callable[..., object]) -> ControllerMethod:
+    return cast(ControllerMethod, inspect.unwrap(func))
 
 
 @pytest.fixture

@@ -49,7 +49,7 @@ def test_get_notification_validates_language_query_and_serializes_result(
     )
     services = SimpleNamespace(notifications=service)
     api = NotificationApi()
-    method = api.get.__wrapped__
+    method = unwrap(api.get, stop=lambda handler: handler.__code__.co_name == "wrapper")
     context = _request_context()
 
     with (

@@ -810,7 +810,7 @@ class TestDocumentStatusApiPatch:
             api = DocumentStatusApi()
             response, status = api.patch(
                 tenant_id=tenant.id,
-                dataset_id=dataset.id,
+                dataset_id=uuid.UUID(dataset.id),
                 action="enable",
             )
 
@@ -838,7 +838,7 @@ class TestDocumentStatusApiPatch:
             with pytest.raises(NotFound):
                 api.patch(
                     tenant_id=tenant.id,
-                    dataset_id=dataset.id,
+                    dataset_id=uuid.UUID(dataset.id),
                     action="enable",
                 )
 
@@ -866,7 +866,7 @@ class TestDocumentStatusApiPatch:
             with pytest.raises(Forbidden):
                 api.patch(
                     tenant_id=tenant.id,
-                    dataset_id=dataset.id,
+                    dataset_id=uuid.UUID(dataset.id),
                     action="enable",
                 )
 
@@ -896,7 +896,7 @@ class TestDocumentStatusApiPatch:
             with pytest.raises(InvalidActionError):
                 api.patch(
                     tenant_id=tenant.id,
-                    dataset_id=dataset.id,
+                    dataset_id=uuid.UUID(dataset.id),
                     action="enable",
                 )
 
@@ -926,6 +926,6 @@ class TestDocumentStatusApiPatch:
             with pytest.raises(InvalidActionError):
                 api.patch(
                     tenant_id=tenant.id,
-                    dataset_id=dataset.id,
+                    dataset_id=uuid.UUID(dataset.id),
                     action="enable",
                 )
