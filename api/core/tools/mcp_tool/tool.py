@@ -74,7 +74,7 @@ class MCPTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         result = self.invoke_remote_mcp_tool(tool_parameters, user_id=user_id, app_id=app_id)
 
         # Extract usage metadata from MCP protocol's _meta field
@@ -111,7 +111,7 @@ class MCPTool(Tool):
         elif result.structuredContent:
             yield self.create_json_message(result.structuredContent)
 
-    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage]:
         """Process text content and yield appropriate messages."""
         # Check if content looks like JSON before attempting to parse
         text = content.text.strip()
@@ -126,7 +126,7 @@ class MCPTool(Tool):
         # If not JSON or parsing failed, treat as plain text
         yield self.create_text_message(content.text)
 
-    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage]:
         """Process JSON content based on its type."""
         match content_json:
             case dict():
@@ -137,7 +137,7 @@ class MCPTool(Tool):
                 # For primitive types (str, int, bool, etc.), convert to string
                 yield self.create_text_message(str(content_json))
 
-    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage]:
         """Process a list of JSON items."""
         if any(not isinstance(item, dict) for item in json_list):
             # If the list contains any non-dict item, treat the entire list as a text message.

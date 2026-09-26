@@ -78,7 +78,7 @@ def test_response_owns_stream_before_consumption_and_after_partial_or_complete_r
 def test_http_partial_consumption_preserves_and_releases_request_context() -> None:
     closed: list[tuple[str, str]] = []
 
-    def audio() -> Generator[bytes, None, None]:
+    def audio() -> Generator[bytes]:
         try:
             assert request.path == "/audio"
             assert g.audio_marker == "request marker"
@@ -118,7 +118,7 @@ def test_inspection_failure_closes_input_exactly_once_and_preserves_error(
 ) -> None:
     error = InvokeBadRequestError("provider disconnected while reading first chunk")
 
-    def broken_chunks() -> Generator[bytes, None, None]:
+    def broken_chunks() -> Generator[bytes]:
         raise error
         yield b"unreachable"
 
@@ -164,7 +164,7 @@ def test_response_construction_failure_closes_owned_stream(monkeypatch: pytest.M
 def test_late_provider_error_closes_stream_and_releases_context() -> None:
     error = RuntimeError("provider disconnected after first chunk")
 
-    def broken_chunks() -> Generator[bytes, None, None]:
+    def broken_chunks() -> Generator[bytes]:
         yield _WAV
         raise error
 

@@ -48,7 +48,7 @@ class _MemoryStorage:
         self.files: dict[str, bytes] = {}
         self.saved: list[str] = []
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
     def save(self, filename: str, data: bytes) -> None:
@@ -499,7 +499,7 @@ def test_resource_io_runs_without_database_transactions(
     load_stream = storage.load_stream
     save = storage.save
 
-    def checked_load(filename: str) -> Generator[bytes, None, None]:
+    def checked_load(filename: str) -> Generator[bytes]:
         before_io()
         yield from load_stream(filename)
 

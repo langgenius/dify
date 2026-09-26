@@ -72,7 +72,7 @@ def _request() -> AgentToolInvokeRequest:
     )
 
 
-def _messages() -> Generator[ToolInvokeMessage, None, None]:
+def _messages() -> Generator[ToolInvokeMessage]:
     yield ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.TEXT,
         message=ToolInvokeMessage.TextMessage(text="ok"),

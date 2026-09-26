@@ -149,7 +149,7 @@ def migration_module():
 
 
 @pytest.fixture(params=("postgresql", "mysql"), scope="session")
-def container_engine(request: pytest.FixtureRequest) -> Generator[tuple[str, sa.Engine], None, None]:
+def container_engine(request: pytest.FixtureRequest) -> Generator[tuple[str, sa.Engine]]:
     backend_name = request.param
     if backend_name == "postgresql":
         testcontainers_postgres = pytest.importorskip("testcontainers.postgres")

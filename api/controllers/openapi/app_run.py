@@ -91,7 +91,7 @@ _INVALID_RUN_INPUT: Final = "invalid run input"
 
 
 @contextmanager
-def _translate_service_errors() -> Generator[None, None, None]:
+def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
@@ -191,7 +191,7 @@ class _ChatMessageEnd(MessageEndStreamResponse):
     conversation_id: str
 
 
-def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str, None, None]:
+def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
         end = _ChatMessageEnd.model_validate(event)
         return [
@@ -205,14 +205,14 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-HintLayer = Callable[[Iterable[str], str, str], Generator[str, None, None]]
+HintLayer = Callable[[Iterable[str], str, str], Generator[str]]
 
 
-def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_reply_hints(events, op=op, app_id=app_id)
 
 
-def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_form_hints(events, app_id=app_id)
 
 

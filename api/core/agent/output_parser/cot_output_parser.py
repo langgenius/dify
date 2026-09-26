@@ -10,8 +10,8 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
-    ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
+        cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
+    ) -> Generator[Union[str, AgentScratchpadUnit.Action]]:
         def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
             action_name = None
             action_input = None

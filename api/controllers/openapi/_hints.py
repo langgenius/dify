@@ -62,7 +62,7 @@ def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:
     return parsed
 
 
-def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str, None, None]:
+def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str]:
     """Yield the source SSE chunks, adding a top-level `hints` list to every `event` that `build` hints.
 
     `event: ping` chunks, other event kinds, events `build` returns nothing for, and events

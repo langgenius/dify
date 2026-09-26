@@ -41,7 +41,7 @@ class DummyParameter:
 class DummyTool(Tool):
     def __init__(self, entity: ToolEntity, runtime: ToolRuntime):
         super().__init__(entity=entity, runtime=runtime)
-        self.result: ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None] = (
+        self.result: ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage] = (
             self.create_text_message("default")
         )
         self.runtime_parameter_overrides: list[Any] | None = None
@@ -58,7 +58,7 @@ class DummyTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
         self.last_invocation = {
             "user_id": user_id,
             "tool_parameters": tool_parameters,
@@ -158,7 +158,7 @@ def test_invoke_supports_list_and_generator_results(sqlite_session: Session):
     list_messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
     assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
-    def _message_generator() -> Generator[ToolInvokeMessage, None, None]:
+    def _message_generator() -> Generator[ToolInvokeMessage]:
         yield tool.create_text_message("g1")
         yield tool.create_text_message("g2")
 
