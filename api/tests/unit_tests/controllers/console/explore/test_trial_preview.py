@@ -161,8 +161,8 @@ def harness(
         data_source_type="upload_file",
         indexing_technique=None,
         created_by=creator_id,
-        created_at=_CREATED_AT,
     )
+    dataset.created_at = _CREATED_AT
     with sqlite_session_factory.begin() as session:
         session.add_all([owner, target, listing, config, site, dataset])
         session.flush()
