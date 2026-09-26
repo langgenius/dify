@@ -53,13 +53,19 @@ class ApiBasedToolSchemaParser:
         interfaces: list[InterfaceDict] = []
         for path, path_item in openapi["paths"].items():
             methods = ["get", "post", "put", "delete", "patch", "head", "options", "trace"]
+            path_parameters = path_item.get("parameters", [])
             for method in methods:
                 if method in path_item:
+                    operation = path_item[method]
+                    if path_parameters:
+                        operation["parameters"] = ApiBasedToolSchemaParser._merge_path_level_parameters(
+                            openapi, path_parameters, operation.get("parameters", [])
+                        )
                     interfaces.append(
                         {
                             "path": path,
                             "method": method,
-                            "operation": path_item[method],
+                            "operation": operation,
                         }
                     )
 
@@ -220,6 +226,34 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
+    def _merge_path_level_parameters(
+        openapi: Mapping[str, Any], path_parameters: list[dict[str, Any]], operation_parameters: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Apply Path Item parameters to one of its operations.
+
+        OpenAPI declares that parameters on a Path Item apply to every operation under that path,
+        and that an operation parameter with the same name and location overrides the inherited one.
+        """
+
+        def resolve(parameter: dict[str, Any]) -> dict[str, Any]:
+            if "$ref" not in parameter:
+                return parameter
+            root: Any = openapi
+            for ref in parameter["$ref"].split("/")[1:]:
+                root = root[ref]
+            return root
+
+        resolved_operation_parameters = [resolve(parameter) for parameter in operation_parameters]
+        overridden = {(parameter.get("name"), parameter.get("in")) for parameter in resolved_operation_parameters}
+        inherited = [
+            parameter
+            for parameter in map(resolve, path_parameters)
+            if (parameter.get("name"), parameter.get("in")) not in overridden
+        ]
+        return inherited + resolved_operation_parameters
+
+    @staticmethod
     def _sanitize_default_value(value):
         """
         Sanitize default values for PluginParameter compatibility.
@@ -322,6 +356,10 @@ class ApiBasedToolSchemaParser:
         for path, path_item in swagger["paths"].items():
             converted_openapi["paths"][path] = {}
             for method, operation in path_item.items():
+                if method == "parameters":
+                    # Path Item parameters apply to every operation under this path.
+                    converted_openapi["paths"][path]["parameters"] = operation
+                    continue
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
