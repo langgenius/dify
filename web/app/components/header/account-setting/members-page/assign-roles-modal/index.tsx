@@ -28,21 +28,24 @@ const AssignRolesModalBody = ({
   onClose,
   onSubmit,
 }: AssignRolesModalBodyProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)
   const isConfirmDisabled = selected.length === 0
   const title = allowMultipleRoles
-    ? t(($) => $['members.assignRolesModal.title'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRolesModal.title'], {
+        ns: 'workspaceMembers',
+        defaultValue: 'Assign Roles',
+      })
+    : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
   const description = allowMultipleRoles
     ? t(($) => $['members.assignRolesModal.description'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue:
           'Select roles to assign to this member. All permissions from selected roles will be combined.',
       })
     : t(($) => $['members.assignRolesModal.singleDescription'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue: 'Select one role to assign to this member.',
       })
 
@@ -89,7 +92,7 @@ const AssignRolesModalBody = ({
         {allowMultipleRoles && (
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['members.assignRolesModal.selectedCount'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: selected.length,
             })}
           </div>

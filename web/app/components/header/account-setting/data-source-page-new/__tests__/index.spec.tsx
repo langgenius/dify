@@ -2,6 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useTheme } from 'next-themes'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -242,7 +243,9 @@ describe('DataSourcePage Component', () => {
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.installDataSource'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show data source placeholders while the list is loading', () => {
@@ -260,7 +263,9 @@ describe('DataSourcePage Component', () => {
       // Assert
       expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
       expect(screen.queryByText('dataSourcePage.notSetUpTitle')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.installDataSource'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -327,6 +332,28 @@ describe('DataSourcePage Component', () => {
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
       expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith(mockProviders, 'partner')
     })
+
+    it('announces the filtered installed data source count while searching', async () => {
+      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+        data: { result: mockProviders },
+        isLoading: false,
+      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      const user = userEvent.setup()
+      renderWithConsoleQuery(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      await user.type(screen.getByRole('searchbox'), 'partner')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'plugin.category.datasources: plugin.marketplace.pluginsResult:{"num":1}',
+      )
+      await user.clear(screen.getByRole('searchbox'))
+      await user.type(screen.getByRole('searchbox'), 'missing')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'plugin.category.datasources: plugin.marketplace.pluginsResult:{"num":0}',
+      )
+    })
   })
 
   describe('Marketplace Integration', () => {
@@ -342,8 +369,8 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.discoverMore')).toBeInTheDocument()
     })
 
     it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
@@ -358,7 +385,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
     })
 
     it('should handle the case where data exists but result is an empty array', () => {
@@ -374,7 +401,7 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
     })
 
     it('should handle the case where enable_marketplace is false (edge case for coverage)', () => {
@@ -389,7 +416,9 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.installDataSource'),
+      ).not.toBeInTheDocument()
     })
   })
 })

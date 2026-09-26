@@ -1,22 +1,18 @@
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import Protocol, cast
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
 from werkzeug.exceptions import Forbidden
 
-from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._contract import op_of
 from controllers.openapi._models import AppDslImportPayload, AppDslImportResponse, Hint
 from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
-from models import Account
-from services.app_dsl_service import Import
-from services.entities.dsl_entities import ImportStatus
+from machinery.context import RequestContext
+from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.account import NoPermissionError
+from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 
 class _EndpointView(Protocol):
@@ -43,21 +39,22 @@ class _EndpointView(Protocol):
     ],
 )
 def test_permission_denial_maps_to_forbidden(
+    app_query_services: ControllerTestServices,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     api: AppDslImportApi | AppDslImportConfirmApi,
     kwargs: dict[str, object],
 ) -> None:
-    service = Mock()
-    service.import_app.side_effect = NoPermissionError("denied")
-    service.confirm_import.side_effect = NoPermissionError("denied")
-    monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
-    monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
+    def denied(*_args: object, **_kwargs: object) -> None:
+        raise NoPermissionError("denied")
+
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", denied)
+    monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", denied)
+    context = RequestContext("request-1", None, "account-1", "workspace-1")
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         with pytest.raises(Forbidden, match="denied") as exc_info:
-            cast(_EndpointView, api.post).__handler__(api, SimpleNamespace(account=Mock(spec=Account)), **kwargs)
+            cast(_EndpointView, api.post).__handler__(api, context, **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
 
@@ -81,18 +78,20 @@ def test_permission_denial_maps_to_forbidden(
     ],
 )
 def test_import_hints_a_confirm_only_while_pending(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, result: Import, status: int, hints: list[Hint]
+    app_query_services: ControllerTestServices,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    result: Import,
+    status: int,
+    hints: list[Hint],
 ) -> None:
-    service = Mock()
-    service.import_app.return_value = result
-    monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
-    monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", lambda *_args, **_kwargs: result)
 
     api = AppDslImportApi()
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         response, code = cast(_EndpointView, api.post).__handler__(
             api,
-            SimpleNamespace(account=Mock(spec=Account)),
+            RequestContext("request-1", None, "account-1", "workspace-1"),
             workspace_id="workspace-1",
             body=AppDslImportPayload(mode="yaml-content", yaml_content="app: {}"),
         )

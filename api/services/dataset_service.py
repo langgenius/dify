@@ -91,7 +91,7 @@ from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccess
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.tag_service import TagService
+from services.tag_application_service import TagTargetQuery
 from services.vector_service import VectorService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -259,6 +259,8 @@ class DatasetService:
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
+        *,
+        tags: TagTargetQuery,
     ):
         """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
@@ -339,11 +341,10 @@ class DatasetService:
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
             if tenant_id is not None:
-                target_ids = TagService.get_target_ids_by_tag_ids(
-                    "knowledge",
-                    tenant_id,
-                    tag_ids,
-                    session,
+                target_ids = tags.find_target_ids(
+                    tag_type="knowledge",
+                    tenant_id=tenant_id,
+                    tag_ids=tag_ids,
                     match_all=True,
                 )
             else:
@@ -1381,6 +1382,8 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
+        if dify_config.RBAC_ENABLED:
+            return
         has_permission = False
         if (
             user.current_role != TenantAccountRole.OWNER

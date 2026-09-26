@@ -83,6 +83,12 @@ class _LazyEmbeddings(Embeddings):
 
     @override
     def embed_query(self, text: str) -> list[float]:
+        provider = self._dataset.embedding_model_provider
+        model_name = self._dataset.embedding_model
+        if provider and model_name:
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            if cached_embedding is not None:
+                return cached_embedding
         return self._ensure().embed_query(text)
 
     @override

@@ -88,7 +88,8 @@ class TestUseProxyContext:
 
         stored = {"user_id": "u1", "tenant_id": "t1", "plugin_id": "p1", "provider": "github"}
         redis_client.get.return_value = json.dumps(stored).encode()
-        with patch.object(redis_client, "delete") as delete:
+
+        with patch("services.plugin.oauth_service.redis_client.delete") as delete:
             result = OAuthProxyService.use_proxy_context("valid-id")
 
         assert result == stored

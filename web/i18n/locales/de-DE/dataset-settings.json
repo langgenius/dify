@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Wenn das Embedding-Modell multimodal unterstützt, wählen Sie bitte ein multimodales Reranking-Modell für eine bessere Leistung.",
   "form.retrievalSetting.title": "Abrufeinstellung",
   "form.save": "Speichern",
-  "form.searchModel": "Modell suchen",
   "form.summaryAutoGen": "Automatische Zusammenfassungserstellung",
   "form.summaryAutoGenEnableTip": "Nach der Aktivierung werden Zusammenfassungen automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",
   "form.summaryAutoGenTip": "Zusammenfassungen werden automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",

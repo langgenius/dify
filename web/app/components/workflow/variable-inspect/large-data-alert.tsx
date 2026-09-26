@@ -12,10 +12,10 @@ type Props = Readonly<{
 }>
 
 const LargeDataAlert: FC<Props> = ({ textHasNoExport, downloadUrl, className }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
   const text = textHasNoExport
-    ? t(($) => $['debug.variableInspect.largeDataNoExport'], { ns: 'workflow' })
-    : t(($) => $['debug.variableInspect.largeData'], { ns: 'workflow' })
+    ? t(($) => $['debug.variableInspect.largeDataNoExport'], { ns: 'workflowDebug' })
+    : t(($) => $['debug.variableInspect.largeData'], { ns: 'workflowDebug' })
   return (
     <div
       className={cn(
@@ -31,7 +31,7 @@ const LargeDataAlert: FC<Props> = ({ textHasNoExport, downloadUrl, className }) 
       </div>
       {downloadUrl && (
         <div className="ml-1 shrink-0 cursor-pointer system-xs-medium-uppercase text-text-accent">
-          {t(($) => $['debug.variableInspect.export'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.export'], { ns: 'workflowDebug' })}
         </div>
       )}
     </div>

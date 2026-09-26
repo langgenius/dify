@@ -129,11 +129,11 @@ describe('RosterPage', () => {
   it('uses the localized roster title for the page heading', () => {
     render(<RosterPage />)
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.title' })).toHaveAttribute(
       'title',
-      'agentV2.roster.title',
+      'agentRoster.roster.title',
     )
-    expect(screen.getByRole('region', { name: 'agentV2.roster.title' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'agentRoster.roster.title' })).toBeInTheDocument()
   })
 
   it('reconciles the route title with client branding', () => {
@@ -146,7 +146,7 @@ describe('RosterPage', () => {
       },
     })
 
-    expect(document.title).toBe('agentV2.roster.title - Acme')
+    expect(document.title).toBe('agentRoster.roster.title - Acme')
   })
 
   it('uses the generated publication filter and server-owned counts', () => {

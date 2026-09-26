@@ -3,7 +3,7 @@
   "createFailed": "スニペットの作成に失敗しました",
   "createFrom": "から作成",
   "createFromBlank": "真っ白から作成する",
-  "currentDSLVersion": "システ がサポートする DSL バージョン: ",
+  "currentDSLVersion": "システムがサポートする DSL バージョン: ",
   "deleteConfirmContent": "これを元に戻すことはできません。このスニペットを使用するワークフローは影響を受けません。",
   "deleteConfirmTitle": "スニペットを削除しますか?",
   "deleteFailed": "スニペットの削除に失敗しました",

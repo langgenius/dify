@@ -33,7 +33,13 @@ def installation(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppR
         )
         session.add(installation)
         session.flush()
-        return InstalledAppRef(id=installation.id, tenant_id=installation.tenant_id, app_id=app.id, app_mode="chat")
+        return InstalledAppRef(
+            id=installation.id,
+            tenant_id=installation.tenant_id,
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            app_mode="chat",
+        )
 
 
 def _conversation(session: Session, installation: InstalledAppRef) -> Conversation:

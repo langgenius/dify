@@ -59,7 +59,7 @@ export function PublisherSummarySection({
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowHistory'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
@@ -88,7 +88,7 @@ export function PublisherSummarySection({
               <span className="truncate system-sm-semibold text-text-secondary">
                 {getWorkflowVersionName(
                   versionInfo,
-                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
                 )}
               </span>
               <span aria-hidden className="system-xs-regular text-text-tertiary">
@@ -98,7 +98,9 @@ export function PublisherSummarySection({
                 <button
                   type="button"
                   className="flex size-4 shrink-0 items-center justify-center rounded text-text-tertiary outline-hidden hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  aria-label={t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' })}
+                  aria-label={t(($) => $['versionHistory.editVersionInfo'], {
+                    ns: 'workflowHistory',
+                  })}
                   disabled={!versionInfo || !onEditVersion}
                   onClick={onEditVersion}
                 >
@@ -113,7 +115,7 @@ export function PublisherSummarySection({
                 >
                   <span aria-hidden className="i-ri-edit-line size-3.5 shrink-0" />
                   <span className="truncate system-xs-medium">
-                    {t(($) => $['versionHistory.nameIt'], { ns: 'workflow' })}
+                    {t(($) => $['versionHistory.nameIt'], { ns: 'workflowHistory' })}
                   </span>
                 </button>
               )}

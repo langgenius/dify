@@ -24,7 +24,7 @@ const InstallFromMarketplace = ({
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['plugin', 'modelProvider'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
@@ -42,7 +42,7 @@ const InstallFromMarketplace = ({
   return (
     <div className="mb-2">
       <Separator className="my-2 mt-4" />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           aria-expanded={!collapse}
@@ -53,11 +53,11 @@ const InstallFromMarketplace = ({
             className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')}
             aria-hidden="true"
           />
-          {t(($) => $['modelProvider.installDataSource'], { ns: 'common' })}
+          {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
         </button>
-        <div className="mb-2 flex items-center pt-2">
+        <div className="mb-2 flex flex-wrap items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">
-            {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
+            {t(($) => $['modelProvider.discoverMore'], { ns: 'modelProvider' })}
           </span>
           {onOpenMarketplace ? (
             <button
@@ -81,6 +81,16 @@ const InstallFromMarketplace = ({
           )}
         </div>
       </div>
+      {!!searchText.trim() && !isAllPluginsLoading && !collapse && (
+        <div role="status" className="sr-only">
+          {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
+          {': '}
+          {t(($) => $['marketplace.pluginsResult'], {
+            ns: 'plugin',
+            num: allPlugins.filter((plugin) => plugin.type !== 'bundle').length,
+          })}
+        </div>
+      )}
       {!collapse && isAllPluginsLoading && <LoadingPlaceholder />}
       {!isAllPluginsLoading && !collapse && (
         <List
@@ -88,7 +98,7 @@ const InstallFromMarketplace = ({
           marketplaceCollectionPluginsMap={{}}
           plugins={allPlugins}
           showInstallButton={canInstallPlugin}
-          cardContainerClassName="grid grid-cols-3 gap-2"
+          cardContainerClassName="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           cardRender={cardRender}
           emptyClassName="h-auto"
         />
