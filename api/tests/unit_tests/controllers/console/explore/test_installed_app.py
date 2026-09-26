@@ -19,7 +19,7 @@ from models.account import TenantAccountRole
 from models.model import AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_service import InstalledAppService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
@@ -112,7 +112,7 @@ def management(
     services = _Services(
         installed_apps=InstalledAppService(
             installed_apps=SQLAlchemyInstalledAppRepository(session_factory=factory),
-            get_workspace_role=WorkspaceQueryRepository(factory).get_account_role,
+            get_workspace_role=WorkspaceRepository(factory).get_account_role,
             get_visible_app_ids=None,
         )
     )
@@ -215,7 +215,7 @@ def _enable_visibility(management: _Management) -> None:
     )
     management.services.installed_apps = InstalledAppService(
         installed_apps=repository,
-        get_workspace_role=WorkspaceQueryRepository(management.session_factory).get_account_role,
+        get_workspace_role=WorkspaceRepository(management.session_factory).get_account_role,
         get_visible_app_ids=access.get_visible_app_ids,
     )
 

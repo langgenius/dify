@@ -18,14 +18,15 @@ from controllers.openapi.app_dsl import (
     AppDslImportApi,
     AppDslImportConfirmApi,
 )
+from controllers.openapi.auth.requirements import CheckWorkspaceMember
 from machinery.context import RequestContext
 from models import Account, App
 from models.model import AppModelConfig
-from services.account_service import AccountService, TenantService
 from services.app_dsl_service import CURRENT_DSL_VERSION
 from services.app_service import AppService, CreateAppParams
 from services.entities.dsl_entities import ImportStatus
 from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -74,16 +75,16 @@ def external_deps() -> Generator[dict[str, object], None, None]:
 
 def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, Account]:
     fake = Faker()
-    with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+    with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
         mock_account_feature_service.is_registration_allowed.return_value = True
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session)
         tenant = account.current_tenant
         assert tenant is not None
         app_args = CreateAppParams(
@@ -219,7 +220,12 @@ class TestDslExport:
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
             response, code = api.get.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"app_id": app_model.id},
+                    requirements=(CheckWorkspaceMember(),),
+                ),
                 app_model.id,
                 query=AppDslExportQuery(),
             )
@@ -240,7 +246,12 @@ class TestDslExport:
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
             result, code = api.get.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"app_id": app_model.id},
+                    requirements=(CheckWorkspaceMember(),),
+                ),
                 app_model.id,
                 query=AppDslExportQuery(),
             )

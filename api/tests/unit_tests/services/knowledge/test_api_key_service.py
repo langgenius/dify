@@ -15,7 +15,7 @@ from models.enums import PermissionEnum
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache
 from services.auth.api_key_contracts import ApiKeyNotFoundError
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.api_key_service import DatasetApiKeyService
 
 

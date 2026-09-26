@@ -5,7 +5,7 @@ from typing import Protocol
 
 from machinery.context import RequestContext
 from services.auth.api_key_contracts import ApiKeyCache, ApiKeyRecord
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccess
 
 

@@ -38,7 +38,9 @@ class TestAppGenerateService:
             patch(
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
-            patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,
+            patch(
+                "services.account.login_adapters.SystemFeatureService", autospec=True
+            ) as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
             patch("services.quota_service.dify_config") as mock_quota_dify_config,
             patch("configs.dify_config") as mock_global_dify_config,
@@ -158,16 +160,16 @@ class TestAppGenerateService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        from services.account_service import AccountService, TenantService
+        from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         from services.app_service import AppService, CreateAppParams

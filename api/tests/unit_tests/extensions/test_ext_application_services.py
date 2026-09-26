@@ -40,15 +40,9 @@ from models.model import (
     Site,
     TrialApp,
 )
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
-from repositories.account_oauth_repository import (
-    AccountServiceOAuthAccountRegistrationGateway,
-    AccountServiceOAuthSessionGateway,
-    AccountServiceOAuthWorkspaceGateway,
-    RegisterServiceOAuthInvitationGateway,
-)
-from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
@@ -61,30 +55,36 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
-from services.account_adapters import (
+from repositories.workspace.workspace_repository import WorkspaceRepository
+from services import audio_provider_gateway, recommended_app_catalog_gateway
+from services.account import forgot_password_service as account_forgot_password_service
+from services.account.adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RBACWorkspaceMemberAccessSync,
     RedisInvitationTokenStore,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
-from services.account_email_registration_adapters import (
-    AccountServiceRegistrationGateway,
+from services.account.email_registration_adapters import (
+    AccountLifecycleRegistrationGateway,
     BillingAccountRegistrationPolicyGateway,
     RedisEmailRegistrationSecurityGateway,
     TokenManagerEmailRegistrationTokenGateway,
 )
-from services.account_forgot_password_adapters import (
+from services.account.forgot_password_adapters import (
     RateLimiterForgotPasswordSendLimiter,
     RedisForgotPasswordSecurityGateway,
     RedisForgotPasswordTokenGateway,
 )
-from services.account_oauth_adapters import (
+from services.account.oauth_adapters import (
+    AccountActivationOAuthInvitationGateway,
+    AccountLifecycleOAuthRegistrationGateway,
+    AccountLifecycleOAuthSessionGateway,
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
+    WorkspaceProvisioningOAuthGateway,
 )
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
@@ -255,6 +255,8 @@ def test_build_application_services_configures_setup_policy(
 
     assert services.setup.get_status().completed is setup_completed
     assert services.oauth_server is not None
+    assert isinstance(services.oauth_device._accounts, SQLAlchemyAccountRepository)
+    assert isinstance(services.oauth_device._workspaces, WorkspaceRepository)
 
 
 def test_build_application_services_wires_builtin_schema_definitions(
@@ -599,7 +601,7 @@ def test_build_application_services_wires_education_rate_limiters(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     redis = MagicMock(spec=RedisClientWrapper)
-    with patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type:
+    with patch("extensions.application_services.account.RateLimiter") as rate_limiter_type:
         ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
@@ -661,26 +663,32 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(email_registration._tokens, TokenManagerEmailRegistrationTokenGateway)
     assert isinstance(email_registration._security, RedisEmailRegistrationSecurityGateway)
     assert isinstance(email_registration._account_policy, BillingAccountRegistrationPolicyGateway)
-    assert isinstance(email_registration._registration, AccountServiceRegistrationGateway)
-    assert email_registration._registration._session_factory is sqlite_session_factory
+    assert isinstance(email_registration._registration, AccountLifecycleRegistrationGateway)
+    assert email_registration._registration._accounts is services.accounts.lifecycle
+    assert services.workspaces.invitations._accounts is services.accounts.lifecycle
+    assert services.workspaces.invitations._members is services.workspaces.members
+    assert services.workspaces.invitations._workspaces is services.workspaces.management._workspaces
+    assert services.workspaces.provisioning._members is services.workspaces.members
+    assert services.accounts.lifecycle._workspaces is services.workspaces.provisioning
+    assert services.workspaces.identity._workspaces is services.workspaces.management._workspaces
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
-    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
+    assert services.accounts.authentication._workspaces is services.workspaces.queries._workspaces
     assert services.step_by_step_tour._accounts is accounts
-    assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
+    assert services.accounts.deletion._memberships is services.workspaces.queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
     oauth = services.accounts.oauth
     assert oauth._accounts is accounts
     assert oauth._integrations is integrations
-    assert oauth._memberships is services.workspace_queries._workspaces
-    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert oauth._memberships is services.workspaces.queries._workspaces
+    assert isinstance(oauth._invitations, AccountActivationOAuthInvitationGateway)
     assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
-    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
-    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
-    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert isinstance(oauth._registration, AccountLifecycleOAuthRegistrationGateway)
+    assert isinstance(oauth._workspaces, WorkspaceProvisioningOAuthGateway)
+    assert isinstance(oauth._sessions, AccountLifecycleOAuthSessionGateway)
     assert oauth._sessions is not oauth._workspaces
     assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
     assert oauth._workspace_policy is oauth._registration_policy
@@ -722,7 +730,7 @@ def test_build_application_services_wires_account_activation(
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    activation = services.account_activation
+    activation = services.accounts.activation
     assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory

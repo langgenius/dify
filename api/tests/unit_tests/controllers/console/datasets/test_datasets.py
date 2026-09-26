@@ -12,7 +12,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-import services
+import services.errors.base
 from controllers.common.rbac import DatasetId, Workspace
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -720,7 +720,7 @@ class TestDatasetApiGet(_UsesSQLiteSession):
             patch.object(
                 DatasetService,
                 "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):
@@ -956,7 +956,7 @@ def test_dataset_scoped_read_permission_denied(app: Flask, api_cls, sqlite_sessi
         patch.object(
             DatasetService,
             "check_dataset_permission",
-            side_effect=services.errors.account.NoPermissionError("no permission"),
+            side_effect=services.errors.base.NoPermissionError("no permission"),
         ),
     ):
         with pytest.raises(Forbidden, match="no permission"):
@@ -1080,7 +1080,7 @@ class TestDatasetQueryApi(_UsesSQLiteSession):
             patch.object(
                 DatasetService,
                 "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden):
@@ -1372,7 +1372,7 @@ class TestDatasetRelatedAppListApi(_UsesSQLiteSession):
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no permission"),
+                side_effect=services.errors.base.NoPermissionError("no permission"),
             ),
         ):
             with pytest.raises(Forbidden):
@@ -1831,7 +1831,7 @@ class TestDatasetPermissionUserListApi(_UsesSQLiteSession):
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no permission"),
+                side_effect=services.errors.base.NoPermissionError("no permission"),
             ),
         ):
             with pytest.raises(Forbidden):

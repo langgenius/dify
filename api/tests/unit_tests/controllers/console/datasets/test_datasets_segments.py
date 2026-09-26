@@ -9,7 +9,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -261,7 +261,7 @@ class TestDatasetDocumentSegmentListApi(SQLiteControllerTest):
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden):
@@ -939,7 +939,7 @@ class TestChildChunkAddApi(SQLiteControllerTest):
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden):
@@ -1160,7 +1160,7 @@ class TestSegmentListAdvancedCases(SQLiteControllerTest):
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=_dataset()),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
+                side_effect=services.errors.base.NoPermissionError("No permission"),
             ),
         ):
             with pytest.raises(Forbidden):

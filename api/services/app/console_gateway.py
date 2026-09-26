@@ -61,7 +61,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task

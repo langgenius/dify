@@ -33,8 +33,8 @@ from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
-from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:

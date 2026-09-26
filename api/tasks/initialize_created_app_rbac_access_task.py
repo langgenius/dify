@@ -10,7 +10,6 @@ from sqlalchemy import select
 from configs import dify_config
 from extensions.ext_database import db
 from models import Agent, App, Dataset, TenantAccountJoin, TenantAccountRole
-from services.account_service import TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
 
 logger = logging.getLogger(__name__)
@@ -191,11 +190,12 @@ def initialize_created_app_rbac_access_task(
         }
     )
 
+    from extensions.ext_application_services import application_services
+
     try:
-        for account_ids in TenantService.iter_member_account_id_batches(
+        for account_ids in application_services().workspaces.management.iter_member_account_id_batches(
             tenant_id,
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
-            session=db.session(),
         ):
             kind.replace_user_access_policies(
                 tenant_id,
@@ -203,7 +203,7 @@ def initialize_created_app_rbac_access_task(
                 resource_id,
                 enterprise_rbac_service.ReplaceUserAccessPolicies(
                     access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                    account_ids=account_ids,
+                    account_ids=list(account_ids),
                 ),
             )
     except Exception as exc:

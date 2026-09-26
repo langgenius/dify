@@ -5,7 +5,6 @@ import * as z from 'zod'
 import {
   zGetNotificationQuery,
   zGetNotificationResponse,
-  zPostNotificationDismissBody,
   zPostNotificationDismissResponse,
 } from './zod.gen.ts'
 
@@ -21,7 +20,6 @@ export const post = oc
     path: '/notification/dismiss',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostNotificationDismissBody }))
   .output(zPostNotificationDismissResponse)
 
 export const dismiss = {

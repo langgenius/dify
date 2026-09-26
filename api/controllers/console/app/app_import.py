@@ -16,7 +16,7 @@ from models.account import TenantAccountRole
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 from .. import console_ns
 

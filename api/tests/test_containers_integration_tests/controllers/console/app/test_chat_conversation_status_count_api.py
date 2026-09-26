@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from constants import HEADER_NAME_CSRF_TOKEN
+from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
@@ -15,7 +16,6 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
-from services.account_service import AccountService
 from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
 
 
@@ -143,7 +143,7 @@ def test_chat_conversation_status_count_includes_paused(
     workflow_run = _create_workflow_run(db_session_with_containers, app.id, tenant.id, account.id)
     _create_message(db_session_with_containers, app.id, conversation.id, workflow_run.id, account.id)
 
-    access_token = AccountService.get_account_jwt_token(account)
+    access_token = application_services().accounts.lifecycle.login(account.id, ip_address="127.0.0.1").access_token
     csrf_token = generate_csrf_token(account.id)
     cookie_name = _real_cookie_name("csrf_token")
 

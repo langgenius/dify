@@ -18,7 +18,7 @@ from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, I
 from models.model import UploadFile
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DocumentService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 

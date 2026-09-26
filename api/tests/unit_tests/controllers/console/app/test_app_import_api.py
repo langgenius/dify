@@ -20,7 +20,7 @@ from services.app.console_gateway import EnterpriseConsoleAppAccess
 from services.app_dsl_service import AppDslService, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import Import, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.system_feature_service import SystemFeatureService
 

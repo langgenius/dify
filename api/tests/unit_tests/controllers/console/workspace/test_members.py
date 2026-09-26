@@ -1,14 +1,14 @@
-from contextlib import nullcontext
+from collections.abc import Callable
 from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from typing import NamedTuple, override
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
-from flask_restx import Resource
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from flask_restx import Api, Resource
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -17,31 +17,42 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     NotOwnerError,
     OwnerTransferLimitError,
+    OwnerTransferRateLimitExceededError,
+)
+from controllers.console.auth.error import (
+    MemberNotInTenantError as MemberNotInTenantRequestError,
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
-from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
+    MemberCancelInviteApi,
     MemberInviteEmailApi,
-    MemberInviteErrorResponse,
     MemberListApi,
     MemberUpdateRoleApi,
     OwnerTransfer,
     OwnerTransferCheckApi,
     SendOwnerTransferEmailApi,
-    _count_new_member_invites,
 )
-from enums import DeploymentEdition
-from libs.external_api import ExternalApi
+from libs.external_api import register_external_error_handlers
 from machinery.context import RequestContext
-from models.account import Account, Tenant, TenantAccountJoin
-from models.engine import db
-from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
-from services.workspace_member_query_service import (
-    WorkspaceMemberQueryService,
-    WorkspaceMemberRole,
-    WorkspaceMemberSummary,
+from services.account_errors import AccountNotFoundError
+from services.errors.base import NoPermissionError
+from services.errors.workspace import (
+    CannotOperateSelfError,
+    InvalidOwnerTransferCodeError,
+    InvalidOwnerTransferEmailError,
+    InvalidOwnerTransferTokenError,
+    InvalidWorkspaceMemberRoleError,
+    MemberNotInTenantError,
+    OwnerTransferSendIPLimitedError,
+    OwnerTransferSendRateLimitError,
+    OwnerTransferVerificationLimitError,
+    RoleAlreadyAssignedError,
+    WorkspaceNotFoundError,
+    WorkspaceNotLinkedError,
 )
+from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
+from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
@@ -55,21 +66,12 @@ class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
         return self._result
 
 
+class _WorkspaceServicesStub(NamedTuple):
+    member_queries: WorkspaceMemberQueryService
+
+
 class _ApplicationServicesStub(NamedTuple):
-    workspace_member_queries: WorkspaceMemberQueryService
-
-
-def _tenant(*, name: str = "Workspace") -> Tenant:
-    tenant = Tenant(name=name)
-    tenant.id = "t1"
-    return tenant
-
-
-def _account(*, tenant: Tenant | None = None, account_id: str = "account-1", email: str = "a@test.com") -> Account:
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
+    workspaces: _WorkspaceServicesStub
 
 
 class TestMemberListApi:
@@ -102,7 +104,7 @@ class TestMemberListApi:
                 ),
             )
         )
-        application_services_stub = _ApplicationServicesStub(workspace_member_queries=workspace_member_queries)
+        application_services_stub = _ApplicationServicesStub(_WorkspaceServicesStub(workspace_member_queries))
 
         with (
             app.test_request_context("/"),
@@ -137,643 +139,305 @@ class TestMemberListApi:
         assert workspace_member_queries.contexts == [request_context]
 
 
-class TestMemberInviteEmailApi:
-    @pytest.fixture(autouse=True)
-    def _invite_config(self, config_overrides) -> None:
-        config_overrides(
-            CONSOLE_WEB_URL="http://x",
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
-        )
+@pytest.fixture
+def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    from extensions.application_services.workspace import WorkspaceServices
+    from extensions.ext_application_services import AccountServices, ApplicationServices
+    from services.workspace.member_service import WorkspaceInvitationService, WorkspaceOwnerTransferService
 
-    @pytest.fixture(autouse=True)
-    def _mock_member_invite_lock(self):
-        with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
-            yield
+    services = Mock(spec=ApplicationServices)
+    services.accounts = Mock(spec=AccountServices)
+    services.workspaces = Mock(spec=WorkspaceServices)
+    services.workspaces.invitations = Mock(spec=WorkspaceInvitationService)
+    services.workspaces.owner_transfer = Mock(spec=WorkspaceOwnerTransferService)
+    services.workspaces.members = Mock(spec=WorkspaceMemberService)
+    services.workspaces.member_queries = Mock(spec=WorkspaceMemberQueryService)
+    import importlib
 
-    @pytest.mark.parametrize("role", ["normal", "dataset_operator"])
-    def test_invite_success(self, app: Flask, config_overrides, role: str):
-        config_overrides(DATASET_OPERATOR_ENABLED=True)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
+    monkeypatch.setattr(
+        importlib.import_module("controllers.console.workspace.members"), "application_services", lambda: services
+    )
+    return services
 
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
 
-        payload = {
-            "emails": ["A@TEST.com", "a@test.com"],
-            "role": role,
-            "language": "en-US",
+@pytest.mark.parametrize("operation", ["remove", "update_role"])
+def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, operation: str) -> None:
+    context = RequestContext("request", None, "actor", "workspace")
+    with app.test_request_context("/", json={"role": "editor"}):
+        if operation == "remove":
+            api = MemberCancelInviteApi()
+            response, status = unwrap(api.delete)(api, context, "member")
+            assert status == 200
+            assert response == {"result": "success", "tenant_id": "workspace"}
+            services.workspaces.members.remove.assert_called_once_with("workspace", "member", "actor")
+        else:
+            api = MemberUpdateRoleApi()
+            assert unwrap(api.put)(api, context, "member") == {"result": "success"}
+            services.workspaces.members.update_role.assert_called_once_with("workspace", "member", "editor", "actor")
+
+
+@pytest.mark.parametrize("operation", ["remove", "update_role"])
+@pytest.mark.parametrize(
+    ("error", "code", "status"),
+    [
+        (CannotOperateSelfError("self"), "cannot-operate-self", 400),
+        (NoPermissionError("denied"), "forbidden", 403),
+        (MemberNotInTenantError("missing"), "member-not-found", 404),
+    ],
+)
+def test_member_mutation_maps_errors(
+    app: Flask, services: Mock, operation: str, error: Exception, code: str, status: int
+) -> None:
+    service_method = (
+        services.workspaces.members.remove if operation == "remove" else services.workspaces.members.update_role
+    )
+    service_method.side_effect = error
+    api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
+    method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
+    with app.test_request_context("/", json={"role": "editor"}):
+        result = unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+    assert result == ({"code": code, "message": str(error)}, status)
+
+
+@pytest.mark.parametrize("operation", ["remove", "update_role"])
+def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operation: str) -> None:
+    service_method = (
+        services.workspaces.members.remove if operation == "remove" else services.workspaces.members.update_role
+    )
+    service_method.side_effect = AccountNotFoundError()
+    api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
+    method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
+    with app.test_request_context("/", json={"role": "editor"}), pytest.raises(NotFound):
+        unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "missing")
+
+
+@pytest.mark.parametrize(
+    ("error", "code", "message"),
+    [
+        (InvalidWorkspaceMemberRoleError(), "invalid-role", "Invalid role"),
+        (RoleAlreadyAssignedError("unchanged"), "role-already-assigned", "unchanged"),
+    ],
+)
+def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Exception, code: str, message: str) -> None:
+    services.workspaces.members.update_role.side_effect = error
+    api = MemberUpdateRoleApi()
+    with app.test_request_context("/", json={"role": "editor"}):
+        result = unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+    assert result == ({"code": code, "message": message}, 400)
+
+
+def test_dataset_operator_list_uses_admitted_workspace(app: Flask, services: Mock) -> None:
+    services.workspaces.member_queries.list_members.return_value = ()
+    api = DatasetOperatorMemberListApi()
+    with app.test_request_context("/"):
+        result = unwrap(api.get)(api, RequestContext("request", None, "actor", "workspace"))
+    assert result == ({"accounts": []}, 200)
+    services.workspaces.member_queries.list_members.assert_called_once_with("workspace", dataset_operators_only=True)
+
+
+def test_dataset_operator_list_serializes_membership_snapshot(app: Flask, services: Mock) -> None:
+    timestamp = datetime(2026, 1, 1)
+    services.workspaces.member_queries.list_members.return_value = (
+        WorkspaceMemberRecord(
+            id="operator",
+            name="Operator",
+            email="operator@example.com",
+            avatar=None,
+            last_login_at=None,
+            last_active_at=timestamp,
+            created_at=timestamp,
+            status="active",
+            legacy_role="dataset_operator",
+        ),
+    )
+    api = DatasetOperatorMemberListApi()
+    with app.test_request_context("/"):
+        result, status = unwrap(api.get)(api, RequestContext("request", None, "actor", "workspace"))
+    assert status == 200
+    assert result["accounts"] == [
+        {
+            "id": "operator",
+            "name": "Operator",
+            "email": "operator@example.com",
+            "avatar": None,
+            "avatar_url": None,
+            "last_login_at": None,
+            "last_active_at": int(timestamp.timestamp()),
+            "created_at": int(timestamp.timestamp()),
+            "role": "dataset_operator",
+            "roles": [],
+            "status": "active",
         }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)) as mock_count,
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
-            ) as mock_invite,
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert result["result"] == "success"
-        assert result["invitation_results"][0]["email"] == "a@test.com"
-        mock_count.assert_not_called()
-        mock_invite.assert_called_once()
-        assert mock_invite.call_args.kwargs["email"] == "a@test.com"
-        assert mock_invite.call_args.kwargs["role"] == role
-
-    def test_invite_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = True
-        features.workspace_members.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-        ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
-
-    def test_invite_cloud_member_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.members.size = 9
-        features.members.limit = 10
-        features.workspace_members.enabled = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
-            patch("controllers.console.workspace.members._count_current_members", return_value=9),
-        ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
-
-    def test_invite_already_member(self, app: Flask):
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(0, 0)),
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member",
-                side_effect=AccountAlreadyInTenantError(),
-            ),
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert result["invitation_results"][0]["status"] == "already_member"
-        assert result["invitation_results"][0]["message"] == "Account already in workspace."
-
-    @pytest.mark.parametrize("role", ["owner", "dataset_operator"])
-    def test_invite_invalid_role(self, app: Flask, config_overrides, role: str):
-        config_overrides(DATASET_OPERATOR_ENABLED=False)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": role,
-        }
-
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(InvalidMemberRoleError) as exc_info:
-                method(api, _account(tenant=_tenant()))
-
-        assert exc_info.value.error_code == "invalid_role"
-
-    def test_invite_invalid_payload_matches_documented_error_response(self):
-        app = Flask(__name__)
-        api = ExternalApi(app)
-        method = unwrap(MemberInviteEmailApi.post)
-        current_user = _account()
-
-        @api.route("/workspaces/current/members/invite-email")
-        class MemberInviteValidationApi(Resource):
-            def post(self):
-                return method(MemberInviteEmailApi(), current_user)
-
-        response = app.test_client().post(
-            "/workspaces/current/members/invite-email",
-            json={"emails": [], "role": "normal"},
-        )
-
-        assert response.status_code == 400
-        error = MemberInviteErrorResponse.model_validate(response.get_json())
-        assert error.code == "invalid_param"
-
-    def test_invite_generic_exception(self, app: Flask):
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            result, _ = method(api, user)
-
-        assert result["invitation_results"][0]["status"] == "failed"
-
-    def test_invite_seats_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
-            patch(
-                "controllers.console.workspace.members.SystemFeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
-        ):
-            with pytest.raises(SeatsLimitExceeded):
-                method(api, user)
-
-        mock_get_license.assert_called_once_with()
-        license_info.seats.is_available.assert_called_once_with(2)
-        mock_invite.assert_not_called()
-
-    def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 0)),
-            patch(
-                "controllers.console.workspace.members.SystemFeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
-            ) as mock_invite,
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert len(result["invitation_results"]) == 2
-        mock_get_license.assert_not_called()
-        license_info.seats.is_available.assert_not_called()
-        assert mock_invite.call_count == 2
-
-    def test_invite_mixed_accounts_with_available_seats(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 1)),
-            patch(
-                "controllers.console.workspace.members.SystemFeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
-            ) as mock_invite,
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert len(result["invitation_results"]) == 2
-        mock_get_license.assert_called_once_with()
-        license_info.seats.is_available.assert_called_once_with(1)
-        assert mock_invite.call_count == 2
-
-    def test_invite_skips_seats_limit_when_enterprise_disabled(self, app: Flask):
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch(
-                "controllers.console.workspace.members.SystemFeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert result["invitation_results"][0]["status"] == "success"
-        mock_get_license.assert_not_called()
-        license_info.seats.is_available.assert_not_called()
-
-    def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch(
-                "controllers.console.workspace.members.SystemFeatureService.get_license",
-                return_value=license_info,
-            ),
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member",
-                side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
-            ),
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert result["invitation_results"][0]["status"] == "failed"
-        assert result["invitation_results"][0]["message"] == "licensed seats limit exceeded"
+    ]
 
 
-class TestCountNewMemberInvites:
-    def test_count_new_member_invites(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+def test_invitation_policy_denial_preserves_http_status(app: Flask, services: Mock) -> None:
+    services.workspaces.invitations.invite_many.side_effect = NoPermissionError(
+        "Workspace policy prohibits member invitations"
+    )
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context("/", method="POST", json={"emails": ["a@example.com"], "role": "normal"}),
+        pytest.raises(Forbidden, match="Workspace policy prohibits member invitations"),
     ):
-        new_account = None
-        existing_account_not_in_tenant = Account(name="External", email="existing@test.com")
-        existing_account_not_in_tenant.id = "account-2"
-        existing_account_in_tenant = Account(name="Member", email="member@test.com")
-        existing_account_in_tenant.id = "account-3"
-        database_session = scoped_session(sqlite_session_factory)
-        monkeypatch.setattr(db, "session", database_session)
-        database_session.add(
-            TenantAccountJoin(
-                tenant_id="tenant-1",
-                account_id="account-3",
-                current=True,
-                role="normal",
-            )
-        )
-        database_session.commit()
-
-        with patch(
-            "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
-            side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
-        ) as mock_get_account:
-            result = _count_new_member_invites(
-                "tenant-1",
-                ["new@test.com", "existing@test.com", "member@test.com"],
-            )
-
-        assert result == (2, 1)
-        assert mock_get_account.call_count == 3
-        database_session.remove()
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
 
 
-class TestMemberUpdateRoleApi:
-    @pytest.mark.parametrize("role", ["invalid-role", "dataset_operator"])
-    def test_update_invalid_role(self, app: Flask, config_overrides, role: str):
-        config_overrides(DATASET_OPERATOR_ENABLED=False)
-        api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
+def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, services: Mock) -> None:
+    from services.workspace.contracts import WorkspaceInvitationResult
 
-        payload = {"role": role}
-
-        with app.test_request_context("/", json=payload):
-            result, status = method(api, _account(tenant=_tenant()), "id")
-
-        assert status == 400
-
-
-class TestDatasetOperatorMemberListApi:
-    def test_get_success(self, app: Flask):
-        api = DatasetOperatorMemberListApi()
-        method = unwrap(api.get)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-        member = MagicMock()
-        member.id = "op1"
-        member.name = "Operator"
-        member.email = "operator@test.com"
-        member.avatar = "avatar.png"
-        member.role = "operator"
-        member.status = "active"
-        members = [member]
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.members.TenantService.get_dataset_operator_members", return_value=members
-            ),
-        ):
-            result, status = method(api, user)
-
-        assert status == 200
-        assert len(result["accounts"]) == 1
-
-    def test_get_no_tenant(self, app: Flask):
-        api = DatasetOperatorMemberListApi()
-        method = unwrap(api.get)
-
-        user = _account(tenant=None)
-
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, user)
+    services.workspaces.invitations.invite_many.return_value = (
+        WorkspaceInvitationResult("a@example.com", "success", token="token"),
+        WorkspaceInvitationResult("b@example.com", "already_member", message="Account already in workspace."),
+        WorkspaceInvitationResult("c@example.com", "failed", message="Registration failed"),
+    )
+    context = RequestContext("request", None, "owner", "workspace")
+    with app.test_request_context(
+        "/",
+        method="POST",
+        json={"emails": ["A@example.com", "a@example.com", "b@example.com", "c@example.com"], "role": "normal"},
+    ):
+        api = MemberInviteEmailApi()
+        result, status = unwrap(api.post)(api, context)
+    assert status == 201
+    assert result["tenant_id"] == "workspace"
+    assert [item["status"] for item in result["invitation_results"]] == ["success", "already_member", "failed"]
+    assert "email=a%40example.com&token=token" in result["invitation_results"][0]["url"]
+    services.workspaces.invitations.invite_many.assert_called_once_with(
+        context, emails=["a@example.com", "b@example.com", "c@example.com"], language=None, role="normal"
+    )
 
 
-class TestSendOwnerTransferEmailApi:
-    def test_send_success(self, app: Flask):
-        api = SendOwnerTransferEmailApi()
-        method = unwrap(api.post)
+@pytest.mark.parametrize(("seats", "expected"), [(True, SeatsLimitExceeded), (False, WorkspaceMembersLimitExceeded)])
+def test_invite_maps_capacity_error(app: Flask, services: Mock, seats: bool, expected: type[Exception]) -> None:
+    from services.errors.workspace import WorkspaceInvitationQuotaError
 
-        tenant = _tenant(name="ws")
-        user = _account(tenant=tenant, email="a@test.com")
-
-        payload = {}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
-            patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.send_owner_transfer_email", return_value="token"
-            ),
-        ):
-            result = method(api, user)
-
-        assert result["result"] == "success"
-
-    def test_send_ip_limit(self, app: Flask):
-        api = SendOwnerTransferEmailApi()
-        method = unwrap(api.post)
-
-        payload = {}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
-            patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=True),
-        ):
-            with pytest.raises(EmailSendIpLimitError):
-                method(api, _account())
-
-    def test_send_not_owner(self, app: Flask):
-        api = SendOwnerTransferEmailApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant)
-
-        with (
-            app.test_request_context("/", json={}),
-            patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
-            patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=False),
-        ):
-            with pytest.raises(NotOwnerError):
-                method(api, user)
+    services.workspaces.invitations.invite_many.side_effect = WorkspaceInvitationQuotaError(seats=seats)
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context("/", method="POST", json={"emails": ["a@example.com"], "role": "normal"}),
+        pytest.raises(expected),
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
 
 
-class TestOwnerTransferCheckApi:
-    def test_check_invalid_code(self, app: Flask):
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (NoPermissionError(), NotOwnerError),
+        (AccountNotFoundError(), NotFound),
+        (WorkspaceNotFoundError(), NotFound),
+        (OwnerTransferSendIPLimitedError(), EmailSendIpLimitError),
+        (OwnerTransferSendRateLimitError(3), OwnerTransferRateLimitExceededError),
+        (OwnerTransferVerificationLimitError(), OwnerTransferLimitError),
+        (InvalidOwnerTransferTokenError(), InvalidTokenError),
+        (InvalidOwnerTransferEmailError(), InvalidEmailError),
+        (InvalidOwnerTransferCodeError(), EmailCodeError),
+        (CannotOperateSelfError(), CannotTransferOwnerToSelfError),
+        (MemberNotInTenantError(), MemberNotInTenantRequestError),
+    ],
+)
+def test_owner_verification_maps_errors(
+    app: Flask, services: Mock, error: Exception, expected: type[Exception]
+) -> None:
+    services.workspaces.owner_transfer.verify_code.side_effect = error
+    api = OwnerTransferCheckApi()
+    with (
+        app.test_request_context("/", method="POST", json={"token": "token", "code": "123456"}),
+        pytest.raises(expected) as raised,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+    assert raised.value.__cause__ is error
+    if isinstance(error, OwnerTransferSendRateLimitError):
+        assert "3" in str(raised.value)
+
+
+def test_owner_verification_serializes_promoted_token(app: Flask, services: Mock) -> None:
+    services.workspaces.owner_transfer.verify_code.return_value = ("owner@example.com", "promoted")
+    with app.test_request_context("/", method="POST", json={"token": "token", "code": "123456"}):
         api = OwnerTransferCheckApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant, email="a@test.com")
-
-        payload = {"code": "x", "token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
-                return_value=False,
-            ),
-            patch(
-                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
-                return_value={"email": "a@test.com", "code": "y"},
-            ),
-        ):
-            with pytest.raises(EmailCodeError):
-                method(api, user)
-
-    def test_rate_limited(self, app: Flask):
-        api = OwnerTransferCheckApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant, email="a@test.com")
-
-        payload = {"code": "x", "token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
-                return_value=True,
-            ),
-        ):
-            with pytest.raises(OwnerTransferLimitError):
-                method(api, user)
-
-    def test_invalid_token(self, app: Flask):
-        api = OwnerTransferCheckApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant, email="a@test.com")
-
-        payload = {"code": "x", "token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
-                return_value=False,
-            ),
-            patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
-        ):
-            with pytest.raises(InvalidTokenError):
-                method(api, user)
-
-    def test_invalid_email(self, app: Flask):
-        api = OwnerTransferCheckApi()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant, email="a@test.com")
-
-        payload = {"code": "x", "token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
-                return_value=False,
-            ),
-            patch(
-                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
-                return_value={"email": "b@test.com", "code": "x"},
-            ),
-        ):
-            with pytest.raises(InvalidEmailError):
-                method(api, user)
+        response = unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+    assert response == {"is_valid": True, "email": "owner@example.com", "token": "promoted"}
 
 
-class TestOwnerTransferApi:
-    def test_transfer_self(self, app: Flask):
-        api = OwnerTransfer()
-        method = unwrap(api.post)
+@pytest.mark.parametrize(
+    ("service_method", "resource_type", "handler", "has_member_id"),
+    [
+        pytest.param(
+            lambda services: services.workspaces.members.remove,
+            MemberCancelInviteApi,
+            MemberCancelInviteApi.delete,
+            True,
+            id="remove",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.members.update_role,
+            MemberUpdateRoleApi,
+            MemberUpdateRoleApi.put,
+            True,
+            id="update_role",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.send_code,
+            SendOwnerTransferEmailApi,
+            SendOwnerTransferEmailApi.post,
+            False,
+            id="send_code",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.verify_code,
+            OwnerTransferCheckApi,
+            OwnerTransferCheckApi.post,
+            False,
+            id="verify_code",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.transfer,
+            OwnerTransfer,
+            OwnerTransfer.post,
+            True,
+            id="transfer",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (RuntimeError("backend unavailable"), 500, "unknown"),
+        (WorkspaceNotLinkedError("unmapped workspace failure"), 500, "unknown"),
+        (WorkspaceNotFoundError(), 404, "not_found"),
+        (AccountNotFoundError(), 404, "not_found"),
+    ],
+)
+def test_member_errors_reach_the_http_boundary(
+    services: Mock,
+    service_method: Callable[[Mock], Mock],
+    resource_type: type[Resource],
+    handler: Callable[..., object],
+    has_member_id: bool,
+    error: Exception,
+    status: int,
+    code: str,
+) -> None:
+    service_method(services).side_effect = error
+    resource = resource_type()
+    method = unwrap(handler)
+    context = RequestContext("request", None, "owner", "workspace")
+    http_app = Flask(__name__)
+    http_api = Api(http_app, doc=False)
+    register_external_error_handlers(http_api)
 
-        tenant = _tenant()
-        user = _account(tenant=tenant, account_id="1", email="a@test.com")
+    class Endpoint(Resource):
+        def post(self) -> object:
+            if has_member_id:
+                return method(resource, context, "member")
+            return method(resource, context)
 
-        payload = {"token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-        ):
-            with pytest.raises(CannotTransferOwnerToSelfError):
-                method(api, user, "1")
-
-    def test_invalid_token(self, app: Flask):
-        api = OwnerTransfer()
-        method = unwrap(api.post)
-
-        tenant = _tenant()
-        user = _account(tenant=tenant, account_id="1", email="a@test.com")
-
-        payload = {"token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
-        ):
-            with pytest.raises(InvalidTokenError):
-                method(api, user, "2")
+    http_api.add_resource(Endpoint, "/members")
+    response = http_app.test_client().post("/members", json={"role": "editor", "token": "token", "code": "123456"})
+    assert response.status_code == status
+    payload = response.get_json()
+    assert isinstance(payload, dict)
+    assert payload["code"] == code
+    if status == 500:
+        assert payload["message"] == "Internal Server Error"

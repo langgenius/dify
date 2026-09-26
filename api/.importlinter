@@ -60,7 +60,6 @@ ignore_imports =
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.dataset_service
     core.app.llm.quota -> services.credit_pool_service
-    core.app.task_pipeline.message_cycle_manager -> services.account_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.datasource.datasource_manager -> services.datasource_provider_service
@@ -74,9 +73,7 @@ ignore_imports =
     core.rag.datasource.retrieval_service -> services.external_knowledge_service
     core.rag.index_processor.index_processor -> services.vector_space_admission_service
     core.rag.index_processor.index_processor_base -> services.file_service
-    core.rag.index_processor.processor.paragraph_index_processor -> services.account_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.summary_index_service
-    core.rag.index_processor.processor.parent_child_index_processor -> services.account_service
     core.rag.index_processor.processor.parent_child_index_processor -> services.summary_index_service
     core.rag.index_processor.processor.qa_index_processor -> services.summary_index_service
     core.rag.retrieval.dataset_retrieval -> services.external_knowledge_service
@@ -114,8 +111,6 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
-    services.account_service -> controllers
-    services.account_service -> controllers.console.error
     services.app_generate_service -> controllers.console.app.workflow
 
 [importlinter:contract:no-direct-rsa-imports]
@@ -155,16 +150,22 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:workspace-query-service-boundary]
-name = Workspace query application service is framework and persistence neutral
+name = Workspace application services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
-    services.workspace_query_service
+    services.workspace.service
+    services.workspace.provisioning_service
+    services.workspace.contracts
 forbidden_modules =
+    configs
     controllers
     extensions
     flask
     models
     repositories
+    services.billing_service
+    services.feature_service
+    services.workspace.gateways
     sqlalchemy
     werkzeug
 
@@ -295,16 +296,16 @@ source_modules =
     services.account_avatar_service
     services.account_change_email_ports
     services.account_change_email_service
-    services.account_email_registration_service
+    services.account.email_registration_service
     services.account_deletion_service
     services.account_deletion_feedback_service
     services.account_education_service
     services.account_errors
-    services.account_forgot_password_service
+    services.account.forgot_password_service
     services.account_initialization_service
     services.account_integration_service
-    services.account_login_service
-    services.account_oauth_service
+    services.account.login_service
+    services.account.oauth_service
     services.account_password_service
     services.account_ports
     services.account_profile_service
@@ -531,7 +532,7 @@ forbidden_modules =
 name = Workspace member query application service is framework and persistence neutral
 type = forbidden
 source_modules =
-    services.workspace_member_query_service
+    services.workspace.member_service
 forbidden_modules =
     configs
     controllers
@@ -540,7 +541,7 @@ forbidden_modules =
     models
     repositories
     services.enterprise
-    services.workspace_member_role_resolver
+    services.workspace.gateways
     sqlalchemy
     werkzeug
 
@@ -784,6 +785,23 @@ forbidden_modules =
     repositories
     sqlalchemy
     tasks
+    werkzeug
+
+[importlinter:contract:account-lifecycle-boundary]
+name = Account lifecycle use cases and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.account.service
+    services.account.contracts
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.account.adapters
+    sqlalchemy
     werkzeug
 
 [importlinter:contract:app-audio-boundary]

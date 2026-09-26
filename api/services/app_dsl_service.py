@@ -70,8 +70,8 @@ from services.entities.dsl_entities import (
     PendingImportOwner,
     make_app_dsl,
 )
-from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 from services.icon_configuration import (
     DEFAULT_ICON,
     DEFAULT_ICON_TYPE,

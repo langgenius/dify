@@ -9,14 +9,6 @@ export type NotificationResponse = {
   should_show: boolean
 }
 
-export type DismissNotificationPayload = {
-  notification_id: string
-}
-
-export type SimpleResultResponse = {
-  result: string
-}
-
 export type NotificationItemResponse = {
   body: string
   frequency?: string | null
@@ -47,7 +39,7 @@ export type GetNotificationResponses = {
 export type GetNotificationResponse = GetNotificationResponses[keyof GetNotificationResponses]
 
 export type PostNotificationDismissData = {
-  body: DismissNotificationPayload
+  body?: never
   path?: never
   query?: never
   url: '/notification/dismiss'
@@ -58,7 +50,9 @@ export type PostNotificationDismissErrors = {
 }
 
 export type PostNotificationDismissResponses = {
-  200: SimpleResultResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostNotificationDismissResponse =

@@ -15,7 +15,7 @@ from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
-import services
+import services.errors.base
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
@@ -637,7 +637,7 @@ class TestDatasetApiGet:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError()
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError()
 
         with app.test_request_context(
             f"/datasets/{dataset.id}",
@@ -853,9 +853,7 @@ class TestDocumentStatusApiPatch:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(
-            "No permission"
-        )
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError("No permission")
 
         with app.test_request_context(
             f"/datasets/{dataset.id}/documents/status/enable",

@@ -91,7 +91,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 

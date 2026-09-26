@@ -5,11 +5,11 @@ from typing import cast
 from flask import Request as FlaskRequest
 
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.account_service import AccountService
 from services.workflow_collaboration_service import WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
@@ -43,8 +43,8 @@ def socket_connect(sid, environ, auth):
             logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
-        with sio.app.app_context(), session_factory.create_session() as session:
-            user = AccountService.load_logged_in_account(account_id=user_id, session=session)
+        with sio.app.app_context():
+            user = application_services().accounts.identity.load_user(user_id)
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
                 return False

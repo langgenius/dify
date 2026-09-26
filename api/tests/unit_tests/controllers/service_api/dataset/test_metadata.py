@@ -19,14 +19,17 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask, request
+from flask.typing import ResponseReturnValue
+from flask_restx import Api, Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
+from controllers.service_api import api as service_api
 from controllers.service_api.dataset import metadata as metadata_module
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
@@ -39,7 +42,59 @@ from models.account import Account, Tenant
 from models.dataset import Dataset
 from models.enums import PermissionEnum
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs, MetadataOperationData
+from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (NoPermissionError("Access denied"), 400, "invalid_param", "Access denied"),
+        (RuntimeError("backend detail"), 500, "unknown", "Internal Server Error"),
+    ],
+)
+def test_metadata_permission_error_http_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    account: Account,
+    mock_dataset: Dataset,
+    sqlite_session: Session,
+    error: Exception,
+    status: int,
+    code: str,
+    message: str,
+) -> None:
+    monkeypatch.setattr(metadata_module, "current_user", account)
+    monkeypatch.setattr(
+        metadata_module.DatasetService,
+        "get_dataset",
+        Mock(spec=metadata_module.DatasetService.get_dataset, return_value=mock_dataset),
+    )
+    monkeypatch.setattr(
+        metadata_module.DatasetService,
+        "check_dataset_permission",
+        Mock(spec=metadata_module.DatasetService.check_dataset_permission, side_effect=error),
+    )
+    create_metadata = Mock(spec=metadata_module.MetadataService.create_metadata)
+    monkeypatch.setattr(metadata_module.MetadataService, "create_metadata", create_metadata)
+    http_app = Flask(__name__)
+    http_api = Api(http_app, doc=False)
+    http_api.error_handlers = service_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def post(self) -> ResponseReturnValue:
+            return unwrap(DatasetMetadataCreateServiceApi.post)(
+                DatasetMetadataCreateServiceApi(),
+                MetadataArgs(type="string", name="author"),
+                sqlite_session,
+                mock_dataset.tenant_id,
+                uuid.UUID(mock_dataset.id),
+            )
+
+    http_api.add_resource(Endpoint, "/metadata")
+    response = http_app.test_client().post("/metadata")
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    create_metadata.assert_not_called()
 
 
 @pytest.fixture

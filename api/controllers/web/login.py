@@ -7,7 +7,7 @@ from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
 
-import services
+import services.account_errors
 from configs import dify_config
 from controllers.common.fields import (
     AccessTokenData,
@@ -34,7 +34,6 @@ from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token, resolve_web_app_id
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
 from libs.password import valid_password
@@ -42,7 +41,6 @@ from libs.token import (
     clear_webapp_access_token_from_cookie,
     extract_webapp_access_token,
 )
-from services.account_service import AccountService
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.auth_entities import LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
@@ -109,14 +107,14 @@ class LoginApi(Resource):
         normalized_email = payload.email.lower()
 
         try:
-            account = WebAppAuthService.authenticate(payload.email, payload.password, db.session())
-        except services.errors.account.AccountLoginError:
+            account = application_services().accounts.lifecycle.authenticate(payload.email, payload.password)
+        except services.account_errors.AccountLoginError:
             _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
-        except services.errors.account.AccountPasswordError:
+        except services.account_errors.AccountPasswordError:
             _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError()
-        except services.errors.account.AccountNotFoundError:
+        except services.account_errors.AccountNotFoundError:
             _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()
 
@@ -216,9 +214,11 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = WebAppAuthService.get_user_through_email(payload.email, db.session())
+        account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(payload.email)
         if account is None:
             raise AuthenticationFailedError()
+        if account.status == "banned":
+            raise Unauthorized("Account is banned.")
         token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
@@ -268,7 +268,9 @@ class EmailCodeLoginApi(Resource):
 
         WebAppAuthService.revoke_email_code_login_token(payload.token)
         try:
-            account = WebAppAuthService.get_user_through_email(token_email, db.session())
+            account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(token_email)
+            if account is not None and account.status == "banned":
+                raise Unauthorized("Account is banned.")
         except Unauthorized as exc:
             _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError() from exc
@@ -277,7 +279,7 @@ class EmailCodeLoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        AccountService.reset_login_error_rate_limit(user_email)
+        application_services().accounts.lifecycle.reset_login_failures(user_email)
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return AccessTokenResultResponse(result="success", data=AccessTokenData(access_token=token)).model_dump(
             mode="json"

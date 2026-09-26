@@ -8,8 +8,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.context import Context, RouteContractError
+from core.logging.context import clear_request_context, init_request_context
+from machinery.context import RequestContext
 from models.model import EndUser
-from tests.unit_tests.controllers.openapi.auth._world import make_ctx
+from tests.unit_tests.controllers.openapi.auth._world import ACCOUNT_ID, TENANT_ID, make_ctx, make_tenant
 
 READERS: dict[str, Callable[[Context], object]] = {
     "app": lambda ctx: ctx.app,
@@ -18,6 +20,7 @@ READERS: dict[str, Callable[[Context], object]] = {
     "caller": lambda ctx: ctx.caller,
     "account": lambda ctx: ctx.account,
     "end_user": lambda ctx: ctx.end_user,
+    "request_context": lambda ctx: ctx.request_context,
 }
 
 
@@ -33,3 +36,19 @@ def test_the_caller_is_read_as_what_it_is(sqlite_session: Session) -> None:
     ctx._caller = EndUser()
     with pytest.raises(RouteContractError, match="not the Account"):
         _ = ctx.account
+
+
+def test_application_context_keeps_identity_after_request_and_session_end(sqlite_session: Session) -> None:
+    init_request_context()
+    try:
+        ctx = make_ctx(sqlite_session)
+        ctx._workspace = make_tenant()
+        snapshot = ctx.request_context
+        assert snapshot.request_id
+        assert snapshot.trace_id
+    finally:
+        clear_request_context()
+    sqlite_session.close()
+
+    assert ctx.request_context == snapshot
+    assert snapshot == RequestContext(snapshot.request_id, snapshot.trace_id, ACCOUNT_ID, TENANT_ID)

@@ -21,7 +21,7 @@ import pytest
 from flask import Flask, g
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
@@ -363,9 +363,7 @@ class TestHitTestingApiPost:
         account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(
-            "Access denied"
-        )
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError("Access denied")
         mock_ns.payload = {"query": "test query"}
 
         with app.test_request_context():

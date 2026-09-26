@@ -1,15 +1,18 @@
 import uuid
 from inspect import unwrap
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from flask.typing import ResponseReturnValue
+from flask_restx import Api, Resource
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.rbac import DatasetId
+from controllers.console import api as console_api
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import (
     DatasetMetadataApi,
@@ -23,7 +26,7 @@ from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs, MetadataOperationData
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 from tests.unit_tests.config_override import config_overrides_context
@@ -67,6 +70,53 @@ def bypass_decorators(mocker: MockerFixture):
     mocker.patch("controllers.console.datasets.metadata.login_required", lambda f: f)
     mocker.patch("controllers.console.datasets.metadata.account_initialization_required", lambda f: f)
     mocker.patch("controllers.console.datasets.metadata.enterprise_license_required", lambda f: f)
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (NoPermissionError("Access denied"), 400, "invalid_param", "Access denied"),
+        (RuntimeError("backend detail"), 500, "unknown", "Internal Server Error"),
+    ],
+)
+def test_metadata_permission_error_http_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    current_user: Account,
+    dataset: Dataset,
+    sqlite_session: Session,
+    error: Exception,
+    status: int,
+    code: str,
+    message: str,
+) -> None:
+    monkeypatch.setattr(DatasetService, "get_dataset", Mock(spec=DatasetService.get_dataset, return_value=dataset))
+    monkeypatch.setattr(
+        DatasetService,
+        "check_dataset_permission",
+        Mock(spec=DatasetService.check_dataset_permission, side_effect=error),
+    )
+    create_metadata = Mock(spec=MetadataService.create_metadata)
+    monkeypatch.setattr(MetadataService, "create_metadata", create_metadata)
+    http_app = Flask(__name__)
+    http_api = Api(http_app, doc=False)
+    http_api.error_handlers = console_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def post(self) -> ResponseReturnValue:
+            return unwrap(DatasetMetadataCreateApi.post)(
+                DatasetMetadataCreateApi(),
+                MetadataArgs(type="string", name="author"),
+                sqlite_session,
+                "tenant-1",
+                current_user,
+                uuid.uuid4(),
+            )
+
+    http_api.add_resource(Endpoint, "/metadata")
+    response = http_app.test_client().post("/metadata")
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    create_metadata.assert_not_called()
 
 
 class TestDatasetMetadataCreateApi:

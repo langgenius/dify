@@ -1,7 +1,7 @@
 import base64
 import logging
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -10,13 +10,14 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
-import services.errors.account
+import services.account_errors
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
 from enums import DeploymentEdition
-from models.account import Account
+from extensions.ext_application_services import ApplicationServices
 from models.model import DifySetup
 from services.entities.auth_audit_entities import LoginFailureReason
+from tests.unit_tests.model_factories import make_account_snapshot
 
 pytestmark = [
     pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True),
@@ -71,14 +72,14 @@ def _patch_wraps(
 
 class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.web.login.WebAppAuthService.send_email_code_login_email")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
+    @patch("services.account.service.AccountService.get_account_by_email_with_case_fallback")
     def test_should_fetch_account_with_original_email(
         self,
         mock_get_user,
         mock_send_email,
         app: Flask,
     ):
-        account = Account(name="Test User", email="user@example.com")
+        account = make_account_snapshot(name="Test User", email="user@example.com")
         mock_get_user.return_value = account
         mock_send_email.return_value = "token-123"
 
@@ -90,14 +91,14 @@ class TestEmailCodeLoginSendEmailApi:
             response = EmailCodeLoginSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_get_user.assert_called_once_with("User@Example.com", ANY)
+        mock_get_user.assert_called_once_with("User@Example.com")
         mock_send_email.assert_called_once_with(account=account, language="en-US")
 
 
 class TestEmailCodeLoginApi:
-    @patch("controllers.web.login.AccountService.reset_login_error_rate_limit")
+    @patch("services.account.service.AccountService.reset_login_failures")
     @patch("controllers.web.login.WebAppAuthService.login", return_value="new-access-token")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
+    @patch("services.account.service.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
     @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data")
     def test_should_normalize_email_before_validating(
@@ -110,7 +111,7 @@ class TestEmailCodeLoginApi:
         app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
-        mock_get_user.return_value = Account(name="Test User", email="user@example.com")
+        mock_get_user.return_value = make_account_snapshot(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/email-code-login/validity",
@@ -120,7 +121,7 @@ class TestEmailCodeLoginApi:
             response = EmailCodeLoginApi().post()
 
         assert response == {"result": "success", "data": {"access_token": "new-access-token"}}
-        mock_get_user.assert_called_once_with("User@Example.com", ANY)
+        mock_get_user.assert_called_once_with("User@Example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_login.assert_called_once()
         mock_reset_login_rate.assert_called_once_with("user@example.com")
@@ -128,9 +129,9 @@ class TestEmailCodeLoginApi:
 
 class TestLoginApi:
     @patch("controllers.web.login.WebAppAuthService.login", return_value="access-tok")
-    @patch("controllers.web.login.WebAppAuthService.authenticate")
+    @patch("services.account.service.AccountService.authenticate")
     def test_login_success(self, mock_auth: MagicMock, mock_login: MagicMock, app: Flask) -> None:
-        mock_auth.return_value = Account(name="Test User", email="user@example.com")
+        mock_auth.return_value = make_account_snapshot(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/login",
@@ -143,8 +144,8 @@ class TestLoginApi:
         mock_auth.assert_called_once()
 
     @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountLoginError(),
+        "services.account.service.AccountService.authenticate",
+        side_effect=services.account_errors.AccountLoginError(),
     )
     def test_login_banned_account(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.error import AccountBannedError
@@ -161,8 +162,8 @@ class TestLoginApi:
         assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.ACCOUNT_BANNED)
 
     @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountPasswordError(),
+        "services.account.service.AccountService.authenticate",
+        side_effect=services.account_errors.AccountPasswordError(),
     )
     def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.auth.error import AuthenticationFailedError
@@ -179,8 +180,8 @@ class TestLoginApi:
         assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.INVALID_CREDENTIALS)
 
     @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountNotFoundError(),
+        "services.account.service.AccountService.authenticate",
+        side_effect=services.account_errors.AccountNotFoundError(),
     )
     def test_login_account_not_found(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.auth.error import AuthenticationFailedError
@@ -214,7 +215,7 @@ class TestLoginApi:
 
     @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
     @patch(
-        "controllers.web.login.WebAppAuthService.get_user_through_email",
+        "services.account.service.AccountService.get_account_by_email_with_case_fallback",
         side_effect=Unauthorized("Account is banned."),
     )
     @patch(
@@ -309,6 +310,11 @@ class TestLogoutApi:
 
         assert response.get_json() == {"result": "success"}
         mock_clear.assert_called_once()
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    monkeypatch.setattr("controllers.web.login.application_services", lambda: account_application_services)
 
 
 def test_unknown_web_app_code_returns_http_not_found(app: Flask) -> None:

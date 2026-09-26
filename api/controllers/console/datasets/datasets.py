@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
@@ -78,7 +78,7 @@ def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Acco
         raise NotFound("Dataset not found.")
     try:
         DatasetService.check_dataset_permission(dataset, current_user, session)
-    except services.errors.account.NoPermissionError as e:
+    except services.errors.base.NoPermissionError as e:
         raise Forbidden(str(e))
     return dataset
 
@@ -669,7 +669,7 @@ class DatasetApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
@@ -757,7 +757,6 @@ class DatasetApi(Resource):
             DatasetPermissionService.check_permission(
                 current_user, dataset, req_data.permission, req_data.partial_member_list, session=session
             )
-
         dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user, session=session)
 
         if dataset is None:
@@ -857,7 +856,7 @@ class DatasetQueryApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         page = request.args.get("page", default=1, type=int)
@@ -1034,7 +1033,7 @@ class DatasetRelatedAppListApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         app_dataset_joins = DatasetService.get_related_apps(dataset.id, session)
@@ -1262,7 +1261,7 @@ class DatasetPermissionUserListApi(Resource):
             raise NotFound("Dataset not found.")
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str, session)

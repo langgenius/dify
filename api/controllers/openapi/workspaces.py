@@ -12,8 +12,8 @@ account bearer and lets the view's own membership-scoped lookup answer 404.
 
 from __future__ import annotations
 
-from itertools import starmap
 from urllib import parse
+from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
@@ -23,7 +23,6 @@ from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -42,48 +41,35 @@ from controllers.openapi.auth.requirements import (
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWorkspaceInvitationQuota,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
-from enums import DeploymentEdition
-from models import Account, Tenant, TenantAccountJoin
-from models.account import TenantAccountRole
-from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import (
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
+from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
+from services.errors.base import NoPermissionError
+from services.errors.workspace import (
     AccountAlreadyInTenantError,
-    AccountNotLinkTenantError,
-    AccountRegisterError,
     CannotOperateSelfError,
+    InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
-    NoPermissionError,
     RoleAlreadyAssignedError,
-    SeatsLimitExceededError,
+    WorkspaceNotLinkedError,
 )
-from services.feature_service import FeatureService
+from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
 
 
-def _member_response(account: Account) -> MemberResponse:
+def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
     return MemberResponse(
         id=account.id,
         name=account.name,
         email=account.email,
-        role=account.role.value if account.role else "",
-        status=account.status.value if account.status else "",
+        role=account.legacy_role,
+        status=account.status,
         avatar=account.avatar,
     )
-
-
-def _check_member_invite_quota(tenant_id: str) -> None:
-    features = FeatureService.get_features(tenant_id)
-
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-        members = features.members
-        if 0 < members.limit <= members.size:
-            raise MemberLimitExceeded()
-
-    if features.workspace_members.enabled and not features.workspace_members.is_available(1):
-        raise MemberLicenseExceeded()
 
 
 @openapi_ns.route("/workspaces")
@@ -98,8 +84,8 @@ class WorkspacesApi(Resource):
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
-        rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
-        return WorkspaceListResponse.page_of(list(starmap(_workspace_summary, rows)), query=query)
+        rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
+        return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
@@ -116,12 +102,11 @@ class WorkspaceByIdApi(Resource):
         returns=(200, WorkspaceDetailResponse, "Workspace detail"),
     )
     def get(self, ctx: Context, workspace_id: str):
-        row = TenantService.find_workspace_for_account(str(ctx.subject.account_id), workspace_id, session=ctx.session)
+        row = application_services().workspaces.management.find_membership(str(ctx.subject.account_id), workspace_id)
         if row is None:
             raise NotFound("workspace not found")
 
-        tenant, membership = row
-        return _workspace_detail(tenant, membership)
+        return _workspace_detail(row)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>:switch")
@@ -148,15 +133,12 @@ class WorkspaceSwitchApi(Resource):
     )
     def post(self, ctx: Context, workspace_id: str):
         try:
-            TenantService.switch_tenant(ctx.account, workspace_id, session=ctx.session)
-        except AccountNotLinkTenantError:
-            raise NotFound("workspace not found")
-
-        row = TenantService.find_workspace_for_account(str(ctx.subject.account_id), workspace_id, session=ctx.session)
-        if row is None:
-            raise NotFound("workspace not found")
-        tenant, membership = row
-        return _workspace_detail(tenant, membership)
+            workspace = application_services().workspaces.management.switch_membership(
+                str(ctx.subject.account_id), workspace_id
+            )
+        except WorkspaceNotLinkedError:
+            raise NotFound("workspace not found") from None
+        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -181,8 +163,15 @@ class WorkspaceMembersApi(Resource):
         returns=(200, MemberListResponse, "Member list"),
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
-        members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
-        return MemberListResponse.page_of([_member_response(m) for m in members], query=query)
+        result = application_services().workspaces.member_queries.list_page(
+            ctx.request_context, page=query.page, limit=query.limit
+        )
+        return MemberListResponse.build(
+            page=query.page,
+            limit=query.limit,
+            total=result.total,
+            items=[_member_response(m) for m in result.members],
+        )
 
     @endpoint(
         op="workspace.members.invite",
@@ -198,26 +187,23 @@ class WorkspaceMembersApi(Resource):
             CheckWorkspaceMember(),
             CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+            CheckWorkspaceInvitationQuota(),
         ),
         body=MemberInvitePayload,
         returns=(201, MemberInviteResponse, "Member invited"),
     )
     def post(self, ctx: Context, workspace_id: str, *, body: MemberInvitePayload):
-        tenant = ctx.workspace
-
-        _check_member_invite_quota(tenant.id)
-
         try:
-            token = RegisterService.invite_new_member(
-                tenant=tenant,
+            invitation = application_services().workspaces.invitations.invite(
+                ctx.request_context,
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=ctx.account,
-                session=ctx.session,
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
+        except InvalidWorkspaceMemberRoleError as exc:
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
             raise BadRequest(str(exc))
         except SeatsLimitExceededError:
@@ -225,20 +211,7 @@ class WorkspaceMembersApi(Resource):
         except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
-        normalized_email = body.email.lower()
-        member = AccountService.get_account_by_email_with_case_fallback(normalized_email, session=ctx.session)
-        if member is None:
-            raise RuntimeError("invited member missing from DB after invite")
-
-        encoded_email = parse.quote(normalized_email)
-        invite_url = f"{dify_config.CONSOLE_WEB_URL}/activate?email={encoded_email}&token={token}"
-        return MemberInviteResponse(
-            email=normalized_email,
-            role=body.role,
-            member_id=member.id,
-            invite_url=invite_url,
-            tenant_id=tenant.id,
-        )
+        return _invitation_response(invitation)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>")
@@ -266,12 +239,11 @@ class WorkspaceMemberApi(Resource):
         returns=(200, MemberActionResponse, "Member removed"),
     )
     def delete(self, ctx: Context, workspace_id: str, member_id: str):
-        member = AccountService.get_account_by_id(member_id, session=ctx.session)
-        if member is None:
-            raise NotFound("member not found")
-
+        member_id = _parse_member_id(member_id)
         try:
-            TenantService.remove_member_from_tenant(ctx.workspace, member, ctx.account, session=ctx.session)
+            application_services().workspaces.members.remove(workspace_id, member_id, str(ctx.subject.account_id))
+        except AccountNotFoundError:
+            raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -300,12 +272,13 @@ class WorkspaceMemberApi(Resource):
         returns=(200, MemberActionResponse, "Role updated"),
     )
     def patch(self, ctx: Context, workspace_id: str, member_id: str, *, body: MemberRoleUpdatePayload):
-        member = AccountService.get_account_by_id(member_id, session=ctx.session)
-        if member is None:
-            raise NotFound("member not found")
-
+        member_id = _parse_member_id(member_id)
         try:
-            TenantService.update_member_role(ctx.workspace, member, body.role, ctx.account, session=ctx.session)
+            application_services().workspaces.members.update_role(
+                workspace_id, member_id, body.role, str(ctx.subject.account_id)
+            )
+        except AccountNotFoundError:
+            raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -314,26 +287,47 @@ class WorkspaceMemberApi(Resource):
             raise NotFound(str(exc))
         except RoleAlreadyAssignedError as exc:
             raise BadRequest(str(exc))
+        except InvalidWorkspaceMemberRoleError as exc:
+            raise BadRequest(str(exc)) from exc
 
         return MemberActionResponse()
 
 
-def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceSummaryResponse:
-    return WorkspaceSummaryResponse(
-        id=tenant.id,
-        name=tenant.name,
-        role=getattr(membership, "role", ""),
-        status=tenant.status,
-        current=getattr(membership, "current", False),
+def _parse_member_id(member_id: str) -> str:
+    # Permission comparisons must use the same identity as UUID database lookups.
+    try:
+        return str(UUID(member_id))
+    except ValueError:
+        raise NotFound("member not found") from None
+
+
+def _invitation_response(invitation: WorkspaceInvitation) -> MemberInviteResponse:
+    encoded_email = parse.quote(invitation.email)
+    return MemberInviteResponse(
+        email=invitation.email,
+        role=invitation.role,
+        member_id=invitation.account_id,
+        invite_url=f"{dify_config.CONSOLE_WEB_URL}/activate?email={encoded_email}&token={invitation.token}",
+        tenant_id=invitation.workspace_id,
     )
 
 
-def _workspace_detail(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceDetailResponse:
+def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
+    return WorkspaceSummaryResponse(
+        id=tenant.id,
+        name=tenant.name,
+        role=tenant.role or "",
+        status=tenant.status,
+        current=tenant.current,
+    )
+
+
+def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
     return WorkspaceDetailResponse(
         id=tenant.id,
         name=tenant.name,
-        role=getattr(membership, "role", ""),
+        role=tenant.role or "",
         status=tenant.status,
-        current=getattr(membership, "current", False),
+        current=tenant.current,
         created_at=tenant.created_at.isoformat() if tenant.created_at else None,
     )

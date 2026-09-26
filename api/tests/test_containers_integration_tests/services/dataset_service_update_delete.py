@@ -19,7 +19,7 @@ from models.enums import DataSourceType
 from models.model import App
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 
 class DatasetUpdateDeleteTestDataFactory:

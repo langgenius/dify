@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.fields import SimpleResultResponse
@@ -1069,7 +1069,7 @@ class RagPipelineTransformApi(Resource):
                 raise Forbidden()
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as exc:
+            except services.errors.base.NoPermissionError as exc:
                 raise Forbidden(str(exc)) from exc
 
         try:

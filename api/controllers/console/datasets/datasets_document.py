@@ -15,7 +15,7 @@ from sqlalchemy import asc, desc, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
@@ -304,7 +304,7 @@ class DocumentResource(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
@@ -325,7 +325,7 @@ class DocumentResource(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         documents = DocumentService.get_batch_documents(dataset_id, batch, session)
@@ -375,7 +375,7 @@ class GetProcessRuleApi(Resource):
 
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
+            except services.errors.base.NoPermissionError as e:
                 raise Forbidden(str(e))
 
             dataset_process_rule = dataset.get_latest_process_rule(session=session)
@@ -445,7 +445,7 @@ class DatasetDocumentListApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         query = select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
@@ -559,7 +559,7 @@ class DatasetDocumentListApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
@@ -613,7 +613,7 @@ class DatasetDocumentListApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         check_knowledge_rate_limit()
@@ -1505,7 +1505,7 @@ class DocumentRetryApi(DocumentResource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         documents = DocumentService.get_documents_by_ids(
@@ -1700,7 +1700,7 @@ class DocumentGenerateSummaryApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         document_list = req_data.document_list
@@ -1804,7 +1804,7 @@ class DocumentSummaryStatusApi(DocumentResource):
         # Check permissions
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         # Get summary status detail from service

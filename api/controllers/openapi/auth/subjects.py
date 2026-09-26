@@ -21,7 +21,6 @@ from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
-from services.account_service import AccountService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 _SUBJECT_CLASSES: dict[SubjectType, type[Subject]] = {}
@@ -87,7 +86,7 @@ class AccountSubject(Subject):
 
     @override
     def resolve_caller(self, ctx: Context, session: Session) -> Account:
-        account = AccountService.get_account_by_id(str(self.account_id), session=session)
+        account = application_services().accounts.identity.get_account_by_id(str(self.account_id))
         if account is None:
             raise Unauthorized("account not found")
         if ctx._workspace is not None:
@@ -143,7 +142,7 @@ class ExternalSsoSubject(Subject):
         identity = self.external_identity
         if identity is None:
             return None
-        account = AccountService.get_account_by_email(identity.email, session=session)
+        account = application_services().accounts.identity.get_account_by_email(identity.email)
         return str(account.id) if account is not None else None
 
 
