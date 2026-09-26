@@ -270,3 +270,6 @@ web/.vitest-reports/
 # dify-agent-runtime
 dify-agent-runtime/bin/
 dify-agent-runtime/.integration-state
+
+# Local Vite DevTools reports
+.devtools-oxc/

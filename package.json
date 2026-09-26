@@ -30,6 +30,7 @@
     "@types/node": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@typescript/native": "catalog:",
+    "@vitest/ui": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "eslint-config-flat-gitignore": "catalog:",
