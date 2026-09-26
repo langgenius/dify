@@ -278,8 +278,9 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
     try:
         extractor = WordExtractor(tmp_path, "tenant_id", "user_id")
         docs = extractor.extract()
-        # Verify modern hyperlink extraction
-        assert "Visit[Dify](https://dify.ai)" in docs[0].page_content
+        # Verify modern hyperlink extraction. The space before the link is the
+        # trailing whitespace of the preceding run and must survive run joining.
+        assert "Visit [Dify](https://dify.ai)" in docs[0].page_content
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
@@ -817,6 +818,112 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
         extractor = object.__new__(WordExtractor)
         out = extractor._parse_cell_paragraph(para, {})
         assert out == "[john@test.com](mailto:john@test.com)"
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_parse_docx_preserves_whitespace_at_run_boundaries():
+    """Runs created by inline formatting (bold/italic/hyperlinks) split a
+    paragraph into multiple w:r elements; the whitespace between them lives
+    inside a run and must survive extraction."""
+    doc = Document()
+    p = doc.add_paragraph()
+    p.add_run("The ")
+    bold_run = p.add_run("quick")
+    bold_run.bold = True
+    p.add_run(" brown fox")
+
+    p2 = doc.add_paragraph()
+    p2.add_run("Hello")
+    p2.add_run(" ")  # whitespace-only run must not be dropped
+    p2.add_run("world")
+
+    p3 = doc.add_paragraph()
+    p3.add_run("  padded edges  ")  # paragraph-level trim, not per-run
+
+    p4 = doc.add_paragraph()
+    break_run = p4.add_run("line1")
+    break_run.add_break()  # w:br renders as "\n" inside run.text
+    p4.add_run("line2")
+
+    doc.add_paragraph("   ")  # whitespace-only paragraph keeps the blank-line fallback
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        extractor = object.__new__(WordExtractor)
+        extractor._extract_images_from_docx = lambda d: {}
+        out = extractor.parse_docx(tmp_path)
+        lines = out.split("\n")
+        assert lines[0] == "The quick brown fox"
+        assert lines[1] == "Hello world"
+        assert lines[2] == "padded edges"
+        # Soft break inside a run survives the paragraph-level trim
+        assert lines[3] == "line1"
+        assert lines[4] == "line2"
+        # Whitespace-only paragraph still yields the blank-line element
+        assert lines[5] == ""
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_extract_legacy_hyperlinks_preserves_multi_run_display_text():
+    """Legacy HYPERLINK fields collect visible text through the same run
+    path as body text; boundary whitespace between display runs must survive."""
+    doc = Document()
+    p = doc.add_paragraph()
+
+    run1 = OxmlElement("w:r")
+    fld_char_begin = OxmlElement("w:fldChar")
+    fld_char_begin.set(qn("w:fldCharType"), "begin")
+    run1.append(fld_char_begin)
+    p._p.append(run1)
+
+    run2 = OxmlElement("w:r")
+    instr_text = OxmlElement("w:instrText")
+    _set_oxml_text(instr_text, ' HYPERLINK "http://example.com" ')
+    run2.append(instr_text)
+    p._p.append(run2)
+
+    run3 = OxmlElement("w:r")
+    fld_char_sep = OxmlElement("w:fldChar")
+    fld_char_sep.set(qn("w:fldCharType"), "separate")
+    run3.append(fld_char_sep)
+    p._p.append(run3)
+
+    # Visible text split across two runs (formatting boundary), trailing
+    # space of the first run is the only separator
+    run4 = OxmlElement("w:r")
+    t4a = OxmlElement("w:t")
+    _set_oxml_text(t4a, "Example ")
+    run4.append(t4a)
+    p._p.append(run4)
+
+    run4b = OxmlElement("w:r")
+    t4b = OxmlElement("w:t")
+    _set_oxml_text(t4b, "Site")
+    run4b.append(t4b)
+    p._p.append(run4b)
+
+    run5 = OxmlElement("w:r")
+    fld_char_end = OxmlElement("w:fldChar")
+    fld_char_end.set(qn("w:fldCharType"), "end")
+    run5.append(fld_char_end)
+    p._p.append(run5)
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        extractor = object.__new__(WordExtractor)
+        extractor._extract_images_from_docx = lambda d: {}
+        out = extractor.parse_docx(tmp_path)
+        assert "[Example Site](http://example.com)" in out
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
