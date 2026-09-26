@@ -5207,19 +5207,7 @@ export const zWorkflowCommentDetailWritable = z.object({
   updated_at: z.int().nullish(),
 })
 
-export const zAppConfigJsonValueWritable = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.array(z.lazy((): any => zAppConfigJsonValueWritable)),
-    z.record(
-      z.string(),
-      z.lazy((): any => zAppConfigJsonValueWritable),
-    ),
-  ])
-  .nullable()
+export const zAppConfigJsonValueWritable = z.json().nullable()
 
 export const zGetAppsQuery = z.object({
   creator_ids: z.array(z.string()).optional(),

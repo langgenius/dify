@@ -1,8 +1,12 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import type { z } from 'zod'
 import type { apps } from './generated/api/console/apps/orpc.gen.ts'
 import type { AppModelConfigPayload } from './generated/api/console/apps/types.gen.ts'
 import { describe, expect, it } from 'vite-plus/test'
-import { zAppModelConfigPayload } from './generated/api/console/apps/zod.gen.ts'
+import {
+  zAppConfigJsonValueWritable,
+  zAppModelConfigPayload,
+} from './generated/api/console/apps/zod.gen.ts'
 
 const model = {
   provider: 'langgenius/openai/openai',
@@ -15,6 +19,17 @@ const model = {
 } satisfies AppModelConfigPayload['model']
 
 describe('generated app model-config write contract', () => {
+  it('keeps recursive JSON strict in the generated writable schema', () => {
+    const value = { nested: [null, false, { count: 2 }] }
+    expect(zAppConfigJsonValueWritable.parse(value)).toEqual(value)
+
+    // @ts-expect-error The derived writable schema must reject non-JSON values at any depth.
+    const invalid: z.infer<typeof zAppConfigJsonValueWritable> = {
+      nested: { callback: () => true },
+    }
+    expect(zAppConfigJsonValueWritable.safeParse(invalid).success).toBe(false)
+  })
+
   it('preserves dynamic JSON parameters without synthesizing omitted configuration', () => {
     const body = {
       model: { ...model, provider_metadata: { cached: false } },
