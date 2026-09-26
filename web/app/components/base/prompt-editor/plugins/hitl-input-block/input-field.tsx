@@ -32,6 +32,13 @@ import TypeSwitch from './type-switch'
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
+const normalizeParagraphPayload = (payload: ParagraphFormInput): ParagraphFormInput => {
+  return {
+    ...payload,
+    default: payload.default || createDefaultParagraphFormInput().default,
+  }
+}
+
 type InputFieldProps = {
   nodeId: string
   isEdit: boolean
@@ -74,12 +81,7 @@ const InputField: React.FC<InputFieldProps> = ({
     ]
   }, [t])
   const paragraphPayload = useMemo<ParagraphFormInput>(() => {
-    if (isParagraphFormInput(tempPayload)) {
-      return {
-        ...tempPayload,
-        default: tempPayload.default || createDefaultParagraphFormInput().default,
-      }
-    }
+    if (isParagraphFormInput(tempPayload)) return normalizeParagraphPayload(tempPayload)
 
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
@@ -116,10 +118,12 @@ const InputField: React.FC<InputFieldProps> = ({
       createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name),
     )
   }, [])
-  const handleDefaultValueChange = useCallback(
-    (key: keyof FormInputItemDefault) => {
-      return (value: ValueSelector | string) => {
-        const nextValue = produce(paragraphPayload, (draft) => {
+  const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
+    return (value: ValueSelector | string) => {
+      setTempPayload((prev) => {
+        if (!isParagraphFormInput(prev)) return prev
+
+        return produce(normalizeParagraphPayload(prev), (draft) => {
           if (key === 'selector') {
             draft.default.type = 'variable'
             draft.default.selector = value as ValueSelector
@@ -130,11 +134,9 @@ const InputField: React.FC<InputFieldProps> = ({
             draft.default.type = value as 'constant' | 'variable'
           }
         })
-        setTempPayload(nextValue)
-      }
-    },
-    [paragraphPayload],
-  )
+      })
+    }
+  }, [])
   const handleSelectOptionsChange = useCallback((options: string[]) => {
     setTempPayload((prev) => {
       if (!isSelectFormInput(prev)) return prev
