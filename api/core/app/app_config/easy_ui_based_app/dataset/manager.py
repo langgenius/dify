@@ -207,6 +207,36 @@ class DatasetConfigManager:
         if not isinstance(config["agent_mode"]["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
 
+        # All app modes persist these tools, including modes that skip the agent validator.
+        for tool in config["agent_mode"]["tools"]:
+            if not isinstance(tool, dict):
+                continue
+            if all(field in tool for field in ("provider_type", "provider_id", "tool_name", "tool_parameters")):
+                tool_config = tool
+            else:
+                tool_name = next(
+                    (
+                        name
+                        for name in (
+                            "dataset",
+                            "google_search",
+                            "web_reader",
+                            "wikipedia",
+                            "current_datetime",
+                            "sensitive-word-avoidance",
+                        )
+                        if name in tool
+                    ),
+                    None,
+                )
+                if tool_name is None:
+                    continue
+                tool_config = tool[tool_name]
+                if not isinstance(tool_config, dict):
+                    continue
+            if "enabled" not in tool_config or tool_config["enabled"] is None:
+                tool_config["enabled"] = False
+
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER
