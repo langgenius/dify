@@ -1,4 +1,5 @@
-import type { Node, NodeProps } from 'reactflow'
+import type { ContextMenuActions } from '@langgenius/dify-ui/context-menu'
+import type { Edge, Node, NodeProps } from 'reactflow'
 import type { StoreApi } from 'zustand'
 import {
   ContextMenu,
@@ -7,16 +8,19 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ReactFlowProvider } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createStore, useStore } from 'zustand'
 import { WorkflowContext } from '../../context'
+import { EdgeContextmenu } from '../../edge-contextmenu'
 import { NodeActionsDropdown } from '../../node-actions-menu'
+import { NodeActionsContextMenuContent } from '../../node-actions-menu/context-menu-content'
 import { NoteEditor, NoteEditorContextProvider } from '../../note-node/note-editor'
 import NoteOperator from '../../note-node/note-editor/toolbar/operator'
+import { SelectionContextmenu } from '../../selection-contextmenu'
 import { createWorkflowStore } from '../../store/workflow'
 import { BlockEnum } from '../../types'
 import { WorkflowCanvas } from '../workflow-canvas'
@@ -57,13 +61,16 @@ vi.mock('../../hooks/use-nodes-interactions', () => ({
   }),
 }))
 vi.mock('../../hooks/use-edges-interactions', () => ({
-  useEdgesInteractions: () => ({ handleEdgeDelete: actions.deleteEdge }),
+  useEdgesInteractions: () => ({
+    handleEdgeDelete: actions.deleteEdge,
+    handleEdgeDeleteById: actions.deleteEdge,
+  }),
 }))
 vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: actions.save }),
 }))
 vi.mock('../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
 }))
 vi.mock('../../hooks/use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({ handleLayout: actions.organize }),
@@ -92,6 +99,22 @@ vi.mock('../../hooks/use-nodes-meta-data', () => ({
 }))
 vi.mock('@/service/use-tools', () => ({ useAllWorkflowTools: () => ({ data: [] }) }))
 vi.mock('../../node-actions-menu/change-block-popup', () => ({ ChangeBlockPopup: () => null }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: [] }))
+})
+vi.mock('@/app/components/snippets/hooks/use-create-snippet-from-selection', () => ({
+  useCreateSnippetFromSelection: () => ({
+    createSnippetDialog: null,
+    handleOpenCreateSnippet: () => {},
+    isCreateSnippetDialogOpen: false,
+  }),
+}))
+vi.mock('../../hooks/use-workflow-history', () => ({
+  WorkflowHistoryEvent: { NodeDragStop: 'NodeDragStop' },
+  useWorkflowHistory: () => ({ saveStateToHistory: () => {} }),
+}))
 
 function NodeWithMenu({ id }: NodeProps) {
   return (
@@ -124,18 +147,39 @@ const nodeTypes = { menu: NodeWithMenu, note: NoteWithMenu }
 const initialNodes: Node[] = [
   { id: 'node', position: { x: 350, y: 150 }, data: { label: 'Workflow node' } },
 ]
-const createGraph = () => createStore<{ nodes: Node[] }>(() => ({ nodes: initialNodes }))
+type GraphState = { nodes: Node[]; edges: Edge[] }
+const createGraph = () => createStore<GraphState>(() => ({ nodes: initialNodes, edges: [] }))
 
-function Canvas({ graph }: { graph?: StoreApi<{ nodes: Node[] }> }) {
+function Canvas({
+  graph,
+  contextMenuType,
+}: {
+  graph?: StoreApi<GraphState>
+  contextMenuType?: 'node' | 'edge' | 'selection'
+}) {
+  const contextMenuActionsRef = useRef<ContextMenuActions>(null)
   const [defaultGraph] = useState(createGraph)
   const nodes = useStore(graph ?? defaultGraph, (state) => state.nodes)
+  const edges = useStore(graph ?? defaultGraph, (state) => state.edges)
   const [store] = useState(() => createWorkflowStore({}))
   return (
     <WorkflowContext value={store}>
       <ReactFlowProvider>
-        <ContextMenu>
+        <ContextMenu actionsRef={contextMenuActionsRef}>
           <ContextMenuTrigger render={<div style={{ width: 800, height: 500 }} />}>
-            <WorkflowCanvas nodes={nodes} edges={[]} nodeTypes={nodeTypes}>
+            <WorkflowCanvas
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              selectionOnDrag={contextMenuType === 'selection'}
+              panOnDrag={contextMenuType !== 'selection'}
+              onSelectionContextMenu={() =>
+                store.setState({ contextMenuTarget: { type: 'selection' } })
+              }
+              onEdgeContextMenu={(_, edge) =>
+                store.setState({ contextMenuTarget: { type: 'edge', edgeId: edge.id } })
+              }
+            >
               <textarea
                 aria-label="Node prompt"
                 style={{ position: 'absolute', zIndex: 5, top: 20, left: 20 }}
@@ -157,9 +201,24 @@ function Canvas({ graph }: { graph?: StoreApi<{ nodes: Node[] }> }) {
               {createPortal(<button>Popup action</button>, document.body)}
             </WorkflowCanvas>
           </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem>Canvas menu action</ContextMenuItem>
-          </ContextMenuContent>
+          {contextMenuType === 'node' ? (
+            nodes.length > 0 && (
+              <NodeActionsContextMenuContent
+                id="node"
+                data={{ type: BlockEnum.Code, title: 'Workflow node', desc: '' }}
+                onClose={() => contextMenuActionsRef.current?.close()}
+                showHelpLink={false}
+              />
+            )
+          ) : contextMenuType === 'selection' ? (
+            <SelectionContextmenu onClose={() => contextMenuActionsRef.current?.close()} />
+          ) : contextMenuType === 'edge' ? (
+            <EdgeContextmenu onClose={() => contextMenuActionsRef.current?.close()} />
+          ) : (
+            <ContextMenuContent>
+              <ContextMenuItem>Canvas menu action</ContextMenuItem>
+            </ContextMenuContent>
+          )}
         </ContextMenu>
         <input aria-label="Outside canvas input" />
       </ReactFlowProvider>
@@ -300,3 +359,99 @@ it.each(['menu', 'note'])(
     expect(actions.undo).toHaveBeenCalledTimes(1)
   },
 )
+
+it('returns to canvas undo after a node context-menu action removes the focused node', async () => {
+  await page.viewport(1000, 700)
+  const graph = createGraph()
+  actions.deleteNodes.mockImplementation(() => graph.setState({ nodes: [] }))
+  actions.undo.mockImplementation(() => graph.setState({ nodes: initialNodes }))
+  const screen = await render(<Canvas graph={graph} contextMenuType="node" />)
+  const node = screen.getByRole('button', { name: 'Workflow node' })
+  await node.click({ button: 'right' })
+  await screen.getByRole('menuitem', { name: /common.operation.delete/ }).click()
+  await expect.element(node).not.toBeInTheDocument()
+  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+  await expect.element(canvas).toHaveFocus()
+  const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
+  await expect.element(node).toBeInTheDocument()
+  expect(actions.undo).toHaveBeenCalledTimes(1)
+})
+
+it('returns to canvas undo after an edge context-menu action removes the focused edge', async () => {
+  await page.viewport(1000, 700)
+  const graph = createGraph()
+  const nodes = [
+    ...initialNodes,
+    { id: 'other', position: { x: 500, y: 300 }, data: { label: 'Other node' } },
+  ]
+  const edges = [{ id: 'edge', source: 'node', target: 'other' }]
+  graph.setState({ nodes, edges })
+  actions.deleteEdge.mockImplementation(() => graph.setState({ edges: [] }))
+  actions.undo.mockImplementation(() => graph.setState({ edges }))
+  const screen = await render(<Canvas graph={graph} contextMenuType="edge" />)
+  const edge = screen.getByTestId('rf__edge-edge')
+  const outsideInput = screen.getByLabelText('Outside canvas input')
+  await outsideInput.click()
+  await edge.click({ button: 'right' })
+  await screen.getByRole('menuitem', { name: /common.operation.delete/ }).click()
+  await expect.element(edge).not.toBeInTheDocument()
+  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+  await expect.element(canvas).toHaveFocus()
+  const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
+  await expect.element(edge).toBeInTheDocument()
+  expect(actions.undo).toHaveBeenCalledTimes(1)
+  await edge.click({ button: 'right' })
+  await userEvent.keyboard('{Escape}')
+  await expect.element(canvas).toHaveFocus()
+  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
+  expect(actions.undo).toHaveBeenCalledTimes(2)
+})
+
+it('returns to canvas undo after a selection context-menu action removes the focused selection', async () => {
+  await page.viewport(1000, 700)
+  const graph = createGraph()
+  const nodes = [
+    ...initialNodes,
+    { id: 'other', position: { x: 500, y: 300 }, data: { label: 'Other node' } },
+  ]
+  graph.setState({ nodes })
+  actions.deleteNodes.mockImplementation(() => graph.setState({ nodes: [] }))
+  actions.undo.mockImplementation(() => graph.setState({ nodes }))
+  const screen = await render(<Canvas graph={graph} contextMenuType="selection" />)
+  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+  await userEvent.dragAndDrop(canvas, canvas, {
+    sourcePosition: { x: 300, y: 120 },
+    targetPosition: { x: 700, y: 380 },
+    steps: 5,
+  })
+  await expect
+    .poll(() => canvas.element().querySelector('.react-flow__nodesselection-rect'))
+    .not.toBeNull()
+  await canvas.click({ button: 'right', position: { x: 450, y: 220 } })
+  await screen.getByRole('menuitem', { name: /common.operation.delete/ }).click()
+  await expect
+    .element(screen.getByRole('button', { name: 'Workflow node' }))
+    .not.toBeInTheDocument()
+  await expect.element(canvas).toHaveFocus()
+  const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
+  await expect.element(screen.getByRole('button', { name: 'Workflow node' })).toBeInTheDocument()
+  expect(actions.undo).toHaveBeenCalledTimes(1)
+})
+
+it('keeps focus on an outside input when it dismisses a node dropdown', async () => {
+  await page.viewport(1000, 700)
+  const graph = createGraph()
+  graph.setState({ nodes: initialNodes.map((node) => ({ ...node, type: 'menu' })) })
+  const screen = await render(<Canvas graph={graph} />)
+  await screen.getByRole('button', { name: 'common.operation.more' }).click()
+  await expect.element(screen.getByRole('menuitem', { name: /workflow.common.copy/ })).toBeVisible()
+  const outsideInput = screen.getByRole('textbox', { name: 'Outside canvas input' })
+  await outsideInput.click()
+  await expect
+    .element(screen.getByRole('menuitem', { name: /workflow.common.copy/ }))
+    .not.toBeInTheDocument()
+  await expect.element(outsideInput).toHaveFocus()
+})

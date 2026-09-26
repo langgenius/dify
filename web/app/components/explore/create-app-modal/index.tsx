@@ -8,7 +8,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -68,7 +68,6 @@ const CreateAppModal = ({
   confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
-  const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null)
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
@@ -148,30 +147,28 @@ const CreateAppModal = ({
 
   const submitDisabled =
     isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
-  useHotkey(
-    SUBMIT_APP_HOTKEY,
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      handleSubmit()
-    },
-    {
-      target: dialogElement,
-      enabled: !!dialogElement && show && !submitDisabled && !showAppIconPicker,
-      ignoreInputs: false,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
 
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
         <DialogContent
-          ref={setDialogElement}
+          onKeyDown={(event) => {
+            if (
+              !show ||
+              submitDisabled ||
+              showAppIconPicker ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            handleSubmit()
+          }}
           backdropProps={{ forceRender: true }}
           className="px-8"
         >

@@ -6,7 +6,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -35,6 +35,7 @@ type PublisherSummarySectionProps = Pick<
   handleRestore: () => Promise<void>
   environmentTabs?: ReactNode
   isChatApp: boolean
+  isPublishing: boolean
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   published: boolean
@@ -50,6 +51,7 @@ export function PublisherSummarySection({
   handlePublish,
   handleRestore,
   isChatApp,
+  isPublishing,
   isWorkflowApp = false,
   multipleModelConfigs = [],
   onEditVersion,
@@ -61,8 +63,6 @@ export function PublisherSummarySection({
   versionInfo,
 }: PublisherSummarySectionProps) {
   const summaryRef = useRef<HTMLDivElement>(null)
-  const publishingRef = useRef(false)
-  const [publishing, setPublishing] = useState(false)
   const { t } = useTranslation(['workflow', 'workflowHistory'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
@@ -70,23 +70,16 @@ export function PublisherSummarySection({
   const publisherName = versionInfo?.created_by?.name
   const markedName = versionInfo?.marked_name
   const markedComment = versionInfo?.marked_comment
-  const publishButtonDisabled = publishDisabled || published || publishing
+  const publishButtonDisabled = publishDisabled || published
   const publishButtonLabel = published
     ? t(($) => $['common.published'], { ns: 'workflow' })
     : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
       : t(($) => $['common.publish'], { ns: 'workflow' })
 
-  async function requestPublish(params?: ModelAndParameter | PublishWorkflowParams) {
-    if (publishButtonDisabled || publishingRef.current) return
-    publishingRef.current = true
-    setPublishing(true)
-    try {
-      await handlePublish(params)
-    } finally {
-      publishingRef.current = false
-      setPublishing(false)
-    }
+  function requestPublish(params?: ModelAndParameter | PublishWorkflowParams) {
+    if (publishButtonDisabled || isPublishing) return
+    return handlePublish(params)
   }
 
   useHotkey(
@@ -100,7 +93,7 @@ export function PublisherSummarySection({
     },
     {
       target: summaryRef,
-      enabled: !publishButtonDisabled && !debugWithMultipleModel,
+      enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
       ignoreInputs: false,
       requireReset: false,
       preventDefault: false,
@@ -211,7 +204,7 @@ export function PublisherSummarySection({
       <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
-            disabled={publishButtonDisabled}
+            disabled={publishButtonDisabled || isPublishing}
             multipleModelConfigs={multipleModelConfigs}
             onSelect={(item) => requestPublish(item)}
           />
@@ -222,6 +215,7 @@ export function PublisherSummarySection({
               className="w-full"
               onClick={() => void requestPublish()}
               disabled={publishButtonDisabled}
+              loading={isPublishing}
             >
               {publishDisabled ? (
                 publishButtonLabel

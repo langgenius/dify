@@ -195,6 +195,71 @@ describe('CreateSnippetDialog', () => {
     )
   })
 
+  it('handles the first shortcut after opening and reopening its portal without a draft change', async () => {
+    const onConfirm = vi.fn()
+    const props = {
+      initialValue: { name: 'Portal snippet' },
+      onClose: vi.fn(),
+      onConfirm,
+    }
+    const { rerender } = render(<CreateSnippetDialog {...props} isOpen={false} />)
+    for (let opened = 1; opened <= 2; opened++) {
+      rerender(<CreateSnippetDialog {...props} isOpen />)
+      const input = await screen.findByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+      const repeat = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        repeat: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(input, repeat)
+      expect(repeat.defaultPrevented).toBe(true)
+      expect(onConfirm).toHaveBeenCalledTimes(opened - 1)
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+      rerender(<CreateSnippetDialog {...props} isOpen={false} />)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+    }
+  })
+
+  it('lets a child React handler claim the shortcut before the dialog action', () => {
+    const onConfirm = vi.fn()
+    render(
+      <CreateSnippetDialog
+        isOpen
+        initialValue={{ name: 'Nested control' }}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+    const dialog = screen.getByRole('dialog')
+    const childContainer = document.createElement('div')
+    dialog.append(childContainer)
+    const childClaim = vi.fn((event: React.KeyboardEvent<HTMLButtonElement>) =>
+      event.preventDefault(),
+    )
+    const child = render(
+      <button type="button" onKeyDown={childClaim}>
+        Child action
+      </button>,
+      { container: childContainer },
+    )
+    const options = { key: 'Enter', ctrlKey: true }
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
+    expect(childClaim).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
+
+    child.rerender(<button type="button">Child action</button>)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
+    expect(onConfirm).toHaveBeenCalledOnce()
+
+    child.unmount()
+  })
+
   it('should disable form controls while submitting', () => {
     render(
       <CreateSnippetDialog

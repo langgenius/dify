@@ -323,8 +323,6 @@ const Item: FC<ItemProps> = ({
 }
 
 type Props = Readonly<{
-  hideSearch?: boolean
-  keyboardTarget?: HTMLElement | null
   searchText?: string
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
@@ -339,7 +337,11 @@ type Props = Readonly<{
   onManageInputField?: () => void
   searchInputRef?: RefObject<HTMLInputElement | null>
   preferSchemaType?: boolean
-}>
+}> &
+  (
+    | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
+    | { hideSearch?: false; keyboardTarget?: never }
+  )
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
   keyboardTarget,
@@ -467,6 +469,8 @@ const VarReferenceVars: FC<Props> = ({
 
   useEffect(() => {
     if (!hideSearch || !keyboardTarget) return
+    const target = 'current' in keyboardTarget ? keyboardTarget.current : keyboardTarget
+    if (!target) return
 
     const handleTargetKeyDown = (event: KeyboardEvent) => {
       if (
@@ -482,8 +486,8 @@ const VarReferenceVars: FC<Props> = ({
       handleKeyboardEvent(event)
     }
 
-    keyboardTarget.addEventListener('keydown', handleTargetKeyDown, true)
-    return () => keyboardTarget.removeEventListener('keydown', handleTargetKeyDown, true)
+    target.addEventListener('keydown', handleTargetKeyDown, true)
+    return () => target.removeEventListener('keydown', handleTargetKeyDown, true)
   }, [handleKeyboardEvent, hideSearch, keyboardTarget])
 
   return (

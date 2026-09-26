@@ -2,7 +2,7 @@ import type { VariableAssignerNodeType } from '../../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import { useVariableAssigner } from '../../hooks'
 
@@ -19,6 +19,7 @@ const AddVariable = ({
   handleId,
 }: AddVariableProps) => {
   const [open, setOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
   const handleSelectVariable = useCallback(
@@ -63,11 +64,16 @@ const AddVariable = ({
           )}
         />
         <PopoverContent
+          ref={popupRef}
           placement="right"
           sideOffset={4}
           className="border-none bg-transparent shadow-none"
         >
-          <AddVariablePopup onSelect={handleSelectVariable} availableVars={availableVars} />
+          <AddVariablePopup
+            onSelect={handleSelectVariable}
+            availableVars={availableVars}
+            keyboardTarget={popupRef}
+          />
         </PopoverContent>
       </Popover>
     </div>

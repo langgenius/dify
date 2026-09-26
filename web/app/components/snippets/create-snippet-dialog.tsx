@@ -13,7 +13,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -63,7 +63,6 @@ export function CreateSnippetDialog({
   const nameInputId = useId()
   const descriptionInputId = useId()
   const { t } = useTranslation(['common', 'workflow'])
-  const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
@@ -94,32 +93,29 @@ export function CreateSnippetDialog({
     onConfirm(payload)
   }
 
-  useHotkey(
-    CREATE_SNIPPET_HOTKEY,
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      handleConfirm()
-    },
-    {
-      enabled: !!popupElement && isOpen && !isSubmitting && !!name.trim(),
-      requireReset: false,
-      ignoreInputs: false,
-      preventDefault: false,
-      stopPropagation: false,
-      target: popupElement,
-    },
-  )
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
-            ref={setPopupElement}
+            onKeyDown={(event) => {
+              if (
+                !isOpen ||
+                isSubmitting ||
+                !name.trim() ||
+                event.defaultPrevented ||
+                event.nativeEvent.isComposing ||
+                !(event.target instanceof Node) ||
+                !event.currentTarget.contains(event.target) ||
+                !matchesKeyboardEvent(event.nativeEvent, CREATE_SNIPPET_HOTKEY)
+              )
+                return
+              event.preventDefault()
+              event.stopPropagation()
+              if (event.repeat) return
+              handleConfirm()
+            }}
             initialFocus={nameInputRef}
             className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-120 -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
           >

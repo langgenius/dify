@@ -11,6 +11,7 @@ export function WorkflowCanvas({
   onBlur,
   onPaneClick,
   onNodeClick,
+  onEdgeContextMenu,
   onNodeDragStart,
   onSelectionStart,
   ...props
@@ -70,6 +71,11 @@ export function WorkflowCanvas({
         )
           event.currentTarget.focus({ preventScroll: true })
         onNodeClick?.(event, node)
+      }}
+      onEdgeContextMenu={(event, edge) => {
+        // SVG edge anchors cannot be the menu primitive's HTML focus return target.
+        focusCanvas()
+        onEdgeContextMenu?.(event, edge)
       }}
       onNodeDragStart={(event, node, nodes) => {
         focusCanvas()

@@ -39,6 +39,7 @@ function PublisherPanelHarness() {
             handlePublish: vi.fn(),
             handleRestore: vi.fn(),
             isChatApp: false,
+            isPublishing: false,
             published: false,
             upgradeHighlightStyle: {},
           },

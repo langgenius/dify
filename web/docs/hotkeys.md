@@ -6,16 +6,16 @@ their existing owner: Lexical commands, Base UI dismissal/navigation, or a local
 
 ## Choose the owner
 
-| Behavior                                                                      | Registration                                                                                                       |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Global search or detail-sidebar toggle                                        | Document-level `useHotkey` in the application shell.                                                               |
-| Run or publish the current page                                               | Document-level `useHotkey` in the mounted page feature, sharing the button's availability.                         |
-| Submit a dialog, edit card, or publisher popup                                | `useHotkey` with the actual form or popup's ref as `target`.                                                       |
-| Workflow copy, delete, save, or canvas modes                                  | `useHotkeys` on document, accepting only events within the focused ReactFlow root ref after nested React handlers. |
-| File-tree clipboard commands                                                  | The file tree and its own portalled menus; native clipboard handling stays with the tree.                          |
-| Menu navigation, primitive dismissal, text editing, resize, or tree traversal | The widget, editor, or primitive's local keyboard handling.                                                        |
-| A modifier held during an interaction                                         | `useKeyHold`; key state is not command ownership.                                                                  |
-| A keycap hint                                                                 | `formatForDisplay` and Dify UI `Kbd`; displaying a hint does not register a command.                               |
+| Behavior                                                                      | Registration                                                                                                                      |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Global search or detail-sidebar toggle                                        | Document-level `useHotkey` in the application shell.                                                                              |
+| Run or publish the current page                                               | Document-level `useHotkey` in the mounted page feature, sharing the button's availability.                                        |
+| Submit a dialog, edit card, or publisher popup                                | The actual form or popup: use its React `onKeyDown` with `matchesKeyboardEvent`, or a local `useHotkey` with its ref as `target`. |
+| Workflow copy, delete, save, or canvas modes                                  | `useHotkeys` on document, accepting only events within the focused ReactFlow root ref after nested React handlers.                |
+| File-tree clipboard commands                                                  | The file tree and its own portalled menus; native clipboard handling stays with the tree.                                         |
+| Menu navigation, primitive dismissal, text editing, resize, or tree traversal | The widget, editor, or primitive's local keyboard handling.                                                                       |
+| A modifier held during an interaction                                         | `useKeyHold`; key state is not command ownership.                                                                                 |
+| A keycap hint                                                                 | `formatForDisplay` and Dify UI `Kbd`; displaying a hint does not register a command.                                              |
 
 Put refs on existing behavior owners; do not add wrapper DOM just for keyboard scope. Pass the
 ref itself to `target`, not `ref.current` read during render. Focused descendants' events bubble
@@ -23,10 +23,17 @@ to their owner, so the owner does not need an extra tab stop just to listen. A c
 receives focus does need a focusable root and visible focus indicator.
 
 A ref becoming non-null does not cause a React render. If a Portal mounts its content after the
-registering component's effect, move registration and the interaction state into the mounted
-content owner. When a parent genuinely owns a transaction with an independently mounted form,
-use a state callback ref and pass the resulting element as `target`, with `enabled` requiring
-that element. Do not add a parent effect or a listener-only component to patch a misplaced owner.
+registering component's effect, move registration and session state into the mounted content
+owner when their lifetimes belong together. When a parent genuinely coordinates a transaction
+across independently mounted surfaces, a local React `onKeyDown` can match the command at the
+actual form or popup without changing that state ownership. For form submission, call
+`event.currentTarget.requestSubmit()`. Do not add a parent effect, element state, or a
+listener-only component merely to bind a local key handler.
+
+A state callback ref is appropriate when an actual registration or external subscription needs
+to react to DOM target replacement. In that case, pass the element as `target` and require it in
+`enabled`; a null element otherwise falls back to document. This is a lifecycle tool, not the
+default pattern for a form shortcut.
 
 Portals follow the real DOM event path. A React-owned popup is not automatically inside its
 parent’s native `target`. Bind to the actual popup or handle its keys through its owning React
@@ -47,9 +54,11 @@ Workflow has several keyboard owners; mounting them on the same page does not me
 | Comments and popups          | The focused comment or actual popup owns dismissal and submission. Mention suggestions get Escape before the comment. Portalled forms do not inherit canvas ownership.                                                                                                        |
 
 Do not use the outer Workflow container as a shortcut target: it also contains panels and
-overlays. Returning focus to the canvas is an explicit transition. Before keyboard deletion or
-graph undo/redo can remove a focused node, return focus to the canvas so the next command still
-has an owner. Text undo stays in Lexical through the event boundary; do not mirror editor focus
+overlays. Returning focus to the canvas is an explicit transition. Canvas keyboard deletion and
+graph undo/redo focus the canvas before removing a focused node. Portalled menus that delete
+their focus-return target use the actual Popup's `finalFocus` during dismissal; focusing the
+canvas while the menu is still open does not reliably survive its focus management. Text undo
+stays in Lexical through the event boundary; do not mirror editor focus
 into a Workflow history-enabled store flag. Hold-to-dim uses key state plus canvas focus and
 clears on focus loss. Escape during comment placement belongs to that active placement state,
 because the pointer-following preview intentionally does not take focus.
@@ -155,8 +164,10 @@ or the library's `Mod` alias.
 
 ## Keep local semantics and verify the boundary
 
-Use `matchesKeyboardEvent(event.nativeEvent, binding)` in an existing React `onKeyDown` when
-that widget owns a combination. Do not recreate modifier parsing or add a global listener.
+Use `matchesKeyboardEvent(event.nativeEvent, binding)` in React `onKeyDown` when the form,
+popup, or widget owns a combination. Check `defaultPrevented` after nested React handlers, and
+reject targets outside `event.currentTarget` so a nested Portal cannot submit its React ancestor.
+Do not recreate modifier parsing or add a global listener.
 Chat/composer submission, Lexical history and formatting, slash menus, variable pickers,
 inline edits, tree navigation, resize, and primitive dismissal remain local. The standalone
 embed script and Node CLI readline input are also intentionally outside React hotkey hooks.

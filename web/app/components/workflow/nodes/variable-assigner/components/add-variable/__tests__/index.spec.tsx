@@ -1,6 +1,7 @@
 import type { VariableAssignerNodeType } from '../../../types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import AddVariable from '../index'
 
@@ -76,5 +77,39 @@ describe('variable-assigner/add-variable', () => {
       }),
       'group-1',
     )
+  })
+
+  it('assigns the highlighted variable from the focused popup without handling outside keys', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <input aria-label="Outside" />
+        <AddVariable
+          availableVars={[
+            {
+              ...availableVars[0]!,
+              vars: [...availableVars[0]!.vars, { variable: 'second', type: VarType.string }],
+            },
+          ]}
+          variableAssignerNodeId="node-target"
+          variableAssignerNodeData={nodeData}
+        />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button'))
+    const popup = screen.getByRole('dialog')
+    expect(popup).toContainElement(document.activeElement as HTMLElement)
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(mockHandleAssignVariableValueChange).toHaveBeenCalledWith(
+      'node-target',
+      ['node-source', 'second'],
+      expect.objectContaining({ variable: 'second' }),
+      undefined,
+    )
+    await user.click(screen.getByRole('textbox', { name: 'Outside' }))
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(mockHandleAssignVariableValueChange).toHaveBeenCalledTimes(1)
   })
 })

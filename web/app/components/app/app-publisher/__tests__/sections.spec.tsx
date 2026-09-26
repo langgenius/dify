@@ -4,11 +4,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
+import { usePublishController } from '../publisher-content/use-publish-controller'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({
@@ -60,12 +62,29 @@ function PublisherPopup(props: Partial<ComponentProps<typeof PublisherSummarySec
           handlePublish={vi.fn().mockResolvedValue(undefined)}
           handleRestore={vi.fn().mockResolvedValue(undefined)}
           isChatApp={false}
+          isPublishing={false}
           published={false}
           upgradeHighlightStyle={{}}
           {...props}
         />
       </PopoverContent>
     </Popover>
+  )
+}
+
+function PublishingPopup({ onPublish }: { onPublish: () => Promise<void> }) {
+  const publish = usePublishController({
+    appMode: AppModeEnum.CHAT,
+    supportsMultiEnvironment: false,
+    onClose: () => {},
+    onPublish,
+  })
+  return (
+    <PublisherPopup
+      handlePublish={publish.handlePublish}
+      published={publish.published}
+      isPublishing={publish.isPublishing}
+    />
   )
 }
 
@@ -128,16 +147,70 @@ describe('app-publisher sections', () => {
           resolvePublish = resolve
         }),
     )
-    render(<PublisherPopup handlePublish={handlePublish} />)
+    render(<PublishingPopup onPublish={handlePublish} />)
     await user.click(screen.getByRole('button', { name: 'Open publisher' }))
     const button = screen.getByRole('button', { name: /common\.publish\b/ })
     publishFrom(button)
-    expect(button).toBeDisabled()
+    expectLoadingButton(button)
     publishFrom(button)
     await user.click(button)
     expect(handlePublish).toHaveBeenCalledTimes(1)
     await act(async () => resolvePublish())
-    await waitFor(() => expect(button).not.toBeDisabled())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled(),
+    )
+  })
+
+  it('keeps a pending publication locked when its popup closes and reopens', async () => {
+    const user = userEvent.setup()
+    let resolvePublish: () => void = () => {}
+    const onPublish = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePublish = resolve
+        }),
+    )
+    render(<PublishingPopup onPublish={onPublish} />)
+    const trigger = screen.getByRole('button', { name: 'Open publisher' })
+    await user.click(trigger)
+    publishFrom(screen.getByRole('button', { name: /common\.publish\b/ }))
+    expect(onPublish).toHaveBeenCalledOnce()
+    await user.click(trigger)
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /common\.publish\b/ })).not.toBeInTheDocument(),
+    )
+    await user.click(trigger)
+    const reopenedButton = screen.getByRole('button', { name: /common\.publish\b/ })
+    expectLoadingButton(reopenedButton)
+    publishFrom(reopenedButton)
+    await user.click(reopenedButton)
+    expect(onPublish).toHaveBeenCalledOnce()
+    await act(async () => resolvePublish())
+    expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
+  })
+
+  it('allows a retry after the publication fails', async () => {
+    const user = userEvent.setup()
+    let rejectPublish: (error: Error) => void = () => {}
+    const onPublish = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectPublish = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
+    render(<PublishingPopup onPublish={onPublish} />)
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    const button = screen.getByRole('button', { name: /common\.publish\b/ })
+    await user.click(button)
+    expectLoadingButton(button)
+    await act(async () => rejectPublish(new Error('Publication failed')))
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(button)
+    expect(onPublish).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
   })
 
   it('keeps multiple-model publication behind the model selection action', async () => {
@@ -163,6 +236,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={handleRestore}
         isChatApp
+        isPublishing={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
         published={false}
@@ -189,6 +263,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={handleRestore}
         isChatApp
+        isPublishing={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
         published
@@ -217,6 +292,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp={false}
+        isPublishing={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
         published={false}
@@ -243,6 +319,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp={false}
+        isPublishing={false}
         isWorkflowApp
         multipleModelConfigs={[]}
         onEditVersion={onEditVersion}
@@ -279,6 +356,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp={false}
+        isPublishing={false}
         isWorkflowApp
         multipleModelConfigs={[]}
         onEditVersion={onEditVersion}
@@ -316,6 +394,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp
+        isPublishing={false}
         isWorkflowApp={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
@@ -344,7 +423,8 @@ describe('app-publisher sections', () => {
         handlePublish={handlePublish}
         handleRestore={vi.fn()}
         isChatApp={false}
-        multipleModelConfigs={[{ id: '1' } as any]}
+        isPublishing={false}
+        multipleModelConfigs={[]}
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
@@ -367,7 +447,8 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp={false}
-        multipleModelConfigs={[{ id: '1' } as any]}
+        isPublishing={false}
+        multipleModelConfigs={[]}
         publishDisabled
         published={false}
         publishedAt={Date.now()}
@@ -388,6 +469,7 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
         isChatApp={false}
+        isPublishing={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
         published={false}

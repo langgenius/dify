@@ -9,9 +9,9 @@ import {
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore } from 'reactflow'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
 import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -248,6 +248,8 @@ const distributeNodes = (nodesToAlign: Node[], nodes: Node[], alignType: AlignTy
 export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation(['common', 'workflow'])
   const { getNodesReadOnly } = useNodesReadOnly()
+  const flowStore = useStoreApi()
+  const deletingRef = useRef(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore((s) => s.contextMenuTarget?.type === 'selection')
@@ -286,6 +288,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   }, [handleNodesDuplicate, onClose])
 
   const handleDeleteNodes = useCallback(() => {
+    deletingRef.current = true
     handleNodesDelete()
     onClose()
   }, [handleNodesDelete, onClose])
@@ -400,6 +403,11 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   return (
     <>
       <ContextMenuContent
+        finalFocus={() => {
+          const returnToCanvas = deletingRef.current
+          deletingRef.current = false
+          return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
+        }}
         className="w-60"
         sideOffset={4}
         onKeyDown={(event) => {

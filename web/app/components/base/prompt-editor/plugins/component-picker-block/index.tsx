@@ -256,8 +256,9 @@ const ComponentPicker = ({
                 {workflowVariableBlock?.show && (
                   <div className="p-1">
                     <VarReferenceVars
-                      hideSearch={triggerString === '/'}
-                      keyboardTarget={keyboardTarget}
+                      {...(triggerString === '/'
+                        ? { hideSearch: true, keyboardTarget }
+                        : { hideSearch: false })}
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}

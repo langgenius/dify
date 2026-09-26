@@ -3,6 +3,7 @@ import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ReactFlowProvider } from 'reactflow'
 import { NodeContextmenu } from '../node-contextmenu'
 
 const mockUseNodes = vi.hoisted(() => vi.fn())
@@ -76,9 +77,11 @@ describe('NodeContextmenu', () => {
 
   const renderNodeContextmenu = () =>
     render(
-      <ContextMenu open>
-        <NodeContextmenu onClose={mockClose} />
-      </ContextMenu>,
+      <ReactFlowProvider>
+        <ContextMenu open>
+          <NodeContextmenu onClose={mockClose} />
+        </ContextMenu>
+      </ReactFlowProvider>,
     )
 
   it.each(['c', 'd', 'Delete'])('runs %s from the node context menu owner', async (key) => {

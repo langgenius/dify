@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useQueryClient } from '@tanstack/react-query'
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -60,6 +60,8 @@ export function usePublishController({
   supportsMultiEnvironment,
 }: UsePublishControllerParams) {
   const [published, setPublished] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
@@ -118,11 +120,17 @@ export function usePublishController({
   }
 
   async function handlePublish(params?: AppPublisherPublishParams) {
+    if (publishingRef.current) return
+    publishingRef.current = true
+    setIsPublishing(true)
     try {
       await publishApp(params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
+    } finally {
+      publishingRef.current = false
+      setIsPublishing(false)
     }
   }
 
@@ -167,6 +175,7 @@ export function usePublishController({
     handleRestore,
     hasPublishedVersion,
     isChatApp,
+    isPublishing,
     isPublishedWorkflowError,
     isPublishedWorkflowLoading,
     isPublishedWorkflowSuccess,

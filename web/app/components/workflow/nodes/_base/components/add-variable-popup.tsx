@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -5,9 +6,10 @@ import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/v
 
 type AddVariablePopupProps = {
   availableVars: NodeOutPutVar[]
+  keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null
   onSelect: (value: ValueSelector, item: Var) => void
 }
-const AddVariablePopup = ({ availableVars, onSelect }: AddVariablePopupProps) => {
+const AddVariablePopup = ({ availableVars, keyboardTarget, onSelect }: AddVariablePopupProps) => {
   const { t } = useTranslation(['workflowLogic'])
 
   return (
@@ -16,7 +18,13 @@ const AddVariablePopup = ({ availableVars, onSelect }: AddVariablePopupProps) =>
         {t(($) => $['nodes.variableAssigner.setAssignVariable'], { ns: 'workflowLogic' })}
       </div>
       <div className="p-1">
-        <VarReferenceVars hideSearch vars={availableVars} onChange={onSelect} isSupportFileVar />
+        <VarReferenceVars
+          hideSearch
+          keyboardTarget={keyboardTarget}
+          vars={availableVars}
+          onChange={onSelect}
+          isSupportFileVar
+        />
       </div>
     </div>
   )

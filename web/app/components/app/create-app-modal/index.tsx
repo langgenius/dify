@@ -166,8 +166,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  const createDisabled =
-    isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim() || isCreating
+  const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,
     (event) => {
@@ -179,7 +178,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     },
     {
       target: contentRef,
-      enabled: !createDisabled && !showAppIconPicker,
+      enabled: !createDisabled && !isCreating && !showAppIconPicker,
       ignoreInputs: false,
       requireReset: false,
       preventDefault: false,
