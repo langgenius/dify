@@ -1035,4 +1035,23 @@ describe('useEmbeddedChatbot', () => {
       })
     })
   })
+
+  // Scenario: a stale conversation_id that 404s is cleared from storage
+  // so the chatbot falls back to a new conversation (issue #39484).
+  describe('Stale conversation recovery', () => {
+    it('clears conversationIdInfo from storage when chat list returns 404', async () => {
+      mockStoreState.embeddedConversationId = null
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { 'user-1': 'stale-conversation-id' } }),
+      )
+      mockFetchChatList.mockRejectedValue(new Response(null, { status: 404 }))
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(localStorage.getItem(CONVERSATION_ID_INFO)).not.toContain('app-1')
+      })
+    })
+  })
 })
