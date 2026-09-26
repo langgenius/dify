@@ -560,6 +560,11 @@ class TestWebhookServiceUnit:
         assert response_data[0]["id"] == 1
         assert response_data[1]["id"] == 2
 
+    @patch.object(
+        WebhookService,
+        "_resolve_trigger_end_user",
+        new=classmethod(lambda cls, webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
+    )
     @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
     @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_success(self, mock_file_factory, mock_tool_file_manager):
@@ -595,6 +600,11 @@ class TestWebhookServiceUnit:
         assert mock_tool_file_manager.call_count == 2
         assert mock_file_factory.build_from_mapping.call_count == 2
 
+    @patch.object(
+        WebhookService,
+        "_resolve_trigger_end_user",
+        new=classmethod(lambda cls, webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
+    )
     @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
     @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_with_errors(self, mock_file_factory, mock_tool_file_manager):
