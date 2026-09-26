@@ -170,6 +170,18 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
+        self._save_to_logstore(execution)
+
+        # Dual-write to SQL database if enabled (for safe migration)
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save(execution)
+                logger.debug("Dual-write: saved workflow execution to SQL database: id=%s", execution.id_)
+            except Exception:
+                logger.exception("Failed to dual-write workflow execution to SQL database: id=%s", execution.id_)
+                # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    def _save_to_logstore(self, execution: WorkflowExecution) -> None:
         logger.debug(
             "save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value
         )
@@ -182,11 +194,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             logger.exception("Failed to save workflow execution to logstore: id=%s", execution.id_)
             raise
 
-        # Dual-write to SQL database if enabled (for safe migration)
-        if self._enable_dual_write:
-            try:
-                self.sql_repository.save(execution)
-                logger.debug("Dual-write: saved workflow execution to SQL database: id=%s", execution.id_)
-            except Exception:
-                logger.exception("Failed to dual-write workflow execution to SQL database: id=%s", execution.id_)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.sql_repository.save_synchronously(execution)
+        self._save_to_logstore(execution)
