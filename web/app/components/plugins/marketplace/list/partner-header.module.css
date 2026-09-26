@@ -1,5 +1,5 @@
 @media (max-width: 879px) {
-  :global([data-marketplace-standalone]) .partnerHeader {
+  .partnerHeader {
     box-sizing: border-box;
     display: grid;
     width: 100%;
@@ -11,28 +11,28 @@
     column-gap: 12px;
   }
 
-  :global([data-marketplace-standalone]) .partnerHeaderWithNavigation {
+  .partnerHeaderWithNavigation {
     padding-right: 80px;
   }
 
-  :global([data-marketplace-standalone]) .partnerTitle {
+  .partnerTitle {
     grid-area: title;
   }
 
-  :global([data-marketplace-standalone]) .partnerMetadata {
+  .partnerMetadata {
     display: contents;
   }
 
-  :global([data-marketplace-standalone]) .partnerDescription {
+  .partnerDescription {
     grid-area: description;
     min-width: 0;
   }
 
-  :global([data-marketplace-standalone]) .partnerSeparator {
+  .partnerSeparator {
     display: none;
   }
 
-  :global([data-marketplace-standalone]) .partnerAction {
+  .partnerAction {
     grid-area: action;
     justify-self: start;
     min-width: 0;
@@ -40,13 +40,13 @@
     white-space: nowrap;
   }
 
-  :global([data-marketplace-standalone]) .partnerActionLabel {
+  .partnerActionLabel {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  :global([data-marketplace-standalone]) .partnerActionIcon {
+  .partnerActionIcon {
     flex-shrink: 0;
   }
 }
