@@ -20,28 +20,30 @@ export function CopyErrorAction({ text }: { text: string }) {
 
   return (
     <>
-      <IconButton
-        aria-label={label}
-        title={label}
-        variant="secondary"
-        className="absolute top-1 left-1/2 z-10 -translate-x-1/2 group-focus-visible/toast:opacity-100 group-has-focus-visible/toast:opacity-100 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/toast:opacity-100"
-        onClick={() => {
-          reset()
-          setFeedbackText(null)
-          void copy(text).then(() => setFeedbackText(text))
-        }}
-      >
-        <span
-          aria-hidden="true"
-          className={
-            showCopied
-              ? 'i-ri-check-line size-4'
-              : showError
-                ? 'i-ri-error-warning-line size-4'
-                : 'i-ri-file-copy-line size-4'
-          }
-        />
-      </IconButton>
+      <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
+        <IconButton
+          aria-label={label}
+          title={label}
+          variant="secondary"
+          className="group-focus-visible/toast:opacity-100 group-has-focus-visible/toast:opacity-100 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/toast:opacity-100"
+          onClick={() => {
+            reset()
+            setFeedbackText(null)
+            void copy(text).then(() => setFeedbackText(text))
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className={
+              showCopied
+                ? 'i-ri-check-line size-4'
+                : showError
+                  ? 'i-ri-error-warning-line size-4'
+                  : 'i-ri-file-copy-line size-4'
+            }
+          />
+        </IconButton>
+      </div>
       <span className="sr-only" aria-live="polite">
         {showCopied || showError ? label : ''}
       </span>

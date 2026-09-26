@@ -146,8 +146,16 @@ it.each([1280, 360])(
       await expect.element(copy).toHaveStyle({ opacity: '0' })
       await userEvent.hover(card)
       await expect.element(copy).toHaveStyle({ opacity: '1' })
-      const cardBounds = card.element().getBoundingClientRect()
+      const title = screen.getByText('Upload failed')
+      const titleBounds = title.element().getBoundingClientRect()
       const buttonBounds = copy.element().getBoundingClientRect()
+      const overlapsTitle =
+        buttonBounds.left < titleBounds.right &&
+        buttonBounds.right > titleBounds.left &&
+        buttonBounds.top < titleBounds.bottom &&
+        buttonBounds.bottom > titleBounds.top
+      expect(overlapsTitle).toBe(false)
+      const cardBounds = card.element().getBoundingClientRect()
       expect(buttonBounds.left).toBeGreaterThanOrEqual(cardBounds.left)
       expect(buttonBounds.right).toBeLessThanOrEqual(cardBounds.right)
       expect(buttonBounds.top).toBeGreaterThanOrEqual(cardBounds.top)

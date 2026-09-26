@@ -20,6 +20,16 @@ beforeEach(() => {
   vi.mocked(copy).mockResolvedValue(undefined)
 })
 
+it('does not center the copy action over the toast title', async () => {
+  const { toast } = setup()
+  act(() => {
+    toast.error('Make sure all issues are resolved before publishing')
+  })
+  const copyBtn = await screen.findByRole('button', { name: 'common.operation.copyErrorDetails' })
+  expect(copyBtn.className).not.toContain('left-1/2')
+  expect(copyBtn.className).not.toContain('-translate-x-1/2')
+})
+
 it('copies the complete error text and shows feedback in the existing action', async () => {
   const { toast, user } = setup()
   act(() => {
