@@ -222,7 +222,7 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.app_api_keys, AppApiKeyService)
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
-    assert redis.register_script.call_count == 3
+    redis.register_script.assert_not_called()
 
     assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
     installed_apps = services.installed_app_access._installed_apps

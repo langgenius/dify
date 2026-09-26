@@ -96,12 +96,12 @@ class TestWorkflowCollaborationRepository:
         mock_redis.hget.return_value = b'{"username":"missing-required-keys"}'
         assert repository.get_session_info("wf-1", "sid-1") is None
 
-    def test_update_session_graph_active_uses_atomic_lua_with_prefixed_key(
+    def test_update_session_graph_active_runs_atomic_script_on_logical_key(
         self, mock_redis: Mock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Arrange
-        mock_redis.eval.return_value = 1
-        monkeypatch.setattr(repo_module, "serialize_redis_name", lambda key: f"dify-prefix:{key}")
+        update_script = Mock(return_value=1)
+        monkeypatch.setattr(repo_module, "_update_session_graph_active", update_script)
         repository = WorkflowCollaborationRepository()
 
         # Act
@@ -109,18 +109,22 @@ class TestWorkflowCollaborationRepository:
 
         # Assert
         assert result is True
-        script, key_count, workflow_key, sid, active, sequence = mock_redis.eval.call_args.args
-        assert key_count == 1
-        assert workflow_key == "dify-prefix:workflow_online_users:wf-1"
-        assert sid == "sid-1"
-        assert active == "0"
-        assert sequence == 7
-        assert "incoming_sequence <= current_sequence" in script
-        assert "cjson.encode(session_info)" in script
+        # The client wrapper applies the configured key prefix to script keys.
+        update_script.assert_called_once_with(
+            mock_redis,
+            workflow_key="workflow_online_users:wf-1",
+            sid="sid-1",
+            active=False,
+            sequence=7,
+        )
 
-    def test_update_session_graph_active_returns_false_when_lua_ignores_update(self, mock_redis: Mock) -> None:
+    @pytest.mark.usefixtures("mock_redis")
+    def test_update_session_graph_active_returns_false_when_lua_ignores_update(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Arrange
-        mock_redis.eval.return_value = 0
+        update_script = Mock(return_value=0)
+        monkeypatch.setattr(repo_module, "_update_session_graph_active", update_script)
         repository = WorkflowCollaborationRepository()
 
         # Act
@@ -128,7 +132,8 @@ class TestWorkflowCollaborationRepository:
 
         # Assert
         assert result is False
-        assert mock_redis.eval.call_args.args[-2:] == ("1", 3)
+        assert update_script.call_args.kwargs["active"] is True
+        assert update_script.call_args.kwargs["sequence"] == 3
 
     def test_graph_view_state_lock_is_scoped_to_workflow(self, mock_redis: Mock) -> None:
         expected_lock = Mock()

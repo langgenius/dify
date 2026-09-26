@@ -5,9 +5,9 @@ import uuid
 from typing import override
 
 from pydantic import TypeAdapter, ValidationError
+from redis_lua_py import Key, redis, script
 
 from extensions.ext_redis import RedisClientWrapper
-from extensions.redis_names import serialize_redis_name
 from libs.helper import RateLimiter
 from services.account_forgot_password_service import (
     FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
@@ -41,14 +41,14 @@ from tasks.mail_reset_password_task import (
 
 _RESET_PASSWORD_TOKEN_TYPE = "reset_password"
 _token_data_adapter: TypeAdapter[ForgotPasswordTokenData] = TypeAdapter(ForgotPasswordTokenData)
-_COMPARE_AND_SET_CURRENT_TOKEN_LUA = """
-local current = redis.call('GET', KEYS[1])
-if current ~= ARGV[1] then
-    return 0
-end
-redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
-return 1
-"""
+
+
+@script
+def _compare_and_set_current_token(account_key: Key, expected: str, replacement: str, expiry_seconds: int) -> int:
+    if redis.get(account_key) != expected:
+        return 0
+    redis.set(account_key, replacement, "EX", expiry_seconds)
+    return 1
 
 
 class RedisForgotPasswordTokenGateway(ForgotPasswordTokenGateway):
@@ -178,13 +178,12 @@ class RedisForgotPasswordTokenGateway(ForgotPasswordTokenGateway):
     ) -> bool:
         account_key = f"{_RESET_PASSWORD_TOKEN_TYPE}:account:{account_id}"
         return bool(
-            self._redis.eval(
-                _COMPARE_AND_SET_CURRENT_TOKEN_LUA,
-                1,
-                serialize_redis_name(account_key),
-                expected,
-                replacement,
-                expiry_seconds,
+            _compare_and_set_current_token(
+                self._redis,
+                account_key=account_key,
+                expected=expected,
+                replacement=replacement,
+                expiry_seconds=expiry_seconds,
             )
         )
 

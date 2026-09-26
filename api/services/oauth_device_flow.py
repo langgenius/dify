@@ -17,6 +17,8 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 
+from redis_lua_py import Key, cjson, redis, script
+
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
     ApprovalTransitionConfirmation,
@@ -40,65 +42,71 @@ _USER_CODE_KEY_PREFIX = "user_code:"
 DEVICE_CODE_KEY_FMT = _DEVICE_CODE_KEY_PREFIX + "{code}"
 USER_CODE_KEY_FMT = _USER_CODE_KEY_PREFIX + "{code}"
 
+
 # Atomic GET → status-check → DEL(device key). Two concurrent pollers must
 # not both observe APPROVED — only the winner gets the plaintext token,
 # the loser sees nil and the caller maps that to expired_token. The user-code
 # mapping is cleaned up separately so Redis Cluster only sees one script key.
-_CONSUME_ON_POLL_LUA = """
-local raw = redis.call('GET', KEYS[1])
-if not raw then return nil end
-local ok, decoded = pcall(cjson.decode, raw)
-if not ok then return nil end
-if decoded.status == 'pending' then return nil end
-redis.call('DEL', KEYS[1])
-return raw
-"""
+@script
+def _consume_on_poll(device_key: Key) -> bytes | None:
+    raw = redis.get(device_key)
+    if raw is None:
+        return None
+    try:
+        decoded = cjson.decode(raw)
+    except Exception:
+        return None
+    if decoded["status"] == "pending":
+        return None
+    redis.delete(device_key)
+    return raw
+
 
 # The transition ID makes an approved write idempotent and lets callers
 # distinguish a committed write from a connection failure after SETEX.
-_TRANSITION_LUA = """
-local raw = redis.call('GET', KEYS[1])
-if not raw then return 0 end
-local ok, decoded = pcall(cjson.decode, raw)
-if not ok then return -2 end
+@script
+def _transition(device_key: Key, target: str, transition_marker: str, poll_payload: str, ttl_floor: int) -> int:
+    raw = redis.get(device_key)
+    if raw is None:
+        return 0
+    try:
+        decoded = cjson.decode(raw)
+    except Exception:
+        return -2
 
-local target = ARGV[1]
-local transition_marker = ARGV[2]
-if decoded.status ~= 'pending' then
-    if decoded.status == target and decoded.token_id == transition_marker then
-        return 2
-    end
-    return -1
-end
+    if decoded["status"] != "pending":
+        if decoded["status"] == target and decoded["token_id"] == transition_marker:
+            return 2
+        return -1
 
-decoded.status = target
-decoded.token_id = transition_marker
-decoded.poll_payload = nil
-if target == 'approved' then
-    local payload_ok = pcall(cjson.decode, ARGV[3])
-    if not payload_ok then return -2 end
-end
+    decoded["status"] = target
+    decoded["token_id"] = transition_marker
+    decoded["poll_payload"] = None
+    if target == "approved":
+        try:
+            cjson.decode(poll_payload)
+        except Exception:
+            return -2
 
--- cjson loses the distinction between [] and {} when decoding empty tables.
--- Preserve the validated payload JSON verbatim while encoding the state fields.
-local encoded = cjson.encode(decoded)
-if target == 'approved' then
-    encoded = string.sub(encoded, 1, -2) .. ',"poll_payload":' .. ARGV[3] .. '}'
-end
+    # cjson loses the distinction between [] and {} when decoding empty tables.
+    # Preserve the validated payload JSON verbatim while encoding the state fields.
+    encoded: str = cjson.encode(decoded)
+    if target == "approved":
+        encoded = encoded[:-1] + ',"poll_payload":' + poll_payload + "}"
 
-local ttl = redis.call('TTL', KEYS[1])
-local floor = tonumber(ARGV[4])
-if ttl < floor then ttl = floor end
-redis.call('SETEX', KEYS[1], ttl, encoded)
-return 1
-"""
+    ttl = redis.ttl(device_key)
+    if ttl < ttl_floor:
+        ttl = ttl_floor
+    redis.setex(device_key, ttl, encoded)
+    return 1
 
-_RELEASE_GUARD_LUA = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-end
-return 0
-"""
+
+@script
+def _release_guard(guard_key: Key, owner_id: str) -> int:
+    if redis.get(guard_key) == owner_id:
+        return redis.delete(guard_key)
+    return 0
+
 
 APPROVED_TTL_SECONDS_MIN = 60  # plaintext-token lifetime floor
 
@@ -157,9 +165,6 @@ class UserCodeExhaustedError(Exception):
 class DeviceFlowRedis:
     def __init__(self, redis_client) -> None:
         self._redis = redis_client
-        self._consume_on_poll_script = redis_client.register_script(_CONSUME_ON_POLL_LUA)
-        self._transition_script = redis_client.register_script(_TRANSITION_LUA)
-        self._release_guard_script = redis_client.register_script(_RELEASE_GUARD_LUA)
 
     def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
         device_code = _random_device_code()
@@ -259,9 +264,7 @@ class DeviceFlowRedis:
         observes the APPROVED state. Losers get None, mapped to
         expired_token by the caller.
         """
-        raw = self._consume_on_poll_script(
-            keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
-        )
+        raw = _consume_on_poll(self._redis, device_key=DEVICE_CODE_KEY_FMT.format(code=device_code))
         if raw is None:
             return None
         text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
@@ -296,10 +299,7 @@ class DeviceFlowRedis:
         return bool(self._redis.set(self._approval_guard_key(guard_id), owner_id, nx=True, ex=ttl_seconds))
 
     def release_approval(self, guard_id: str, owner_id: str) -> None:
-        self._release_guard_script(
-            keys=[self._approval_guard_key(guard_id)],
-            args=[owner_id],
-        )
+        _release_guard(self._redis, guard_key=self._approval_guard_key(guard_id), owner_id=owner_id)
 
     def _transition(
         self,
@@ -311,16 +311,13 @@ class DeviceFlowRedis:
         poll_payload: PollPayload | None,
         ttl_floor: int,
     ) -> None:
-        result = int(
-            self._transition_script(
-                keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
-                args=[
-                    target.value,
-                    self._transition_marker(transition_id, token_id),
-                    json.dumps(poll_payload) if poll_payload is not None else "",
-                    ttl_floor,
-                ],
-            )
+        result = _transition(
+            self._redis,
+            device_key=DEVICE_CODE_KEY_FMT.format(code=device_code),
+            target=target.value,
+            transition_marker=self._transition_marker(transition_id, token_id),
+            poll_payload=json.dumps(poll_payload) if poll_payload is not None else "",
+            ttl_floor=ttl_floor,
         )
         if result in (0, -2):
             raise StateNotFoundError(device_code)

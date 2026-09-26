@@ -1370,6 +1370,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=2.30.0,<3.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
+    { name = "redis-lua-py", marker = "extra == 'server'", specifier = "==0.11.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
@@ -1433,6 +1434,7 @@ dependencies = [
     { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
+    { name = "redis-lua-py" },
     { name = "resend" },
     { name = "sendgrid" },
     { name = "sseclient-py" },
@@ -1724,6 +1726,7 @@ requires-dist = [
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
     { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
+    { name = "redis-lua-py", specifier = "==0.11.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
@@ -5971,6 +5974,15 @@ wheels = [
 [package.optional-dependencies]
 hiredis = [
     { name = "hiredis" },
+]
+
+[[package]]
+name = "redis-lua-py"
+version = "0.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/14/79566ad1ef6faed4761b4fd2c2fc76de5e5975559184f37672d8940717c4/redis_lua_py-0.11.0.tar.gz", hash = "sha256:8648db0231b997ac01fea38543da317afc43856b562dc121b371936fd7e9d9f8", size = 315649, upload-time = "2026-09-25T19:56:48.177Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/a6/745a4f56586946f8dff8b96fab3f98484f2157d7af33624b0eb3a81d68e9/redis_lua_py-0.11.0-py3-none-any.whl", hash = "sha256:2794b9ae6f86369a0b6580f1960cc165cd14e60bf34f91e40b474db45da82d78", size = 107982, upload-time = "2026-09-25T19:56:46.726Z" },
 ]
 
 [[package]]

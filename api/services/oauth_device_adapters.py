@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol, override
 
 from pydantic import BaseModel, Field, ValidationError
+from redis_lua_py import Key, redis, script
 
 from configs import dify_config
 from constants.oauth_bearer import TokenType
@@ -51,20 +52,25 @@ _MIN_OAUTH_TTL_DAYS = 1
 _MAX_OAUTH_TTL_DAYS = 365
 _TTL_ENV_VAR = "OAUTH_TTL_DAYS"
 _OAUTH_TOKEN_BODY_BYTES = 32
-_RESERVE_APPROVAL_NONCE_LUA = """
-local current = redis.call('GET', KEYS[1])
-if current == ARGV[1] then return 1 end
-if current then return 0 end
-local stored = redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX')
-if stored then return 1 end
-return 0
-"""
-_RELEASE_APPROVAL_NONCE_LUA = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-end
-return 0
-"""
+
+
+@script
+def _reserve_approval_nonce(nonce_key: Key, reservation_id: str, ttl: int) -> int:
+    current = redis.get(nonce_key)
+    if current == reservation_id:
+        return 1
+    if current is not None:
+        return 0
+    if redis.set(nonce_key, reservation_id, "EX", ttl, "NX") is not None:
+        return 1
+    return 0
+
+
+@script
+def _release_approval_nonce(nonce_key: Key, reservation_id: str) -> int:
+    if redis.get(nonce_key) == reservation_id:
+        return redis.delete(nonce_key)
+    return 0
 
 
 class EnterpriseDeviceSSOService(Protocol):
@@ -299,11 +305,12 @@ class EnterpriseOAuthDeviceSSOGateway(OAuthDeviceSSOGateway):
     def reserve_approval_nonce(self, nonce: str, reservation_id: str) -> bool:
         if not nonce or not reservation_id:
             return False
-        reserve_script = self._redis.register_script(_RESERVE_APPROVAL_NONCE_LUA)
         return bool(
-            reserve_script(
-                keys=[NONCE_KEY_FMT.format(nonce=nonce)],
-                args=[reservation_id, NONCE_TTL_SECONDS],
+            _reserve_approval_nonce(
+                self._redis,
+                nonce_key=NONCE_KEY_FMT.format(nonce=nonce),
+                reservation_id=reservation_id,
+                ttl=NONCE_TTL_SECONDS,
             )
         )
 
@@ -311,10 +318,10 @@ class EnterpriseOAuthDeviceSSOGateway(OAuthDeviceSSOGateway):
     def release_approval_nonce(self, nonce: str, reservation_id: str) -> None:
         if not nonce or not reservation_id:
             return
-        release_script = self._redis.register_script(_RELEASE_APPROVAL_NONCE_LUA)
-        release_script(
-            keys=[NONCE_KEY_FMT.format(nonce=nonce)],
-            args=[reservation_id],
+        _release_approval_nonce(
+            self._redis,
+            nonce_key=NONCE_KEY_FMT.format(nonce=nonce),
+            reservation_id=reservation_id,
         )
 
 
