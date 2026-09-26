@@ -144,7 +144,13 @@ class TestWebhookServiceExtractionFallbacks:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        webhook_trigger = _workflow_trigger(created_by="user-1", tenant_id="tenant-1")
+        webhook_trigger = _workflow_trigger(created_by="account-owner-1", tenant_id="tenant-1")
+        trigger_end_user = SimpleNamespace(id="trigger-end-user-1")
+        monkeypatch.setattr(
+            WebhookService,
+            "_resolve_trigger_end_user",
+            classmethod(lambda cls, webhook_trigger: trigger_end_user),
+        )
         manager = MagicMock()
         manager.create_file_by_raw.return_value = SimpleNamespace(id="tool-file-1")
         monkeypatch.setattr(service_module, "ToolFileManager", MagicMock(return_value=manager))
@@ -154,7 +160,13 @@ class TestWebhookServiceExtractionFallbacks:
         result = WebhookService._create_file_from_binary(b"abc", "text/plain", webhook_trigger)
 
         assert result is expected_file
-        manager.create_file_by_raw.assert_called_once()
+        manager.create_file_by_raw.assert_called_once_with(
+            user_id="trigger-end-user-1",
+            tenant_id="tenant-1",
+            conversation_id=None,
+            file_binary=b"abc",
+            mimetype="text/plain",
+        )
 
 
 class TestWebhookServiceValidationAndConversion:
