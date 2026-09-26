@@ -3,11 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import InitParams, RuntimeState
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
 
 
@@ -15,12 +14,12 @@ class TestListOperatorNode:
     """Comprehensive tests for ListOperatorNode."""
 
     @staticmethod
-    def _build_node(*, data, graph_init_params, graph_runtime_state):
+    def _build_node(*, data, init_params, runtime_state):
         return ListOperatorNode(
             node_id="test",
             data=data if isinstance(data, ListOperatorNodeData) else ListOperatorNodeData.model_validate(data),
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
 
     @staticmethod
@@ -32,16 +31,16 @@ class TestListOperatorNode:
 
     @pytest.fixture
     def mock_graph_runtime_state(self):
-        """Create mock GraphRuntimeState."""
-        mock_state = MagicMock(spec=GraphRuntimeState)
+        """Create mock RuntimeState."""
+        mock_state = MagicMock(spec=RuntimeState)
         mock_variable_pool = MagicMock()
         mock_state.variable_pool = mock_variable_pool
         return mock_state
 
     @pytest.fixture
     def graph_init_params(self):
-        """Create GraphInitParams fixture."""
-        return GraphInitParams(
+        """Create InitParams fixture."""
+        return InitParams(
             workflow_id="test",
             graph_config={},
             run_context={
@@ -64,8 +63,8 @@ class TestListOperatorNode:
             mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
             return self._build_node(
                 data=config,
-                graph_init_params=graph_init_params,
-                graph_runtime_state=mock_graph_runtime_state,
+                init_params=graph_init_params,
+                runtime_state=mock_graph_runtime_state,
             )
 
         return _create_node
@@ -103,8 +102,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -129,8 +128,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -153,8 +152,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -177,8 +176,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -204,8 +203,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -231,8 +230,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -258,8 +257,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -288,8 +287,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -311,8 +310,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -335,8 +334,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -360,8 +359,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -384,8 +383,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -408,8 +407,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -432,8 +431,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()
@@ -459,8 +458,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         result = node._run()

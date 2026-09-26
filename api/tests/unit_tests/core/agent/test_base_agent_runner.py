@@ -43,6 +43,7 @@ from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 def _message(
@@ -217,6 +218,7 @@ def runner(sqlite_session: Session, mocker: MockerFixture) -> BaseAgentRunner:
     )
 
     return BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
@@ -672,6 +674,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=app_generate,

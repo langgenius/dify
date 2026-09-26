@@ -44,10 +44,10 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
@@ -92,6 +92,7 @@ from services.workflow_node_execution_trace_service import (
 )
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -595,6 +596,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
@@ -948,7 +950,7 @@ class RagPipelineService:
         self,
         getter: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest, None, None]],
         ],
         start_at: float,
         tenant_id: str,
@@ -1047,7 +1049,7 @@ class RagPipelineService:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED
             workflow_node_execution.error = error
             # update document status
-            variable_pool = node_instance.graph_runtime_state.variable_pool
+            variable_pool = node_instance.runtime_state.variable_pool
             invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
@@ -1391,6 +1393,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs={},
@@ -1515,7 +1518,7 @@ class RagPipelineService:
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
             raise ValueError("Workflow not found")
-        PipelineGenerator().generate(
+        PipelineGenerator(execution_driver=WorkflowRunAgg.run).generate(
             session=self._session,
             pipeline=pipeline,
             workflow=workflow,

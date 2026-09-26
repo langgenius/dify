@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.human_input_repository import (
@@ -460,6 +460,39 @@ def test_submission_get_by_form_id_returns_none_on_missing(repository_session: S
     repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_form_id_and_recipient_type(form_id="f", recipient_type=RecipientType.CONSOLE) is None
     assert repo.get_by_form_id("f") is None
+
+
+def test_submission_batch_materializes_requested_forms_in_one_read(repository_session: Session) -> None:
+    _persist_form(repository_session, form_id="first", status=HumanInputFormStatus.SUBMITTED)
+    _persist_form(repository_session, form_id="second", status=HumanInputFormStatus.TIMEOUT)
+    _persist_form(repository_session, form_id="unrequested")
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    engine = repository_session.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        records = HumanInputFormSubmissionRepository().get_by_form_ids(
+            ["second", "missing", "first", "first"], tenant_id="tenant", app_id="app", workflow_run_id="run"
+        )
+        assert len(statements) == 1
+        assert set(records) == {"first", "second"}
+        assert records["first"].status == HumanInputFormStatus.SUBMITTED
+        assert records["second"].definition.user_actions[0].id == "submit"
+        assert records["second"].status == HumanInputFormStatus.TIMEOUT
+        # Materialized records remain usable after the repository's session closes.
+        assert len(statements) == 1
+        assert (
+            HumanInputFormSubmissionRepository().get_by_form_ids(
+                [], tenant_id="tenant", app_id="app", workflow_run_id="run"
+            )
+            == {}
+        )
+        assert len(statements) == 1
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
 
 
 def test_mark_submitted_updates_and_raises_when_missing(

@@ -12,6 +12,7 @@ from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService, DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 class PipelineGenerateService:
@@ -45,7 +46,7 @@ class PipelineGenerateService:
                 document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
                 cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
-                PipelineGenerator().generate(
+                PipelineGenerator(execution_driver=WorkflowRunAgg.run).generate(
                     session=session,
                     pipeline=pipeline,
                     workflow=workflow,
@@ -75,7 +76,7 @@ class PipelineGenerateService:
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_iteration_generate(
+            PipelineGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,
@@ -92,7 +93,7 @@ class PipelineGenerateService:
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_loop_generate(
+            PipelineGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,

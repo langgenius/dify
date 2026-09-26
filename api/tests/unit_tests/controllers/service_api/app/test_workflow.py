@@ -36,7 +36,6 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.app.workflow import (
     AppQueueManager,
-    GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
     WorkflowRunApi,
@@ -726,8 +725,9 @@ class TestWorkflowTaskStopApi:
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
         send_mock = Mock()
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
-        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
+        monkeypatch.setattr(workflow_module, "send_abort_command", send_mock)
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
