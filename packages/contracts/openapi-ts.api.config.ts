@@ -60,7 +60,16 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
-const strictZodSchemaNames = new Set(['AccountProfilePatchPayload', 'Parameters'])
+const strictZodSchemaNames = new Set([
+  'AccountProfilePatchPayload',
+  'Parameters',
+  'AppTextInputPayload',
+  'AppSelectInputPayload',
+  'AppParagraphInputPayload',
+  'AppNumberInputPayload',
+  'AppCheckboxInputPayload',
+  'AppExternalDataInputPayload',
+])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -628,9 +637,26 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        union: (ctx) => {
+          // The generator's recursive lazy schemas infer `any`. Keep this JSON
+          // leaf typed through Zod so oRPC clients retain the request contract.
+          if (ctx.path['~ref'].includes('AppConfigJsonValue'))
+            return $(ctx.symbols.z).attr('json').call()
+
+          return ctx.nodes.base(ctx)
+        },
         object: (ctx) => {
           const objectSchema = ctx.nodes.base(ctx)
           const additionalProperties = ctx.schema.additionalProperties
+          // Shaped objects otherwise discard the backend's typed JSON extensions.
+          if (
+            additionalProperties &&
+            typeof additionalProperties !== 'boolean' &&
+            additionalProperties.$ref === '#/components/schemas/AppConfigJsonValue' &&
+            ctx.schema.properties
+          )
+            return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
+
           // openapi-ts normalizes `additionalProperties: false` to `never`, but
           // does not make shaped Zod objects strict.
           const isStrictSchema = ctx.path['~ref'].some(

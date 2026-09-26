@@ -3,12 +3,16 @@ from __future__ import annotations
 import importlib
 import json
 import os
+from copy import deepcopy
 from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import MagicMock
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import DEFAULT, MagicMock
 from uuid import uuid4
 
 import pytest
+import yaml
 from flask import Flask
 from flask.testing import FlaskClient
 from flask_restx import Resource
@@ -18,8 +22,13 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from controllers.common import session as controller_session
 from controllers.console.app import model_config as model_config_module
+from core.app.app_config.easy_ui_based_app.model_config import manager as model_config_manager_module
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
+from core.app.apps.chat.app_config_manager import ChatAppConfigManager
+from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from libs.external_api import ExternalApi
 from models.model import App, AppMode, AppModelConfig
+from models.provider_ids import ModelProviderID
 
 app_wraps_module = importlib.import_module("controllers.console.app.wraps")
 
@@ -33,6 +42,72 @@ def _model_config_payload(**fields: object) -> dict[str, object]:
         },
         **fields,
     }
+
+
+def _existing_publish_configs() -> list[tuple[str, AppMode, dict[str, object]]]:
+    recommended_apps_path = Path(__file__).resolve().parents[5] / "constants" / "recommended_apps.json"
+    recommended_apps = json.loads(recommended_apps_path.read_text())["app_details"]
+    cases = []
+    for app_detail in recommended_apps.values():
+        payload = yaml.safe_load(app_detail["export_data"]).get("model_config")
+        if payload is not None:
+            cases.append((app_detail["name"], AppMode.value_of(app_detail["mode"]), payload))
+
+    # Mirrors the publish body's advanced-prompt, dataset-selection, and feature fields.
+    cases.append(
+        (
+            "configuration-editor-publish",
+            AppMode.CHAT,
+            _model_config_payload(
+                model={
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-4o",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.7},
+                },
+                pre_prompt="",
+                prompt_type="advanced",
+                chat_prompt_config={"prompt": [{"role": "system", "text": "hi"}]},
+                completion_prompt_config={
+                    "prompt": {"text": "completion"},
+                    "conversation_histories_role": {"assistant_prefix": "assistant", "user_prefix": "user"},
+                },
+                user_input_form=[{"text-input": {"label": "Name", "variable": "name", "required": True}}],
+                dataset_query_variable="context",
+                dataset_configs={
+                    "retrieval_model": "multiple",
+                    "datasets": {"datasets": [{"dataset": {"enabled": True, "id": "dataset-1"}}]},
+                },
+                agent_mode={"enabled": True, "max_iteration": 3, "strategy": "function_call", "tools": []},
+                external_data_tools=[],
+                more_like_this={"enabled": True},
+                opening_statement="hello",
+                suggested_questions=["how are you?"],
+                suggested_questions_after_answer={"enabled": False},
+                speech_to_text={"enabled": False},
+                text_to_speech={"enabled": False, "voice": "", "language": ""},
+                retriever_resource={"enabled": True},
+                sensitive_word_avoidance={"enabled": False},
+                file_upload={
+                    "enabled": True,
+                    "image": {
+                        "enabled": True,
+                        "detail": "high",
+                        "number_limits": 2,
+                        "transfer_methods": ["local_file"],
+                    },
+                },
+                system_parameters={
+                    "audio_file_size_limit": 1,
+                    "file_size_limit": 1,
+                    "image_file_size_limit": 1,
+                    "video_file_size_limit": 1,
+                    "workflow_file_upload_limit": 1,
+                },
+            ),
+        )
+    )
+    return cases
 
 
 @dataclass
@@ -57,7 +132,10 @@ def model_config_http(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) 
     original_config.id = "config-0"
     sqlite_session.add(original_config)
     sqlite_session.commit()
-    validate_configuration = MagicMock(return_value={"pre_prompt": "Validated prompt"})
+    validate_configuration = MagicMock(
+        wraps=model_config_module.AppModelConfigService.validate_configuration,
+        return_value={"pre_prompt": "Validated prompt"},
+    )
     monkeypatch.setattr(model_config_module.AppModelConfigService, "validate_configuration", validate_configuration)
     signal = MagicMock()
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", signal)
@@ -109,14 +187,18 @@ def test_post_preserves_configuration_wire_for_business_validation(model_config_
         },
         agent_mode={
             "enabled": True,
-            "strategy": "function-calling",
+            "strategy": "function_call",
             "max_iteration": 5,
             "tools": [
                 {
                     "provider_id": "provider",
                     "provider_type": "builtin",
                     "tool_name": "search",
-                    "tool_parameters": {"query": "{{topic}}", "limit": 0, "filters": {"archived": False}},
+                    "tool_parameters": {
+                        "query": "{{topic}}",
+                        "limit": 0,
+                        "filters": {"archived": False, "tags": ["docs", None, {"score": 0.5}]},
+                    },
                 }
             ],
         },
@@ -137,7 +219,6 @@ def test_post_preserves_configuration_wire_for_business_validation(model_config_
                 "config": {"api_based_extension_id": "extension-1", "options": {"limit": 0, "enabled": False}},
             }
         ],
-        system_parameters={"image_file_size_limit": 10},
         opening_statement="Hello",
         suggested_questions=["What can you do?"],
         suggested_questions_after_answer={"enabled": True},
@@ -179,7 +260,7 @@ def test_post_preserves_configuration_wire_for_business_validation(model_config_
             "dataset_configs": {"score_threshold": 0, "score_threshold_enabled": False},
             "agent_mode": {"enabled": False, "tools": []},
             "speech_to_text": {"enabled": False},
-            "text_to_speech": {"enabled": False, "voice": None},
+            "text_to_speech": {"enabled": False, "voice": ""},
             "external_data_tools": [],
         },
     ],
@@ -196,6 +277,55 @@ def test_post_keeps_optional_values_for_domain_defaults(
     assert model_config_http.validate_configuration.call_args.kwargs["config"] == payload
 
 
+@pytest.mark.parametrize(("case_name", "app_mode", "payload"), _existing_publish_configs())
+def test_post_preserves_existing_publish_results(
+    model_config_http: _ModelConfigHttp,
+    monkeypatch: pytest.MonkeyPatch,
+    case_name: str,
+    app_mode: AppMode,
+    payload: dict[str, object],
+) -> None:
+    selected_model = payload["model"]
+    assert isinstance(selected_model, dict)
+    assembly = MagicMock()
+    assembly.model_provider_factory.get_providers.return_value = [
+        SimpleNamespace(provider=str(ModelProviderID(selected_model["provider"])))
+    ]
+    assembly.provider_manager.get_configurations.return_value.get_models.return_value = [
+        SimpleNamespace(model=selected_model["name"], model_properties={"mode": selected_model.get("mode", "chat")})
+    ]
+    monkeypatch.setattr(model_config_manager_module, "create_plugin_model_assembly", lambda **_kwargs: assembly)
+    monkeypatch.setattr(
+        model_config_module.ToolManager,
+        "get_agent_tool_runtime",
+        MagicMock(side_effect=ValueError("Tool provider is unavailable in this test")),
+    )
+    config_manager = {
+        AppMode.CHAT: ChatAppConfigManager,
+        AppMode.COMPLETION: CompletionAppConfigManager,
+        AppMode.AGENT_CHAT: AgentChatAppConfigManager,
+    }[app_mode]
+    expected_config = config_manager.config_validate("t1", deepcopy(payload), model_config_http.session)
+    expected_record = AppModelConfig(app_id="app-1", created_by="u1", updated_by="u1").from_model_config_dict(
+        expected_config
+    )
+    assert "system_parameters" not in expected_config
+    assert "annotation_reply" not in expected_config
+    model_config_http.app_model.mode = app_mode
+    model_config_http.validate_configuration.return_value = DEFAULT
+
+    response = model_config_http.client.post("/apps/app-1/model-config", json=payload)
+
+    assert response.status_code == 200, (case_name, response.get_json())
+    assert response.get_json() == {"result": "success"}
+    stored_config = model_config_http.session.get(AppModelConfig, model_config_http.app_model.app_model_config_id)
+    assert stored_config is not None
+    assert stored_config.to_dict(annotation_reply={"enabled": False}) == expected_record.to_dict(
+        annotation_reply={"enabled": False}
+    ), case_name
+    assert model_config_http.signal.call_args.kwargs["session"] is model_config_http.session
+
+
 @pytest.mark.parametrize(
     "invalid_fields",
     [
@@ -203,8 +333,40 @@ def test_post_keeps_optional_values_for_domain_defaults(
         {"model": {"provider": "langgenius/openai/openai", "name": "gpt-4o-mini", "completion_params": []}},
         {"user_input_form": {"text-input": {"variable": "topic"}}},
         {"file_upload": []},
+        {"chat_prompt_config": {"prompt": [{"role": "system", "text": {"invalid": "prompt"}}]}},
+        {"completion_prompt_config": {"conversation_histories_role": {"user_prefix": []}}},
+        {"user_input_form": [{"select": {"label": "Style", "variable": "style", "options": {"brief": True}}}]},
+        {"dataset_configs": {"weights": {"vector_setting": {"vector_weight": {"invalid": 0.7}}}}},
+        {
+            "agent_mode": {
+                "tools": [
+                    {
+                        "provider_id": "provider",
+                        "provider_type": "builtin",
+                        "tool_name": "search",
+                        "tool_parameters": [],
+                    }
+                ]
+            }
+        },
+        {"file_upload": {"image": {"transfer_methods": "remote_url"}}},
+        {"speech_to_text": {"enabled": {"invalid": True}}},
+        {"external_data_tools": [{"enabled": True, "type": "api", "config": []}]},
     ],
-    ids=["model-string", "completion-params-list", "form-object", "file-upload-list"],
+    ids=[
+        "model-string",
+        "completion-params-list",
+        "form-object",
+        "file-upload-list",
+        "chat-prompt-text-object",
+        "completion-prefix-list",
+        "form-options-object",
+        "dataset-weight-object",
+        "agent-tool-parameters-list",
+        "image-transfer-methods-string",
+        "feature-enabled-object",
+        "external-tool-config-list",
+    ],
 )
 def test_post_rejects_invalid_wire_before_business_validation(
     model_config_http: _ModelConfigHttp, invalid_fields: dict[str, object]

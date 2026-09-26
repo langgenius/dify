@@ -15742,6 +15742,16 @@ This class is used to store the schema information of an api based tool.
 | app_id | string |  | No |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 
+#### AppAgentModePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| max_iteration | integer |  | No |
+| prompt | [AppAgentPromptPayload](#appagentpromptpayload)<br>string |  | No |
+| strategy | string |  | No |
+| tools | [ [AppAgentToolPayload](#appagenttoolpayload) ] |  | No |
+
 #### AppAgentModeResponse
 
 | Name | Type | Description | Required |
@@ -15752,12 +15762,40 @@ This class is used to store the schema information of an api based tool.
 | strategy | [PlanningStrategy](#planningstrategy)<br>string, <br>**Available values:** "cot", "function-calling" |  | No |
 | tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | No |
 
+#### AppAgentPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_prompt | string |  | No |
+| next_iteration | string |  | No |
+
 #### AppAgentPromptResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | first_prompt | string |  | No |
 | next_iteration | string |  | No |
+
+#### AppAgentToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| current_datetime | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| dataset | [AppDatasetSelectionPayload](#appdatasetselectionpayload) |  | No |
+| enabled | boolean |  | No |
+| google_search | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| isDeleted | boolean |  | No |
+| notAuthor | boolean |  | No |
+| plugin_unique_identifier | string |  | No |
+| provider_id | string |  | No |
+| provider_name | string |  | No |
+| provider_type | string |  | No |
+| tool_label | string |  | No |
+| tool_name | string |  | No |
+| tool_parameters | object |  | No |
+| web_reader | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| wikipedia | [AppFeaturePayload](#appfeaturepayload) |  | No |
 
 #### AppAnnotationReplyDisabledResponse
 
@@ -15793,11 +15831,23 @@ This class is used to store the schema information of an api based tool.
 | role | string |  | Yes |
 | text | string |  | Yes |
 
+#### AppChatPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| prompt | [ [AppPromptMessagePayload](#apppromptmessagepayload) ] |  | No |
+
 #### AppCheckboxFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | checkbox | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppCheckboxInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkbox | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppCompletionPromptConfigResponse
 
@@ -15806,11 +15856,24 @@ This class is used to store the schema information of an api based tool.
 | conversation_histories_role | [AppConversationHistoriesRoleResponse](#appconversationhistoriesroleresponse) |  | No |
 | prompt | [AppCompletionPromptTextResponse](#appcompletionprompttextresponse) |  | No |
 
+#### AppCompletionPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_histories_role | [AppConversationRolesPayload](#appconversationrolespayload) |  | No |
+| prompt | [AppPromptMessagePayload](#apppromptmessagepayload) |  | No |
+
 #### AppCompletionPromptTextResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | text | string |  | Yes |
+
+#### AppConfigJsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppConfigJsonValue | string<br>integer<br>number<br>boolean<br>[ [AppConfigJsonValue](#appconfigjsonvalue) ]<br>object |  |  |
 
 #### AppConversationHistoriesRoleResponse
 
@@ -15818,6 +15881,38 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | assistant_prefix | string |  | Yes |
 | user_prefix | string |  | Yes |
+
+#### AppConversationRolesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| assistant_prefix | string |  | No |
+| user_prefix | string |  | No |
+
+#### AppDatasetCollectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AppDatasetToolPayload](#appdatasettoolpayload) ] |  | No |
+| strategy | string |  | No |
+
+#### AppDatasetConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [AppDatasetCollectionPayload](#appdatasetcollectionpayload) |  | No |
+| metadata_filtering_conditions | [AppMetadataFilteringPayload](#appmetadatafilteringpayload) |  | No |
+| metadata_filtering_mode | string |  | No |
+| metadata_model_config | [AppMetadataModelPayload](#appmetadatamodelpayload) |  | No |
+| reranking_enable | boolean |  | No |
+| reranking_enabled | boolean |  | No |
+| reranking_mode | string |  | No |
+| reranking_model | [AppRerankingModelPayload](#apprerankingmodelpayload) |  | No |
+| retrieval_model | string |  | No |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
+| weights | [AppRetrievalWeightsPayload](#appretrievalweightspayload) |  | No |
 
 #### AppDatasetConfigsResponse
 
@@ -15856,6 +15951,19 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 | id | string |  | No |
+
+#### AppDatasetSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| id | string |  | No |
+
+#### AppDatasetToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetSelectionPayload](#appdatasetselectionpayload) |  | No |
 
 #### AppDetail
 
@@ -16003,11 +16111,35 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | data | string |  | Yes |
 
+#### AppExternalDataInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| external_data_tool | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
+
 #### AppExternalDataToolFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | external_data_tool | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppExternalDataToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | No |
+| variable | string |  | No |
+
+#### AppFeaturePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
 
 #### AppFileFormResponse
 
@@ -16020,6 +16152,38 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file-list | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFilePreviewPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_type_list | [ string ] |  | No |
+| mode | string |  | No |
+
+#### AppFileTypeUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+
+#### AppFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| audio | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| custom | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| document | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| enabled | boolean |  | No |
+| image | [AppImageUploadPayload](#appimageuploadpayload) |  | No |
+| image_config | [AppImageUploadPayload](#appimageuploadpayload) |  | No |
+| number_limits | integer |  | No |
+| preview_config | [AppFilePreviewPayload](#appfilepreviewpayload) |  | No |
+| video | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
 
 #### AppFileUploadResponse
 
@@ -16039,6 +16203,15 @@ This class is used to store the schema information of an api based tool.
 | icon | string | Icon data | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
+
+#### AppImageUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string, <br>**Available values:** "high", "low" |  | No |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 
 #### AppImageUploadResponse
 
@@ -16076,6 +16249,25 @@ This class is used to store the schema information of an api based tool.
 | status | [ImportStatus](#importstatus) |  | Yes |
 | warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
 
+#### AppInputFieldPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| default | [AppConfigJsonValue](#appconfigjsonvalue) |  | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| hide | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| json_schema | string<br>object |  | No |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
+| variable | string |  | Yes |
+
 #### AppJsonObjectFormResponse
 
 | Name | Type | Description | Required |
@@ -16087,6 +16279,12 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword_weight | number |  | Yes |
+
+#### AppKeywordWeightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_weight | number |  | No |
 
 #### AppLegacyCurrentDatetimeToolResponse
 
@@ -16166,6 +16364,16 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
 
+#### AppMetadataConditionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string |  | No |
+| id | string |  | No |
+| metadata_id | string |  | No |
+| name | string |  | No |
+| value | string<br>integer<br>number<br>[ string ] |  | No |
+
 #### AppMetadataConditionResponse
 
 | Name | Type | Description | Required |
@@ -16183,6 +16391,22 @@ AppMCPServer Status Enum
 | conditions | [ [AppMetadataConditionResponse](#appmetadataconditionresponse) ] |  | No |
 | logical_operator | string, <br>**Available values:** "and", "or" |  | No |
 
+#### AppMetadataFilteringPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [AppMetadataConditionPayload](#appmetadataconditionpayload) ] |  | No |
+| logical_operator | string |  | No |
+
+#### AppMetadataModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | No |
+| provider | string |  | No |
+
 #### AppMode
 
 | Name | Type | Description | Required |
@@ -16191,29 +16415,29 @@ AppMCPServer Status Enum
 
 #### AppModelConfigPayload
 
-Transport shape; app-mode validators own defaults and feature-specific rules.
+Write transport; app-mode validators own defaults and feature-specific rules.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_mode | object |  | No |
-| chat_prompt_config | object |  | No |
-| completion_prompt_config | object |  | No |
-| dataset_configs | object |  | No |
+| agent_mode | [AppAgentModePayload](#appagentmodepayload) |  | No |
+| chat_prompt_config | [AppChatPromptPayload](#appchatpromptpayload) |  | No |
+| completion_prompt_config | [AppCompletionPromptPayload](#appcompletionpromptpayload) |  | No |
+| dataset_configs | [AppDatasetConfigPayload](#appdatasetconfigpayload) |  | No |
 | dataset_query_variable | string |  | No |
-| external_data_tools | [ object ] |  | No |
-| file_upload | object |  | No |
+| external_data_tools | [ [AppExternalDataToolPayload](#appexternaldatatoolpayload) ] |  | No |
+| file_upload | [AppFileUploadPayload](#appfileuploadpayload) |  | No |
 | model | [AppModelSelectionPayload](#appmodelselectionpayload) |  | Yes |
-| more_like_this | object |  | No |
+| more_like_this | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | opening_statement | string |  | No |
 | pre_prompt | string |  | No |
-| prompt_type | string |  | No |
-| retriever_resource | object |  | No |
-| sensitive_word_avoidance | object |  | No |
-| speech_to_text | object |  | No |
+| prompt_type | string, <br>**Available values:** "", "advanced", "simple" |  | No |
+| retriever_resource | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| sensitive_word_avoidance | [AppModerationPayload](#appmoderationpayload) |  | No |
+| speech_to_text | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | suggested_questions | [ string ] |  | No |
-| suggested_questions_after_answer | object |  | No |
-| text_to_speech | object |  | No |
-| user_input_form | [ object ] |  | No |
+| suggested_questions_after_answer | [AppSuggestedQuestionsPayload](#appsuggestedquestionspayload) |  | No |
+| text_to_speech | [AppTextToSpeechPayload](#apptexttospeechpayload) |  | No |
+| user_input_form | [ [AppUserInputFormPayload](#appuserinputformpayload) ] |  | No |
 
 #### AppModelConfigResponse
 
@@ -16262,6 +16486,30 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | name | string |  | No |
 | provider | string |  | No |
 
+#### AppModerationConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_based_extension_id | string |  | No |
+| inputs_config | [AppModerationContentPayload](#appmoderationcontentpayload) |  | No |
+| keywords | string |  | No |
+| outputs_config | [AppModerationContentPayload](#appmoderationcontentpayload) |  | No |
+
+#### AppModerationContentPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| preset_response | string |  | No |
+
+#### AppModerationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [AppModerationConfigPayload](#appmoderationconfigpayload) |  | No |
+| enabled | boolean |  | No |
+| type | string |  | No |
+
 #### AppNamePayload
 
 | Name | Type | Description | Required |
@@ -16273,6 +16521,12 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | number | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppNumberInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| number | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppPagination
 
@@ -16289,6 +16543,12 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | paragraph | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppParagraphInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| paragraph | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppPartial
 
@@ -16321,6 +16581,13 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppPromptMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string |  | No |
+| text | string |  | Yes |
+
 #### AppProviderAgentToolResponse
 
 | Name | Type | Description | Required |
@@ -16337,6 +16604,13 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | tool_name | string |  | Yes |
 | tool_parameters | object |  | Yes |
 
+#### AppRerankingModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
 #### AppRerankingModelResponse
 
 | Name | Type | Description | Required |
@@ -16344,11 +16618,25 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
+#### AppRetrievalWeightsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [AppKeywordWeightPayload](#appkeywordweightpayload) |  | No |
+| vector_setting | [AppVectorWeightPayload](#appvectorweightpayload) |  | No |
+| weight_type | string |  | No |
+
 #### AppSelectFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | select | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppSelectInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| select | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppSelectorScope
 
@@ -16422,11 +16710,43 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | prompt | string |  | No |
 
+#### AppSuggestedQuestionsModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
+#### AppSuggestedQuestionsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| model | [AppSuggestedQuestionsModelPayload](#appsuggestedquestionsmodelpayload) |  | No |
+| prompt | string |  | No |
+
 #### AppTextInputFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | text-input | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppTextInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text-input | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
+
+#### AppTextToSpeechPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
+| enabled | boolean |  | No |
+| language | string |  | No |
+| voice | string |  | No |
 
 #### AppTextToSpeechResponse
 
@@ -16473,6 +16793,12 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | type | string |  | No |
 | variable | string |  | Yes |
 
+#### AppUserInputFormPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppUserInputFormPayload | [AppTextInputPayload](#apptextinputpayload)<br>[AppSelectInputPayload](#appselectinputpayload)<br>[AppParagraphInputPayload](#appparagraphinputpayload)<br>[AppNumberInputPayload](#appnumberinputpayload)<br>[AppCheckboxInputPayload](#appcheckboxinputpayload)<br>[AppExternalDataInputPayload](#appexternaldatainputpayload) |  |  |
+
 #### AppVariableConfig
 
 | Name | Type | Description | Required |
@@ -16489,6 +16815,14 @@ Transport shape; app-mode validators own defaults and feature-specific rules.
 | embedding_model_name | string |  | Yes |
 | embedding_provider_name | string |  | Yes |
 | vector_weight | number |  | Yes |
+
+#### AppVectorWeightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+| vector_weight | number |  | No |
 
 #### AppWeightsResponse
 

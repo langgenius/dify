@@ -538,52 +538,25 @@ export type MessageDetailResponse = {
 }
 
 export type AppModelConfigPayload = {
-  agent_mode?: {
-    [key: string]: unknown
-  } | null
-  chat_prompt_config?: {
-    [key: string]: unknown
-  } | null
-  completion_prompt_config?: {
-    [key: string]: unknown
-  } | null
-  dataset_configs?: {
-    [key: string]: unknown
-  } | null
+  agent_mode?: AppAgentModePayload | null
+  chat_prompt_config?: AppChatPromptPayload | null
+  completion_prompt_config?: AppCompletionPromptPayload | null
+  dataset_configs?: AppDatasetConfigPayload | null
   dataset_query_variable?: string | null
-  external_data_tools?: Array<{
-    [key: string]: unknown
-  }> | null
-  file_upload?: {
-    [key: string]: unknown
-  } | null
+  external_data_tools?: Array<AppExternalDataToolPayload> | null
+  file_upload?: AppFileUploadPayload | null
   model: AppModelSelectionPayload
-  more_like_this?: {
-    [key: string]: unknown
-  } | null
+  more_like_this?: AppFeaturePayload | null
   opening_statement?: string | null
   pre_prompt?: string | null
-  prompt_type?: string | null
-  retriever_resource?: {
-    [key: string]: unknown
-  } | null
-  sensitive_word_avoidance?: {
-    [key: string]: unknown
-  } | null
-  speech_to_text?: {
-    [key: string]: unknown
-  } | null
+  prompt_type?: '' | 'advanced' | 'simple' | null
+  retriever_resource?: AppFeaturePayload | null
+  sensitive_word_avoidance?: AppModerationPayload | null
+  speech_to_text?: AppFeaturePayload | null
   suggested_questions?: Array<string> | null
-  suggested_questions_after_answer?: {
-    [key: string]: unknown
-  } | null
-  text_to_speech?: {
-    [key: string]: unknown
-  } | null
-  user_input_form?: Array<{
-    [key: string]: unknown
-  }> | null
-  [key: string]: unknown
+  suggested_questions_after_answer?: AppSuggestedQuestionsPayload | null
+  text_to_speech?: AppTextToSpeechPayload | null
+  user_input_form?: Array<AppUserInputFormPayload> | null
 }
 
 export type AppNamePayload = {
@@ -1638,15 +1611,233 @@ export type MessageFile = {
   url?: string | null
 }
 
+export type AppAgentModePayload = {
+  enabled?: boolean | null
+  max_iteration?: number | null
+  prompt?: AppAgentPromptPayload | string | null
+  strategy?: string | null
+  tools?: Array<AppAgentToolPayload> | null
+  [key: string]:
+    | AppConfigJsonValue
+    | boolean
+    | null
+    | number
+    | null
+    | AppAgentPromptPayload
+    | string
+    | null
+    | string
+    | null
+    | Array<AppAgentToolPayload>
+    | null
+    | undefined
+}
+
+export type AppChatPromptPayload = {
+  prompt?: Array<AppPromptMessagePayload> | null
+  [key: string]: AppConfigJsonValue | Array<AppPromptMessagePayload> | null | undefined
+}
+
+export type AppCompletionPromptPayload = {
+  conversation_histories_role?: AppConversationRolesPayload | null
+  prompt?: AppPromptMessagePayload | null
+  [key: string]:
+    | AppConfigJsonValue
+    | AppConversationRolesPayload
+    | null
+    | AppPromptMessagePayload
+    | null
+    | undefined
+}
+
+export type AppDatasetConfigPayload = {
+  datasets?: AppDatasetCollectionPayload | null
+  metadata_filtering_conditions?: AppMetadataFilteringPayload | null
+  metadata_filtering_mode?: string | null
+  metadata_model_config?: AppMetadataModelPayload | null
+  reranking_enable?: boolean | null
+  reranking_enabled?: boolean | null
+  reranking_mode?: string | null
+  reranking_model?: AppRerankingModelPayload | null
+  retrieval_model?: string | null
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k?: number | null
+  weights?: AppRetrievalWeightsPayload | null
+  [key: string]:
+    | AppConfigJsonValue
+    | AppDatasetCollectionPayload
+    | null
+    | AppMetadataFilteringPayload
+    | null
+    | string
+    | null
+    | AppMetadataModelPayload
+    | null
+    | boolean
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | AppRerankingModelPayload
+    | null
+    | string
+    | null
+    | number
+    | null
+    | boolean
+    | null
+    | number
+    | null
+    | AppRetrievalWeightsPayload
+    | null
+    | undefined
+}
+
+export type AppExternalDataToolPayload = {
+  config?: {
+    [key: string]: AppConfigJsonValue
+  } | null
+  enabled?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  label?: string | null
+  type?: string | null
+  variable?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppFileUploadPayload = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<FileType> | null
+  allowed_file_upload_methods?: Array<FileTransferMethod> | null
+  audio?: AppFileTypeUploadPayload | null
+  custom?: AppFileTypeUploadPayload | null
+  document?: AppFileTypeUploadPayload | null
+  enabled?: boolean | null
+  image?: AppImageUploadPayload | null
+  image_config?: AppImageUploadPayload | null
+  number_limits?: number | null
+  preview_config?: AppFilePreviewPayload | null
+  video?: AppFileTypeUploadPayload | null
+  [key: string]:
+    | AppConfigJsonValue
+    | Array<string>
+    | null
+    | Array<FileType>
+    | null
+    | Array<FileTransferMethod>
+    | null
+    | AppFileTypeUploadPayload
+    | null
+    | AppFileTypeUploadPayload
+    | null
+    | AppFileTypeUploadPayload
+    | null
+    | boolean
+    | null
+    | AppImageUploadPayload
+    | null
+    | AppImageUploadPayload
+    | null
+    | number
+    | null
+    | AppFilePreviewPayload
+    | null
+    | AppFileTypeUploadPayload
+    | null
+    | undefined
+}
+
 export type AppModelSelectionPayload = {
   completion_params: {
-    [key: string]: unknown
+    [key: string]: AppConfigJsonValue
   }
   mode?: string | null
   name: string
   provider: string
-  [key: string]: unknown
+  [key: string]:
+    | AppConfigJsonValue
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | string
+    | null
+    | string
+    | undefined
 }
+
+export type AppFeaturePayload = {
+  enabled?: boolean | null
+  [key: string]: AppConfigJsonValue | boolean | null | undefined
+}
+
+export type AppModerationPayload = {
+  config?: AppModerationConfigPayload | null
+  enabled?: boolean | null
+  type?: string | null
+}
+
+export type AppSuggestedQuestionsPayload = {
+  enabled?: boolean | null
+  model?: AppSuggestedQuestionsModelPayload | null
+  prompt?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | boolean
+    | null
+    | AppSuggestedQuestionsModelPayload
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppTextToSpeechPayload = {
+  autoPlay?: 'disabled' | 'enabled' | null
+  enabled?: boolean | null
+  language?: string | null
+  voice?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | 'disabled'
+    | 'enabled'
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppUserInputFormPayload =
+  | AppTextInputPayload
+  | AppSelectInputPayload
+  | AppParagraphInputPayload
+  | AppNumberInputPayload
+  | AppCheckboxInputPayload
+  | AppExternalDataInputPayload
 
 export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
 
@@ -2406,6 +2597,265 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
+export type AppConfigJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AppConfigJsonValue>
+  | {
+      [key: string]: AppConfigJsonValue
+    }
+  | null
+
+export type AppAgentPromptPayload = {
+  first_prompt?: string | null
+  next_iteration?: string | null
+  [key: string]: AppConfigJsonValue | string | null | string | null | undefined
+}
+
+export type AppAgentToolPayload = {
+  credential_id?: string | null
+  current_datetime?: AppFeaturePayload | null
+  dataset?: AppDatasetSelectionPayload | null
+  enabled?: boolean | null
+  google_search?: AppFeaturePayload | null
+  isDeleted?: boolean | null
+  notAuthor?: boolean | null
+  plugin_unique_identifier?: string | null
+  provider_id?: string | null
+  provider_name?: string | null
+  provider_type?: string | null
+  tool_label?: string | null
+  tool_name?: string | null
+  tool_parameters?: {
+    [key: string]: AppConfigJsonValue
+  } | null
+  web_reader?: AppFeaturePayload | null
+  wikipedia?: AppFeaturePayload | null
+  [key: string]:
+    | AppConfigJsonValue
+    | string
+    | null
+    | AppFeaturePayload
+    | null
+    | AppDatasetSelectionPayload
+    | null
+    | boolean
+    | null
+    | AppFeaturePayload
+    | null
+    | boolean
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | AppFeaturePayload
+    | null
+    | AppFeaturePayload
+    | null
+    | undefined
+}
+
+export type AppPromptMessagePayload = {
+  role?: string | null
+  text: string
+  [key: string]: AppConfigJsonValue | string | null | string | undefined
+}
+
+export type AppConversationRolesPayload = {
+  assistant_prefix?: string | null
+  user_prefix?: string | null
+  [key: string]: AppConfigJsonValue | string | null | string | null | undefined
+}
+
+export type AppDatasetCollectionPayload = {
+  datasets?: Array<AppDatasetToolPayload> | null
+  strategy?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | Array<AppDatasetToolPayload>
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppMetadataFilteringPayload = {
+  conditions?: Array<AppMetadataConditionPayload> | null
+  logical_operator?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | Array<AppMetadataConditionPayload>
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppMetadataModelPayload = {
+  completion_params?: {
+    [key: string]: AppConfigJsonValue
+  } | null
+  mode?: string | null
+  name?: string | null
+  provider?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type AppRerankingModelPayload = {
+  reranking_model_name?: string | null
+  reranking_provider_name?: string | null
+  [key: string]: AppConfigJsonValue | string | null | string | null | undefined
+}
+
+export type AppRetrievalWeightsPayload = {
+  keyword_setting?: AppKeywordWeightPayload | null
+  vector_setting?: AppVectorWeightPayload | null
+  weight_type?: string | null
+  [key: string]:
+    | AppConfigJsonValue
+    | AppKeywordWeightPayload
+    | null
+    | AppVectorWeightPayload
+    | null
+    | string
+    | null
+    | undefined
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AppFileTypeUploadPayload = {
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<FileTransferMethod> | null
+  [key: string]:
+    | AppConfigJsonValue
+    | boolean
+    | null
+    | number
+    | null
+    | Array<FileTransferMethod>
+    | null
+    | undefined
+}
+
+export type AppImageUploadPayload = {
+  detail?: 'high' | 'low' | null
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<FileTransferMethod> | null
+  [key: string]:
+    | AppConfigJsonValue
+    | 'high'
+    | 'low'
+    | null
+    | boolean
+    | null
+    | number
+    | null
+    | Array<FileTransferMethod>
+    | null
+    | undefined
+}
+
+export type AppFilePreviewPayload = {
+  file_type_list?: Array<string> | null
+  mode?: string | null
+  [key: string]: AppConfigJsonValue | Array<string> | null | string | null | undefined
+}
+
+export type AppModerationConfigPayload = {
+  api_based_extension_id?: string | null
+  inputs_config?: AppModerationContentPayload | null
+  keywords?: string | null
+  outputs_config?: AppModerationContentPayload | null
+  [key: string]:
+    | AppConfigJsonValue
+    | string
+    | null
+    | AppModerationContentPayload
+    | null
+    | string
+    | null
+    | AppModerationContentPayload
+    | null
+    | undefined
+}
+
+export type AppSuggestedQuestionsModelPayload = {
+  completion_params?: {
+    [key: string]: AppConfigJsonValue
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]:
+    | AppConfigJsonValue
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | string
+    | null
+    | string
+    | undefined
+}
+
+export type AppTextInputPayload = {
+  'text-input': AppInputFieldPayload
+}
+
+export type AppSelectInputPayload = {
+  select: AppInputFieldPayload
+}
+
+export type AppParagraphInputPayload = {
+  paragraph: AppInputFieldPayload
+}
+
+export type AppNumberInputPayload = {
+  number: AppInputFieldPayload
+}
+
+export type AppCheckboxInputPayload = {
+  checkbox: AppInputFieldPayload
+}
+
+export type AppExternalDataInputPayload = {
+  external_data_tool: AppInputFieldPayload
+}
+
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
   elapsed_time?: number | null
@@ -2807,10 +3257,6 @@ export type AppWeightsResponse = {
 
 export type JsonValue2 = unknown
 
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
-
 export type AppImageUploadResponse = {
   detail?: 'high' | 'low' | null
   enabled?: boolean
@@ -2865,6 +3311,114 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+
+export type AppDatasetSelectionPayload = {
+  enabled?: boolean | null
+  id?: string | null
+  [key: string]: AppConfigJsonValue | boolean | null | string | null | undefined
+}
+
+export type AppDatasetToolPayload = {
+  dataset?: AppDatasetSelectionPayload | null
+  [key: string]: AppConfigJsonValue | AppDatasetSelectionPayload | null | undefined
+}
+
+export type AppMetadataConditionPayload = {
+  comparison_operator?: string | null
+  id?: string | null
+  metadata_id?: string | null
+  name?: string | null
+  value?: string | number | number | Array<string> | null
+  [key: string]:
+    | AppConfigJsonValue
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | number
+    | number
+    | Array<string>
+    | null
+    | undefined
+}
+
+export type AppKeywordWeightPayload = {
+  keyword_weight?: number | null
+  [key: string]: AppConfigJsonValue | number | null | undefined
+}
+
+export type AppVectorWeightPayload = {
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
+  [key: string]: AppConfigJsonValue | string | null | string | null | number | null | undefined
+}
+
+export type AppModerationContentPayload = {
+  enabled?: boolean | null
+  preset_response?: string | null
+  [key: string]: AppConfigJsonValue | boolean | null | string | null | undefined
+}
+
+export type AppInputFieldPayload = {
+  config?: {
+    [key: string]: AppConfigJsonValue
+  } | null
+  default?: AppConfigJsonValue
+  description?: string | null
+  enabled?: boolean | null
+  hide?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  json_schema?:
+    | string
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  required?: boolean | null
+  type?: string | null
+  variable: string
+  [key: string]:
+    | AppConfigJsonValue
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | string
+    | null
+    | boolean
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | string
+    | null
+    | string
+    | {
+        [key: string]: AppConfigJsonValue
+      }
+    | null
+    | string
+    | number
+    | null
+    | Array<string>
+    | null
+    | boolean
+    | null
+    | string
+    | null
+    | undefined
+}
 
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
@@ -3529,6 +4083,17 @@ export type WorkflowCommentReplyWritable = {
   created_by_account?: WorkflowCommentAccountWritable | null
   id: string
 }
+
+export type AppConfigJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AppConfigJsonValueWritable>
+  | {
+      [key: string]: AppConfigJsonValueWritable
+    }
+  | null
 
 export type GetAppsData = {
   body?: never
