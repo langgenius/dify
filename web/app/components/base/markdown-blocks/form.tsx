@@ -419,6 +419,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           const appearance = getMarkdownButtonAppearance(
             child.properties.dataVariant,
             child.properties.dataSize,
+            child.properties.dataTone,
           )
 
           return (
