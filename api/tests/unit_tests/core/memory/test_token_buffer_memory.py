@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -646,6 +647,19 @@ class TestBuildPromptMessageWithFiles:
 # ===========================================================================
 
 
+def test_split_prompt_messages_keeps_complete_turns_and_leading_assistant() -> None:
+    leading = AssistantPromptMessage(content="leading")
+    first_user = UserPromptMessage(content="first")
+    first_answer = AssistantPromptMessage(content="answer")
+    followup = AssistantPromptMessage(content="followup")
+    second_user = UserPromptMessage(content="second")
+
+    assert memory_module._split_prompt_messages_into_turns([]) == []
+    assert memory_module._split_prompt_messages_into_turns(
+        [leading, first_user, first_answer, followup, second_user]
+    ) == [[leading], [first_user, first_answer, followup], [second_user]]
+
+
 class TestGetHistoryPromptMessages:
     """Tests for persisted history retrieval, file batching, and pruning."""
 
@@ -762,8 +776,8 @@ class TestGetHistoryPromptMessages:
     @pytest.mark.parametrize(
         ("token_values", "max_token_limit", "expected_length"),
         [
-            ([3000, 1500], 2000, 1),
-            ([99999, 99999], 1, 1),
+            ([3000], 2000, 0),
+            ([99999], 1, 0),
             ([50], 2000, 2),
         ],
     )
@@ -775,12 +789,41 @@ class TestGetHistoryPromptMessages:
         expected_length: int,
     ) -> None:
         mem = self._make_memory(database)
-        mem.model_instance.get_llm_num_tokens.side_effect = token_values
+        cast(MagicMock, mem.model_instance.get_llm_num_tokens).side_effect = token_values
         _persist_message(database, mem.conversation.id)
 
         result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
 
         assert len(result) == expected_length
+
+    @pytest.mark.parametrize(
+        ("token_values", "expected_contents"),
+        [
+            ([3000, 1500], ["new query", "new answer"]),
+            ([3000, 2500], []),
+        ],
+    )
+    def test_token_pruning_removes_complete_oldest_turn(
+        self, database: Database, token_values: list[int], expected_contents: list[str]
+    ) -> None:
+        mem = self._make_memory(database)
+        cast(MagicMock, mem.model_instance.get_llm_num_tokens).side_effect = token_values
+        base_time = datetime.now(UTC).replace(tzinfo=None)
+        oldest = _persist_message(
+            database, mem.conversation.id, query="old query", answer="old answer", created_at=base_time
+        )
+        newest = _persist_message(
+            database,
+            mem.conversation.id,
+            query="new query",
+            answer="new answer",
+            created_at=base_time + timedelta(seconds=1),
+        )
+
+        with patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[newest, oldest]):
+            result = mem.get_history_prompt_messages(max_token_limit=2000)
+
+        assert [prompt.content for prompt in result] == expected_contents
 
 
 # ===========================================================================
