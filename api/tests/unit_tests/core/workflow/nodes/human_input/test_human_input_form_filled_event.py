@@ -85,14 +85,6 @@ from models.enums import MessageStatus
 from models.model import AppMode, Message
 
 
-class _FakeFormRepository:
-    def __init__(self, form):
-        self._form = form
-
-    def get_form(self, *_args, **_kwargs):
-        return self._form
-
-
 class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
     def build_from_mapping(self, *, mapping: Mapping[str, Any]):
         return File(
@@ -113,7 +105,7 @@ def _create_human_input_node(
     config: dict,
     graph_init_params: GraphInitParams,
     graph_runtime_state: GraphRuntimeState,
-    repo: _FakeFormRepository,
+    repo: HumanInputFormRepository,
 ) -> HumanInputNode:
     node_data = (
         config["data"]
@@ -225,7 +217,8 @@ def _build_node(
         config["data"]["inputs"] = []
         fake_form.submitted_data = {}
 
-    repo = _FakeFormRepository(fake_form)
+    repo = MagicMock(spec=HumanInputFormRepository)
+    repo.get_form.return_value = fake_form
     return _create_human_input_node(
         config=config,
         graph_init_params=graph_init_params,
@@ -286,7 +279,11 @@ def _build_timeout_node(
         expiration_time=expiration_time or naive_utc_now() - datetime.timedelta(minutes=1),
     )
 
-    repo = _FakeFormRepository(fake_form)
+    repo = MagicMock(spec=HumanInputFormRepository)
+    repo.get_form.return_value = fake_form
+    repo.mark_timeout.return_value = SimpleNamespace(
+        status=HumanInputFormStatus.TIMEOUT, rendered_content=fake_form.rendered_content
+    )
     return _create_human_input_node(
         config=config,
         graph_init_params=graph_init_params,
