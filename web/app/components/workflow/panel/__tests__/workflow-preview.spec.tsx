@@ -186,36 +186,44 @@ describe('WorkflowPreview', () => {
     })
   })
 
-  it('opens refine with the failed node diagnostic from a test run', async () => {
-    const user = userEvent.setup()
-    useAppStore.getState().setAppDetail({ id: 'app-1', mode: AppModeEnum.WORKFLOW } as never)
-    renderWorkflowComponent(<WorkflowPreview />, {
-      initialStoreState: {
-        workflowRunningData: createWorkflowRunningData({
-          result: createWorkflowResult({
-            status: WorkflowRunningStatus.Failed,
-            error: 'Run failed',
-          }),
-          tracing: [
-            createNodeTracing({
-              title: 'Summarize',
-              status: 'failed',
-              error: 'Variable summary not found',
+  it.each([
+    [AppModeEnum.WORKFLOW, 'workflow'],
+    [AppModeEnum.ADVANCED_CHAT, 'advanced-chat'],
+  ] as const)(
+    'opens refine for %s with the failed node diagnostic',
+    async (appMode, generatorMode) => {
+      const user = userEvent.setup()
+      useAppStore.getState().setAppDetail({ id: 'app-1', mode: appMode } as never)
+      renderWorkflowComponent(<WorkflowPreview />, {
+        initialStoreState: {
+          workflowRunningData: createWorkflowRunningData({
+            result: createWorkflowResult({
+              status: WorkflowRunningStatus.Failed,
+              error: 'Run failed',
             }),
-          ],
-        }),
-      },
-    })
+            tracing: [
+              createNodeTracing({
+                title: 'Summarize',
+                status: 'failed',
+                error: 'Variable summary not found',
+              }),
+            ],
+          }),
+        },
+      })
 
-    await user.click(screen.getByRole('button', { name: /workflowGenerator\.refineTitle/i }))
+      await user.click(screen.getByRole('button', { name: /workflowGenerator\.refineTitle/i }))
 
-    expect(useWorkflowGeneratorStore.getState()).toMatchObject({
-      isOpen: true,
-      intent: 'refine',
-      currentAppId: 'app-1',
-      initialInstruction: expect.stringContaining('Variable summary not found'),
-    })
-  })
+      expect(useWorkflowGeneratorStore.getState()).toMatchObject({
+        isOpen: true,
+        intent: 'refine',
+        mode: generatorMode,
+        currentAppMode: generatorMode,
+        currentAppId: 'app-1',
+        initialInstruction: expect.stringContaining('Variable summary not found'),
+      })
+    },
+  )
 
   it('does not offer workflow refinement for a provider failure', () => {
     useAppStore.getState().setAppDetail({ id: 'app-1', mode: AppModeEnum.WORKFLOW } as never)
