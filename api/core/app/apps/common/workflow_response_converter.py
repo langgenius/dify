@@ -313,6 +313,7 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+                usage=graph_runtime_state.llm_usage,
             ),
         )
 
