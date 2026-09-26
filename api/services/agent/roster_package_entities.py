@@ -179,9 +179,9 @@ class RosterAgentPackageManifest(AgentPackageResources):
         if set(apps) != {item.path for item in self.apps}:
             raise ValueError("app members must match the package app index")
         self.validate_packages(app.package for app in apps.values())
-        validate_icon_references(
-            self.icons, [metadata for app in apps.values() for metadata in (app.app, app.package.metadata.model_dump())]
-        )
+        icon_metadata = [item for app in apps.values() for item in (app.app, app.package.metadata.model_dump())]
+        icon_metadata.extend(app.site.model_dump() for app in apps.values() if app.site is not None)
+        validate_icon_references(self.icons, icon_metadata)
 
 
 @dataclass(kw_only=True)

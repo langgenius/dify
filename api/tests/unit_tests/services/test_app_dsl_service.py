@@ -12,7 +12,8 @@ from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
-from models.model import AppModelConfig, AppModelConfigDict, IconType
+from models.enums import CustomizeTokenStrategy
+from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, PendingData
@@ -482,6 +483,171 @@ def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_sessio
     assert service._warnings == []
 
 
+@pytest.mark.parametrize("allow_premium_site_settings", [False, True])
+def test_create_or_update_app_applies_site_settings_without_changing_access(
+    sqlite_session: Session, allow_premium_site_settings: bool
+) -> None:
+    app = _app(tenant_id=_TENANT_ID)
+    site = Site(
+        app_id=app.id,
+        title="Original Site",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        code="destination-code",
+        copyright="Existing copyright",
+        input_placeholder="Existing placeholder",
+    )
+    sqlite_session.add_all([app, site])
+    sqlite_session.flush()
+
+    service = AppDslService(session=sqlite_session)
+    service._create_or_update_app(
+        app=app,
+        data={
+            "app": {"mode": AppMode.CHAT.value, "icon_type": "emoji", "icon": "robot"},
+            "site": {
+                "title": "Imported Site",
+                "icon_type": "image",
+                "icon": "55555555-5555-4555-8555-555555555555",
+                "use_icon_as_answer_icon": True,
+                "copyright": "Imported copyright",
+                "input_placeholder": "Imported placeholder",
+            },
+            "model_config": {"model": {}},
+        },
+        account=_account(tenant_id=_TENANT_ID),
+        allow_premium_site_settings=allow_premium_site_settings,
+    )
+
+    assert site.title == "Imported Site"
+    assert site.use_icon_as_answer_icon is True
+    assert site.icon_type == app.icon_type
+    assert site.icon == app.icon
+    assert service._warnings == []
+    assert site.code == "destination-code"
+    assert site.customize_token_strategy == CustomizeTokenStrategy.NOT_ALLOW
+    assert site.copyright == ("Imported copyright" if allow_premium_site_settings else "Existing copyright")
+    assert site.input_placeholder == ("Imported placeholder" if allow_premium_site_settings else "Existing placeholder")
+
+
+def test_create_or_update_app_rejects_null_required_site_setting_before_mutation(unbound_session: Session) -> None:
+    app = _app()
+
+    with pytest.raises(ValueError, match="Required Site settings cannot be null"):
+        AppDslService(unbound_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT.value}, "site": {"title": None}},
+            account=_account(),
+        )
+
+    assert app.name == "Existing app"
+
+
+def test_import_app_resolves_site_entitlement_before_database_writes(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"copyright": "Source copyright"},
+            }
+        ),
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+    entitlement.reset_mock()
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Legacy", "mode": "chat"}}
+        ),
+    )
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_not_called()
+
+
+def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"input_placeholder": "Source placeholder"},
+            }
+        ),
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", Mock())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+
+    result = service.confirm_import(import_id="pending-import", account=_account())
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+
+def test_load_export_data_includes_site_presentation_settings(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app()
+    site = Site(
+        app_id=app.id,
+        title="Exported Site",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        icon_type=IconType.EMOJI,
+        icon="🌱",
+        use_icon_as_answer_icon=True,
+        code="private-code",
+    )
+    sqlite_session.add_all([app, site])
+    sqlite_session.flush()
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(return_value=[]))
+
+    data = AppDslService.load_export_data(app, session=sqlite_session).data
+
+    assert data["site"]["title"] == "Exported Site"
+    assert data["site"]["icon"] == "🌱"
+    assert data["site"]["use_icon_as_answer_icon"] is True
+    assert (
+        not {
+            "id",
+            "app_id",
+            "code",
+            "customize_domain",
+            "customize_token_strategy",
+            "prompt_public",
+            "status",
+        }
+        & data["site"].keys()
+    )
+
+
 def test_create_or_update_app_flushes_new_model_config_before_signal(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -791,6 +957,7 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
 
     monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
     monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
+    monkeypatch.setattr(App, "site_with_session", Mock(return_value=None))
     data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
     assert data["version"] == CURRENT_APP_DSL_VERSION
     assert data["kind"] == "app"

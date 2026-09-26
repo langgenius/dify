@@ -41,6 +41,8 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
+from services.entities.site_dsl import SiteDsl, apply_site_dsl
+from services.feature_service import FeatureService
 from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,10 @@ class RosterAgentPackageImporter:
             self._resources.validate(resources=package.manifest, agent_package=agent_package)
 
             try:
+                # Resolve billing before uploading package members or opening the write transaction.
+                allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(
+                    tenant_id
+                )
                 icons = self._resources.materialize_icons(
                     archive=package, icons=package.manifest.icons, tenant_id=tenant_id, account_id=account.id
                 )
@@ -87,6 +93,11 @@ class RosterAgentPackageImporter:
                 )
                 if app_metadata.icon_type == "image" and app_metadata.icon in icons:
                     app_metadata.icon = icons[app_metadata.icon]
+                site_data = app_dsl.site.model_copy(deep=True) if app_dsl.site is not None else None
+                if site_data is not None and site_data.icon_type == "image":
+                    site_icon = site_data.icon
+                    if site_icon is not None and site_icon in icons:
+                        site_data = site_data.model_copy(update={"icon": icons[site_icon]})
                 materialized, skill_warnings = self._resources.materialize(
                     archive=package,
                     resources=package.manifest,
@@ -106,6 +117,8 @@ class RosterAgentPackageImporter:
                     account=account,
                     metadata=agent_package.metadata,
                     app_metadata=app_metadata,
+                    site_data=site_data,
+                    allow_premium_site_settings=allow_premium_site_settings,
                     soul=resolved_soul,
                 )
             except Exception as exc:
@@ -152,6 +165,8 @@ class RosterAgentPackageImporter:
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
         app_metadata: AgentPackageMetadata | None = None,
+        site_data: SiteDsl | None = None,
+        allow_premium_site_settings: bool,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
             name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
@@ -230,6 +245,17 @@ class RosterAgentPackageImporter:
                     .values(used=True, used_by=account.id, used_at=naive_utc_now())
                 )
             create_site_record(app=app, account=account, session=session)
+            if site_data is not None:
+                site = app.site_with_session(session=session)
+                if site is None:
+                    raise RuntimeError("Imported App Site is unavailable")
+                apply_site_dsl(
+                    site=site,
+                    app=app,
+                    data=site_data,
+                    session=session,
+                    allow_premium_settings=allow_premium_site_settings,
+                )
             create_installed_app_record(app=app, session=session)
             return app.id, agent.id
 
