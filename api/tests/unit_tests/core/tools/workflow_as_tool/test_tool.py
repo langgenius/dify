@@ -4,6 +4,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -26,6 +27,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from models.enums import EndUserType
@@ -606,6 +608,26 @@ def test_derive_usage_from_top_level_usage_key():
     """Derive usage from top-level usage dict."""
     usage = WorkflowTool._derive_usage_from_result({"usage": {"total_tokens": 12, "total_price": "0.2"}})
     assert usage.total_tokens == 12
+
+
+def test_derive_usage_keeps_price_breakdown_from_blocking_response_usage():
+    """A serialized LLMUsage in the child workflow's blocking response keeps its token split and prices."""
+    child_usage = LLMUsage.empty_usage()
+    child_usage.prompt_tokens = 20000
+    child_usage.completion_tokens = 515
+    child_usage.total_tokens = 20515
+    child_usage.prompt_price = Decimal("0.04")
+    child_usage.completion_price = Decimal("0.00412")
+    child_usage.total_price = Decimal("0.04412")
+
+    usage = WorkflowTool._derive_usage_from_result(
+        {"total_tokens": 20515, "usage": child_usage.model_dump(mode="json"), "outputs": {}}
+    )
+
+    assert usage.prompt_tokens == 20000
+    assert usage.completion_tokens == 515
+    assert usage.total_tokens == 20515
+    assert usage.total_price == Decimal("0.04412")
 
 
 def test_derive_usage_from_metadata_usage():

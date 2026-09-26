@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Union
+from typing import Any, Union
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -187,6 +187,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                             finished_at=int(stream_response.data.finished_at)
                             if stream_response.data.finished_at
                             else None,
+                            usage=self._blocking_response_usage(),
                         ),
                     )
                 case _:
@@ -196,6 +197,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             return self._build_paused_blocking_response_from_human_input(human_input_responses)
 
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _blocking_response_usage(self) -> dict[str, Any] | None:
+        """Serialized LLM usage of the finished run, if the runtime state is available."""
+        try:
+            runtime_state = self._resolve_graph_runtime_state()
+        except ValueError:
+            return None
+        return runtime_state.llm_usage.model_dump(mode="json")
 
     def _build_paused_blocking_response_from_human_input(
         self, human_input_responses: list[HumanInputRequiredResponse]
