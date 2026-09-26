@@ -769,6 +769,23 @@ describe('Debug', () => {
       expect(screen.queryByTestId('cannot-query-dataset')).not.toBeInTheDocument()
     })
 
+    it('reports an invalid chat prompt before starting a completion request', async () => {
+      const user = userEvent.setup()
+      const { notify } = renderDebug({
+        contextValue: {
+          mode: AppModeEnum.COMPLETION,
+          isAdvancedMode: true,
+          chatPromptConfig: { prompt: [{ text: 'Missing role' }] },
+        },
+      })
+
+      await user.click(screen.getByTestId('panel-send'))
+
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
+      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+    })
+
     it('should send completion request and render completion result', async () => {
       mockState.mockText2speechDefaultModel = { provider: 'openai' }
       mockState.mockFeaturesState = {

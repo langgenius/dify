@@ -184,7 +184,8 @@ describe('useConfiguration utils', () => {
       promptTemplate: published.modelConfig.configs.prompt_template,
       resolvedModelModeType: published.modelConfig.mode,
     })
-    expect(zAppModelConfigPayload.safeParse(body).success).toBe(true)
+    expect(zAppModelConfigPayload.parse(body)).toEqual(body)
+    expect(body.completion_prompt_config?.prompt).not.toHaveProperty('role')
     expect(body.chat_prompt_config).toEqual(chatPrompt)
     expect(body.completion_prompt_config).toEqual(completionPrompt)
     expect(body.agent_mode).toEqual(
@@ -826,6 +827,48 @@ describe('useConfiguration utils', () => {
 
     expect(setDataSets).toHaveBeenCalledWith(nextDataSets)
     expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
+  })
+
+  it('reports an invalid chat prompt without publishing or replacing the saved configuration', async () => {
+    const backendModelConfig = createAppModelConfigFixture({
+      model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+    })
+    const config = buildPublishedConfig({
+      backendModelConfig,
+      collectionList: [],
+      datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
+      mode: AppModeEnum.CHAT,
+      nextDataSets: [],
+    })
+    const setPublishedConfig = vi.fn()
+    const updateModelConfig = vi.fn()
+    const onPublish = createPublishHandler({
+      appId: 'app-1',
+      chatPromptConfig: { prompt: [{ text: 'Missing role' }] },
+      completionParamsState: config.completionParams,
+      completionPromptConfig: config.completionPromptConfig,
+      contextVarEmpty: false,
+      dataSets: [],
+      datasetConfigs: config.datasetConfigs,
+      externalDataToolsConfig: [],
+      hasSetBlockStatus: { history: true, query: true },
+      isAdvancedMode: true,
+      isFunctionCall: false,
+      mode: AppModeEnum.CHAT,
+      modelConfig: config.modelConfig,
+      promptEmpty: false,
+      promptMode: 'advanced',
+      resolvedModelModeType: ModelModeType.chat,
+      setCanReturnToSimpleMode: vi.fn(),
+      setPublishedConfig,
+      t,
+    })
+
+    await expect(onPublish(updateModelConfig)).rejects.toThrow()
+    expect(mockToastError).toHaveBeenCalledWith('api.actionFailed')
+    expect(updateModelConfig).not.toHaveBeenCalled()
+    expect(setPublishedConfig).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
   it('should validate and publish configuration changes', async () => {

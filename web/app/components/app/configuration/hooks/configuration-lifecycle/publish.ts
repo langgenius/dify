@@ -8,6 +8,7 @@ import type { DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug
 import type { ConsoleClient } from '@/service/console'
 import {
   zAppAgentModePayload,
+  zAppChatPromptPayload,
   zAppDatasetConfigPayload,
   zAppExternalDataToolPayload,
   zAppFileUploadPayload,
@@ -73,7 +74,9 @@ export function buildPublishBody({
   return {
     pre_prompt: !isAdvancedMode ? promptTemplate : '',
     prompt_type: promptMode,
-    chat_prompt_config: isAdvancedMode ? chatPromptConfig : clone(DEFAULT_CHAT_PROMPT_CONFIG),
+    chat_prompt_config: isAdvancedMode
+      ? zAppChatPromptPayload.nullish().parse(chatPromptConfig)
+      : clone(DEFAULT_CHAT_PROMPT_CONFIG),
     completion_prompt_config: isAdvancedMode
       ? completionPromptConfig
       : clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
@@ -194,25 +197,31 @@ export const createPublishHandler =
       return
     }
 
-    const body = buildPublishBody({
-      chatPromptConfig,
-      completionParams: modelAndParameter?.parameters || completionParamsState,
-      completionPromptConfig,
-      contextVar,
-      dataSets,
-      datasetConfigs,
-      externalDataToolsConfig,
-      features,
-      isAdvancedMode,
-      isFunctionCall,
-      modelConfig,
-      modelId,
-      modelProvider: modelAndParameter?.provider || modelConfig.provider,
-      promptMode,
-      promptTemplate,
-      promptVariables,
-      resolvedModelModeType,
-    })
+    let body: ReturnType<typeof buildPublishBody>
+    try {
+      body = buildPublishBody({
+        chatPromptConfig,
+        completionParams: modelAndParameter?.parameters || completionParamsState,
+        completionPromptConfig,
+        contextVar,
+        dataSets,
+        datasetConfigs,
+        externalDataToolsConfig,
+        features,
+        isAdvancedMode,
+        isFunctionCall,
+        modelConfig,
+        modelId,
+        modelProvider: modelAndParameter?.provider || modelConfig.provider,
+        promptMode,
+        promptTemplate,
+        promptVariables,
+        resolvedModelModeType,
+      })
+    } catch (error) {
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      throw error
+    }
 
     await updateAppModelConfig({
       params: { app_id: appId },

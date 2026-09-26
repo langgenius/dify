@@ -25,10 +25,7 @@ export const normalizeCompletionPromptConfig = (
   completionPromptConfig?.prompt && completionPromptConfig.conversation_histories_role
     ? {
         ...completionPromptConfig,
-        prompt: {
-          ...completionPromptConfig.prompt,
-          role: completionPromptConfig.prompt.role ?? undefined,
-        },
+        prompt: { ...completionPromptConfig.prompt },
         conversation_histories_role: {
           ...completionPromptConfig.conversation_histories_role,
           user_prefix: completionPromptConfig.conversation_histories_role.user_prefix ?? '',
