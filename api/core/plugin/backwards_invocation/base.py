@@ -2,10 +2,15 @@ from collections.abc import Generator, Mapping
 
 from pydantic import BaseModel
 
+from libs.stream import close_stream
+
 
 class BaseBackwardsInvocation:
     @classmethod
-    def convert_to_event_stream(cls, response: Generator[BaseModel | Mapping | str, None, None] | BaseModel | Mapping):
+    def convert_to_event_stream(
+        cls,
+        response: Generator[BaseModel | Mapping[str, object] | str, None, None] | BaseModel | Mapping[str, object],
+    ) -> Generator[bytes, None, None]:
         if isinstance(response, Generator):
             try:
                 for chunk in response:
@@ -14,6 +19,8 @@ class BaseBackwardsInvocation:
             except Exception as e:
                 error_message = BaseBackwardsInvocationResponse(error=str(e)).model_dump_json()
                 yield error_message.encode()
+            finally:
+                close_stream(response)
         else:
             yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode()
 
