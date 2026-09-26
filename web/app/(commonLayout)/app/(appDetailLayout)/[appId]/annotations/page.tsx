@@ -6,8 +6,9 @@ export type IProps = {
   params: Promise<{ appId: string }>
 }
 
-const Logs = async () => {
-  return <Main pageType={PageType.annotation} />
+const Logs = async ({ params }: IProps) => {
+  const { appId } = await params
+  return <Main appId={appId} pageType={PageType.annotation} />
 }
 
 export default Logs

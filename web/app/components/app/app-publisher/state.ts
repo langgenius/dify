@@ -7,7 +7,11 @@ import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
 import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 export const BUILT_IN_ENVIRONMENT_ID = 'built-in'
 const PUBLISHER_DEPLOYMENT_POLLING_INTERVAL = 3000
@@ -18,7 +22,32 @@ export type PublisherEnvironmentDeploymentPolling = {
 }
 
 const appPublisherAppIdAtom = atom<string | null>(null)
-const appPublisherEnvironmentQueryEnabledAtom = atom(false)
+const appDetailQueryAtom = atomWithQuery((get) => {
+  const appId = get(appPublisherAppIdAtom)
+  return consoleQuery.apps.byAppId.get.queryOptions({
+    input: appId ? { params: { app_id: appId } } : skipToken,
+  })
+})
+
+export const appPublisherAppDetailAtom = selectAtom(appDetailQueryAtom, (query) => query.data)
+const accountProfileQueryAtom = atomWithQuery(() => userProfileQueryOptions())
+
+export const appPublisherCapabilitiesAtom = atom((get) => {
+  const appDetail = get(appPublisherAppDetailAtom)
+  return getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId: get(accountProfileQueryAtom).data?.profile.id,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys: get(workspacePermissionKeysAtom),
+  })
+})
+
+export const appPublisherEnvironmentQueryEnabledAtom = atom((get) => {
+  const appDetail = get(appPublisherAppDetailAtom)
+  return (
+    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    get(appPublisherCapabilitiesAtom).canDeploy
+  )
+})
 const appPublisherOpenStateAtom = atom(false)
 const selectedEnvironmentByAppIdAtom = atom<Record<string, string>>({})
 const locallyJoinedEnvironmentIdsByAppIdAtom = atom<Record<string, string[]>>({})
@@ -70,21 +99,13 @@ appPublisherOpenAtom.onMount = (setOpen) => () => {
 export function AppPublisherStateBoundary({
   appId,
   children,
-  environmentQueryEnabled,
 }: {
   appId?: string
   children: ReactNode
-  environmentQueryEnabled: boolean
 }) {
-  useHydrateAtoms(
-    [
-      [appPublisherAppIdAtom, appId ?? null],
-      [appPublisherEnvironmentQueryEnabledAtom, environmentQueryEnabled],
-    ] as const,
-    {
-      dangerouslyForceHydrate: true,
-    },
-  )
+  useHydrateAtoms([[appPublisherAppIdAtom, appId ?? null]] as const, {
+    dangerouslyForceHydrate: true,
+  })
 
   return children
 }

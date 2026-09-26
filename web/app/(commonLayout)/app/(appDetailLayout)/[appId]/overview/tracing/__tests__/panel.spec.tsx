@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
 
@@ -20,20 +20,6 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/overview',
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) =>
-    selector({
-      appDetail: {
-        permission_keys: testState.appPermissionKeys,
-      },
-    }),
-  ),
-}))
 
 vi.mock('@/service/apps', () => ({
   fetchTracingStatus: vi.fn(),
@@ -80,7 +66,9 @@ const mockedFetchTracingConfig = vi.mocked(fetchTracingConfig)
 const mockedUpdateTracingStatus = vi.mocked(updateTracingStatus)
 
 const renderPanel = async () => {
-  render(<Panel />)
+  renderWithConsoleQuery(<Panel appId="app-1" />, {
+    appDetail: { id: 'app-1', permission_keys: testState.appPermissionKeys },
+  })
 
   await screen.findAllByTestId('config-button')
 }

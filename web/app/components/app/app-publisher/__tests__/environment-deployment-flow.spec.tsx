@@ -18,6 +18,7 @@ import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
+  seedAppDetail,
 } from '@/test/console/query-data'
 import { PublisherEnvironmentFlow } from '../environment-deployment-flow'
 import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
@@ -187,6 +188,7 @@ function createDeployment({
 
 function createFlowQueryClient(environmentId: string, environmentInUse = false) {
   const queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, { id: 'app-1', mode: 'workflow', permission_keys: ['app.acl.deploy'] })
   PUBLISHED_WORKFLOW_VERSIONS.forEach((workflow) => {
     const precheckQuery =
       consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions({
@@ -340,7 +342,7 @@ function renderFlowWithPolling(deployment = createDeployment()) {
 
   return render(
     <Provider store={store}>
-      <AppPublisherStateBoundary appId="app-1" environmentQueryEnabled>
+      <AppPublisherStateBoundary appId="app-1">
         <PublisherPollingObserver />
         <PublisherEnvironmentFlow
           appId="app-1"

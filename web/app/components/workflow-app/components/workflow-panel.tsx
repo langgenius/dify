@@ -1,10 +1,11 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
@@ -75,7 +76,11 @@ const WorkflowPanelOnRight = () => {
 }
 const WorkflowPanel = () => {
   const appId = useStore((state) => state.appId)
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const versionHistoryPanelProps = useMemo(() => {
     return {
       appMode: appDetail?.mode,

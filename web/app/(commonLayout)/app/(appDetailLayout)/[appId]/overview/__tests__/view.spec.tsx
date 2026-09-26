@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import { screen } from '@testing-library/react'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import OverviewView from '../view'
 
 const testState = vi.hoisted(() => ({
   appDetail: {
     id: 'app-1',
-    mode: 'chat',
+    mode: 'chat' as const,
     maintainer: 'maintainer-1',
     permission_keys: [] as string[],
   },
@@ -15,19 +15,15 @@ const testState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, { appDetail: testState.appDetail })
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
-    selector({
-      appDetail: testState.appDetail,
-    }),
-}))
 
 vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
   default: () => <div>api key info panel</div>,
@@ -59,7 +55,7 @@ describe('OverviewView monitor permission', () => {
     vi.clearAllMocks()
     testState.appDetail = {
       id: 'app-1',
-      mode: 'chat',
+      mode: 'chat' as const,
       maintainer: 'maintainer-1',
       permission_keys: [],
     }

@@ -3,13 +3,11 @@ import { act, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import WorkflowChildren from '../workflow-children'
 
@@ -366,16 +364,13 @@ describe('WorkflowChildren', () => {
 
   it('should render feature panel, import modal actions, and default workflow chrome', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({
-      appDetail: createAppDetailFixture({ id: 'app-1', mode: AppModeEnum.WORKFLOW }),
-    })
     workflowStoreState = {
       ...workflowStoreState,
       showFeaturesPanel: true,
       showImportDSLModal: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren appMode={AppModeEnum.WORKFLOW} />)
 
     expect(screen.getByTestId('plugin-dependency')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-header')).toBeInTheDocument()

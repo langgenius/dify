@@ -1,18 +1,23 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
+import { useStore } from '@/app/components/workflow/store'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
-  const isChatMode = useIsChatMode()
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const { t } = useTranslation(['workflow'])
 
   const createStartNode = () => {
@@ -28,7 +33,7 @@ export const useWorkflowTemplate = () => {
     return startNode
   }
 
-  if (isChatMode) {
+  if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT) {
     const startNode = createStartNode()
 
     const { newNode: llmNode } = generateNewNode({

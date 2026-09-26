@@ -10,7 +10,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
@@ -20,7 +19,6 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -185,9 +183,6 @@ const createDynamicSelectInput = (): SelectFormInput => ({
 describe('human-input/delivery-method/test-email-sender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: createAppDetailFixture({ id: 'other-app', name: 'Workflow App' }),
-    })
   })
 
   afterEach(() => {

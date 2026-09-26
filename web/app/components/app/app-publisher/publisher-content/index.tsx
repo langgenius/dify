@@ -3,7 +3,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -14,6 +13,7 @@ import { PublisherEnvironmentTabs } from '../environment-tabs'
 import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
   addPublisherEnvironmentAtom,
+  appPublisherAppDetailAtom,
   appPublisherEnvironmentsAtom,
   BUILT_IN_ENVIRONMENT_ID,
   joinedPublisherEnvironmentIdsAtom,
@@ -65,7 +65,7 @@ export function PublisherContent({
   workflowToolAvailable = true,
 }: PublisherContentProps) {
   const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
-  const appDetail = useAppStore((state) => state.appDetail)
+  const appDetail = useAtomValue(appPublisherAppDetailAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const environments = useAtomValue(appPublisherEnvironmentsAtom)

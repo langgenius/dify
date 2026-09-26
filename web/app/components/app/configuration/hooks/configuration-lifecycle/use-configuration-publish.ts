@@ -31,8 +31,7 @@ type UseConfigurationPublishParams = {
   promptMode: PromptMode
   resolvedModelModeType: ModelModeType
   setCanReturnToSimpleMode: (value: boolean) => void
-  setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
-  syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
+  setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig>>
   t: TFunction<['appDebug', 'common']>
   updateModelConfig: (
     params: Parameters<ConsoleClient['apps']['byAppId']['modelConfig']['post']>[0],
@@ -60,7 +59,6 @@ export function useConfigurationPublish({
   resolvedModelModeType,
   setCanReturnToSimpleMode,
   setPublishedConfig,
-  syncToPublishedConfig,
   t,
   updateModelConfig,
 }: UseConfigurationPublishParams) {
@@ -72,10 +70,6 @@ export function useConfigurationPublish({
         params && 'model' in params && 'provider' in params && 'parameters' in params
           ? params
           : undefined
-      const handlePublishedConfigChange = (config: ConfigurationPublishConfig) => {
-        setPublishedConfig(config)
-        if (modelAndParameter) syncToPublishedConfig(config)
-      }
       const result = await createPublishHandler({
         appId,
         chatPromptConfig,
@@ -95,7 +89,7 @@ export function useConfigurationPublish({
         promptMode,
         resolvedModelModeType,
         setCanReturnToSimpleMode,
-        setPublishedConfig: handlePublishedConfigChange,
+        setPublishedConfig,
         t,
       })(updateModelConfig, modelAndParameter, features)
 
@@ -122,7 +116,6 @@ export function useConfigurationPublish({
       resolvedModelModeType,
       setCanReturnToSimpleMode,
       setPublishedConfig,
-      syncToPublishedConfig,
       t,
       updateModelConfig,
     ],

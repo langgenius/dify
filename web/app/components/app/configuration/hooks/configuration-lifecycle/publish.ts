@@ -225,10 +225,6 @@ export const createPublishHandler =
       throw error
     }
 
-    await updateAppModelConfig({
-      params: { app_id: appId },
-      body: payload,
-    })
     const nextModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.provider = body.model.provider
       draft.model_id = body.model.name
@@ -271,7 +267,7 @@ export const createPublishHandler =
       draft.dataSets = dataSets
     })
 
-    setPublishedConfig({
+    const publishedSnapshot: ConfigurationPublishConfig = {
       modelConfig: nextModelConfig,
       completionParams: body.model.completion_params,
       promptMode:
@@ -283,7 +279,13 @@ export const createPublishHandler =
         datasets: { datasets: dataSets.map(({ id }) => ({ enabled: true, id })) },
       },
       externalDataToolsConfig: externalDataToolsConfig ?? [],
+    }
+
+    await updateAppModelConfig({
+      params: { app_id: appId },
+      body: payload,
     })
+    setPublishedConfig(publishedSnapshot)
     toast.success(t(($) => $['api.success'], { ns: 'common' }))
     setCanReturnToSimpleMode(false)
     return true

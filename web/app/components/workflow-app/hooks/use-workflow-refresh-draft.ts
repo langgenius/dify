@@ -1,12 +1,13 @@
 import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { createWorkflowDraftReplacedEvent } from '@/app/components/workflow/create-workflow-draft-replaced-event'
 import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 
 type RefreshWorkflowDraftOptions = {
@@ -16,7 +17,12 @@ type RefreshWorkflowDraftOptions = {
 }
 
 export const useWorkflowRefreshDraft = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const refreshSequenceRef = useRef(0)
   const restoreLoadedAfterRefreshRef = useRef(false)

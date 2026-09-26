@@ -25,7 +25,6 @@ import CustomizeModal from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -66,7 +65,6 @@ type WebAppAccessPointCardProps = {
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
-  onRefreshApp: () => Promise<void>
   onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<void>
   workflow: PublishedWorkflow
 }
@@ -77,7 +75,6 @@ export function WebAppAccessPointCard({
   canDeploy,
   canManageAccessPoint,
   highlighted,
-  onRefreshApp,
   onSaveSiteConfig,
   showAccessControl,
   workflow,
@@ -90,7 +87,6 @@ export function WebAppAccessPointCard({
     'deployments',
     'navigation',
   ])
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
@@ -102,16 +98,6 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_site: updatedApp.enable_site,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -119,8 +105,7 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      onSuccess: async () => {
-        await onRefreshApp()
+      onSuccess: () => {
         setShowRegenerate(false)
       },
       onError: () => {
@@ -322,7 +307,7 @@ export function WebAppAccessPointCard({
           app={appInfo}
           onClose={() => setShowAccess(false)}
           onConfirm={async () => {
-            await Promise.all([onRefreshApp(), refetchUserCanAccessApp()])
+            await refetchUserCanAccessApp()
             setShowAccess(false)
           }}
         />

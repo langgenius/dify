@@ -189,7 +189,7 @@
   },
   "web/app/components/app/app-publisher/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx": {

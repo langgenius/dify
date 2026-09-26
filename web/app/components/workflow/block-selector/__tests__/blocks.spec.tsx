@@ -14,7 +14,6 @@ import Blocks from '../blocks'
 import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
-  appType: 'workflow' as string | undefined,
   nodes: [] as Array<{ data: { type?: BlockEnum } }>,
 }))
 
@@ -29,15 +28,6 @@ vi.mock('reactflow', () => ({
       getNodes: () => runtimeState.nodes,
     }),
   }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        type: runtimeState.appType,
-      },
-    }),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -125,7 +115,6 @@ const expectLastInviteOptionsRequest = () => {
 describe('Blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    runtimeState.appType = 'workflow'
     runtimeState.nodes = []
   })
 

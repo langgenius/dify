@@ -10,12 +10,11 @@ import type {
   WorkflowDraftReplacedEvent,
 } from '@/app/components/workflow/workflow-data-update-event'
 import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -28,6 +27,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
@@ -73,7 +73,11 @@ const WorkflowMain = ({
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
     appId: null as string | null,
@@ -854,7 +858,7 @@ const WorkflowMain = ({
         myUserId={myUserId}
         onlineUsers={onlineUsers}
       >
-        <WorkflowChildren />
+        <WorkflowChildren appMode={appDetail?.mode} />
       </WorkflowWithInnerContext>
       {isCollaborationEnabled &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (

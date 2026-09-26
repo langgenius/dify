@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { BuiltInAccessPoints } from '../built-in-access-points'
+import { AccessPointStateBoundary } from '../state'
 
 const mocks = vi.hoisted(() => ({
   appInfo: {
@@ -27,23 +29,6 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock()
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        webapp_auth: { enabled: true },
-      },
-    }),
-  }
-})
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ appDetail: mocks.appInfo }),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
 }))
@@ -57,8 +42,6 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    handleResult: vi.fn(),
-    refreshAppDetail: vi.fn(),
     saveSiteConfig: vi.fn(),
   }),
 }))
@@ -90,6 +73,12 @@ vi.mock('../built-in-access-points/trigger-card', () => ({
     return null
   },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(<AccessPointStateBoundary appId="app-1">{ui}</AccessPointStateBoundary>, {
+    appDetail: mocks.appInfo,
+    systemFeatures: { webapp_auth: { enabled: true } },
+  })
 
 describe('BuiltInAccessPoints', () => {
   beforeEach(() => {
