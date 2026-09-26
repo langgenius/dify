@@ -7,18 +7,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal
-    }) => unknown,
-  ) =>
-    selector({
-      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-    }),
-}))
+const mockOnOpenFeatures = vi.fn()
 
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
@@ -79,6 +68,7 @@ const promptVariables = [
 ] as const
 
 const baseContextValue: any = {
+  onOpenFeatures: mockOnOpenFeatures,
   modelModeType: ModelModeType.completion,
   modelConfig: {
     configs: {
@@ -125,7 +115,7 @@ describe('PromptValuePanel', () => {
     vi.clearAllMocks()
     mockSetInputs.mockClear()
     mockOnSend.mockClear()
-    mockSetShowAppConfigureFeaturesModal.mockClear()
+    mockOnOpenFeatures.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {
@@ -193,7 +183,7 @@ describe('PromptValuePanel', () => {
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
     fireEvent.click(screen.getByText('feature bar'))
-    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalled()
+    expect(mockOnOpenFeatures).toHaveBeenCalled()
   })
 
   it('disables run for advanced completion mode when the completion prompt is empty', () => {

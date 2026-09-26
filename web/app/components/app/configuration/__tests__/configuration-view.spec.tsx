@@ -98,6 +98,7 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,

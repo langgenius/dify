@@ -53,11 +53,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
     currentWorkspace,
     isLoadingCurrentWorkspace,
     serverLatestPublishedAt,
-    setShowAppConfigureFeaturesModal,
-    showAppConfigureFeaturesModal,
     updateModelConfig,
   } = useConfigurationAppContext()
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
@@ -354,6 +353,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     model: modelConfiguration,
     base: {
       appId,
+      onOpenFeatures: () => setShowAppConfigureFeaturesModal(true),
       canReturnToSimpleMode,
       canTestAndRun: appACLCapabilities.canTestAndRun,
       collectionList,

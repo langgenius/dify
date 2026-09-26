@@ -36,6 +36,7 @@ import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod }
 type IDebugConfiguration = {
   readonly?: boolean
   canTestAndRun?: boolean
+  onOpenFeatures: () => void
   appId: string
   isTrailFinished: boolean
   mode: AppModeEnum
@@ -119,6 +120,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   readonly: false,
   canTestAndRun: false,
   appId: '',
+  onOpenFeatures: noop,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,

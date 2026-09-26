@@ -1,7 +1,9 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import Log from '@/app/components/base/chat/chat/log'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
@@ -21,14 +23,6 @@ const mockState = vi.hoisted(() => ({
   mockToastUpdate: vi.fn(),
   mockToastPromise: vi.fn(),
   mockText2speechDefaultModel: null as unknown,
-  mockStoreState: {
-    currentLogItem: null as unknown,
-    setCurrentLogItem: vi.fn(),
-    showPromptLogModal: false,
-    setShowPromptLogModal: vi.fn(),
-    showAgentLogModal: false,
-    setShowAgentLogModal: vi.fn(),
-  },
   mockFeaturesState: {
     moreLikeThis: { enabled: false },
     moderation: { enabled: false },
@@ -121,18 +115,45 @@ vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({
   ),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      currentLogItem: unknown
-      setCurrentLogItem: () => void
-      showPromptLogModal: boolean
-      setShowPromptLogModal: () => void
-      showAgentLogModal: boolean
-      setShowAgentLogModal: () => void
-    }) => unknown,
-  ) => selector(mockState.mockStoreState),
-}))
+const promptLogItem: IChatItem = {
+  id: 'prompt-1',
+  content: 'First answer',
+  isAnswer: true,
+  log: [{ role: 'user', text: 'First prompt' }],
+}
+const secondPromptLogItem: IChatItem = {
+  id: 'prompt-2',
+  content: 'Second answer',
+  isAnswer: true,
+  log: [{ role: 'user', text: 'Second prompt' }],
+}
+const agentLogItem: IChatItem = {
+  id: 'agent-1',
+  content: 'Agent answer',
+  isAnswer: true,
+  conversationId: 'conversation-1',
+  agent_thoughts: [
+    {
+      id: 'thought-1',
+      thought: 'Agent thought',
+      tool: '',
+      tool_input: '',
+      message_id: 'agent-1',
+      conversation_id: 'conversation-1',
+      observation: '',
+      position: 1,
+    },
+  ],
+}
+const LogActions = ({ onOpenLog }: { onOpenLog: (item: IChatItem) => void }) => (
+  <>
+    {[promptLogItem, secondPromptLogItem, agentLogItem].map((item) => (
+      <section key={item.id} aria-label={item.content}>
+        <Log logItem={item} onOpenLog={onOpenLog} />
+      </section>
+    ))}
+  </>
+)
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
   default: ({
@@ -140,10 +161,12 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
     isLoading,
     isShowTextToSpeech,
     messageId,
+    onOpenLog,
   }: {
     content: string
     isLoading: boolean
     isShowTextToSpeech: boolean
+    onOpenLog: (item: IChatItem) => void
     messageId: string | null
   }) => (
     <div
@@ -153,13 +176,15 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
       data-message-id={messageId || ''}
     >
       {content}
+      <LogActions onOpenLog={onOpenLog} />
     </div>
   ),
 }))
 
 vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="agent-log-modal">
+  default: ({ onCancel, currentLogItem }: { onCancel: () => void; currentLogItem: IChatItem }) => (
+    <div data-testid="agent-log-modal" role="dialog" aria-label="Agent log">
+      {currentLogItem.content}
       <button type="button" data-testid="agent-log-cancel" onClick={onCancel}>
         Cancel
       </button>
@@ -191,8 +216,9 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/base/prompt-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="prompt-log-modal">
+  default: ({ onCancel, currentLogItem }: { onCancel: () => void; currentLogItem: IChatItem }) => (
+    <div data-testid="prompt-log-modal" role="dialog" aria-label="Prompt log">
+      {currentLogItem.log?.map((item) => item.text).join(' ')}
       <button type="button" data-testid="prompt-log-cancel" onClick={onCancel}>
         Cancel
       </button>
@@ -250,8 +276,10 @@ vi.mock('../debug-with-multiple-model', () => ({
   default: ({
     checkCanSend,
     onDebugWithMultipleModelChange,
+    onOpenLog,
   }: {
     checkCanSend: () => boolean
+    onOpenLog: (item: IChatItem) => void
     onDebugWithMultipleModelChange: (item: {
       id: string
       model: string
@@ -260,6 +288,7 @@ vi.mock('../debug-with-multiple-model', () => ({
     }) => void
   }) => (
     <div data-testid="debug-with-multiple-model">
+      <LogActions onOpenLog={onOpenLog} />
       <button type="button" data-testid="multiple-check-can-send" onClick={() => checkCanSend()}>
         Check
       </button>
@@ -284,9 +313,13 @@ vi.mock('../debug-with-multiple-model', () => ({
 vi.mock('../debug-with-single-model', () => {
   function DebugWithSingleModelMock({
     checkCanSend,
+    onOpenLog,
+    chatContainerRef,
     ref,
   }: {
     checkCanSend: () => boolean
+    onOpenLog: (item: IChatItem) => void
+    chatContainerRef: React.Ref<HTMLDivElement>
     ref?: React.Ref<{ handleRestart: () => void }>
   }) {
     React.useImperativeHandle(ref, () => ({
@@ -294,7 +327,8 @@ vi.mock('../debug-with-single-model', () => {
     }))
 
     return (
-      <div data-testid="debug-with-single-model">
+      <div ref={chatContainerRef} data-testid="debug-with-single-model">
+        <LogActions onOpenLog={onOpenLog} />
         <button type="button" data-testid="single-check-can-send" onClick={() => checkCanSend()}>
           Check
         </button>
@@ -309,6 +343,7 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
   readonly: false,
   canTestAndRun: true,
   appId: 'app-id',
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -460,14 +495,14 @@ const renderDebug = (
     ...options.props,
   }
 
-  render(
+  const view = render(
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <ConfigContext.Provider value={createContextValue(options.contextValue)}>
       <Debug {...props} />
     </ConfigContext.Provider>,
   )
 
-  return { onSetting, notify: mockState.mockToastCall, props }
+  return { ...view, onSetting, notify: mockState.mockToastCall, props }
 }
 
 describe('Debug', () => {
@@ -478,14 +513,6 @@ describe('Debug', () => {
     mockState.mockSetFeatures.mockReset()
     mockState.mockEventEmitterEmit.mockReset()
     mockState.mockText2speechDefaultModel = null
-    mockState.mockStoreState = {
-      currentLogItem: null,
-      setCurrentLogItem: vi.fn(),
-      showPromptLogModal: false,
-      setShowPromptLogModal: vi.fn(),
-      showAgentLogModal: false,
-      setShowAgentLogModal: vi.fn(),
-    }
     mockState.mockFeaturesState = {
       moreLikeThis: { enabled: false },
       moderation: { enabled: false },
@@ -940,42 +967,22 @@ describe('Debug', () => {
       expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
     })
 
-    it('should render prompt log modal in completion mode when store flag is enabled', () => {
-      mockState.mockStoreState = {
-        ...mockState.mockStoreState,
-        showPromptLogModal: true,
-      }
-
-      renderDebug({
-        contextValue: {
-          mode: AppModeEnum.COMPLETION,
-        },
+    it('opens and closes the completion result log from its action', async () => {
+      const user = userEvent.setup()
+      mockState.mockSendCompletionMessage.mockImplementation((_appId, _data, handlers) => {
+        handlers.onData('Completion answer', true, { messageId: 'completion-1' })
+        handlers.onCompleted()
       })
-
-      expect(screen.getByTestId('prompt-log-modal'))!.toBeInTheDocument()
-    })
-
-    it('should close prompt log modal in completion mode', () => {
-      const setCurrentLogItem = vi.fn()
-      const setShowPromptLogModal = vi.fn()
-
-      mockState.mockStoreState = {
-        ...mockState.mockStoreState,
-        currentLogItem: { id: 'log-1' },
-        setCurrentLogItem,
-        showPromptLogModal: true,
-        setShowPromptLogModal,
-      }
-
-      renderDebug({
-        contextValue: {
-          mode: AppModeEnum.COMPLETION,
-        },
-      })
-
-      fireEvent.click(screen.getByTestId('prompt-log-cancel'))
-      expect(setCurrentLogItem).toHaveBeenCalledTimes(1)
-      expect(setShowPromptLogModal).toHaveBeenCalledWith(false)
+      renderDebug({ contextValue: { mode: AppModeEnum.COMPLETION } })
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+      await user.click(
+        within(screen.getByRole('region', { name: 'First answer' })).getByRole('button', {
+          name: 'common.operation.log',
+        }),
+      )
+      expect(screen.getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent('First prompt')
+      await user.click(screen.getByTestId('prompt-log-cancel'))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -1151,57 +1158,55 @@ describe('Debug', () => {
         }),
       )
     })
-
-    it('should render prompt and agent log modals in multiple-model mode', () => {
-      mockState.mockStoreState = {
-        ...mockState.mockStoreState,
-        showPromptLogModal: true,
-        showAgentLogModal: true,
-      }
-
-      renderDebug({
-        props: {
-          debugWithMultipleModel: true,
-          multipleModelConfigs: [
-            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
-          ],
-        },
-      })
-
-      expect(screen.getByTestId('prompt-log-modal'))!.toBeInTheDocument()
-      expect(screen.getByTestId('agent-log-modal'))!.toBeInTheDocument()
-    })
-
-    it('should close prompt and agent log modals in multiple-model mode', () => {
-      const setCurrentLogItem = vi.fn()
-      const setShowPromptLogModal = vi.fn()
-      const setShowAgentLogModal = vi.fn()
-
-      mockState.mockStoreState = {
-        ...mockState.mockStoreState,
-        currentLogItem: { id: 'log-1' },
-        setCurrentLogItem,
-        showPromptLogModal: true,
-        setShowPromptLogModal,
-        showAgentLogModal: true,
-        setShowAgentLogModal,
-      }
-
-      renderDebug({
-        props: {
-          debugWithMultipleModel: true,
-          multipleModelConfigs: [
-            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
-          ],
-        },
-      })
-
-      fireEvent.click(screen.getByTestId('prompt-log-cancel'))
-      fireEvent.click(screen.getByTestId('agent-log-cancel'))
-
-      expect(setCurrentLogItem).toHaveBeenCalledTimes(2)
-      expect(setShowPromptLogModal).toHaveBeenCalledWith(false)
-      expect(setShowAgentLogModal).toHaveBeenCalledWith(false)
-    })
   })
+
+  it('keeps log selections within each mounted debug session', async () => {
+    const user = userEvent.setup()
+    const first = renderDebug()
+    const second = renderDebug()
+    await user.click(
+      within(second.container).getAllByRole('button', { name: 'common.operation.log' })[0]!,
+    )
+    expect(within(second.container).getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent(
+      'First prompt',
+    )
+    expect(within(first.container).queryByRole('dialog')).not.toBeInTheDocument()
+    first.unmount()
+    expect(within(second.container).getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent(
+      'First prompt',
+    )
+    second.unmount()
+    renderDebug()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])(
+    'selects one log, switches item and type, and reopens after close (multiple=%s)',
+    async (debugWithMultipleModel) => {
+      const user = userEvent.setup()
+      renderDebug({ props: { debugWithMultipleModel } })
+      const openLog = (answer: string) =>
+        user.click(
+          within(screen.getByRole('region', { name: answer })).getByRole('button', {
+            name: 'common.operation.log',
+          }),
+        )
+      await openLog('First answer')
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      expect(screen.getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent('First prompt')
+      await openLog('Second answer')
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      expect(screen.getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent('Second prompt')
+      await openLog('Agent answer')
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      expect(screen.getByRole('dialog', { name: 'Agent log' })).toHaveTextContent('Agent answer')
+      expect(screen.queryByRole('dialog', { name: 'Prompt log' })).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('agent-log-cancel'))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await openLog('First answer')
+      expect(screen.getByRole('dialog', { name: 'Prompt log' })).toHaveTextContent('First prompt')
+      await user.click(screen.getByTestId('prompt-log-cancel'))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 })

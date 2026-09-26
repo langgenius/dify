@@ -91,7 +91,14 @@ describe('ChatRecord', () => {
 
     mockFetchConversationMessages.mockResolvedValue({
       data: [
-        { id: 'msg-1', query: 'Question 1', answer: 'Answer 1', metadata: {}, message_files: [] },
+        {
+          id: 'msg-1',
+          query: 'Question 1',
+          answer: 'Answer 1',
+          metadata: {},
+          message_files: [],
+          workflow_run_id: 'run-1',
+        },
       ],
     } as never)
 
@@ -101,11 +108,14 @@ describe('ChatRecord', () => {
     })
 
     await screen.findByText('Question 1')
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+    expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
 
     await user.click(container.querySelector('.size-6.cursor-pointer') as HTMLElement)
 
     expect(handleLoadBackupDraft).toHaveBeenCalledTimes(1)
     expect(store.getState().historyWorkflowData).toBeUndefined()
+    expect(store.getState().messageLogItem).toBeUndefined()
   })
 
   it('stops loading when conversation fetching fails', async () => {

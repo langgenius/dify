@@ -2,8 +2,10 @@ import type { PropsWithChildren } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import Log from '@/app/components/base/chat/chat/log'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BasePanel from '../index'
 
@@ -16,7 +18,6 @@ const mockSetSettingsDestination = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
-let mockShowMessageLogModal = false
 let mockNodesReadOnly = false
 let mockCanRun = true
 let mockBuiltInTools = [
@@ -67,11 +68,8 @@ const mockLastRunState = {
 }
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: { showMessageLogModal: boolean; appDetail: { id: string } }) => unknown,
-  ) =>
+  useStore: (selector: (state: { appDetail: { id: string } }) => unknown) =>
     selector({
-      showMessageLogModal: mockShowMessageLogModal,
       appDetail: { id: 'app-1' },
     }),
 }))
@@ -386,7 +384,6 @@ const createData = (overrides: Record<string, unknown> = {}) => ({
 describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockShowMessageLogModal = false
     mockNodesReadOnly = false
     mockCanRun = true
     mockBuiltInTools = [
@@ -744,9 +741,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should stop a running node and offset when the log modal is visible', () => {
-    mockShowMessageLogModal = true
-
-    const { container } = renderWorkflowComponent(
+    const { container, store } = renderWorkflowComponent(
       <BasePanel
         id="node-1"
         data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
@@ -757,6 +752,12 @@ describe('workflow-panel index', () => {
         initialStoreState: {
           nodePanelWidth: 480,
           otherPanelWidth: 240,
+          messageLogItem: {
+            id: 'log-1',
+            isAnswer: true,
+            content: 'answer',
+            workflow_run_id: 'run-1',
+          },
         },
       },
     )
@@ -770,6 +771,33 @@ describe('workflow-panel index', () => {
     )
 
     expect(mockHandleStop).toHaveBeenCalledTimes(1)
+    act(() => store.getState().setMessageLogItem(undefined))
+    expect(root.style.right).toBe('0px')
+  })
+
+  it('should keep the node panel in place when an answer has no workflow run to inspect', async () => {
+    const user = userEvent.setup()
+    function FailedAnswerLog() {
+      const onOpenLog = useStore((state) => state.setMessageLogItem)
+      return (
+        <Log
+          logItem={{ id: 'failed-answer', isAnswer: true, content: 'Request failed' }}
+          onOpenLog={onOpenLog}
+        />
+      )
+    }
+    const { container } = renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <FailedAnswerLog />
+      </BasePanel>,
+      { initialStoreState: { nodePanelWidth: 480, otherPanelWidth: 240 } },
+    )
+    const panel = container.firstElementChild as HTMLElement
+    expect(panel.style.right).toBe('0px')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+
+    expect(panel.style.right).toBe('0px')
   })
 
   it('should resize the node panel with the keyboard, persist its width, and allow focus to leave', async () => {
