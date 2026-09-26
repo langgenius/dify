@@ -137,6 +137,23 @@ def test_extract_thread_messages_breaks_when_parent_is_none():
     assert result[0].id == id2
 
 
+def test_extract_thread_messages_ignores_unrelated_regeneration_root():
+    # An earlier regeneration can leave a parent_message_id=None message in the
+    # same conversation that isn't an ancestor of the thread being walked. The
+    # unconditional "no parent" check must not grab it and stop the walk early.
+    id_a, id_b, id_c, id_x = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
+    messages = [
+        MockMessage(id_c, id_b),
+        MockMessage(id_x, None),  # unrelated regeneration root, not an ancestor of C
+        MockMessage(id_b, id_a),
+        MockMessage(id_a, None),  # true root of C's thread
+    ]
+
+    result = extract_thread_messages(messages)
+
+    assert [msg.id for msg in result] == [id_c, id_b, id_a]
+
+
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 def test_get_thread_messages_length_excludes_newly_created_empty_answer(sqlite_session: Session):
     id1, id2 = str(uuid4()), str(uuid4())
