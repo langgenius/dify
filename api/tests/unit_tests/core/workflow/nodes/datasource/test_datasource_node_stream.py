@@ -43,7 +43,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture) -> None:
             return "icon"
 
         @classmethod
-        def stream_node_events(cls, **_: object) -> Generator[StreamCompletedEvent, None, None]:
+        def stream_node_events(cls, **_: object) -> Generator[StreamCompletedEvent]:
             yield from ()
             yield StreamCompletedEvent(node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED))
 

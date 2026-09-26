@@ -352,7 +352,7 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel],
     workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
     workflow_id: str,

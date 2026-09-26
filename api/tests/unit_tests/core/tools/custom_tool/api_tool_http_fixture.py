@@ -36,7 +36,7 @@ class MockedHttp:
 
 
 @pytest.fixture
-def setup_http_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+def setup_http_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     monkeypatch.setattr(ssrf_proxy, "make_request", MockedHttp.httpx_request)
     yield
     monkeypatch.undo()

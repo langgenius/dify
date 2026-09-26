@@ -261,7 +261,7 @@ def sse_client(
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 1 * 60,
-) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
+) -> Generator[tuple[ReadQueue, WriteQueue]]:
     """
     Client transport for SSE.
     `sse_read_timeout` determines how long (in seconds) the client will wait for a new
@@ -352,7 +352,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
 
 def read_messages(
     sse_client: SSEClient,
-) -> Generator[SessionMessage | Exception, None, None]:
+) -> Generator[SessionMessage | Exception]:
     """
     Read messages from the SSE client.
 

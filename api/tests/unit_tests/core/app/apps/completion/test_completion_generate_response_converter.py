@@ -101,7 +101,7 @@ class TestCompletionAppGenerateResponseConverter:
         assert result["metadata"] == {}
 
     def test_convert_stream_full_response(self):
-        def stream() -> Generator[AppStreamResponse, None, None]:
+        def stream() -> Generator[AppStreamResponse]:
             yield CompletionAppStreamResponse(
                 stream_response=PingStreamResponse(task_id="t"),
                 message_id="m",
@@ -126,7 +126,7 @@ class TestCompletionAppGenerateResponseConverter:
         assert result[2]["event"] == "message"
 
     def test_convert_stream_simple_response(self):
-        def stream() -> Generator[AppStreamResponse, None, None]:
+        def stream() -> Generator[AppStreamResponse]:
             yield CompletionAppStreamResponse(
                 stream_response=PingStreamResponse(task_id="t"),
                 message_id="m",

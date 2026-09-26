@@ -85,7 +85,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         session: Session,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str]:
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 

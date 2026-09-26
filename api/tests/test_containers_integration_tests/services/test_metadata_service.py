@@ -30,7 +30,7 @@ class TestMetadataService:
     """Integration tests for MetadataService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self) -> Generator[MetadataServiceDeps, None, None]:
+    def mock_external_service_dependencies(self) -> Generator[MetadataServiceDeps]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.metadata_service.redis_client") as mock_redis_client,

@@ -286,12 +286,10 @@ class DataSourceNotionListApi(Resource):
         if credential:
             datasource_runtime.runtime.credentials = credential
         datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-        online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
-            datasource_runtime.get_online_document_pages(
-                user_id=current_user.id,
-                datasource_parameters={},
-                provider_type=datasource_runtime.datasource_provider_type(),
-            )
+        online_document_result: Generator[OnlineDocumentPagesMessage] = datasource_runtime.get_online_document_pages(
+            user_id=current_user.id,
+            datasource_parameters={},
+            provider_type=datasource_runtime.datasource_provider_type(),
         )
         try:
             pages = []

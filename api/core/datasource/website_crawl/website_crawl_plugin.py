@@ -34,7 +34,7 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[WebsiteCrawlMessage, None, None]:
+    ) -> Generator[WebsiteCrawlMessage]:
         manager = PluginDatasourceManager()
 
         return manager.get_website_crawl(

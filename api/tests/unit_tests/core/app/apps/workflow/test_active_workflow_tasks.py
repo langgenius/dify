@@ -46,7 +46,7 @@ def test_managed_stream_waits_for_active_worker_cleanup() -> None:
             worker_started.set()
             release_worker.wait()
 
-    def response_stream() -> Generator[dict[str, str], None, None]:
+    def response_stream() -> Generator[dict[str, str]]:
         yield {"event": "workflow_finished"}
         stream_exhausted.set()
 

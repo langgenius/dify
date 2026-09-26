@@ -181,7 +181,7 @@ class PluginModelClient(BasePluginClient):
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
-    ) -> Generator[LLMResultChunk, None, None]:
+    ) -> Generator[LLMResultChunk]:
         """
         Invoke llm
         """
@@ -582,7 +582,7 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
-    ) -> Generator[TTSAudioChunk, None, None]:
+    ) -> Generator[TTSAudioChunk]:
         """
         Invoke tts
         """

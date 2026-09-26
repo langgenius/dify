@@ -94,7 +94,7 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
 
 
 class TestAgentChatAppGenerateResponseConverterStream:
-    def build_stream(self) -> Generator[ChatbotAppStreamResponse, None, None]:
+    def build_stream(self) -> Generator[ChatbotAppStreamResponse]:
         def _gen():
             yield ChatbotAppStreamResponse(
                 conversation_id="conv",

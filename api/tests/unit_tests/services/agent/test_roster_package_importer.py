@@ -76,7 +76,7 @@ class _MemoryStorage:
         self.deleted.append(filename)
         self.files.pop(filename, None)
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
 

@@ -52,7 +52,7 @@ _FINISHED_AT = _CREATED_AT + datetime.timedelta(seconds=30)
 
 
 @pytest.fixture
-def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     """Run the host clock in UTC+05:30 so local-time conversions become observable."""
     monkeypatch.setenv("TZ", "Asia/Kolkata")
     time.tzset()

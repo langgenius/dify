@@ -309,7 +309,7 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+            response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
                 session=session,
                 pipeline=pipeline,
                 user=current_user,

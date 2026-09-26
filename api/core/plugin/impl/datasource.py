@@ -144,7 +144,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[WebsiteCrawlMessage, None, None]:
+    ) -> Generator[WebsiteCrawlMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -179,7 +179,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -214,7 +214,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -249,7 +249,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         request: OnlineDriveBrowseFilesRequest,
         provider_type: str,
-    ) -> Generator[OnlineDriveBrowseFilesResponse, None, None]:
+    ) -> Generator[OnlineDriveBrowseFilesResponse]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -285,7 +285,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         request: OnlineDriveDownloadFileRequest,
         provider_type: str,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """

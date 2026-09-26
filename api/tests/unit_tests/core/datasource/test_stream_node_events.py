@@ -9,7 +9,7 @@ from core.datasource.entities.datasource_entities import DatasourceMessage
 from graphon.node_events import StreamCompletedEvent
 
 
-def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:
+def _gen_var_stream() -> Generator[DatasourceMessage]:
     # produce a streamed variable "a"="xy"
     yield DatasourceMessage(
         type=DatasourceMessage.MessageType.VARIABLE,

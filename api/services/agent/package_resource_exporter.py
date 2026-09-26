@@ -34,7 +34,7 @@ from services.skill_management_service import SkillManagementService
 
 
 class _Storage(Protocol):
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
+    def load_stream(self, filename: str) -> Generator[bytes]: ...
 
 
 @dataclass(frozen=True)
