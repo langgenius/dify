@@ -21,8 +21,9 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
 from extensions.ext_database import db
-from graphon.model_runtime.entities import PromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account, App, AppMode, InstalledApp
 from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating
@@ -191,29 +192,59 @@ class _QuestionProvider:
     messages: _Messages
     message: Message
     legacy_sessions: list[Session] = field(default_factory=list)
-    histories: list[str] = field(default_factory=list)
+    prompts: list[str] = field(default_factory=list)
+    io_sessions: list[tuple[str, bool]] = field(default_factory=list)
+    token_failure: bool = False
     traces: list[TraceTask] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.messages.harness.target_app.tenant_id
         assert model_type == ModelType.LLM
         self.messages.assert_sessions_closed()
+        assert db.session.get(App, self.messages.harness.target_app.id) is not None
         return cast(ModelInstance, self)
 
+    def record_io(self, stage: str) -> None:
+        self.io_sessions.append(
+            (
+                stage,
+                all(
+                    not session.in_transaction() and not session.identity_map
+                    for session in self.messages.sessions + self.legacy_sessions
+                ),
+            )
+        )
+
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
+        self.record_io("tokens")
+        if self.token_failure:
+            raise ValueError("Token counter failed")
         return len(prompt_messages)
 
-    def generate(
-        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
-    ) -> list[str]:
-        assert tenant_id == self.messages.harness.target_app.tenant_id
-        assert instruction_prompt == "Published questions"
-        assert model_config is None
-        self.messages.assert_sessions_closed()
-        self.histories.append(histories)
+    def get_model_schema(self) -> AIModelEntity:
+        self.record_io("schema")
+        return AIModelEntity.model_construct(parameter_rules=[])
+
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Mapping[str, object],
+        stop: list[str],
+        stream: bool,
+    ) -> LLMResult:
+        self.record_io("invoke")
+        assert stream is False
+        assert stop == []
+        assert model_parameters["temperature"] == 0.0
+        self.prompts.append(prompt_messages[0].get_text_content())
         if self.messages.external_error is not None:
             raise self.messages.external_error
-        return self.messages.questions
+        return LLMResult(
+            model="questions-model",
+            message=AssistantPromptMessage(content=json.dumps(self.messages.questions)),
+            usage=LLMUsage.empty_usage(),
+        )
 
     def add_trace_task(self, task: TraceTask) -> None:
         self.traces.append(task)
@@ -221,6 +252,7 @@ class _QuestionProvider:
     def assert_closed(self) -> None:
         self.messages.assert_sessions_closed()
         assert all(not session.in_transaction() and not session.identity_map for session in self.legacy_sessions)
+        assert all(closed for _stage, closed in self.io_sessions), self.io_sessions
 
 
 @pytest.fixture
@@ -249,7 +281,6 @@ def real_questions(
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
     monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
     messages.services = replace(
         messages.services,
@@ -661,14 +692,13 @@ def test_shared_suggested_questions_uses_owner_tenant_and_releases_sessions(
     assert messages.harness.target_app.tenant_id != messages.harness.installed_app.tenant_id
     messages.external_error = failure
     response = messages.request("suggested-questions", message_id=real_questions.message.id)
-    if failure is None:
-        _assert_json_response(response, status=200, body={"data": messages.questions})
-        assert len(real_questions.traces) == 1
-    else:
-        _error(response, status=400, code="completion_request_error", message="Provider rejected input")
-        assert not real_questions.traces
-    assert real_questions.histories == ["Human: Hello\nAssistant: 你好"]
-    assert real_questions.legacy_sessions
+    _assert_json_response(response, status=200, body={"data": messages.questions if failure is None else []})
+    assert len(real_questions.traces) == 1
+    assert len(real_questions.prompts) == 1
+    assert real_questions.prompts[0].startswith("Human: Hello\nAssistant: 你好\nPublished questions\n")
+    assert len(real_questions.legacy_sessions) == 2
+    assert real_questions.legacy_sessions[0] is not real_questions.legacy_sessions[1]
+    assert [stage for stage, _closed in real_questions.io_sessions] == ["tokens", "schema", "invoke"]
     real_questions.assert_closed()
     messages.assert_unused()
 
@@ -687,7 +717,7 @@ def test_shared_suggested_questions_rejects_other_account_history(
         status=404,
         code="message_not_found" if entity == "message" else "conversation_not_found",
     )
-    assert not real_questions.histories
+    assert not real_questions.prompts
     real_questions.assert_closed()
 
 
@@ -720,7 +750,7 @@ def test_shared_suggested_questions_rejects_stale_admitted_app_and_actor(
         code="unauthorized" if change == "account" else "app_unavailable",
         message="Account no longer exists." if change == "account" else None,
     )
-    assert not real_questions.histories
+    assert not real_questions.prompts
     assert not real_questions.legacy_sessions
     real_questions.assert_closed()
 
@@ -746,7 +776,7 @@ def test_suggested_questions_uses_admitted_installation_until_next_request(real_
         status=404,
         code="installed_app_not_found",
     )
-    assert len(real_questions.histories) == 1
+    assert len(real_questions.prompts) == 1
     real_questions.assert_closed()
 
 
@@ -797,3 +827,17 @@ def test_generation_resource_errors_remain_specific(
     messages.external_error = failure
     _error(messages.request(operation), status=status, code=code)
     messages.assert_unused()
+
+
+def test_shared_suggested_questions_token_failure_releases_sessions(real_questions: _QuestionProvider) -> None:
+    real_questions.token_failure = True
+    _error(
+        real_questions.messages.request("suggested-questions", message_id=real_questions.message.id),
+        status=500,
+        code="internal_server_error",
+    )
+    assert [stage for stage, _closed in real_questions.io_sessions] == ["tokens"]
+    assert len(real_questions.legacy_sessions) == 1
+    assert not real_questions.prompts
+    assert not real_questions.traces
+    real_questions.assert_closed()

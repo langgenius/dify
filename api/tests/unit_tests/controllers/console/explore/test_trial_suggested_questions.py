@@ -1,6 +1,7 @@
 """Trial suggested questions through HTTP, real ownership queries, and SQLite."""
 
-from collections.abc import Callable, Iterator, Sequence
+import json
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import cast
@@ -24,8 +25,9 @@ from core.ops.ops_trace_manager import TraceTask
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from graphon.model_runtime.entities import PromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Conversation, Message, Tenant, TrialApp
@@ -57,8 +59,11 @@ class _Features:
 @dataclass
 class _Provider:
     read_sessions: list[Session]
+    app_id: str
+    model_sessions: list[Session] = field(default_factory=list)
+    token_calls: int = 0
     tenant_ids: list[str] = field(default_factory=list)
-    histories: list[str] = field(default_factory=list)
+    prompts: list[str] = field(default_factory=list)
     traces: list[TraceTask] = field(default_factory=list)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "Another question?"])
     failure: Exception | None = None
@@ -68,27 +73,52 @@ class _Provider:
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert model_type == ModelType.LLM
         self.tenant_ids.append(tenant_id)
+        session = db.session()
+        assert session.get(App, self.app_id) is not None
+        self.model_sessions.append(session)
         if self.missing_model:
             raise ProviderTokenNotInitError("No default model")
         return cast(ModelInstance, self)
 
-    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
-        return len(prompt_messages)
+    def assert_queries_closed(self) -> None:
+        assert all(
+            not session.in_transaction() and not session.identity_map
+            for session in self.read_sessions + self.model_sessions
+        )
 
-    def generate(
-        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
-    ) -> Sequence[str]:
-        # Admission and ORM reload finish before the legacy runtime's model I/O.
-        assert len(self.read_sessions) == 2
-        assert all(not session.in_transaction() and not session.identity_map for session in self.read_sessions)
-        assert self.tenant_ids == [tenant_id]
-        assert instruction_prompt == "Suggest concise follow-ups"
-        assert model_config is None
-        assert get_credit_usage_metadata() == {"app_type": self.app_type}
-        self.histories.append(histories)
+    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
+        self.assert_queries_closed()
+        self.token_calls += 1
         if self.failure is not None:
             raise self.failure
-        return self.questions
+        return len(prompt_messages)
+
+    def get_model_schema(self) -> AIModelEntity:
+        self.assert_queries_closed()
+        return AIModelEntity.model_construct(parameter_rules=[])
+
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Mapping[str, object],
+        stop: list[str],
+        stream: bool,
+    ) -> LLMResult:
+        self.assert_queries_closed()
+        assert self.tenant_ids == [self.tenant_ids[0]] * 2
+        assert get_credit_usage_metadata() == {"app_type": self.app_type, "created_by": "suggested_questions"}
+        assert model_parameters == {"max_tokens": 256, "temperature": 0.0}
+        assert stop == []
+        assert stream is False
+        prompt = prompt_messages[0].get_text_content()
+        assert "Suggest concise follow-ups" in prompt
+        self.prompts.append(prompt)
+        return LLMResult(
+            model="question-model",
+            message=AssistantPromptMessage(content=json.dumps(self.questions)),
+            usage=LLMUsage.empty_usage(),
+        )
 
     def add_trace_task(self, task: TraceTask) -> None:
         self.traces.append(task)
@@ -191,7 +221,7 @@ def harness(
     def track_read(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         read_sessions.append(session)
 
-    provider = _Provider(read_sessions)
+    provider = _Provider(read_sessions, target.id)
     services = _ApplicationServices(
         trial_app_access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory)),
         recommended_app_queries=features,
@@ -221,7 +251,6 @@ def harness(
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
     monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
 
     app = Flask(__name__)
@@ -295,13 +324,14 @@ def test_questions_keep_response_history_owner_and_usage(
     assert response.get_json() == {"data": questions}
     assert response.headers["Content-Type"] == "application/json"
     assert int(response.headers["Content-Length"]) == len(response.data)
-    assert harness.provider.histories == ["Human: What is a trial?\nAssistant: A way to try an app."]
-    assert harness.provider.tenant_ids == [harness.target.tenant_id]
+    assert len(harness.provider.prompts) == 1
+    assert "Human: What is a trial?\nAssistant: A way to try an app." in harness.provider.prompts[0]
+    assert harness.provider.tenant_ids == [harness.target.tenant_id] * 2
     assert harness.target.tenant_id not in {harness.trial.tenant_id, harness.account.current_tenant_id}
     assert len(harness.provider.traces) == 1
     assert harness.features.events == ["setup", "csrf", "feature"]
     assert harness.usage() == 1
-    assert len(harness.legacy_sessions) == 1
+    assert len(harness.provider.model_sessions) == 2
     harness.assert_closed()
 
 
@@ -334,7 +364,7 @@ def test_message_and_conversation_require_complete_owner_chain(harness: _Harness
     response = harness.get(message_id=message_id)
 
     _assert_error(response, 404, "not_found", "Message not found" if entity == "message" else "Conversation not found")
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     assert harness.usage() is None
     harness.assert_closed()
 
@@ -343,7 +373,7 @@ def test_deleted_conversation_is_not_visible(harness: _Harness) -> None:
     with harness.factory.begin() as session:
         session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True))
     _assert_error(harness.get(), 404, "not_found", "Conversation not found")
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     harness.assert_closed()
 
 
@@ -356,7 +386,7 @@ def test_disabled_or_unset_suggestions_have_specific_error(harness: _Harness, co
             .values(suggested_questions_after_answer=config)
         )
     _assert_error(harness.get(), 403, "app_suggested_questions_after_answer_disabled")
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     harness.assert_closed()
 
 
@@ -365,7 +395,7 @@ def test_absent_default_model_keeps_empty_success(harness: _Harness) -> None:
     response = harness.get()
     assert response.status_code == 200
     assert response.get_json() == {"data": []}
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     assert harness.provider.traces == []
     harness.assert_closed()
 
@@ -418,7 +448,7 @@ def test_admission_blocks_before_runtime(
     else:
         _assert_error(response, status, code)
     assert harness.legacy_sessions == []
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     harness.assert_closed()
 
 
@@ -435,12 +465,13 @@ def test_admission_blocks_before_runtime(
         (InvokeError("Provider unavailable"), "completion_request_error", "Provider unavailable"),
     ],
 )
-def test_provider_failures_preserve_specific_errors_and_close_session(
+def test_token_count_failures_preserve_specific_errors_and_close_session(
     harness: _Harness, failure: Exception, code: str, message: str | None
 ) -> None:
     harness.provider.failure = failure
     _assert_error(harness.get(), 400, code, message)
-    assert len(harness.provider.histories) == 1
+    assert harness.provider.token_calls == 1
+    assert harness.provider.prompts == []
     assert harness.provider.traces == []
     assert harness.usage() is None
     harness.assert_closed()
@@ -462,11 +493,11 @@ def test_runtime_preserves_outer_request_session(harness: _Harness, failure: Exc
         assert outer_session.in_transaction()
         assert app_model in outer_session.dirty
         assert app_model.name == "Pending caller change"
-        assert len(harness.legacy_sessions) == 2
-        inner_session = harness.legacy_sessions[1]
-        assert inner_session is not outer_session
-        assert not inner_session.in_transaction()
-        assert not inner_session.identity_map
+        assert harness.provider.model_sessions
+        for inner_session in harness.provider.model_sessions:
+            assert inner_session is not outer_session
+            assert not inner_session.in_transaction()
+            assert not inner_session.identity_map
     harness.assert_closed()
     with harness.factory() as session:
         saved_app = session.get(App, harness.target.id)
@@ -481,7 +512,7 @@ def test_advanced_chat_without_published_workflow_keeps_empty_success(harness: _
     assert response.status_code == 200
     assert response.get_json() == {"data": []}
     assert len(harness.provider.read_sessions) == 2
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     assert harness.usage() is None
     harness.assert_closed()
 
@@ -521,6 +552,6 @@ def test_reload_errors_have_explicit_http_mapping(
 
     monkeypatch.setattr(MessageSuggestedQuestionsRuntime, "get_suggested_questions", reject_reload)
     _assert_error(harness.get(), status, code, message)
-    assert harness.provider.histories == []
+    assert harness.provider.prompts == []
     assert harness.usage() is None
     harness.assert_closed()
