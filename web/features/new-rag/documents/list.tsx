@@ -59,6 +59,7 @@ import {
   toggleDocumentSelectionAtom,
 } from './state/selection'
 import { documentUploadAvailability, documentUploadingAtom } from './state/upload'
+import { DocumentGraphStatus } from './tasks/graph-status'
 
 const DOCUMENT_RENDER_BATCH_SIZE = 100
 const PARTIAL_RESULTS_DESCRIPTION_ID = 'partial-document-results'
@@ -281,7 +282,7 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
 function DocumentStatusCell({ documentId }: { documentId: string }) {
   const { t: tCommon } = useTranslation(['common'])
   const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
-  const { failureMessageKey, status, statusPending } = useAtomValueRawSync(statusFactsAtom)
+  const { failureMessageKey, status, statusPending, task } = useAtomValueRawSync(statusFactsAtom)
 
   return (
     <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
@@ -304,6 +305,7 @@ function DocumentStatusCell({ documentId }: { documentId: string }) {
       ) : (
         <DocumentStatus status={status} />
       )}
+      {!statusPending && status === 'ready' && task && <DocumentGraphStatus task={task} />}
     </td>
   )
 }

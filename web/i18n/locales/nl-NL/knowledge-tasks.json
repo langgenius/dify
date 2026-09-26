@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Taken voor het toevoegen van documenten, synchroniseren van bronnen en opnieuw indexeren.",
   "dismissTask": "Taak verbergen",
+  "graphRepairFailed": "De tekst is doorzoekbaar. De kennisgraaf is onvolledig omdat de graafverwerking is mislukt.",
+  "graphRepairPending": "De tekst is doorzoekbaar. De kennisgraaf wordt aangevuld.",
+  "graphRepairRetry": "Graafverwerking opnieuw proberen",
   "interruptTask": "Onderbreken",
   "noBackgroundTasks": "Nog geen achtergrondtaken.",
   "overview.operation.document_delete": "documentverwijdering",

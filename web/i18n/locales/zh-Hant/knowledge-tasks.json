@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "文件新增、資料來源同步和重新索引任務。",
   "dismissTask": "忽略任務",
+  "graphRepairFailed": "文字已可檢索，圖譜處理失敗，尚未補全。",
+  "graphRepairPending": "文字已可檢索，圖譜正在補全。",
+  "graphRepairRetry": "重試圖譜補全",
   "interruptTask": "中斷",
   "noBackgroundTasks": "暫無背景任務。",
   "overview.operation.document_delete": "文件刪除",

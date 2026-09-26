@@ -1331,6 +1331,7 @@ export type KnowledgeFsBackgroundTaskResponse = {
   progress_failed: number
   progress_percent: number
   progress_total: number
+  semantic_enrichment?: KnowledgeFsSemanticEnrichmentResponse | null
   source_id?: string | null
   source_title?: string | null
   state: 'canceled' | 'completed' | 'failed' | 'queued' | 'running'
@@ -1675,6 +1676,7 @@ export type KnowledgeFsDocumentProcessingTaskResponse = {
   phase?: string | null
   progress_percent: number
   retry_at?: string | null
+  semantic_enrichment?: KnowledgeFsSemanticEnrichmentResponse | null
   stage:
     | 'nodes_generated'
     | 'outline_built'
@@ -2218,6 +2220,18 @@ export type KnowledgeFsRetrievalSettingsResponse = {
   revision?: number | null
   score_threshold: KnowledgeFsProductScoreThreshold
   top_k: number
+}
+
+export type KnowledgeFsSemanticEnrichmentResponse = {
+  error_code?: string | null
+  error_message?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  nodes_completed: number
+  nodes_total?: number | null
+  provider_calls?: number | null
+  provider_calls_maximum?: number | null
+  state: 'disabled' | 'failed' | 'not_scheduled' | 'pending' | 'ready' | 'running'
+  updated_at?: string | null
 }
 
 export type KnowledgeFsServiceQueryImageUploadResponse = {

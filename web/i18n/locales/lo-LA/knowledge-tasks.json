@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "ການເພີ່ມເອກະສານ, ການຊິງຄ໌ແຫຼ່ງ, ແລະວຽກດັດສະນີຄືນໃໝ່.",
   "dismissTask": "ເຊື່ອງວຽກ",
+  "graphRepairFailed": "ສາມາດຄົ້ນຫາຂໍ້ຄວາມໄດ້ແລ້ວ. ກຣາຟຄວາມຮູ້ບໍ່ສົມບູນເນື່ອງຈາກການປະມວນຜົນລົ້ມເຫຼວ.",
+  "graphRepairPending": "ສາມາດຄົ້ນຫາຂໍ້ຄວາມໄດ້ແລ້ວ. ກຳລັງເຮັດກຣາຟຄວາມຮູ້ໃຫ້ສົມບູນ.",
+  "graphRepairRetry": "ລອງປະມວນຜົນກຣາຟອີກຄັ້ງ",
   "interruptTask": "ຂັດຂວາງ",
   "noBackgroundTasks": "ບໍ່ມີໜ້າວຽກໃນພື້ນຫຼັງເທື່ອ.",
   "overview.operation.document_delete": "ການລຶບເອກະສານ",

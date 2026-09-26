@@ -1979,6 +1979,22 @@ class KnowledgeFSBackgroundTaskFailureResponse(ResponseModel):
     job_id: str | None = Field(default=None, validation_alias=AliasChoices("job_id", "jobId"))
 
 
+class KnowledgeFSSemanticEnrichmentResponse(ResponseModel):
+    error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
+    error_message: str | None = Field(default=None, validation_alias=AliasChoices("error_message", "errorMessage"))
+    failure: KnowledgeFSPublicFailureResponse | None = None
+    nodes_completed: int = Field(ge=0, validation_alias=AliasChoices("nodes_completed", "nodesCompleted"))
+    nodes_total: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("nodes_total", "nodesTotal"))
+    provider_calls: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("provider_calls", "providerCalls")
+    )
+    provider_calls_maximum: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("provider_calls_maximum", "providerCallsMaximum")
+    )
+    state: Literal["not_scheduled", "pending", "running", "ready", "failed", "disabled"]
+    updated_at: datetime | None = Field(default=None, validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
 class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     can_cancel: bool = Field(validation_alias=AliasChoices("can_cancel", "canCancel"))
     can_retry: bool = Field(validation_alias=AliasChoices("can_retry", "canRetry"))
@@ -2011,6 +2027,9 @@ class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     progress_failed: int = Field(ge=0, validation_alias=AliasChoices("progress_failed", "progressFailed"))
     progress_percent: int = Field(ge=0, le=100, validation_alias=AliasChoices("progress_percent", "progressPercent"))
     progress_total: int = Field(ge=0, validation_alias=AliasChoices("progress_total", "progressTotal"))
+    semantic_enrichment: KnowledgeFSSemanticEnrichmentResponse | None = Field(
+        default=None, validation_alias=AliasChoices("semantic_enrichment", "semanticEnrichment")
+    )
     source_id: str | None = Field(default=None, validation_alias=AliasChoices("source_id", "sourceId"))
     source_title: str | None = Field(default=None, validation_alias=AliasChoices("source_title", "sourceTitle"))
     state: Literal["canceled", "completed", "failed", "queued", "running"]
@@ -3892,6 +3911,9 @@ class KnowledgeFSDocumentProcessingTaskResponse(ResponseModel):
     stage: Literal[
         "queued", "parsed", "outline_built", "nodes_generated", "projection_built", "smoke_eval_passed", "published"
     ]
+    semantic_enrichment: KnowledgeFSSemanticEnrichmentResponse | None = Field(
+        default=None, validation_alias=AliasChoices("semantic_enrichment", "semanticEnrichment")
+    )
     progress_percent: int = Field(ge=0, le=100, validation_alias=AliasChoices("progress_percent", "progressPercent"))
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))

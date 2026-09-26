@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Tareas de incorporación de documentos, sincronización de fuentes y reindexación.",
   "dismissTask": "Ocultar tarea",
+  "graphRepairFailed": "El texto se puede buscar. El grafo de conocimiento está incompleto porque su procesamiento falló.",
+  "graphRepairPending": "El texto se puede buscar. Se está completando el grafo de conocimiento.",
+  "graphRepairRetry": "Reintentar el procesamiento del grafo",
   "interruptTask": "Interrumpir",
   "noBackgroundTasks": "Aún no hay tareas en segundo plano.",
   "overview.operation.document_delete": "eliminación de documentos",

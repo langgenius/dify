@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Sənədlərin əlavə edilməsi, mənbələrin sinxronlaşdırılması və yenidən indeksləmə işləri.",
   "dismissTask": "Dismiss task",
+  "graphRepairFailed": "Mətndə axtarış mümkündür. Qrafın emalı uğursuz olduğuna görə bilik qrafı natamamdır.",
+  "graphRepairPending": "Mətndə axtarış mümkündür. Bilik qrafı tamamlanır.",
+  "graphRepairRetry": "Qrafın emalını yenidən sınayın",
   "interruptTask": "Dayandır",
   "noBackgroundTasks": "Hələ arxa plan tapşırığı yoxdur.",
   "overview.operation.document_delete": "document deletion",

@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Завдання додавання документів, синхронізації джерел і повторного індексування.",
   "dismissTask": "Приховати завдання",
+  "graphRepairFailed": "Текст доступний для пошуку. Граф знань неповний через помилку обробки.",
+  "graphRepairPending": "Текст доступний для пошуку. Граф знань доповнюється.",
+  "graphRepairRetry": "Повторити обробку графа",
   "interruptTask": "Переривати",
   "noBackgroundTasks": "Фонових завдань ще немає.",
   "overview.operation.document_delete": "видалення документа",

@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Ajouts de documents, synchronisations de sources et tâches de réindexation.",
   "dismissTask": "Ignorer la tâche",
+  "graphRepairFailed": "Le texte est consultable. Le graphe de connaissances est incomplet, car son traitement a échoué.",
+  "graphRepairPending": "Le texte est consultable. Le graphe de connaissances est en cours de finalisation.",
+  "graphRepairRetry": "Réessayer le traitement du graphe",
   "interruptTask": "Interrompre",
   "noBackgroundTasks": "Aucune tâche en arrière-plan pour l'instant.",
   "overview.operation.document_delete": "suppression de documents",

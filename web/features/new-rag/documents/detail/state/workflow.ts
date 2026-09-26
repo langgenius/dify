@@ -10,7 +10,12 @@ import {
 } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/console'
-import { backgroundTaskListFromApi, documentTaskListFromApi } from '../../models'
+import { taskGraphIsActive } from '../../model'
+import {
+  backgroundTaskFromApi,
+  backgroundTaskListFromApi,
+  documentTaskListFromApi,
+} from '../../models'
 import { resolveDocumentTask } from '../../tasks/snapshot'
 import { responseStatus } from '../model'
 import { documentDetailDocumentIdAtom, documentDetailKnowledgeSpaceIdAtom } from './inputs'
@@ -147,7 +152,10 @@ const documentTasksQueryOptionsAtom = atom((get) => {
       if (!drawerOpen || responseStatus(query.state.error) === 403) return false
       // The drawer also shows bulk and source tasks, which the document snapshot cannot update.
       const hasActiveTasks = query.state.data?.pages.some((page) =>
-        page.data.some((task) => documentTaskIsActive(task.state)),
+        page.data.some(
+          (task) =>
+            documentTaskIsActive(task.state) || taskGraphIsActive(backgroundTaskFromApi(task)),
+        ),
       )
       return hasActiveTasks ? ACTIVE_TASK_REFRESH_INTERVAL : false
     },
@@ -204,7 +212,9 @@ const documentTaskSnapshotQueryAtom = atomWithQuery((get) => {
         query.state.data ? documentTaskListFromApi(query.state.data).items[0] : undefined,
         submitted?.taskId,
       )
-      return submitted || documentTaskIsActive(task?.state) ? ACTIVE_TASK_REFRESH_INTERVAL : false
+      return submitted || documentTaskIsActive(task?.state) || (task && taskGraphIsActive(task))
+        ? ACTIVE_TASK_REFRESH_INTERVAL
+        : false
     },
   })
 })

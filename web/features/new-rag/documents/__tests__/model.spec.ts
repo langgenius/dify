@@ -117,3 +117,22 @@ describe('new Knowledge document model', () => {
     ).toBe(false)
   })
 })
+
+describe('published document graph repair', () => {
+  it.each(['pending', 'running', 'failed'] as const)(
+    'keeps text ready while graph is %s',
+    (state) => {
+      const repair = task({
+        state: 'succeeded',
+        canCancel: false,
+        canRetry: state === 'failed',
+        semanticEnrichment: { state, nodes_completed: 0 },
+      })
+      expect(documentDisplayStatus(document(), repair)).toBe('ready')
+      expect(taskNeedsAttention(repair)).toBe(true)
+      expect(taskIsActive(repair)).toBe(false)
+      expect(taskCanCancel(repair)).toBe(false)
+      expect(taskCanRetry(repair)).toBe(state === 'failed')
+    },
+  )
+})

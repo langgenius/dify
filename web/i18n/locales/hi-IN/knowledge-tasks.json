@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "दस्तावेज़ जोड़ने, स्रोत सिंक करने और फिर से अनुक्रमित करने के कार्य।",
   "dismissTask": "कार्य छिपाएँ",
+  "graphRepairFailed": "टेक्स्ट खोज के लिए उपलब्ध है। ग्राफ़ प्रोसेसिंग विफल होने के कारण नॉलेज ग्राफ़ अधूरा है।",
+  "graphRepairPending": "टेक्स्ट खोज के लिए उपलब्ध है। नॉलेज ग्राफ़ पूरा किया जा रहा है।",
+  "graphRepairRetry": "ग्राफ़ प्रोसेसिंग फिर से करें",
   "interruptTask": "रोकें",
   "noBackgroundTasks": "अभी तक कोई पृष्ठभूमि कार्य नहीं.",
   "overview.operation.document_delete": "दस्तावेज़ हटाना",

@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Zadania dodawania dokumentów, synchronizacji źródeł i ponownego indeksowania.",
   "dismissTask": "Ukryj zadanie",
+  "graphRepairFailed": "Tekst można przeszukiwać. Graf wiedzy jest niekompletny, ponieważ jego przetwarzanie się nie powiodło.",
+  "graphRepairPending": "Tekst można przeszukiwać. Graf wiedzy jest uzupełniany.",
+  "graphRepairRetry": "Ponów przetwarzanie grafu",
   "interruptTask": "Przerwij",
   "noBackgroundTasks": "Nie ma jeszcze żadnych zadań w tle.",
   "overview.operation.document_delete": "usunięcie dokumentu",

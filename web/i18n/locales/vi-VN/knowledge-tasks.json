@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Các tác vụ thêm tài liệu, đồng bộ nguồn và lập chỉ mục lại.",
   "dismissTask": "Ẩn tác vụ",
+  "graphRepairFailed": "Có thể tìm kiếm văn bản. Đồ thị tri thức chưa hoàn chỉnh do xử lý đồ thị thất bại.",
+  "graphRepairPending": "Có thể tìm kiếm văn bản. Đồ thị tri thức đang được hoàn thiện.",
+  "graphRepairRetry": "Thử lại xử lý đồ thị",
   "interruptTask": "Ngắt",
   "noBackgroundTasks": "Chưa có tác vụ nền nào.",
   "overview.operation.document_delete": "xóa tài liệu",

@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Tarefas de adição de documentos, sincronização de fontes e reindexação.",
   "dismissTask": "Dispensar tarefa",
+  "graphRepairFailed": "O texto pode ser pesquisado. O grafo de conhecimento está incompleto porque seu processamento falhou.",
+  "graphRepairPending": "O texto pode ser pesquisado. O grafo de conhecimento está sendo concluído.",
+  "graphRepairRetry": "Tentar novamente o processamento do grafo",
   "interruptTask": "Interromper",
   "noBackgroundTasks": "Nenhuma tarefa em segundo plano ainda.",
   "overview.operation.document_delete": "exclusão de documento",

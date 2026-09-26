@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Belge ekleme, kaynak eşitleme ve yeniden dizinleme görevleri.",
   "dismissTask": "Görevi gizle",
+  "graphRepairFailed": "Metinde arama yapılabilir. Grafik işleme başarısız olduğu için bilgi grafiği eksik.",
+  "graphRepairPending": "Metinde arama yapılabilir. Bilgi grafiği tamamlanıyor.",
+  "graphRepairRetry": "Grafik işlemeyi yeniden dene",
   "interruptTask": "Kesinti",
   "noBackgroundTasks": "Henüz arka plan görevi yok.",
   "overview.operation.document_delete": "belge silme",

@@ -76,6 +76,7 @@ type DocumentChunkList = {
 }
 
 export type BackgroundTask = {
+  semanticEnrichment?: NonNullable<KnowledgeFsBackgroundTaskResponse['semantic_enrichment']>
   canCancel?: boolean
   canRetry?: boolean
   completedAt?: string
@@ -246,6 +247,7 @@ function taskStage(task: KnowledgeFsBackgroundTaskResponse): BackgroundTask['sta
 
 export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): BackgroundTask {
   return {
+    semanticEnrichment: task.semantic_enrichment ?? undefined,
     canCancel: task.can_cancel,
     canRetry: task.can_retry,
     completedAt: task.completed_at ?? undefined,

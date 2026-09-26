@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "وظایف افزودن اسناد، همگام‌سازی منابع و نمایه‌سازی مجدد.",
   "dismissTask": "نادیده گرفتن کار",
+  "graphRepairFailed": "متن قابل جستجو است. گراف دانش به دلیل شکست پردازش گراف ناقص است.",
+  "graphRepairPending": "متن قابل جستجو است. گراف دانش در حال تکمیل است.",
+  "graphRepairRetry": "تلاش مجدد برای پردازش گراف",
   "interruptTask": "توقف",
   "noBackgroundTasks": "هنوز هیچ کار پس زمینه ای وجود ندارد.",
   "overview.operation.document_delete": "حذف سند",

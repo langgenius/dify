@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "ドキュメントの追加、ソースの同期、再インデックスのタスク。",
   "dismissTask": "タスクを非表示",
+  "graphRepairFailed": "テキストは検索できます。グラフ処理に失敗したため、ナレッジグラフは未完成です。",
+  "graphRepairPending": "テキストは検索できます。ナレッジグラフを補完しています。",
+  "graphRepairRetry": "グラフ処理を再試行",
   "interruptTask": "中断",
   "noBackgroundTasks": "バックグラウンドタスクはまだありません。",
   "overview.operation.document_delete": "ドキュメントの削除",

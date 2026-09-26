@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Tugas penambahan dokumen, sinkronisasi sumber, dan pengindeksan ulang.",
   "dismissTask": "Sembunyikan tugas",
+  "graphRepairFailed": "Teks dapat dicari. Grafik pengetahuan belum lengkap karena pemrosesan grafik gagal.",
+  "graphRepairPending": "Teks dapat dicari. Grafik pengetahuan sedang dilengkapi.",
+  "graphRepairRetry": "Coba lagi pemrosesan grafik",
   "interruptTask": "Hentikan",
   "noBackgroundTasks": "Belum ada tugas latar belakang.",
   "overview.operation.document_delete": "penghapusan dokumen",

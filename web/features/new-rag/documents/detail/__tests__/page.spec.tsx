@@ -240,6 +240,7 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   user_metadata: item.userMetadata,
 }))
 const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
+  semantic_enrichment: item.semanticEnrichment ?? null,
   can_cancel: item.canCancel ?? true,
   can_retry: item.canRetry ?? item.state === 'failed',
   completed_at: item.completedAt ?? null,
@@ -2458,6 +2459,31 @@ describe('DocumentDetailPage', () => {
     expect(
       options.refetchInterval({ state: { data: { data: [taskApiResponse(completed)] } } }),
     ).toBe(false)
+  })
+
+  it('shows graph repair separately from a published document and clears the notice when ready', async () => {
+    const latestTask = task({
+      state: 'succeeded',
+      canCancel: false,
+      canRetry: false,
+      semanticEnrichment: { state: 'pending', nodes_completed: 0 },
+    })
+    documentQuery.data = logicalDocument({ latestTask })
+    taskSnapshotQuery.data = latestTask
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+    expect(screen.getByText('knowledgeTasks.graphRepairPending')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
+    ).not.toBeInTheDocument()
+    taskSnapshotQuery.data = {
+      ...latestTask,
+      updatedAt: '2026-07-21T10:02:00Z',
+      semanticEnrichment: { state: 'ready', nodes_completed: 1 },
+    }
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    expect(screen.queryByText('knowledgeTasks.graphRepairPending')).not.toBeInTheDocument()
   })
 
   it('refreshes the document and content when an active task becomes terminal', async () => {

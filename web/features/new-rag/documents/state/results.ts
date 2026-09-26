@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 import { selectAtom } from 'jotai/utils'
 import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
-import { documentDisplayStatus, sourceName, taskNeedsAttention } from '../model'
+import { documentDisplayStatus, sourceName, taskGraphIsActive, taskNeedsAttention } from '../model'
 import { MAX_AUTO_CURSOR_PAGES } from '../tasks/recovery'
 import { activeTasksAtom, documentTaskByDocumentAtom, drawerTasksAtom } from '../tasks/state'
 import { documentFilterAtom, documentSearchAtom } from './inputs'
@@ -213,15 +213,17 @@ const createDocumentRowFactsAtom = (documentId: string) => {
 export const createDocumentRowStatusFactsAtom = (documentId: string) => {
   return selectAtom(
     createDocumentRowFactsAtom(documentId),
-    ({ failureMessageKey, status, statusPending }) => ({
+    ({ failureMessageKey, status, statusPending, task }) => ({
       failureMessageKey,
       status,
       statusPending,
+      task,
     }),
     (left, right) =>
       left.failureMessageKey === right.failureMessageKey &&
       left.status === right.status &&
-      left.statusPending === right.statusPending,
+      left.statusPending === right.statusPending &&
+      left.task === right.task,
   )
 }
 
@@ -306,9 +308,16 @@ export const reindexUnavailabilityAtom = atom<ReindexUnavailability>((get) => {
 })
 
 const attentionTasksAtom = atom((get) => get(drawerTasksAtom).filter(taskNeedsAttention))
-const activeTaskCountAtom = atom((get) => get(activeTasksAtom).length)
+const activeTaskCountAtom = atom(
+  (get) => get(activeTasksAtom).length + get(drawerTasksAtom).filter(taskGraphIsActive).length,
+)
 const hasTaskErrorAtom = atom((get) =>
-  get(attentionTasksAtom).some((task) => task.state === 'failed' || task.state === 'canceled'),
+  get(attentionTasksAtom).some(
+    (task) =>
+      task.state === 'failed' ||
+      task.state === 'canceled' ||
+      task.semanticEnrichment?.state === 'failed',
+  ),
 )
 const showTasksAtom = atom((get) => {
   return Boolean(

@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Opravila dodajanja dokumentov, sinhronizacije virov in ponovnega indeksiranja.",
   "dismissTask": "Skrij opravilo",
+  "graphRepairFailed": "Besedilo je mogoče iskati. Graf znanja je nepopoln, ker njegova obdelava ni uspela.",
+  "graphRepairPending": "Besedilo je mogoče iskati. Graf znanja se dopolnjuje.",
+  "graphRepairRetry": "Ponovi obdelavo grafa",
   "interruptTask": "Prekini",
   "noBackgroundTasks": "Ni še opravil v ozadju.",
   "overview.operation.document_delete": "brisanje dokumenta",

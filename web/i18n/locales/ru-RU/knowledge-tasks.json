@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Задачи добавления документов, синхронизации источников и переиндексации.",
   "dismissTask": "Скрыть задачу",
+  "graphRepairFailed": "Текст доступен для поиска. Граф знаний неполон из-за ошибки обработки.",
+  "graphRepairPending": "Текст доступен для поиска. Граф знаний дополняется.",
+  "graphRepairRetry": "Повторить обработку графа",
   "interruptTask": "Прерывание",
   "noBackgroundTasks": "Фоновых задач пока нет.",
   "overview.operation.document_delete": "удаление документа",
