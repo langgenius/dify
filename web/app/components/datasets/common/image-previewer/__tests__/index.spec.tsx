@@ -114,6 +114,28 @@ describe('ImagePreviewer', () => {
     expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
   })
 
+  it('changes images once per held arrow and resumes navigation after reaching a boundary', async () => {
+    const user = userEvent.setup()
+    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
+    await screen.findByRole('img', { name: 'image1.png' })
+    const { closeButton, nextButton } = getPreviewButtons()
+    expect(closeButton).toHaveFocus()
+
+    await user.keyboard('{ArrowRight>3/}')
+    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    expect(nextButton).toBeDisabled()
+
+    await user.keyboard('{ArrowRight>3/}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    expect(nextButton).toBeEnabled()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+  })
+
   it('disables both navigation buttons for a single image', async () => {
     render(<ImagePreviewer images={[images[0]!]} onClose={vi.fn()} />)
     await screen.findByRole('img', { name: 'image1.png' })

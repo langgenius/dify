@@ -47,17 +47,19 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
   const image = dialog.getByRole('img', { name: 'Local preview' })
   await expect.poll(() => image.element().getBoundingClientRect().width).toBeGreaterThan(0)
   const initialWidth = image.element().getBoundingClientRect().width
-  await userEvent.keyboard('{ArrowRight}')
+  await userEvent.keyboard('{ArrowRight>3/}')
   expect(onNext).toHaveBeenCalledOnce()
-  await userEvent.keyboard('{ArrowUp}')
+  await userEvent.keyboard('{ArrowRight}')
+  expect(onNext).toHaveBeenCalledTimes(2)
+  await userEvent.keyboard('{ArrowUp>3/}')
   await expect
     .poll(() => image.element().getBoundingClientRect().width)
-    .toBeCloseTo(initialWidth * 1.2)
+    .toBeCloseTo(initialWidth * 1.2 ** 3)
 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   expect(onCancel).toHaveBeenCalledOnce()
   await userEvent.keyboard('{ArrowRight}{ArrowUp}')
-  expect(onNext).toHaveBeenCalledOnce()
+  expect(onNext).toHaveBeenCalledTimes(2)
   expect(onCancel).toHaveBeenCalledOnce()
 })

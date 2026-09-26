@@ -138,6 +138,33 @@ describe('app-publisher sections', () => {
     },
   )
 
+  it('consumes held publish keys and allows publishing again after release', async () => {
+    const user = userEvent.setup()
+    const handlePublish = vi.fn().mockResolvedValue(undefined)
+    render(<PublisherPopup handlePublish={handlePublish} />)
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    const button = screen.getByRole('button', { name: /common\.publish\b/ })
+    const keyOptions = {
+      key: 'P',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    }
+    const keyDown = new KeyboardEvent('keydown', keyOptions)
+    const repeatedKeyDown = new KeyboardEvent('keydown', { ...keyOptions, repeat: true })
+
+    fireEvent(button, keyDown)
+    fireEvent(button, repeatedKeyDown)
+    expect(keyDown.defaultPrevented).toBe(true)
+    expect(repeatedKeyDown.defaultPrevented).toBe(true)
+    expect(handlePublish).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyUp(button, keyOptions)
+    publishFrom(button)
+    expect(handlePublish).toHaveBeenCalledTimes(2)
+  })
+
   it('prevents a second publish while the shared publish action is pending', async () => {
     const user = userEvent.setup()
     let resolvePublish: () => void = () => {}

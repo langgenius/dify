@@ -200,7 +200,7 @@ export function AgentConfigurePublishBar({
   useHotkey(
     PUBLISH_AGENT_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -208,7 +208,6 @@ export function AgentConfigurePublishBar({
     },
     {
       enabled: canPublish && !selectedVersionSnapshot,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
       ignoreInputs: false,

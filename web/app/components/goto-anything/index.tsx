@@ -384,7 +384,7 @@ export function GotoAnything() {
   useHotkey(
     GOTO_ANYTHING_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       if (!gotoAnythingDialogHandle.isOpen && isEditableShortcutTarget(event.target)) return
 
       event.preventDefault()

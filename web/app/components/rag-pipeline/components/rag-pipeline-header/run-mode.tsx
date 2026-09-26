@@ -52,14 +52,13 @@ export function RunMode({ text }: RunModeProps) {
   useHotkey(
     RAG_PIPELINE_RUN_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
       handleRun()
     },
     {
-      requireReset: false,
       stopPropagation: false,
       enabled: !isDisabled,
       ignoreInputs: true,

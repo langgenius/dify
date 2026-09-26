@@ -20,10 +20,8 @@ import { WORKFLOW_CANVAS_SHORTCUTS } from './definitions'
 
 const workflowHotkeyOptions = {
   ignoreInputs: true,
-  conflictBehavior: 'warn',
   preventDefault: false,
   stopPropagation: false,
-  requireReset: false,
 } satisfies UseHotkeyOptions
 
 type WorkflowHotkeyOptions = {
@@ -58,8 +56,6 @@ const toHotkeyDefinitions = (
     },
     options: {
       ...registrationOptions,
-      preventDefault: false,
-      stopPropagation: false,
       meta: {
         id,
         scope: 'workflow-canvas',

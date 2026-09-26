@@ -430,7 +430,7 @@ export function FileTreeItem({
 
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (readonly || inlineActionLoading || inlineAction || node.type !== 'file') return
-    if (event.defaultPrevented || event.nativeEvent.isComposing) return
+    if (event.defaultPrevented) return
     if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
     if (isEditableKeyboardTarget(event.target)) return
 

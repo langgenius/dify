@@ -113,7 +113,7 @@ export function DetailSidebarFrame({
   useHotkey(
     DETAIL_SIDEBAR_TOGGLE_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
@@ -124,7 +124,6 @@ export function DetailSidebarFrame({
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,
-      requireReset: false,
     },
   )
 

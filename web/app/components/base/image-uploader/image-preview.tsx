@@ -184,76 +184,18 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     }
   }, [handleMouseUp])
 
-  useHotkey(
-    'ArrowUp',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      zoomIn()
-    },
-    {
-      target: previewRef,
-      enabled: true,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
-  useHotkey(
-    'ArrowDown',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      zoomOut()
-    },
-    {
-      target: previewRef,
-      enabled: true,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
-  useHotkey(
-    'ArrowLeft',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      onPrev?.()
-    },
-    {
-      target: previewRef,
-      enabled: !!onPrev,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
-  useHotkey(
-    'ArrowRight',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      onNext?.()
-    },
-    {
-      target: previewRef,
-      enabled: !!onNext,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
+  useHotkey('ArrowUp', zoomIn, { target: previewRef })
+  useHotkey('ArrowDown', zoomOut, { target: previewRef })
+  useHotkey('ArrowLeft', () => onPrev?.(), {
+    target: previewRef,
+    enabled: !!onPrev,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', () => onNext?.(), {
+    target: previewRef,
+    enabled: !!onNext,
+    requireReset: true,
+  })
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })

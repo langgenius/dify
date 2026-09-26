@@ -180,7 +180,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
       target: contentRef,
       enabled: !createDisabled && !isCreating && !showAppIconPicker,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },

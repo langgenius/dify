@@ -219,7 +219,6 @@ const InputField: React.FC<InputFieldProps> = ({
       target: rootRef,
       enabled: nameValid,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },

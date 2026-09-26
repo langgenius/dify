@@ -195,24 +195,12 @@ export function Popup({
       handleHideConfirm,
     ],
   )
-  useHotkey(
-    RAG_PIPELINE_PUBLISH_HOTKEY,
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      void handlePublish()
-    },
-    {
-      target: popupRef,
-      enabled: !published && !publishing && !confirmVisible,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
+  useHotkey(RAG_PIPELINE_PUBLISH_HOTKEY, () => void handlePublish(), {
+    target: popupRef,
+    enabled: !published && !publishing && !confirmVisible,
+    ignoreInputs: true,
+    requireReset: true,
+  })
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (isAllowPublishAsCustomKnowledgePipelineTemplate === undefined) return
 

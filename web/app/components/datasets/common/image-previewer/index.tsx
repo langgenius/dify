@@ -143,42 +143,16 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
     [fetchImage],
   )
 
-  useHotkey(
-    'ArrowLeft',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      prevImage()
-    },
-    {
-      target: previewRef,
-      enabled: currentIndex > 0,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
-  useHotkey(
-    'ArrowRight',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      nextImage()
-    },
-    {
-      target: previewRef,
-      enabled: currentIndex < images.length - 1,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
+  useHotkey('ArrowLeft', prevImage, {
+    target: previewRef,
+    enabled: currentIndex > 0,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', nextImage, {
+    target: previewRef,
+    enabled: currentIndex < images.length - 1,
+    requireReset: true,
+  })
 
   return (
     <>

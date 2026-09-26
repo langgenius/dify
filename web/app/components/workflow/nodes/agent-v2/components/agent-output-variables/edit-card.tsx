@@ -88,7 +88,6 @@ export function OutputEditCard({
       target: editorRef,
       enabled: !confirmDisabled,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },
@@ -104,9 +103,7 @@ export function OutputEditCard({
     },
     {
       target: editorRef,
-      enabled: true,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },

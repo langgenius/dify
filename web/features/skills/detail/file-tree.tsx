@@ -963,7 +963,7 @@ export function FileTree({
     target instanceof Node && !!sidebarRef.current?.contains(target)
   const handleOpenMenuPaste = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (readonly || fileMutation.isPending || inlineAction) return
-    if (event.defaultPrevented || event.nativeEvent.isComposing) return
+    if (event.defaultPrevented) return
     if (!(event.target instanceof Element) || !event.target.closest('[data-skill-file-menu]'))
       return
     if (isEditableKeyboardTarget(event.target)) return
@@ -978,7 +978,7 @@ export function FileTree({
 
   const handleRootMenuKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (!fileShortcutEnabled || !shortcutTargetPath) return
-    if (event.defaultPrevented || event.nativeEvent.isComposing) return
+    if (event.defaultPrevented) return
     if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
     if (isEditableKeyboardTarget(event.target)) return
 
@@ -998,7 +998,7 @@ export function FileTree({
   useHotkey(
     skillFileHotkeys.cut.command,
     (event) => {
-      if (!shortcutTargetPath || event.defaultPrevented || event.isComposing) return
+      if (!shortcutTargetPath || event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
@@ -1008,7 +1008,6 @@ export function FileTree({
     {
       enabled: fileShortcutEnabled,
       target: sidebarRef,
-      requireReset: false,
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,
@@ -1017,7 +1016,7 @@ export function FileTree({
   useHotkey(
     skillFileHotkeys.copy.command,
     (event) => {
-      if (!shortcutTargetPath || event.defaultPrevented || event.isComposing) return
+      if (!shortcutTargetPath || event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
@@ -1027,7 +1026,6 @@ export function FileTree({
     {
       enabled: fileShortcutEnabled,
       target: sidebarRef,
-      requireReset: false,
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,

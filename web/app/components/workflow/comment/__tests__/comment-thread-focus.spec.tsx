@@ -123,6 +123,7 @@ describe('Comment thread focus', () => {
     await user.keyboard('{Enter}')
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('textbox')).toHaveFocus()
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true')
 
     act(() => marker.focus())
     await user.keyboard('{ArrowRight}')

@@ -59,7 +59,7 @@ export function SkillPublishBar({
   useHotkey(
     PUBLISH_SKILL_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -68,7 +68,6 @@ export function SkillPublishBar({
     {
       enabled: canPublish,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },

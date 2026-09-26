@@ -28,7 +28,6 @@ export function CommentPlacementPreview({
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,
-      requireReset: false,
     },
   )
 

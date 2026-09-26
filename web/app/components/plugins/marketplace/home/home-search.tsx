@@ -45,7 +45,7 @@ const HomeSearch = ({
   useHotkey(
     SEARCH_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
@@ -54,7 +54,6 @@ const HomeSearch = ({
     },
     {
       enabled: enableSearchShortcut,
-      requireReset: false,
       ignoreInputs: false,
       preventDefault: false,
       stopPropagation: false,

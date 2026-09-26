@@ -46,9 +46,7 @@ export function ActionButtons({
     },
     {
       target,
-      enabled: true,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },
@@ -57,7 +55,7 @@ export function ActionButtons({
   useHotkey(
     SAVE_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -67,7 +65,6 @@ export function ActionButtons({
       target,
       enabled: !loading,
       ignoreInputs: false,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
     },

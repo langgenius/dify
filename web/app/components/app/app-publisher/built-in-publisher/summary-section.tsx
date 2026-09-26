@@ -82,24 +82,12 @@ export function PublisherSummarySection({
     return handlePublish(params)
   }
 
-  useHotkey(
-    APP_PUBLISH_HOTKEY,
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      void requestPublish()
-    },
-    {
-      target: summaryRef,
-      enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
-      ignoreInputs: false,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
+  useHotkey(APP_PUBLISH_HOTKEY, () => void requestPublish(), {
+    target: summaryRef,
+    enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
+    ignoreInputs: false,
+    requireReset: true,
+  })
 
   return (
     <div ref={summaryRef} className="flex flex-col gap-3 p-4">

@@ -59,7 +59,7 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
   useHotkey(
     TEST_RUN_MENU_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -70,7 +70,6 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
       preventDefault: false,
       stopPropagation: false,
       ignoreInputs: true,
-      requireReset: false,
     },
   )
 

@@ -34,7 +34,6 @@ export function AdvancedActions({
     {
       target,
       enabled: !isConfirmDisabled,
-      requireReset: false,
       preventDefault: false,
       stopPropagation: false,
       ignoreInputs: false,
