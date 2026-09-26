@@ -745,29 +745,116 @@ describe('useWorkflowRun', () => {
     )
   })
 
-  it('stops the current server task and aborts its actual request signal', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
-    await act(async () => {
-      await result.current.handleRun({ inputs: {} })
-    })
-    const signal = mocks.mockSsePost.mock.calls.at(-1)![1].signal
-    mocks.workflowStoreState.workflowRunningData = {
-      task_id: 'task-1',
-      result: { status: WorkflowRunningStatus.Running },
-    }
-    const stopper = renderHook(() => useWorkflowRun())
-    act(() => stopper.result.current.handleStopRun('task-1'))
-    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
-      '/apps/app-1/workflow-runs/tasks/task-1/stop',
-    )
-    expect(signal.aborted).toBe(true)
-    expect(mocks.workflowStoreState.workflowRunAbortController).toBeNull()
-    expect(mocks.workflowStoreState.workflowRunningData).toEqual(
-      expect.objectContaining({
-        result: expect.objectContaining({ status: WorkflowRunningStatus.Stopped }),
-      }),
-    )
-  })
+  it.each([
+    { mode: TriggerType.UserInput, resumed: false },
+    { mode: TriggerType.UserInput, resumed: true },
+    { mode: TriggerType.Schedule, resumed: false },
+    { mode: TriggerType.Schedule, resumed: true },
+  ])(
+    'keeps the $mode stream through Stop acknowledgement and terminal completion (resumed: $resumed)',
+    async ({ mode, resumed }) => {
+      let acknowledgeStop!: () => void
+      const stopAcknowledgement = new Promise<void>((resolve) => {
+        acknowledgeStop = resolve
+      })
+      mocks.mockStopWorkflowRun.mockReturnValueOnce(stopAcknowledgement)
+      const runner = renderHook(() => useWorkflowRun())
+      await act(async () => {
+        await runner.result.current.handleRun({ inputs: {} }, undefined, {
+          mode,
+          scheduleNodeId: 'schedule-1',
+        })
+      })
+      const controller = mocks.workflowStoreState.workflowRunAbortController!
+      const initialCallbacks: NonNullable<
+        Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]
+      > =
+        mode === TriggerType.UserInput
+          ? mocks.mockSsePost.mock.calls.at(-1)![2]
+          : {
+              onCompleted: mocks.mockHandleStream.mock.calls.at(-1)![2],
+              onWorkflowStarted: mocks.mockHandleStream.mock.calls.at(-1)![7],
+              onWorkflowFinished: mocks.mockHandleStream.mock.calls.at(-1)![8],
+              onWorkflowPaused: mocks.mockHandleStream.mock.calls.at(-1)![28],
+            }
+      initialCallbacks.onWorkflowStarted?.({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_started',
+        data: { id: 'run-1', workflow_id: 'workflow-1', created_at: 1 },
+      })
+      mocks.workflowStoreState.workflowRunningData = {
+        task_id: 'task-1',
+        result: { status: WorkflowRunningStatus.Running },
+      }
+      let terminalCallbacks = initialCallbacks
+      if (resumed) {
+        initialCallbacks.onWorkflowPaused?.({
+          task_id: 'task-1',
+          workflow_run_id: 'run-1',
+          event: 'workflow_paused',
+          data: {
+            outputs: {},
+            paused_nodes: ['human-input-1'],
+            reasons: [],
+            workflow_run_id: 'run-1',
+          },
+        })
+        await initialCallbacks.onCompleted?.(false)
+        expect(mocks.mockSseGet.mock.calls.at(-1)![1].signal).toBe(controller.signal)
+        terminalCallbacks = mocks.mockSseGet.mock.calls.at(-1)![2]
+      }
+      mocks.mockInvalidateRunHistory.mockClear()
+      const stopper = renderHook(() => useWorkflowRun())
+      runner.unmount()
+      act(() => stopper.result.current.handleStopRun('task-1'))
+      expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
+        '/apps/app-1/workflow-runs/tasks/task-1/stop',
+      )
+      expect(controller.signal.aborted).toBe(false)
+      expect(mocks.workflowStoreState.workflowRunningData).toEqual(
+        expect.objectContaining({
+          result: expect.objectContaining({ status: WorkflowRunningStatus.Stopped }),
+        }),
+      )
+      await act(async () => {
+        acknowledgeStop()
+        await stopAcknowledgement
+      })
+      expect(mocks.mockFetchInspectVars).not.toHaveBeenCalled()
+      expect(mocks.mockInvalidateAllLastRun).not.toHaveBeenCalled()
+      expect(mocks.mockInvalidateRunHistory).not.toHaveBeenCalled()
+      expect(mocks.workflowStoreState.workflowRunAbortController).toBe(controller)
+      await act(async () => {
+        terminalCallbacks.onWorkflowFinished?.({
+          task_id: 'task-1',
+          workflow_run_id: 'run-1',
+          event: 'workflow_finished',
+          data: {
+            id: 'run-1',
+            workflow_id: 'workflow-1',
+            status: WorkflowRunningStatus.Stopped,
+            outputs: { result: 'Latest output' },
+            error: '',
+            elapsed_time: 2,
+            total_tokens: 3,
+            total_steps: 1,
+            created_at: 1,
+            created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+            finished_at: 3,
+          },
+        })
+        await terminalCallbacks.onCompleted?.(false)
+      })
+      expect(mocks.runEventHandlers.handleWorkflowFinished).toHaveBeenCalledOnce()
+      expect(mocks.mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
+      expect(mocks.mockInvalidateAllLastRun).toHaveBeenCalledOnce()
+      expect(mocks.mockInvalidateRunHistory).toHaveBeenCalledExactlyOnceWith(
+        '/apps/app-1/workflow-runs',
+      )
+      expect(mocks.workflowStoreState.workflowRunAbortController).toBeNull()
+    },
+  )
 
   it('should restore published workflow graph, features, and environment variables', () => {
     const { result } = renderHook(() => useWorkflowRun())
