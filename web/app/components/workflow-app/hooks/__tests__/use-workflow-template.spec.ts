@@ -1,22 +1,15 @@
-import { renderHook } from '@testing-library/react'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { AppModeEnum } from '@/types/app'
 import { useWorkflowTemplate } from '../use-workflow-template'
 
-const mockUseIsChatMode = vi.fn()
 let generateNewNodeCalls: Array<Record<string, unknown>> = []
-let appStoreState: {
-  appDetail: {
-    mode: string
-  }
-}
-
-vi.mock('../use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
-}))
+let appMode: AppMode
+const renderHook = <Result>(callback: () => Result) =>
+  renderWorkflowHook(callback, {
+    initialStoreState: { appId: 'app-1' },
+    appDetail: { id: 'app-1', mode: appMode },
+  })
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
@@ -43,14 +36,10 @@ describe('useWorkflowTemplate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     generateNewNodeCalls = []
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.WORKFLOW },
-    }
+    appMode = AppModeEnum.WORKFLOW
   })
 
   it('should return only the start placeholder template in workflow mode', () => {
-    mockUseIsChatMode.mockReturnValue(false)
-
     const { result } = renderHook(() => useWorkflowTemplate())
 
     expect(result.current.nodes).toHaveLength(1)
@@ -65,10 +54,7 @@ describe('useWorkflowTemplate', () => {
   })
 
   it('should return the start node template for non-workflow app modes', () => {
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.COMPLETION },
-    }
-    mockUseIsChatMode.mockReturnValue(false)
+    appMode = AppModeEnum.COMPLETION
 
     const { result } = renderHook(() => useWorkflowTemplate())
 
@@ -82,10 +68,7 @@ describe('useWorkflowTemplate', () => {
   })
 
   it('should build start, llm, and answer templates with linked edges in chat mode', () => {
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.ADVANCED_CHAT },
-    }
-    mockUseIsChatMode.mockReturnValue(true)
+    appMode = AppModeEnum.ADVANCED_CHAT
 
     const { result } = renderHook(() => useWorkflowTemplate())
 

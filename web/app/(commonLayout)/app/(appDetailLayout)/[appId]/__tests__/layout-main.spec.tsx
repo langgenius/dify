@@ -1,8 +1,16 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { act, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import type { ReactNode } from 'react'
+import { QueryErrorResetBoundary, useQuery } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { Component, useEffect } from 'react'
+import CommonLayoutError from '@/app/(commonLayout)/error'
+import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -22,16 +30,46 @@ const mockConsoleState = vi.hoisted(() => ({
 const mockNavigation = vi.hoisted(() => ({
   usePathname: vi.fn(),
   useRouter: vi.fn(),
+  useParams: () => ({ appId: 'app-1' }),
+  useSelectedLayoutSegment: () => 'workflow',
 }))
+
+let queryClient = createConsoleQueryClient()
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
 
 vi.mock('@/next/navigation', () => mockNavigation)
+
+const { metadataListeners } = vi.hoisted(() => ({ metadataListeners: new Set<() => void>() }))
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppMetaUpdate: (listener: () => void) => {
+      metadataListeners.add(listener)
+      return () => metadataListeners.delete(listener)
+    },
+  },
+}))
+vi.mock('@/app/components/app-sidebar/app-info', () => ({ AppInfoView: () => null }))
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  override state: { error: Error | null } = { error: null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  override render() {
+    return this.state.error ? (
+      <CommonLayoutError error={this.state.error} retry={() => this.setState({ error: null })} />
+    ) : (
+      this.props.children
+    )
+  }
+}
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
@@ -84,7 +122,7 @@ describe('AppDetailLayout', () => {
       replace: mockReplace,
     })
     mockAppResponse.mockResolvedValue(createAppDetail())
-    useStore.getState().setAppDetail()
+    queryClient = createConsoleQueryClient()
   })
 
   describe('Document title', () => {
@@ -117,7 +155,7 @@ describe('AppDetailLayout', () => {
       })
     })
 
-    it('updates after a directly loaded app is renamed in the store', async () => {
+    it('updates after a directly loaded app is renamed in the query cache', async () => {
       render(
         <AppDetailLayout appId="app-1">
           <div>App page content</div>
@@ -129,7 +167,7 @@ describe('AppDetailLayout', () => {
       })
 
       act(() => {
-        useStore.getState().setAppDetail(createAppDetail({ name: 'Renamed App' }))
+        seedAppDetail(queryClient, createAppDetail({ name: 'Renamed App' }))
       })
 
       await waitFor(() => {
@@ -150,10 +188,14 @@ describe('AppDetailLayout', () => {
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/apps'))
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({
+        permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.LogAndAnnotation],
+      }),
+    )
     const { rerender, unmount } = render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
@@ -172,7 +214,6 @@ describe('AppDetailLayout', () => {
 
     await waitForAppContent()
     expect(mockAppResponse).toHaveBeenCalledTimes(1)
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
 
     unmount()
     render(
@@ -183,7 +224,88 @@ describe('AppDetailLayout', () => {
 
     await waitForAppContent()
     expect(mockAppResponse).toHaveBeenCalledTimes(1)
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('loads the parallel sidebar directly and shares detail with the main route', async () => {
+    const view = render(<AppDetailSection />)
+    expect(await screen.findByRole('link', { name: 'common.appMenus.promptEng' })).toHaveAttribute(
+      'href',
+      '/app/app-1/workflow',
+    )
+    view.rerender(
+      <>
+        <AppDetailSection />
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>
+      </>,
+    )
+    await waitForAppContent()
+    expect(mockAppResponse).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a failed detail through the route error boundary', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockAppResponse.mockResolvedValueOnce(
+      Response.json({ message: 'Unavailable' }, { status: 500 }),
+    )
+    render(
+      <QueryErrorResetBoundary>
+        <RouteErrorBoundary>
+          <AppDetailLayout appId="app-1">
+            <div>App page content</div>
+          </AppDetailLayout>
+        </RouteErrorBoundary>
+      </QueryErrorResetBoundary>,
+    )
+    expect(await screen.findByText('common.errorBoundary.message')).toBeInTheDocument()
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+    await waitForAppContent()
+    consoleError.mockRestore()
+  })
+
+  it('keeps the active page mounted when a background refresh fails', async () => {
+    const unmounted = vi.fn()
+    const Editor = () => {
+      useEffect(() => unmounted, [])
+      return <input aria-label="Draft" defaultValue="Initial prompt" />
+    }
+    render(
+      <AppDetailLayout appId="app-1">
+        <Editor />
+      </AppDetailLayout>,
+    )
+    const input = await screen.findByRole('textbox', { name: 'Draft' })
+    fireEvent.change(input, { target: { value: 'Unsaved prompt' } })
+    mockAppResponse.mockResolvedValue(Response.json({ message: 'Unavailable' }, { status: 500 }))
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
+      }),
+    )
+    expect(screen.getByRole('textbox', { name: 'Draft' })).toHaveValue('Unsaved prompt')
+    expect(unmounted).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('refreshes route metadata from collaboration and disposes its subscription', async () => {
+    const view = render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+    await waitForAppContent()
+    await waitFor(() => expect(metadataListeners.size).toBe(1))
+    mockAppResponse.mockResolvedValue(createAppDetail({ name: 'Collaborative rename' }))
+    act(() => {
+      metadataListeners.forEach((listener) => listener())
+    })
+    await waitFor(() => expect(document.title).toContain('Collaborative rename'))
+    view.unmount()
+    await waitFor(() => expect(metadataListeners.size).toBe(0))
   })
 
   it('should render app detail content without owning the main skip target', async () => {
@@ -199,7 +321,7 @@ describe('AppDetailLayout', () => {
   })
 
   it('waits for the destination app before starting its editor session', async () => {
-    useStore.getState().setAppDetail(createAppDetail())
+    seedAppDetail(queryClient, createAppDetail())
     mockPathname = '/app/app-2/workflow'
     let resolveAppResponse!: (value: AppDetailWithSite) => void
     const appResponse = new Promise<AppDetailWithSite>((resolve) => {
@@ -208,9 +330,12 @@ describe('AppDetailLayout', () => {
     mockAppResponse.mockReturnValue(appResponse)
     const startEditorSession = vi.fn()
     const Editor = () => {
+      const { data } = useQuery(
+        consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: 'app-2' } } }),
+      )
       useEffect(() => {
-        startEditorSession(useStore.getState().appDetail?.id)
-      }, [])
+        startEditorSession(data?.id)
+      }, [data?.id])
       return <div>Destination editor</div>
     }
 
@@ -248,7 +373,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect logs pages when log and annotation access is missing', async () => {
@@ -267,7 +391,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with log and annotation access to open logs directly', async () => {
@@ -285,7 +408,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should allow users with Access Point view permission to open the page directly', async () => {
@@ -303,7 +425,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect access point pages when view permission is missing', async () => {
@@ -320,12 +441,11 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep cached Access Point content hidden while redirecting without view permission', async () => {
     mockPathname = '/app/app-1/access-point'
-    useStore.getState().setAppDetail(createAppDetail({ permission_keys: [] }))
+    seedAppDetail(queryClient, createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
@@ -356,7 +476,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with app deploy ACL permission to open deploy directly', async () => {
@@ -374,7 +493,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should allow users with layout access to open workflow pages directly', async () => {
@@ -389,7 +507,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalledWith('/app/app-1/overview')
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect workflow pages when layout access is missing', async () => {
@@ -406,7 +523,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect overview pages when monitor access is missing', async () => {
@@ -425,7 +541,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
@@ -474,7 +589,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect access config pages when access config access is missing', async () => {
@@ -493,7 +607,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with access config access to open access config directly', async () => {
@@ -511,7 +624,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect Agent app access config URLs to the Agent configure page', async () => {
@@ -534,12 +646,12 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep Agent app access config content hidden while redirecting cached app data', async () => {
     mockPathname = '/app/app-1/access-config'
-    useStore.getState().setAppDetail(
+    seedAppDetail(
+      queryClient,
       createAppDetail({
         mode: AppModeEnum.AGENT,
         bound_agent_id: 'agent-1',
@@ -579,7 +691,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect annotation pages when log and annotation access is missing', async () => {
@@ -601,7 +712,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with log and annotation access to open annotations directly', async () => {
@@ -622,6 +732,5 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 })

@@ -1,10 +1,8 @@
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fetchConversationMessages } from '@/service/debug'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import ChatRecord from '../index'
 
 vi.mock('@/service/debug', () => ({
@@ -23,9 +21,6 @@ const historyWorkflowData: HistoryWorkflowData = {
 describe('ChatRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: createAppDetailFixture({ id: 'other-app' }),
-    })
   })
 
   it('renders fetched chat history with the real chat shell and switches siblings', async () => {

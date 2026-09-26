@@ -1,5 +1,4 @@
 import type {
-  Collection,
   Credential,
   CustomCollectionBackend,
   CustomParamSchema,
@@ -10,10 +9,6 @@ import type {
 } from '@/app/components/tools/types'
 import { buildProviderQuery } from './_tools_util'
 import { get, post } from './base'
-
-export const fetchCollectionList = () => {
-  return get<Collection[]>('/workspaces/current/tool-providers')
-}
 
 export const fetchBuiltInToolList = (collectionName: string) => {
   return get<Tool[]>(`/workspaces/current/tool-provider/builtin/${collectionName}/tools`)

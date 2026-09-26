@@ -4,7 +4,6 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   renderWorkflowComponent,
@@ -224,15 +223,7 @@ const createChatWrapperRef = () =>
 describe('debug-and-preview components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        site: {
-          access_token: 'site-token',
-          app_base_url: 'https://example.com',
-        },
-      } as ReturnType<typeof useAppStore.getState>['appDetail'],
-    })
+
     mockUseChat.mockReturnValue(createChatState())
     mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
       createConversationVariableResponse(),

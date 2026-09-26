@@ -1,14 +1,12 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import WorkflowApp from '../index'
 
 const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(),
+  renderWithConsoleQuery(ui, {
+    appDetail: { id: 'app-1', name: 'Workflow App', mode: 'workflow', permission_keys: [] },
   })
 
 vi.mock('@/context/workspace-state', async () => {
@@ -54,7 +52,7 @@ vi.mock('../hooks/use-workflow-init', async () => {
       const workflowStore = useWorkflowStore()
 
       React.useEffect(() => {
-        workflowStore.setState({ appName: 'Initialized App' })
+        workflowStore.setState({ notInitialWorkflow: true })
       }, [workflowStore])
 
       return {
@@ -100,13 +98,13 @@ vi.mock('../components/workflow-main', async () => {
 
   const WorkflowMainProbe = () => {
     const appId = useStore((state) => state.appId)
-    const appName = useStore((state) => state.appName)
+    const initialized = useStore((state) => state.notInitialWorkflow)
     const hasWorkflowSlice = useStore((state) => typeof state.setNotInitialWorkflow === 'function')
     const { store } = useWorkflowHistoryStore()
 
     return (
       <div>
-        {`app:${appId} name:${appName} history:${store.getState().nodes.length} slice:${String(hasWorkflowSlice)}`}
+        {`app:${appId} initialized:${initialized} history:${store.getState().nodes.length} slice:${String(hasWorkflowSlice)}`}
       </div>
     )
   }
@@ -117,17 +115,6 @@ vi.mock('../components/workflow-main', async () => {
 })
 
 describe('WorkflowApp provider contract', () => {
-  beforeEach(() => {
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        name: 'Workflow App',
-        mode: 'workflow',
-        permission_keys: [],
-      } as never,
-    })
-  })
-
   it('shares one workflow store between initialization and the initialized canvas', async () => {
     render(
       <StrictMode>
@@ -136,7 +123,7 @@ describe('WorkflowApp provider contract', () => {
     )
 
     expect(
-      await screen.findByText('app:app-1 name:Initialized App history:1 slice:true'),
+      await screen.findByText('app:app-1 initialized:true history:1 slice:true'),
     ).toBeInTheDocument()
   })
 })

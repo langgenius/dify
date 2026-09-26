@@ -19,7 +19,6 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
@@ -37,14 +36,12 @@ type SwitchAppModalProps = {
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
   onClose: () => void
-  inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, appDetail, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
   const { t } = useTranslation(['app', 'common'])
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
@@ -99,7 +96,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
       })
       onClose()
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (inAppDetail) setAppDetail()
       if (removeOriginal)
         await deleteOriginalApp({
           params: { app_id: appDetail.id },

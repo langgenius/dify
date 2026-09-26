@@ -1,13 +1,14 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
+import { consoleQuery } from '@/service/console'
+import { seedAppDetail } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -28,30 +29,28 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        siteEnable: {
-          post: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.siteEnable,
-              ...options,
-            }),
-          },
-        },
-        site: {
-          accessTokenReset: {
-            post: {
-              mutationOptions: (options = {}) => ({
-                mutationFn: mocks.resetSiteAccessToken,
-                ...options,
-              }),
-            },
-          },
-        },
-      },
-    },
+let serverAppDetail: AppDetailWithSite
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'GET') return Response.json(serverAppDetail)
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/site-enable')) {
+      const body = await request.json()
+      const response = await mocks.siteEnable({ params: { app_id: 'app-1' }, body })
+      serverAppDetail = { ...serverAppDetail, ...response }
+      return Response.json(response)
+    }
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/site/access-token-reset')) {
+      const response = await mocks.resetSiteAccessToken({ params: { app_id: 'app-1' } })
+      serverAppDetail = {
+        ...serverAppDetail,
+        site: serverAppDetail.site
+          ? { ...serverAppDetail.site, access_token: 'new-site-code' }
+          : null,
+      }
+      return Response.json(response)
+    }
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
   },
 }))
 
@@ -137,30 +136,26 @@ function renderCard(
     accessMode = AccessMode.PUBLIC,
     appOverrides = {},
     canManageAccessPoint = true,
-    onRefreshApp = vi.fn().mockResolvedValue(undefined),
     showAccessControl = true,
   }: {
     accessMode?: AccessMode | null
     appOverrides?: Partial<AppDetailWithSite>
     canManageAccessPoint?: boolean
-    onRefreshApp?: () => Promise<void>
     showAccessControl?: boolean
   } = {},
 ) {
-  useAppStore.setState({
-    appDetail: { ...createAppInfo(mode), ...appOverrides, access_mode: accessMode },
-  })
+  serverAppDetail = { ...createAppInfo(mode), ...appOverrides, access_mode: accessMode }
   const queryClient = createTestQueryClient()
+  seedAppDetail(queryClient, serverAppDetail)
   queryClient.setQueryData(['system-features'], {
     webapp_auth: { enabled: showAccessControl },
   })
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <StoreConnectedWebAppCard
+      <QueryConnectedWebAppCard
         availability={availability}
         canManageAccessPoint={canManageAccessPoint}
-        onRefreshApp={onRefreshApp}
         showAccessControl={showAccessControl}
         workflow={workflow}
       />
@@ -168,20 +163,20 @@ function renderCard(
   )
 }
 
-function StoreConnectedWebAppCard({
+function QueryConnectedWebAppCard({
   availability,
   canManageAccessPoint,
-  onRefreshApp,
   showAccessControl,
   workflow,
 }: {
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
-  onRefreshApp: () => Promise<void>
   showAccessControl: boolean
   workflow?: PublishedWorkflow
 }) {
-  const appInfo = useAppStore((state) => state.appDetail)
+  const appInfo = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: 'app-1' } } }),
+  ).data
   if (!appInfo) return null
 
   return (
@@ -191,7 +186,6 @@ function StoreConnectedWebAppCard({
       canDeploy
       canManageAccessPoint={canManageAccessPoint}
       showAccessControl={showAccessControl}
-      onRefreshApp={onRefreshApp}
       onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
       workflow={workflow}
     />
@@ -431,8 +425,7 @@ describe('WebAppAccessPointCard', () => {
 
   it('resets the site access token through the generated contract', async () => {
     const user = userEvent.setup()
-    const onRefreshApp = vi.fn().mockResolvedValue(undefined)
-    renderCard(AppModeEnum.CHAT, 'available', undefined, { onRefreshApp })
+    renderCard(AppModeEnum.CHAT)
 
     await user.click(screen.getByRole('button', { name: /overview\.appInfo\.regenerate/ }))
     await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
@@ -441,7 +434,10 @@ describe('WebAppAccessPointCard', () => {
       expect(mocks.resetSiteAccessToken.mock.calls[0]?.[0]).toEqual({
         params: { app_id: 'app-1' },
       })
-      expect(onRefreshApp).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+        'href',
+        `https://site.example.test${basePath}/chat/new-site-code`,
+      )
     })
   })
 

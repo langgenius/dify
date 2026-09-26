@@ -1,7 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { render, screen } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { screen } from '@testing-library/react'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import LogAnnotation from '../index'
@@ -33,20 +33,29 @@ const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWit
     ...overrides,
   })
 
+let appDetail: AppDetailWithSite | undefined
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, { appDetail })
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: () => new Promise<Response>(() => {}),
+}))
+
 describe('LogAnnotation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: createMockApp() })
+    appDetail = createMockApp()
   })
 
   // Rendering behavior
   describe('Rendering', () => {
     it('should render loading state when app detail is missing', () => {
       // Arrange
-      useAppStore.setState({ appDetail: undefined })
+      appDetail = undefined
 
       // Act
-      render(<LogAnnotation pageType={PageType.log} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
       expect(screen.getByRole('progressbar')).toBeInTheDocument()
@@ -54,10 +63,10 @@ describe('LogAnnotation', () => {
 
     it('should render log content without the old page tabs', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
 
       // Act
-      render(<LogAnnotation pageType={PageType.log} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
       expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
@@ -67,10 +76,10 @@ describe('LogAnnotation', () => {
 
     it('should render completion logs without the old page tabs', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.COMPLETION }) })
+      appDetail = createMockApp({ mode: AppModeEnum.COMPLETION })
 
       // Act
-      render(<LogAnnotation pageType={PageType.log} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
       expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
@@ -80,10 +89,10 @@ describe('LogAnnotation', () => {
 
     it('should hide tabs and render workflow log in workflow mode', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.WORKFLOW }) })
+      appDetail = createMockApp({ mode: AppModeEnum.WORKFLOW })
 
       // Act
-      render(<LogAnnotation pageType={PageType.log} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
       expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
@@ -95,10 +104,10 @@ describe('LogAnnotation', () => {
   describe('Props', () => {
     it('should render log content when page type is log', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
 
       // Act
-      render(<LogAnnotation pageType={PageType.log} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
       expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
@@ -107,10 +116,10 @@ describe('LogAnnotation', () => {
 
     it('should render annotation content when page type is annotation', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
 
       // Act
-      render(<LogAnnotation pageType={PageType.annotation} />)
+      render(<LogAnnotation appId="app-123" pageType={PageType.annotation} />)
 
       // Assert
       expect(screen.getByRole('region', { name: 'Annotation log' })).toBeInTheDocument()

@@ -1,6 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
-import { useStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -33,7 +32,6 @@ const mockMarkAppDeletionStarted = vi.fn()
 const mockMarkAppDeletionSucceeded = vi.fn()
 const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
-const mockOnAppMetaUpdate = vi.fn()
 
 let mockAppDetail: AppDetailWithSite | undefined
 
@@ -47,7 +45,6 @@ const appListQueryKeys = [
 ]
 
 const renderActions = () => {
-  useStore.getState().setAppDetail(mockAppDetail)
   const queryClient = createConsoleQueryClient()
   if (mockAppDetail) queryClient.setQueryData(appDetailQueryKey, mockAppDetail)
   for (const queryKey of appListQueryKeys) queryClient.setQueryData(queryKey, { data: [] })
@@ -59,6 +56,7 @@ const renderActions = () => {
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
+  useParams: () => ({ appId: mockAppDetail?.id }),
 }))
 
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
@@ -88,8 +86,11 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
     if (request.method === 'GET') return Response.json(await mockFetchAppDetail(url))
-    if (request.method === 'PUT')
-      return Response.json(await mockUpdateAppInfo(url, await request.json()))
+    if (request.method === 'PUT') {
+      const result = await mockUpdateAppInfo(url, await request.json())
+      mockFetchAppDetail.mockResolvedValue(result)
+      return Response.json(result)
+    }
     if (request.method === 'POST' && new URL(url).pathname.endsWith('/copy'))
       return Response.json(await mockCopyApp(url, await request.json()))
     if (request.method === 'DELETE') {
@@ -116,12 +117,6 @@ vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => 
   },
 }))
 
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    onAppMetaUpdate: (...args: unknown[]) => mockOnAppMetaUpdate(...args),
-  },
-}))
-
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -129,7 +124,6 @@ describe('useAppInfoActions', () => {
     mockExportAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockWorkflowExportState.isExporting = false
     mockExportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
-    mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
     mockAppDetail = createAppDetailFixture({
       id: 'app-1',
@@ -209,7 +203,6 @@ describe('useAppInfoActions', () => {
       expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updatedApp)
       for (const queryKey of appListQueryKeys)
         expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
-      expect(useStore.getState().appDetail).toEqual(updatedApp)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
@@ -539,7 +532,6 @@ describe('useAppInfoActions', () => {
       expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockReplace).toHaveBeenCalledWith('/apps')
-      expect(useStore.getState().appDetail).toBeUndefined()
     })
 
     it('should not delete when appDetail is undefined', async () => {
@@ -570,34 +562,6 @@ describe('useAppInfoActions', () => {
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })
-    })
-  })
-
-  describe('collaboration app meta updates', () => {
-    it('should refresh app detail when receiving app_meta_update', async () => {
-      const updated = createAppDetailFixture({ ...mockAppDetail, name: 'Remote Updated' })
-      const unsubscribe = vi.fn()
-      let onUpdate: (() => Promise<void>) | undefined
-
-      mockOnAppMetaUpdate.mockImplementation((callback: () => Promise<void>) => {
-        onUpdate = callback
-        return unsubscribe
-      })
-      mockFetchAppDetail.mockResolvedValue(updated)
-
-      const { unmount, queryClient } = renderActions()
-      await waitFor(() => expect(onUpdate).toBeDefined())
-
-      await act(async () => {
-        await onUpdate?.()
-      })
-
-      expect(mockFetchAppDetail).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1'))
-      expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updated)
-      expect(useStore.getState().appDetail).toEqual(updated)
-
-      unmount()
-      expect(unsubscribe).toHaveBeenCalled()
     })
   })
 })

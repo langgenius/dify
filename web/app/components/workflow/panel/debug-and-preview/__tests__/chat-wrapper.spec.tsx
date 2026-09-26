@@ -4,7 +4,6 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -162,15 +161,7 @@ const createChatWrapperRef = () =>
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        site: {
-          access_token: 'site-token',
-          app_base_url: 'https://example.com',
-        },
-      } as ReturnType<typeof useAppStore.getState>['appDetail'],
-    })
+
     mockUseChat.mockReturnValue(createChatState())
   })
 

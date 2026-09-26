@@ -3,17 +3,16 @@
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
-import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { VersionLabel } from '../shared/version-label'
+import { appDeployAppDetailAtom, latestPublishedWorkflowAtom } from '../state'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
 function Divider() {
@@ -24,9 +23,9 @@ export const BuiltInEnvironmentCard = memo(
   ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
     const { t } = useTranslation(['deployments'])
     const { formatTime } = useTimestamp()
-    const appDetail = useAppStore((state) => state.appDetail)
+    const appDetail = useAtomValue(appDeployAppDetailAtom)
     const appId = appDetail?.id ?? ''
-    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId || null))
+    const publishedWorkflow = useAtomValue(latestPublishedWorkflowAtom)
     const { data: mcpServerDetail } = useMCPServerDetail(appId, Boolean(appId))
     const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
       ? (publishedWorkflow.graph.nodes as Node[])

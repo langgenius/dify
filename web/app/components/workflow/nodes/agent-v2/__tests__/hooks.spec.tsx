@@ -1,7 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useSetAtom } from 'jotai'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
@@ -146,32 +145,67 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        get: {
-          queryOptions: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      agent: {
+        byAgentId: {
+          get: {
+            queryOptions: vi.fn(),
+          },
         },
       },
-    },
-    apps: {
-      byAppId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryOptions: mockAppComposerQueryOptions,
-                    queryKey: ({
-                      input,
-                    }: {
-                      input: { params: { app_id: string; node_id: string } }
-                    }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+      apps: {
+        byAppId: {
+          get: actual.consoleQuery.apps.byAppId.get,
+          workflows: {
+            draft: {
+              nodes: {
+                byNodeId: {
+                  agentComposer: {
+                    get: {
+                      queryOptions: mockAppComposerQueryOptions,
+                      queryKey: ({
+                        input,
+                      }: {
+                        input: { params: { app_id: string; node_id: string } }
+                      }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+                    },
+                    put: {
+                      mutationOptions: mockComposerMutationOptions,
+                    },
                   },
-                  put: {
-                    mutationOptions: mockComposerMutationOptions,
+                },
+              },
+            },
+          },
+        },
+      },
+      snippets: {
+        bySnippetId: {
+          workflows: {
+            draft: {
+              nodes: {
+                byNodeId: {
+                  agentComposer: {
+                    get: {
+                      queryOptions: mockSnippetComposerQueryOptions,
+                      queryKey: ({
+                        input,
+                      }: {
+                        input: { params: { snippet_id: string; node_id: string } }
+                      }) => [
+                        'snippet-agent-composer',
+                        input.params.snippet_id,
+                        input.params.node_id,
+                      ],
+                    },
+                    put: {
+                      mutationOptions: mockSnippetComposerMutationOptions,
+                    },
                   },
                 },
               },
@@ -180,33 +214,8 @@ vi.mock('@/service/console', () => ({
         },
       },
     },
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryOptions: mockSnippetComposerQueryOptions,
-                    queryKey: ({
-                      input,
-                    }: {
-                      input: { params: { snippet_id: string; node_id: string } }
-                    }) => ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
-                  },
-                  put: {
-                    mutationOptions: mockSnippetComposerMutationOptions,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+  }
+})
 
 describe('useWorkflowInlineAgentDetail', () => {
   beforeEach(() => {
@@ -323,7 +332,6 @@ describe('useWorkflowInlineAgentDetail', () => {
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mockDefaultModel.value = {
       model: 'gpt-4o-mini',
       model_type: 'llm',
@@ -341,6 +349,7 @@ describe('useCreateInlineAgentBinding', () => {
     const onSuccess = vi.fn()
     const queryClient = new QueryClient({
       defaultOptions: {
+        queries: { staleTime: Infinity },
         mutations: {
           retry: false,
         },
@@ -348,6 +357,8 @@ describe('useCreateInlineAgentBinding', () => {
     })
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      initialStoreState: { appId: 'app-1' },
+      appDetail: { id: 'app-1', mode: AppModeEnum.WORKFLOW },
       hooksStoreProps: {
         configsMap: {
           flowId: 'app-1',
@@ -419,9 +430,9 @@ describe('useCreateInlineAgentBinding', () => {
   })
 
   it('tracks inline agent creation with the chatflow scope', async () => {
-    useAppStore.getState().setAppDetail({ mode: AppModeEnum.ADVANCED_CHAT } as never)
     const queryClient = new QueryClient({
       defaultOptions: {
+        queries: { staleTime: Infinity },
         mutations: {
           retry: false,
         },
@@ -429,6 +440,8 @@ describe('useCreateInlineAgentBinding', () => {
     })
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      initialStoreState: { appId: 'chatflow-1' },
+      appDetail: { id: 'chatflow-1', mode: AppModeEnum.ADVANCED_CHAT },
       hooksStoreProps: {
         configsMap: {
           flowId: 'chatflow-1',
@@ -455,6 +468,7 @@ describe('useCreateInlineAgentBinding', () => {
     const onSuccess = vi.fn()
     const queryClient = new QueryClient({
       defaultOptions: {
+        queries: { staleTime: Infinity },
         mutations: {
           retry: false,
         },
@@ -514,6 +528,7 @@ describe('useCreateInlineAgentBinding', () => {
     const onSuccess = vi.fn()
     const queryClient = new QueryClient({
       defaultOptions: {
+        queries: { staleTime: Infinity },
         mutations: {
           retry: false,
         },
@@ -521,6 +536,8 @@ describe('useCreateInlineAgentBinding', () => {
     })
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      initialStoreState: { appId: 'app-1' },
+      appDetail: { id: 'app-1', mode: AppModeEnum.WORKFLOW },
       hooksStoreProps: {
         configsMap: {
           flowId: 'app-1',
@@ -580,6 +597,7 @@ describe('useCreateInlineAgentBinding', () => {
     const onSuccess = vi.fn()
     const queryClient = new QueryClient({
       defaultOptions: {
+        queries: { staleTime: Infinity },
         mutations: {
           retry: false,
         },
@@ -587,6 +605,8 @@ describe('useCreateInlineAgentBinding', () => {
     })
     const { result, unmount } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      initialStoreState: { appId: 'app-1' },
+      appDetail: { id: 'app-1', mode: AppModeEnum.WORKFLOW },
       hooksStoreProps: {
         configsMap: {
           flowId: 'app-1',
@@ -640,6 +660,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
         mutations: {
           retry: false,
@@ -721,6 +742,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
         mutations: {
           retry: false,
@@ -794,6 +816,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
         mutations: {
           retry: false,
@@ -861,6 +884,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
         mutations: {
           retry: false,
@@ -901,6 +925,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
         mutations: {
           retry: false,

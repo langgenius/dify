@@ -2,13 +2,11 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -53,7 +51,6 @@ const mockPublishWorkflow = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
-const mockAppResponse = vi.fn()
 const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
@@ -61,6 +58,7 @@ const mockSetLastPublishedHasUserInput = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockWorkflowStoreSetShowFeaturesPanel = vi.fn()
 
+let workflowAppId = 'app-id'
 let workflowStoreState = {
   showFeaturesPanel: false,
   isRestoring: false,
@@ -91,7 +89,7 @@ vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state: Record<string, unknown> = {
-      appId: 'app-id',
+      appId: workflowAppId,
       publishedAt: null,
       draftUpdatedAt: null,
       toolPublished: false,
@@ -230,16 +228,9 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (url: string) => Response.json(await mockAppResponse(url)),
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
-
-// Use real app store - global zustand mock will auto-reset between tests
 
 const renderWithToast = (
   ui: ReactElement,
@@ -256,6 +247,7 @@ const renderWithToast = (
 describe('FeaturesTrigger', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    workflowAppId = 'app-id'
     workflowStoreState = {
       showFeaturesPanel: false,
       isRestoring: false,
@@ -278,9 +270,6 @@ describe('FeaturesTrigger', () => {
     )
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
-    // Set up app store state
-    useAppStore.setState({ appDetail: createAppDetailFixture({ id: 'app-id' }) })
-    mockAppResponse.mockResolvedValue(createAppDetailFixture({ id: 'app-id', name: 'Updated App' }))
     mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
@@ -633,12 +622,12 @@ describe('FeaturesTrigger', () => {
           type: 'success',
           message: 'common.api.actionSuccess',
         })
-        expect(mockAppResponse).toHaveBeenCalledWith(expect.stringContaining('/apps/app-id'))
-        expect(useAppStore.getState().appDetail).toEqual(
-          expect.objectContaining({
-            name: 'Updated App',
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: 'app-id' } },
           }),
-        )
+          exact: true,
+        })
       })
     })
 
@@ -799,22 +788,38 @@ describe('FeaturesTrigger', () => {
       expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
     })
 
-    it('should log error when app detail refresh fails after publish', async () => {
-      // Arrange
+    it('awaits refresh of the published app when the active session changes', async () => {
       const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockAppResponse.mockRejectedValueOnce(new Error('fetch failed'))
-
-      renderWithToast(<FeaturesTrigger />)
-
-      // Act
-      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
-
-      // Assert
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled()
+      let finishRefresh!: () => void
+      const refresh = new Promise<void>((resolve) => {
+        finishRefresh = resolve
       })
-      consoleErrorSpy.mockRestore()
+      mockInvalidateQueries.mockReturnValue(refresh)
+      const { rerender } = renderWithToast(<FeaturesTrigger />)
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+      await waitFor(() =>
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: 'app-id' } },
+          }),
+          exact: true,
+        }),
+      )
+      workflowAppId = 'next-app'
+      rerender(<FeaturesTrigger />)
+      expect(mockSetPublishedAt).not.toHaveBeenCalled()
+      await act(async () => {
+        finishRefresh()
+        await refresh
+      })
+      await waitFor(() => expect(mockSetPublishedAt).toHaveBeenCalled())
+      expect(mockInvalidateAppTriggers).toHaveBeenCalledWith('app-id')
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'next-app' } },
+        }),
+        exact: true,
+      })
     })
   })
 })

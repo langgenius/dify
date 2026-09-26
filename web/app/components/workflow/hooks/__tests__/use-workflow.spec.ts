@@ -1,5 +1,5 @@
 import type { NodeDefault } from '../../types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
 import {
   baseRunningData,
@@ -18,15 +18,8 @@ import {
   useWorkflowReadOnly,
 } from '../use-workflow'
 
-let mockAppMode = 'workflow'
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
-    selector({ appDetail: { mode: mockAppMode } }),
-}))
-
 beforeEach(() => {
   vi.clearAllMocks()
-  mockAppMode = 'workflow'
 })
 
 function createNodeDefault(type: BlockEnum): NodeDefault {
@@ -48,29 +41,16 @@ function createNodeDefault(type: BlockEnum): NodeDefault {
 // ---------------------------------------------------------------------------
 
 describe('useIsChatMode', () => {
-  it('should return true when app mode is advanced-chat', () => {
-    mockAppMode = 'advanced-chat'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(true)
-  })
-
-  it('should return false when app mode is workflow', () => {
-    mockAppMode = 'workflow'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is chat', () => {
-    mockAppMode = 'chat'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is completion', () => {
-    mockAppMode = 'completion'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
+  it.each(['advanced-chat', 'workflow', 'chat', 'completion'] as const)(
+    'derives chat mode from the current workflow app (%s)',
+    (mode) => {
+      const { result } = renderWorkflowHook(() => useIsChatMode(), {
+        initialStoreState: { appId: 'app-1' },
+        appDetail: { id: 'app-1', mode },
+      })
+      expect(result.current).toBe(mode === 'advanced-chat')
+    },
+  )
 })
 
 // ---------------------------------------------------------------------------

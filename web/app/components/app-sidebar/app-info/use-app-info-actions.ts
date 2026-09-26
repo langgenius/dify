@@ -1,23 +1,19 @@
-import type {
-  AppDetailWithSite,
-  EnvironmentVariableItemResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useRouter } from '@/next/navigation'
+import { useParams, useRouter } from '@/next/navigation'
 import {
   markAppDeletionFailed,
   markAppDeletionStarted,
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -30,49 +26,31 @@ export type AppInfoModalType =
   | 'exportWarning'
   | null
 
-type AppMetadata = Pick<
-  AppDetailWithSite,
-  | 'description'
-  | 'icon'
-  | 'icon_background'
-  | 'icon_type'
-  | 'icon_url'
-  | 'max_active_requests'
-  | 'name'
-  | 'updated_at'
-  | 'use_icon_as_answer_icon'
->
-
-const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: AppMetadata) => {
-  if (!cachedApp) return cachedApp
-
-  return {
-    ...cachedApp,
-    description: app.description,
-    icon: app.icon,
-    icon_background: app.icon_background,
-    icon_type: app.icon_type,
-    icon_url: app.icon_url,
-    max_active_requests:
-      app.max_active_requests === undefined
-        ? cachedApp.max_active_requests
-        : app.max_active_requests,
-    name: app.name,
-    updated_at: app.updated_at,
-    use_icon_as_answer_icon: app.use_icon_as_answer_icon,
-  }
-}
-
 export function useAppInfoActions() {
   const { t } = useTranslation(['app'])
   const { replace } = useRouter()
-  const queryClient = useQueryClient()
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
   const { mutateAsync: copyApp } = useMutation(
     consoleQuery.apps.byAppId.copy.post.mutationOptions(),
   )
-  const { mutateAsync: deleteApp } = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
-  const appDetail = useAppStore((state) => state.appDetail)
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
+  const { mutateAsync: deleteApp } = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      onSuccess: (_data, { params }) => {
+        markAppDeletionSucceeded(params.app_id)
+        toast(
+          t(($) => $.appDeleted, { ns: 'app' }),
+          { type: 'success' },
+        )
+        replace('/apps')
+      },
+    }),
+  )
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
@@ -109,43 +87,6 @@ export function useAppInfoActions() {
       .catch(() => {})
   }, [appDetail?.id])
 
-  useEffect(() => {
-    if (!appDetail?.id) return
-
-    let unsubscribe: (() => void) | null = null
-    let disposed = false
-
-    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
-      .then(({ collaborationManager }) => {
-        if (disposed) return
-
-        unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
-          try {
-            const res = await consoleClient.apps.byAppId.get({ params: { app_id: appDetail.id } })
-            if (disposed) return
-            queryClient.setQueryData(
-              consoleQuery.apps.byAppId.get.queryKey({
-                input: { params: { app_id: appDetail.id } },
-              }),
-              (cachedApp) => updateCachedAppMetadata(cachedApp, res),
-            )
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-            setAppDetail({ ...res })
-          } catch (error) {
-            console.error('failed to refresh app detail from collaboration update:', error)
-          }
-        })
-      })
-      .catch(() => {})
-
-    return () => {
-      disposed = true
-      unsubscribe?.()
-    }
-  }, [appDetail?.id, queryClient, setAppDetail])
-
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
     async ({
       name,
@@ -158,7 +99,7 @@ export function useAppInfoActions() {
     }) => {
       if (!appDetail) return
       try {
-        const app = await consoleClient.apps.byAppId.put({
+        await updateApp({
           params: { app_id: appDetail.id },
           body: {
             name,
@@ -175,16 +116,6 @@ export function useAppInfoActions() {
           t(($) => $.editDone, { ns: 'app' }),
           { type: 'success' },
         )
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: appDetail.id } },
-          }),
-          (cachedApp) => updateCachedAppMetadata(cachedApp, app),
-        )
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-        setAppDetail(app)
         emitAppMetaUpdate()
       } catch {
         toast(
@@ -193,7 +124,7 @@ export function useAppInfoActions() {
         )
       }
     },
-    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate, queryClient],
+    [appDetail, closeModal, t, emitAppMetaUpdate, updateApp],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(
@@ -265,13 +196,6 @@ export function useAppInfoActions() {
     markAppDeletionStarted(appDetail.id)
     try {
       await deleteApp({ params: { app_id: appDetail.id } })
-      markAppDeletionSucceeded(appDetail.id)
-      toast(
-        t(($) => $.appDeleted, { ns: 'app' }),
-        { type: 'success' },
-      )
-      setAppDetail()
-      replace('/apps')
     } catch (e: unknown) {
       markAppDeletionFailed(appDetail.id)
       toast(
@@ -280,7 +204,7 @@ export function useAppInfoActions() {
       )
     }
     closeModal()
-  }, [appDetail, closeModal, deleteApp, replace, setAppDetail, t])
+  }, [appDetail, closeModal, deleteApp, t])
 
   return {
     appDetail,

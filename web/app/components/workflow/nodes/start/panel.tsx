@@ -95,6 +95,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
 
       {isShowAddVarModal && (
         <ConfigVarModal
+          supportJson
           isCreate
           supportFile
           isShow={isShowAddVarModal}

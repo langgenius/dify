@@ -67,13 +67,6 @@ const mockLastRunState = {
   getFilteredExistVarForms: vi.fn(() => []),
 }
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string } }) => unknown) =>
-    selector({
-      appDetail: { id: 'app-1' },
-    }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
 }))

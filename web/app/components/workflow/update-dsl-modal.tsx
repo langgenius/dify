@@ -10,13 +10,12 @@ import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
-import { useMutation } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
@@ -50,7 +49,12 @@ type PreparedImport = {
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
   const appId = useStore((state) => state.appId)
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode,
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const reactFlowStore = useStoreApi()
   const [currentFile, setCurrentFile] = useState<File>()

@@ -6,7 +6,11 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider, useAtomValue, useSetAtom } from 'jotai'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedAppDetail } from '@/test/console/query-data'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createQueryAtomTestStore } from '@/test/query-atom'
+import { AppACLPermission } from '@/utils/permission'
 import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
   addPublisherEnvironmentAtom,
@@ -51,11 +55,17 @@ const queryMocks = vi.hoisted(() => ({
   environmentRequest: vi.fn(),
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const { skipToken } = await import('@tanstack/react-query')
 
   return {
+    ...actual,
     consoleQuery: {
+      apps: actual.consoleQuery.apps,
+      account: actual.consoleQuery.account,
+      workspaces: actual.consoleQuery.workspaces,
+      systemFeatures: actual.consoleQuery.systemFeatures,
       enterprise: {
         appDeploy: {
           deploymentService: {
@@ -182,12 +192,19 @@ function StateConsumer() {
 
 function renderState(initialOpen = true) {
   const { queryClient, store } = createQueryAtomTestStore()
+  seedAppDetail(queryClient, {
+    id: 'app-1',
+    mode: 'workflow',
+    permission_keys: [AppACLPermission.Deploy],
+  })
+  seedAccountProfileQuery(queryClient)
+  seedWorkspacePermissionsQuery(queryClient, [])
   store.set(appPublisherOpenAtom, initialOpen)
   const state = (mounted: boolean) => (
     <QueryClientProvider client={queryClient}>
       <Provider store={store}>
         {mounted && (
-          <AppPublisherStateBoundary appId="app-1" environmentQueryEnabled>
+          <AppPublisherStateBoundary appId="app-1">
             <StateConsumer />
           </AppPublisherStateBoundary>
         )}

@@ -1,14 +1,15 @@
 'use client'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTheme } from 'next-themes'
 import { useEffect, useLayoutEffect } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { setLocaleOnClient } from '@/i18n/client'
 import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { accountCommand } from './account'
 import { createCreateCommand } from './create'
 import { discordCommand } from './discord'
@@ -56,8 +57,11 @@ const unregisterSlashCommands = () => {
 export const SlashCommandProvider = () => {
   const params = useParams()
   const appId = typeof params.appId === 'string' ? params.appId : undefined
-  const appMode = useAppStore((state) =>
-    state.appDetail && state.appDetail.id === appId ? state.appDetail.mode : undefined,
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode,
+    }),
   )
   useLayoutEffect(() => {
     if (!ENABLE_FEATURE_PREVIEW) return

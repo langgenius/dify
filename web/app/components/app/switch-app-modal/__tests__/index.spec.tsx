@@ -3,7 +3,6 @@ import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
@@ -23,21 +22,22 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
-const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 2
-      return {
-        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
-      }
-    },
-  }
-})
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    const appId = new URL(url).pathname.match(/\/apps\/([^/]+)/)?.[1]
+    if (request.method === 'POST') {
+      return Response.json(
+        await mockConvertToWorkflow({ params: { app_id: appId }, body: await request.json() }),
+      )
+    }
+    if (request.method === 'DELETE') {
+      await mockDeleteOriginalApp({ params: { app_id: appId } })
+      return new Response(null, { status: 204 })
+    }
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
+  },
+}))
 
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlan = {
@@ -134,8 +134,6 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   }
 }
 
-const setAppDetailSpy = vi.fn()
-
 function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: deploymentEdition },
@@ -146,15 +144,8 @@ function render(ui: ReactElement) {
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockMutationState.hookIndex = 0
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
     deploymentEdition = 'COMMUNITY'
     mockPlan = {
       type: 'sandbox',
@@ -356,7 +347,7 @@ describe('SwitchAppModal', () => {
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail } = renderComponent({ inAppDetail: true })
+      const { appDetail } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
@@ -376,7 +367,6 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {

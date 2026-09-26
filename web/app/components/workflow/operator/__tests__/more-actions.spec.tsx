@@ -1,6 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import MoreActions from '../more-actions'
 
 const mockToPng = vi.fn()
@@ -12,7 +17,7 @@ const mockGetNodesReadOnly = vi.fn()
 const { mockWorkflowState } = vi.hoisted(() => ({
   mockWorkflowState: {
     knowledgeName: '',
-    appName: 'Demo App',
+    appId: 'app-1' as string | undefined,
   },
 }))
 
@@ -65,6 +70,9 @@ vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
   ),
 }))
 
+let queryClient = createConsoleQueryClient()
+const render = (ui: React.ReactElement) => renderWithConsoleQuery(ui, { queryClient })
+
 describe('MoreActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,7 +82,9 @@ describe('MoreActions', () => {
     mockToJpeg.mockResolvedValue('data:image/jpeg;base64,current')
     mockToSvg.mockResolvedValue('data:image/svg+xml;base64,current')
     mockWorkflowState.knowledgeName = ''
-    mockWorkflowState.appName = 'Demo App'
+    mockWorkflowState.appId = 'app-1'
+    queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'app-1', name: 'Demo App' })
 
     document.body.innerHTML = ''
     const viewport = document.createElement('div')
@@ -97,6 +107,37 @@ describe('MoreActions', () => {
       url: 'data:image/png;base64,current',
       fileName: 'Demo App.png',
     })
+  })
+
+  it('uses the updated query name for an existing canvas screenshot', async () => {
+    const user = userEvent.setup()
+    render(<MoreActions />)
+    await act(async () => {
+      seedAppDetail(queryClient, { id: 'app-1', name: 'Renamed App' })
+    })
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
+    await waitFor(() =>
+      expect(mockDownloadUrl).toHaveBeenCalledWith({
+        url: 'data:image/png;base64,current',
+        fileName: 'Renamed App.png',
+      }),
+    )
+  })
+
+  it('uses the knowledge name without an app identity', async () => {
+    const user = userEvent.setup()
+    mockWorkflowState.appId = undefined
+    mockWorkflowState.knowledgeName = 'Knowledge Pipeline'
+    render(<MoreActions />)
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
+    await waitFor(() =>
+      expect(mockDownloadUrl).toHaveBeenCalledWith({
+        url: 'data:image/png;base64,current',
+        fileName: 'Knowledge Pipeline.png',
+      }),
+    )
   })
 
   it('does not open the menu when the workflow is read only', async () => {
@@ -178,7 +219,7 @@ describe('MoreActions', () => {
 
   it('returns early when there is no app or knowledge name', async () => {
     const user = userEvent.setup()
-    mockWorkflowState.appName = ''
+    mockWorkflowState.appId = undefined
     mockWorkflowState.knowledgeName = ''
 
     render(<MoreActions />)
