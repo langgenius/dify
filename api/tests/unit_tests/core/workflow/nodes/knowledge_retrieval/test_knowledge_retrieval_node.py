@@ -530,7 +530,7 @@ class TestFetchDatasetRetriever:
             retrieval_mode="multiple",
             multiple_retrieval_config=MultipleRetrievalConfig(
                 top_k=5,
-                score_threshold=0.7,
+                score_threshold=None,
                 reranking_enable=False,
                 reranking_mode="reranking_model",
             ),
@@ -564,6 +564,7 @@ class TestFetchDatasetRetriever:
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args
         request = call_args[1]["request"]
         assert request.reranking_enable is False
+        assert request.score_threshold is None
 
     def test_resolve_metadata_filtering_conditions_templates(
         self,
