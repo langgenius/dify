@@ -1,12 +1,12 @@
 # Keyboard Commands
 
-Use TanStack Hotkeys directly for application commands. Keep the binding, action, availability,
-and registration with the feature that owns them. Keep text editing, widget navigation, and
-primitive dismissal in their existing owner.
+Keep each command's binding, action, availability, and registration with the feature that owns
+it. Use TanStack Hotkeys for application commands; keep text editing, widget navigation, and
+primitive dismissal with their existing controls.
 
-## Start with the library defaults
+## Default pattern
 
-For a command owned by an actual popup, bind to that popup's ref and call the action directly:
+Inside mounted content, bind directly to the actual command owner's ref:
 
 ```tsx
 import type { Hotkey } from '@tanstack/react-hotkeys'
@@ -15,7 +15,6 @@ import { useRef } from 'react'
 
 const PUBLISH_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 
-// Inside the mounted popup content:
 const popupRef = useRef<HTMLDivElement>(null)
 useHotkey(PUBLISH_HOTKEY, publish, {
   target: popupRef,
@@ -25,113 +24,98 @@ useHotkey(PUBLISH_HOTKEY, publish, {
 })
 ```
 
-Attach `popupRef` to the real Popup. TanStack matches modifiers and consumes matching events
-before calling `publish`. `requireReset: true` executes once until the key or modifier is
-released. Leave it unset for continuous actions such as zoom. The hook keeps the callback
-current; it does not need `useCallback` merely for registration.
+Attach `popupRef` to the actual Popup. Call the same action as the button, with the same
+availability. The library matches modifiers, consumes accepted events before the callback,
+and keeps that callback current.
 
-- `target`: pass the owner's ref, not `ref.current` read during render. Omit it for an
-  intentional page or application command, such as opening search or running the current page.
-- `enabled`: share the visible action's permission, loading, validation, and open-state rules.
-  Keep action-level validation because buttons and menus also invoke the action.
-- `ignoreInputs`: choose whether this command belongs while editing. Canvas commands leave
-  inputs alone; a form submission command allows them. This option is not a complete scope.
+- **Scope:** pass the owner's ref. Omit `target` for intentional page/application commands.
+  `ignoreInputs` only controls input filtering; form commands usually allow input targets.
+- **Availability:** align `enabled` with permissions, loading, validation, and open state.
+  Keep validation in the action too, since buttons and menus also invoke it.
+- **Repeat:** use `requireReset: true` for one-shot commands; allow repeats for continuous zoom.
 
-Do not add an event handler, DOM wrapper, element state, or effect when these options suffice.
+## Choose the registration boundary
 
-## Register, match, and display
+| Situation                                            | Pattern                                                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| The hook and target mount together                   | `useHotkey` with the actual owner ref. The ref may be local or passed from a parent.                               |
+| Form content mounts later than its transaction owner | The actual Form's `onKeyDown + matchesKeyboardEvent` is a direct option; a hook inside mounted content also works. |
+| Child React handlers must process the key first      | Handle it during React bubbling, or at document bubble with an owner-ref containment check, as Workflow does.      |
 
-| Need                                  | API and type                                                                       |
-| ------------------------------------- | ---------------------------------------------------------------------------------- |
-| One application command               | `useHotkey`; a string checked with `satisfies Hotkey`.                             |
-| A feature's collection of commands    | `useHotkeys`; preserve the feature's typed command IDs.                            |
-| An existing local React handler       | `matchesKeyboardEvent(event.nativeEvent, binding)`.                                |
-| A structured binding                  | `satisfies RawHotkey`; use `RegisterableHotkey` only when both forms are accepted. |
-| Keycap hints                          | `formatForDisplay(binding, { parts: true })`, rendered with `Kbd` in `KbdGroup`.   |
-| A modifier held during an interaction | `useKeyHold`; key state does not establish command ownership.                      |
+Choose by lifetime and event order. Being inside a Popup alone does not determine the API.
+The target must exist when the hook's registration effect runs; changing `ref.current` does
+not re-render the hook owner. Keep normal targets in `useRef` and transactions with their
+business owner. Element state is useful when an external subscription reports target
+replacement, such as Lexical's root listener; guard a nullable element with `enabled`, since
+a bare null target falls back to document.
 
-Keep single-owner constants local. Share a feature binding when both registration and hints
-consume it. Do not split strings on `+` or hard-code a macOS symbol for `Mod`. Logical `Mod+S`
-follows the character; use physical `Mod+[KeyS]` only when keyboard position is intentional.
-`DisplayHotkey` is wider than a registrable command and must not widen the command registry.
-Narrow the `key`/`code` union before inspecting a structured binding; its types do not validate
-every dynamic key name. Validate external bindings before parsing instead of casting to `Hotkey`.
+For a real form, call `event.currentTarget.requestSubmit()` to share submission and validation.
+React Portal events follow React ancestry: a local handler should check DOM containment when
+nested portals must stay outside its command. A feature may intentionally include its own
+portalled menus, as the Skills file tree does.
 
-For SSR hints, preserve an explicit initial platform through hydration, as the navigation
-search button does. `aria-keyshortcuts` uses `Meta+K` or `Control+K`, not glyphs or `Mod`.
+## Bindings and hints
 
-## Refs, portals, and local handlers
+| Need                            | API and type                                                          |
+| ------------------------------- | --------------------------------------------------------------------- |
+| One command / a command group   | `useHotkey` / `useHotkeys`; retain feature command IDs.               |
+| Binding definition              | `satisfies Hotkey` for strings; `satisfies RawHotkey` for objects.    |
+| Existing React keyboard handler | `matchesKeyboardEvent(event.nativeEvent, binding)`.                   |
+| Keycap hint                     | `formatForDisplay(binding, { parts: true })` with `Kbd` / `KbdGroup`. |
+| A held modifier                 | `useKeyHold`; combine key state with the interaction's actual scope.  |
 
-Register inside mounted popup content when its lifetime owns the command. A ref becoming
-non-null does not cause a render. If a parent owns a transaction across independently mounted
-surfaces, keep that state in the parent and use the actual form's React `onKeyDown` plus
-`matchesKeyboardEvent`. Call `event.currentTarget.requestSubmit()` so keyboard and button
-submission share validation. Do not add parent effects or DOM state just to bind the shortcut.
-A state callback ref is useful only when a real subscription must track target replacement;
-require the element in `enabled`, since a bare null target falls back to document.
+Share bindings between registration and hints; keep single-owner constants local. Use
+`RegisterableHotkey` where both binding forms are accepted. `DisplayHotkey` is wider and belongs
+only to display. Validate dynamic bindings before parsing; narrow the `key`/`code` union when
+inspecting objects. Logical `Mod+S` follows the character; `Mod+[KeyS]` follows physical position.
 
-Native listeners follow the DOM tree; React Portal events follow the React tree. Bind native
-hotkeys to the actual popup. In a form's React handler, reject events outside
-`event.currentTarget` so a nested Portal cannot submit its React ancestor. A feature may
-intentionally delegate keys from its own portalled menus, as the Skills file tree does.
+Preserve the initial platform through SSR hydration, as navigation search does.
+`aria-keyshortcuts` uses `Meta+K` or `Control+K`, not keycap glyphs or `Mod`.
 
-A container may handle bubbling keys from its children without becoming a focusable control.
-Comment Escape handling, for example, runs after MentionInput has dismissed its suggestions.
-Keep its actual semantics and a narrow, explained lint exception; do not add `role="button"`,
-`role="presentation"`, or a tab stop merely to silence the rule. Let an existing Dialog,
-Popover, or Menu primitive own dismissal. A custom nonmodal panel must not claim
-`aria-modal="true"` while the surrounding page remains interactive.
+## Conditional event handling
 
-## When manual event handling is necessary
+Use library defaults unless ownership or event priority requires a decision before consumption.
+An element's native listener can precede child React handlers, and the manager does not skip
+`defaultPrevented`. For these conditional owners, set `preventDefault: false` and
+`stopPropagation: false`, check scope and `defaultPrevented`, then consume the accepted event.
+For one-shot actions in this mode, consume repeats before returning on `event.repeat`; leave
+`requireReset` unset so its latch cannot bypass that consumption.
 
-TanStack's native listener on an element can run before a child's React `onKeyDown`. It also
-does not skip an already prevented event. When a child must get first refusal, keep local
-handling in React, or listen on document and check the actual owner ref afterward, as Workflow
-does. A local `onKeyDown` is therefore sometimes the correct boundary, not redundant hotkey code.
+The library filters composing printable shortcuts such as `Mod+S`. Custom submission and
+logical Enter/Escape still need IME protection; retain existing composition-end handling.
+`stopPropagation()` stops ancestors, not another callback on the same manager target.
+Keep eligible owners unambiguous; `conflictBehavior: 'replace'` is not a restoring modal stack,
+and provider defaults or metadata do not establish scope.
 
-For these conditional owners only, set `preventDefault: false` and `stopPropagation: false`,
-check ownership and `defaultPrevented`, then consume the accepted event. If the action must not
-repeat, consume each accepted event before returning on `event.repeat`. Leave `requireReset`
-unset: its latch would skip the callback and therefore skip manual consumption of repeats.
-
-The library already rejects composing printable shortcuts. Do not repeat that guard for
-bindings such as `Mod+S` or `Alt+R`. Custom submission and logical Enter/Escape handling still
-need their IME protection; preserve existing composition-end handling too. Ordinary image
-previews have no text editor and can use the default event handling for their arrow commands.
-
-`defaultPrevented` is a cooperation signal. `stopPropagation()` stops ancestors, not another
-callback on the same manager target. Avoid simultaneously eligible owners of the same command.
-`conflictBehavior: 'replace'` is not a restoring modal stack. Metadata and `HotkeysProvider`
-defaults do not create scopes. Do not add a global browser-default guard for a disabled command.
+Let Dialog, Popover, and Menu primitives own dismissal. A container handling bubbled child
+events keeps its actual semantics; an explained lint exception is preferable to inventing a
+button role or tab stop. Custom nonmodal panels should describe their real modality.
 
 ## Workflow ownership
 
-| Layer                     | Owner                                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Canvas commands           | `WorkflowCanvas` supplies the real ReactFlow root ref. `useWorkflowHotkeys` listens after child React handlers and accepts events only inside that subtree.                    |
-| Graph actions             | Existing node, edge, organize, and draft-sync hooks own permissions, mutations, history, and persistence; keyboard commands call the same actions.                             |
-| Node movement and editors | ReactFlow, `useNodeKeyboardInteractions`, Lexical, CodeMirror, and local forms own their navigation, text undo, suggestions, and submission.                                   |
-| Portalled graph menus     | Each actual menu matches its displayed commands and invokes its available actions; it does not inherit the canvas DOM target.                                                  |
-| Run and history           | Mounted header features own page commands and share button availability; they do not require header focus.                                                                     |
-| Comments                  | The focused draft or thread owns local dismissal after suggestions. Pointer-following placement owns Escape while placement is active because its preview does not take focus. |
+| Layer                       | Responsibility                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canvas                      | `WorkflowCanvas` supplies the ReactFlow root ref. `useWorkflowHotkeys` runs after child React handlers and accepts events within that subtree. |
+| Graph actions               | Existing graph hooks own permissions, mutations, history, and persistence; keyboard commands invoke them.                                      |
+| Editors and node navigation | ReactFlow, local node handlers, Lexical, CodeMirror, and forms own navigation, undo, suggestions, and submission.                              |
+| Portalled menus             | Each menu matches its displayed commands and acts on its actual node, edge, or selection.                                                      |
+| Run and history             | Header features own page commands with button-aligned availability; header focus is unnecessary.                                               |
+| Comments                    | The focused draft/thread handles dismissal after suggestions. Active pointer-following placement owns Escape without taking focus.             |
 
-The outer Workflow container also contains panels and overlays; it is not the canvas command
-target. Focus the canvas before deleting a focused node or applying graph undo/redo. Menus
-that delete their focus-return target use the Popup's `finalFocus` during dismissal. Keep text
-undo in the editor through the event boundary, rather than mirroring editor focus into a
-history-enabled store flag. Hold-to-dim combines key state with canvas focus and clears on
-focus loss.
+The outer Workflow container includes unrelated panels. Use the canvas root for graph scope,
+restore canvas focus when deleting its focused object or applying graph undo/redo, and use
+Popup `finalFocus` when a menu action deletes its return target. Keep text undo with editors.
+Hold-to-dim combines key state with canvas focus and clears on focus loss.
 
-## Verify the changed boundary
+## Verification and maintenance
 
-Follow [the Web testing policy]. Keep the real matcher/manager for scope, disabled state,
-propagation, and repeat tests. Exercise focus inside/outside, editable and consumed events,
-open/closed state, action availability, and held-key release. Use a real child React handler
-to verify ordering. Use browser evidence for native selection, editor undo, and focus changes
-that unit events cannot establish. Check both platform modifiers when matching or hints change.
+Follow [the Web testing policy]. Use the real matcher/manager to verify scope, availability,
+mount/reopen behavior, child event priority, IME flags, and repeat where affected. Verify
+native editing, focus, and selection in a browser; check both platform modifiers for binding
+or hint changes. State the limits of simulated IME and SDK mocks.
 
-Devtools and `useHotkeyRegistrations` describe mounted registrations, not all product commands.
-Sequences, recorders, remapping, and additional wrappers require a concrete product need.
+Follow these patterns for new commands. Recorders, remapping, and extra wrappers need a
+concrete product requirement.
 
 ## References
 
