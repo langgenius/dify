@@ -34,6 +34,16 @@ from models.model import UploadFile
 logger = logging.getLogger(__name__)
 
 
+# A pipe inside a cell is what separates columns in a Markdown table, so it has
+# to be escaped or the row gains a column. A backslash already in front of it
+# would consume the escape, so the run of backslashes is doubled first.
+_TABLE_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
+
+
+def _escape_table_cell(value: str) -> str:
+    return _TABLE_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", value)
+
+
 class WordExtractor(BaseExtractor):
     """Load docx files.
 
@@ -200,12 +210,12 @@ class WordExtractor(BaseExtractor):
         total_cols = max(len(row.cells) for row in table.rows)
 
         header_row = table.rows[0]
-        headers = self._parse_row(header_row, image_map, total_cols)
+        headers = [_escape_table_cell(cell) for cell in self._parse_row(header_row, image_map, total_cols)]
         markdown.append("| " + " | ".join(headers) + " |")
         markdown.append("| " + " | ".join(["---"] * total_cols) + " |")
 
         for row in table.rows[1:]:
-            row_cells = self._parse_row(row, image_map, total_cols)
+            row_cells = [_escape_table_cell(cell) for cell in self._parse_row(row, image_map, total_cols)]
             markdown.append("| " + " | ".join(row_cells) + " |")
         return "\n".join(markdown)
 
