@@ -8,7 +8,9 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+import pytz
 from celery.canvas import Signature
+from croniter import CroniterBadCronError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -58,8 +60,16 @@ def _add_due_plan(session: Session, *, timezone: str, next_run_at: datetime) -> 
     return plan
 
 
-def _fail_poll_after_calculations(monkeypatch: pytest.MonkeyPatch, limit: int) -> None:
-    """Fail a poll that calculates more than `limit` next runs, so a poll that never ends fails instead of hanging."""
+BROKEN_TIMEZONE = "Invalid/Timezone"
+
+
+def _fail_poll_after_calculations(
+    monkeypatch: pytest.MonkeyPatch, limit: int, broken_timezone_error: Exception | None = None
+) -> None:
+    """Fail a poll that calculates more than `limit` next runs, so a poll that never ends fails instead of hanging.
+
+    With `broken_timezone_error`, calculating a next run in BROKEN_TIMEZONE raises it instead.
+    """
     calculations = 0
 
     def bounded_calculate_next_run_at(cron_expression: str, timezone: str) -> datetime:
@@ -67,14 +77,27 @@ def _fail_poll_after_calculations(monkeypatch: pytest.MonkeyPatch, limit: int) -
         calculations += 1
         if calculations > limit:
             pytest.fail(f"The poll calculated more than {limit} next runs without ending")
+        if broken_timezone_error is not None and timezone == BROKEN_TIMEZONE:
+            raise broken_timezone_error
         return calculate_next_run_at(cron_expression, timezone)
 
     monkeypatch.setattr(workflow_schedule_task, "calculate_next_run_at", bounded_calculate_next_run_at)
 
 
+# Any error from the calculation skips the plan, not only the UnknownTimeZoneError an unknown zone name raises.
+@pytest.mark.parametrize(
+    "broken_timezone_error",
+    [
+        AssertionError("croniter assumed a positive DST offset"),
+        CroniterBadCronError("invalid cron expression"),
+        pytz.UnknownTimeZoneError(BROKEN_TIMEZONE),
+    ],
+    ids=["assertion-error", "croniter-value-error", "unknown-timezone-error"],
+)
 @pytest.mark.parametrize("batch_size", [100, 1], ids=["same-batch", "own-batch"])
 def test_plan_whose_next_run_cannot_be_calculated_does_not_block_other_due_plans(
     batch_size: int,
+    broken_timezone_error: Exception,
     dispatched_schedule_ids: list[str],
     sqlite_session: Session,
     config_overrides: Callable[..., None],
@@ -84,14 +107,16 @@ def test_plan_whose_next_run_cannot_be_calculated_does_not_block_other_due_plans
     config_overrides(WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE=batch_size)
     caplog.set_level(logging.WARNING, logger=workflow_schedule_task.logger.name)
     now = naive_utc_now()
+    # The poll sees the same time as the test, so every plan below is due however long the test takes.
+    monkeypatch.setattr(workflow_schedule_task, "naive_utc_now", lambda: now)
     # Due plans are fetched most overdue first, so the raising plan comes between the two UTC plans; with a batch
     # size of 1 each plan fills a batch alone.
     utc_before = _add_due_plan(sqlite_session, timezone="UTC", next_run_at=now - timedelta(minutes=15))
     broken_due_at = now - timedelta(minutes=10)
-    broken = _add_due_plan(sqlite_session, timezone="Invalid/Timezone", next_run_at=broken_due_at)
+    broken = _add_due_plan(sqlite_session, timezone=BROKEN_TIMEZONE, next_run_at=broken_due_at)
     utc_after = _add_due_plan(sqlite_session, timezone="UTC", next_run_at=now - timedelta(minutes=5))
     # A poll calculates the next run of each of the 3 due plans once.
-    _fail_poll_after_calculations(monkeypatch, limit=3)
+    _fail_poll_after_calculations(monkeypatch, limit=3, broken_timezone_error=broken_timezone_error)
 
     workflow_schedule_task.poll_workflow_schedules.run()
 
@@ -116,10 +141,9 @@ def test_poll_skips_and_logs_each_plan_whose_next_run_cannot_be_calculated_once(
     config_overrides(WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE=1)
     caplog.set_level(logging.WARNING, logger=workflow_schedule_task.logger.name)
     now = naive_utc_now()
+    monkeypatch.setattr(workflow_schedule_task, "naive_utc_now", lambda: now)
     broken_due_at = [now - timedelta(minutes=10), now - timedelta(minutes=5)]
-    broken = [
-        _add_due_plan(sqlite_session, timezone="Invalid/Timezone", next_run_at=due_at) for due_at in broken_due_at
-    ]
+    broken = [_add_due_plan(sqlite_session, timezone=BROKEN_TIMEZONE, next_run_at=due_at) for due_at in broken_due_at]
     # A poll calculates the next run of each of the 2 due plans once. If a skipped plan came back, the two would fill
     # the batches in turn and the poll would never end.
     _fail_poll_after_calculations(monkeypatch, limit=2)

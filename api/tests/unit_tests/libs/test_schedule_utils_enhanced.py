@@ -270,8 +270,8 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
             # 00:50:05 IST -> 01:00 IST, before 02:00 IST falls back to 01:00 GMT
             ("Europe/Dublin", datetime(2026, 10, 24, 23, 50, 5, tzinfo=UTC), datetime(2026, 10, 25, 0, 0, tzinfo=UTC)),
             # 01:50:05 +01 -> 02:00 +01, before 03:00 +01 falls back to 02:00 +00
-            ("Africa/Casablanca", datetime(2027, 2, 7, 0, 50, 5, tzinfo=UTC), datetime(2027, 2, 7, 1, 0, tzinfo=UTC)),
-            ("Africa/El_Aaiun", datetime(2027, 2, 7, 0, 50, 5, tzinfo=UTC), datetime(2027, 2, 7, 1, 0, tzinfo=UTC)),
+            ("Africa/Casablanca", datetime(2026, 2, 15, 0, 50, 5, tzinfo=UTC), datetime(2026, 2, 15, 1, 0, tzinfo=UTC)),
+            ("Africa/El_Aaiun", datetime(2026, 2, 15, 0, 50, 5, tzinfo=UTC), datetime(2026, 2, 15, 1, 0, tzinfo=UTC)),
         ]
 
         for timezone, base_time, expected in test_cases:

@@ -17,6 +17,7 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from events.event_handlers import sync_workflow_schedule_when_app_published
+from libs import schedule_utils
 from libs.datetime_utils import naive_utc_now
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.trigger import WorkflowSchedulePlan
@@ -616,9 +617,11 @@ def zone_data(request: pytest.FixtureRequest) -> Iterator[None]:
     if request.param == "tzdata-wheel-only":
         zoneinfo.reset_tzpath(to=[])
     zoneinfo.ZoneInfo.clear_cache()
+    schedule_utils._resolve_zone.cache_clear()
     yield
     zoneinfo.reset_tzpath(to=tzpath)
     zoneinfo.ZoneInfo.clear_cache()
+    schedule_utils._resolve_zone.cache_clear()
 
 
 # Stored names are not validated, so a DSL import or a draft sync can save one in any case. pytz matches names
@@ -640,6 +643,35 @@ def test_calculate_next_run_at_accepts_zone_names_in_any_case(timezone: str, exp
     result = calculate_next_run_at("30 12 * * *", timezone, datetime(2026, 7, 15, 10, 0, 5, tzinfo=UTC))
 
     assert result == expected
+
+
+@pytest.mark.usefixtures("zone_data")
+def test_calculate_next_run_at_reads_each_zone_once_per_process(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ZoneInfo keeps only its 8 most recent zones strongly, so a poll over 9 zones is the case to cover.
+    timezones = [
+        "UTC",
+        "Europe/London",
+        "Europe/Dublin",
+        "Europe/Paris",
+        "Asia/Shanghai",
+        "Asia/Tokyo",
+        "America/New_York",
+        "America/Los_Angeles",
+        "Africa/Casablanca",
+    ]
+    reads: list[str] = []
+
+    def counting_zone_info(key: str) -> zoneinfo.ZoneInfo:
+        reads.append(key)
+        return zoneinfo.ZoneInfo(key)
+
+    monkeypatch.setattr(schedule_utils, "ZoneInfo", counting_zone_info)
+
+    for _ in range(2):
+        for timezone in timezones:
+            calculate_next_run_at("30 12 * * *", timezone, datetime(2026, 7, 15, 10, 0, 5, tzinfo=UTC))
+
+    assert reads == timezones
 
 
 @pytest.mark.usefixtures("zone_data")
