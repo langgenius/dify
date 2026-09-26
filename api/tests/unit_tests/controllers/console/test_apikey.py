@@ -157,7 +157,8 @@ def test_key_routes_forward_stable_context_and_serialize(keys_app: KeysApp, kind
 
     assert listed.status_code == 200
     assert listed.json is not None
-    assert listed.json["data"][0]["token"] == ("app-s...oken" if kind == "dataset" else "app-secret-token")
+    # List responses never return the full secret, for app, agent and dataset keys alike.
+    assert listed.json["data"][0]["token"] == "app-s...oken"
     assert listed.json["data"][0]["dataset_ids"] == ([str(RESOURCE_ID)] if kind == "dataset" else [])
     assert created.status_code == 201
     assert created.json is not None
