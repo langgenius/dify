@@ -494,6 +494,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         if (!appId) return
         stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
         if (workflowRunningData?.task_id !== taskId) return
+        // Stop only acknowledges the command; the terminal event refreshes persisted run data.
+        setStoppedState()
+        return
       }
 
       workflowRunAbortController?.abort()
