@@ -245,20 +245,27 @@ describe('app-publisher sections', () => {
         input: { params: { model_type: 'llm' } },
       }).queryKey,
       {
-        data: [{
-          provider: 'openai',
-          label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-          status: 'active',
-          tenant_id: 'workspace-1',
-          models: [{
-            model: 'gpt-4o',
-            label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
-            model_type: 'llm',
-            model_properties: {},
-            fetch_from: 'predefined-model',
+        data: [
+          {
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
             status: 'active',
-          }],
-        }],
+            tenant_id: 'workspace-1',
+            models: [
+              {
+                model: 'gpt-4o',
+                label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
+                model_type: 'llm',
+                model_properties: {},
+                fetch_from: 'predefined-model',
+                status: 'active',
+                deprecated: false,
+                has_invalid_load_balancing_configs: false,
+                load_balancing_enabled: false,
+              },
+            ],
+          },
+        ],
       },
     )
     render(
