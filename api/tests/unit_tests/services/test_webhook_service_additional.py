@@ -149,7 +149,7 @@ class TestWebhookServiceExtractionFallbacks:
         monkeypatch.setattr(
             WebhookService,
             "_resolve_trigger_end_user",
-            classmethod(lambda cls, webhook_trigger: trigger_end_user),
+            classmethod(lambda _cls, _webhook_trigger: trigger_end_user),
         )
         manager = MagicMock()
         manager.create_file_by_raw.return_value = SimpleNamespace(id="tool-file-1")

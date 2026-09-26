@@ -563,7 +563,7 @@ class TestWebhookServiceUnit:
     @patch.object(
         WebhookService,
         "_resolve_trigger_end_user",
-        new=classmethod(lambda cls, webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
+        new=classmethod(lambda _cls, _webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
     )
     @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
     @patch("services.trigger.webhook_service.file_factory", autospec=True)
@@ -603,7 +603,7 @@ class TestWebhookServiceUnit:
     @patch.object(
         WebhookService,
         "_resolve_trigger_end_user",
-        new=classmethod(lambda cls, webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
+        new=classmethod(lambda _cls, _webhook_trigger: SimpleNamespace(id="trigger-end-user-1")),
     )
     @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
     @patch("services.trigger.webhook_service.file_factory", autospec=True)
