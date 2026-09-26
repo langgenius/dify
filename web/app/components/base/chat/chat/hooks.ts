@@ -1,12 +1,11 @@
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -22,6 +21,7 @@ import {
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -198,7 +198,7 @@ export const useChat = (
   initialConversationId?: string,
   options: UseChatOptions = {},
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -462,7 +462,9 @@ export const useChat = (
     },
     [bindWorkflowEventsReadyWaiters, markWorkflowEventsPending, resolveWorkflowEventsReadyWaiters],
   )
-  startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  useEffect(() => {
+    startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  }, [startWorkflowEventsSubscription])
 
   const ensureWorkflowEventsSubscription = useCallback(
     (workflowRunId: string, options: IOtherOptions) => {
@@ -897,11 +899,11 @@ export const useChat = (
               responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
           })
         },
-        onTTSChunk: (messageId: string, audio: string) => {
+        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            audioPlayer.playAudioWithAudio(audio, true)
+            audioPlayer.playAudioWithAudio(audio, true, audioType)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },
@@ -1634,11 +1636,11 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-        onTTSChunk: (messageId: string, audio: string) => {
+        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            audioPlayer.playAudioWithAudio(audio, true)
+            audioPlayer.playAudioWithAudio(audio, true, audioType)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },

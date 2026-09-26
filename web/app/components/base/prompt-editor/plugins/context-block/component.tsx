@@ -22,7 +22,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   onAddContext,
   canNotAddContext,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger<HTMLButtonElement>()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -66,7 +66,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             placement="bottom-end"
             sideOffset={3}
             alignOffset={-147}
-            popupClassName="border-none bg-transparent shadow-none"
+            className="border-none bg-transparent shadow-none"
           >
             <div className="w-90 rounded-xl bg-white shadow-lg">
               <div className="p-4">

@@ -12,8 +12,8 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
@@ -43,7 +43,10 @@ const OperationsDropdown = ({
   })
   const open = operationsMenu.open
   const setOpen = operationsMenu.onOpenChange
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: isRbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -75,12 +78,7 @@ const OperationsDropdown = ({
 
   return (
     <div
-      className={cn(
-        'absolute top-2 right-2 z-5',
-        open
-          ? 'pointer-events-auto visible'
-          : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
-      )}
+      className={cn('absolute right-2 z-5', dataset.embedding_available ? 'top-2' : 'top-6')}
       onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
@@ -102,10 +100,10 @@ const OperationsDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            className: 'min-w-[186px]',
           })}
         >
           <Operations

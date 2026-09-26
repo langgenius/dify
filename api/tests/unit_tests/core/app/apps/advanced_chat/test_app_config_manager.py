@@ -1,14 +1,23 @@
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from models.model import AppMode
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_app, make_workflow
+
+
+def _app() -> App:
+    return make_app(name="Advanced Chat App", mode=AppMode.ADVANCED_CHAT, icon_type=None)
+
+
+def _workflow() -> Workflow:
+    return make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}")
 
 
 class TestAdvancedChatAppConfigManager:
     def test_get_app_config(self):
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.ADVANCED_CHAT.value)
-        workflow = SimpleNamespace(id="wf-1", features_dict={})
+        app_model = _app()
+        workflow = _workflow()
 
         with (
             patch(
@@ -27,7 +36,7 @@ class TestAdvancedChatAppConfigManager:
 
     def test_config_validate_filters_keys(self):
         def _add_key(key, value):
-            def _inner(*args, **kwargs):
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
                 config = kwargs.get("config") if kwargs else args[-1]
                 config = {**config, key: value}
                 return config, [key]

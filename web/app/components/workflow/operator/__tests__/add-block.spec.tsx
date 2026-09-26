@@ -1,5 +1,5 @@
 import type { NodeDefault } from '../../types'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
@@ -128,17 +128,20 @@ describe('AddBlock', () => {
     mockFlowType = FlowType.appFlow
   })
 
-  it('opens the real selector and derives trigger styling from its open state', async () => {
+  it('opens the real selector and exposes its open state', async () => {
     const user = userEvent.setup()
     renderWithReactFlow()
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(trigger).not.toHaveAttribute('data-block-selector-open')
+
+    await user.hover(trigger)
+    await waitFor(() => expect(trigger).toHaveAttribute('data-popup-open', ''))
+    expect(trigger).not.toHaveAttribute('data-block-selector-open')
 
     await user.click(trigger)
 
-    expect(trigger).toHaveAttribute('data-popup-open')
-    expect(trigger).toHaveClass('bg-state-accent-active')
+    expect(trigger).toHaveAttribute('data-block-selector-open', '')
     expect(screen.getByRole('dialog', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Answer' })).toBeInTheDocument()
   })

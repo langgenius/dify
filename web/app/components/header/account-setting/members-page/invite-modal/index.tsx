@@ -1,24 +1,25 @@
 'use client'
-
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { useLocale } from '#i18n'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
@@ -46,18 +47,23 @@ type SubmissionError =
 type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
 
 function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers'])
   const locale = useLocale()
   const queryClient = useQueryClient()
-  const licenseLimit = useProviderContextSelector((state) => state.licenseLimit)
-  const refreshLicenseLimit = useProviderContextSelector((state) => state.refreshLicenseLimit)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
   const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
   const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
-  const currentSize = licenseLimit.workspace_members.size ?? 0
-  const memberLimit = licenseLimit.workspace_members.limit
-  const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
+  // A limit of 0 means unlimited.
+  const memberLimit = features?.workspace_members.enabled
+    ? features.workspace_members
+    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
+      ? features.members
+      : undefined
+  const remainingSeats =
+    memberLimit && memberLimit.limit > 0 ? Math.max(memberLimit.limit - memberLimit.size, 0) : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
@@ -88,7 +94,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
       },
       {
         onSuccess: (response) => {
-          refreshLicenseLimit()
+          void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
           void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
           onOpenChange(false)
           onSend(response.invitation_results)
@@ -99,20 +105,20 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
               setSubmissionError({
                 kind: 'fields',
                 errors: {
-                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'common' }),
+                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' }),
                 },
               })
               break
             case 'invalid_role':
               setSubmissionError({
                 kind: 'fields',
-                errors: { role: t(($) => $['members.invalidRole'], { ns: 'common' }) },
+                errors: { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) },
               })
               break
             default:
               setSubmissionError({
                 kind: 'form',
-                message: t(($) => $['members.inviteFailed'], { ns: 'common' }),
+                message: t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }),
               })
           }
         },
@@ -122,7 +128,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
 
   return (
     <Form<InviteFormValues>
-      aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
+      aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
       errors={fieldErrors}
       className="grid gap-5 pt-5"
       onFormSubmit={handleSubmit}
@@ -131,7 +137,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         <div className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 text-text-warning">
           <span aria-hidden="true" className="i-ri-error-warning-fill size-4 shrink-0" />
           <span className="system-xs-medium text-text-primary">
-            {t(($) => $['members.emailNotSetup'], { ns: 'common' })}
+            {t(($) => $['members.emailNotSetup'], { ns: 'workspaceMembers' })}
           </span>
         </div>
       )}
@@ -152,11 +158,11 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           <span aria-hidden="true" className="i-ri-error-warning-line size-4 shrink-0" />
           <span>
             {t(($) => $['members.seatsRemaining'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: remainingSeats,
             })}
             <span aria-hidden="true"> · </span>
-            {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'common' })}
+            {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'workspaceMembers' })}
           </span>
         </div>
       )}
@@ -165,19 +171,13 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           {submissionError.message}
         </div>
       )}
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        loading={isPending}
-        disabled={isPending}
-      >
+      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
         {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: validRecipientCount,
             })
-          : t(($) => $['members.sendInvite'], { ns: 'common' })}
+          : t(($) => $['members.sendInvite'], { ns: 'workspaceMembers' })}
       </Button>
     </Form>
   )
@@ -190,7 +190,7 @@ export function InviteModal({
   onOpenChange,
   onSend,
 }: InviteModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>
@@ -198,14 +198,24 @@ export function InviteModal({
       <DialogContent backdropProps={{ forceRender: true }}>
         <div className="grid gap-1 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
-            {t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
+            {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
           </DialogTitle>
           <DialogDescription className="text-sm text-text-tertiary">
-            {t(($) => $['members.inviteTeamMemberTip'], { ns: 'common' })}
+            {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
           </DialogDescription>
         </div>
         <InviteForm isEmailSetup={isEmailSetup} onOpenChange={onOpenChange} onSend={onSend} />
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

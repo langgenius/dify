@@ -1,5 +1,5 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -9,27 +9,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
-type OperationDropdownProps = Readonly<{
-  source: PluginSource
-  onInfo: () => void
-  onCheckVersion: () => void
-  onRemove: () => void
-  onViewReadme?: () => void
-  detailUrl: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  popupClassName?: string
-  triggerSize?: 'm' | 'xs'
-  destructiveRemove?: boolean
-  showCheckVersion?: boolean
-  showRemove?: boolean
-}>
+type OperationDropdownProps = Readonly<
+  Pick<DropdownMenuContentProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    source: PluginSource
+    onInfo: () => void
+    onCheckVersion: () => void
+    onRemove: () => void
+    onViewReadme?: () => void
+    detailUrl: string
+    popupClassName?: string
+    triggerSize?: 'm' | 'xs'
+    triggerAriaLabel?: string
+    destructiveRemove?: boolean
+    showCheckVersion?: boolean
+    showRemove?: boolean
+  }
+>
 
 export function OperationDropdown({
   source,
@@ -43,11 +44,12 @@ export function OperationDropdown({
   alignOffset = 0,
   popupClassName,
   triggerSize = 'm',
+  triggerAriaLabel,
   destructiveRemove = false,
   showCheckVersion = true,
   showRemove = true,
 }: OperationDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
@@ -71,19 +73,23 @@ export function OperationDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(
-          'action-btn data-popup-open:bg-state-base-hover',
-          triggerSize === 'xs' ? 'action-btn-xs' : 'action-btn-m',
-        )}
-        aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
+        render={
+          <IconButton
+            aria-label={
+              triggerAriaLabel ?? t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })
+            }
+            size={triggerSize === 'xs' ? 'xs' : 'md'}
+            className="data-popup-open:bg-state-base-hover"
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
+        }
+      />
       <DropdownMenuContent
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName={cn('w-48 py-1', popupClassName)}
+        className={cn('w-48 py-1', popupClassName)}
       >
         {showInfo && (
           <DropdownMenuItem
@@ -111,7 +117,6 @@ export function OperationDropdown({
             href={detailUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}

@@ -3,7 +3,7 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import component after mocks
 import LLMParamsPanel from '../llm-params-panel'
 
@@ -268,7 +268,7 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert - Loading component uses aria-label instead of visible text
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should not render loading state when model is not configured and parameter rules query is pending but disabled', () => {
@@ -280,8 +280,8 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render parameters header', () => {
@@ -293,7 +293,7 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render PresetsParameter for openai provider', () => {
@@ -848,8 +848,8 @@ describe('LLMParamsPanel', () => {
       setupModelParameterRulesMock({ isPending: true })
       rerender(<LLMParamsPanel {...props} />)
 
-      // Assert - Loading component uses role="status" with aria-label
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      // Assert - Loading component uses role="progressbar" with aria-label
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should update when isAdvancedMode changes', () => {

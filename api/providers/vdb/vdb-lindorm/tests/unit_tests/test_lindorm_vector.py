@@ -1,13 +1,16 @@
 import importlib
+import json
 import sys
 import types
+from functools import partial
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_opensearch_modules():
@@ -134,7 +137,10 @@ def test_create_refresh_and_add_texts_success(lindorm_module, monkeypatch: pytes
     vector._client.indices.refresh.assert_called_once_with(index="collection")
 
 
-def test_add_texts_error_paths(lindorm_module):
+def test_add_texts_error_paths(lindorm_module, monkeypatch: pytest.MonkeyPatch):
+    sleep = MagicMock()
+    # Keep the production retry/stop/backoff rules, but do not wait in real time.
+    monkeypatch.setattr(lindorm_module, "retry", partial(lindorm_module.retry, sleep=sleep))
     vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
     vector._client.bulk.return_value = {"errors": True, "items": [{"index": {"error": "boom"}}]}
 
@@ -142,9 +148,17 @@ def test_add_texts_error_paths(lindorm_module):
     with pytest.raises(Exception, match="RetryError"):
         vector.add_texts(docs, [[0.1]], batch_size=1)
 
+    assert vector._client.bulk.call_count == 3
+    assert sleep.call_args_list == [call(4), call(4)]
+    vector._client.bulk.reset_mock()
+    sleep.reset_mock()
+
     vector._client.bulk.side_effect = RuntimeError("bulk failed")
     with pytest.raises(Exception, match="RetryError"):
         vector.add_texts(docs, [[0.1]], batch_size=1)
+
+    assert vector._client.bulk.call_count == 3
+    assert sleep.call_args_list == [call(4), call(4)]
 
 
 def test_metadata_lookup_and_delete_by_metadata(lindorm_module):
@@ -342,7 +356,7 @@ def test_lindorm_factory_branches(lindorm_module, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_DISTANCE_TYPE", "l2")
     monkeypatch.setattr(lindorm_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
 
-    dataset = SimpleNamespace(id="dataset-1", index_struct=None, index_struct_dict={})
+    dataset = Dataset(id="dataset-1")
     embeddings = SimpleNamespace(embed_query=lambda _q: [0.1, 0.2, 0.3])
 
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_USING_UGC", None)
@@ -351,33 +365,32 @@ def test_lindorm_factory_branches(lindorm_module, monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_USING_UGC", False)
 
-    dataset_existing_plain = SimpleNamespace(
-        id="dataset-1",
-        index_struct="{}",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING"}, "using_ugc": False},
+    dataset_existing_plain = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING"}, "using_ugc": False})
     )
     with patch.object(lindorm_module, "LindormVectorStore", return_value="vector") as store_cls:
         result = factory.init_vector(dataset_existing_plain, attributes=[], embeddings=embeddings)
     assert result == "vector"
     assert store_cls.call_args.args[0] == "existing"
 
-    dataset_existing_ugc = SimpleNamespace(
+    dataset_existing_ugc = Dataset(
         id="dataset-1",
-        index_struct="{}",
-        index_struct_dict={
-            "vector_store": {"class_prefix": "ROUTING"},
-            "using_ugc": True,
-            "dimension": 1536,
-            "index_type": "hnsw",
-            "distance_type": "l2",
-        },
+        index_struct=json.dumps(
+            {
+                "vector_store": {"class_prefix": "ROUTING"},
+                "using_ugc": True,
+                "dimension": 1536,
+                "index_type": "hnsw",
+                "distance_type": "l2",
+            }
+        ),
     )
     with patch.object(lindorm_module, "LindormVectorStore", return_value="vector") as store_cls:
         factory.init_vector(dataset_existing_ugc, attributes=[], embeddings=embeddings)
     assert store_cls.call_args.args[0] == "ugc_index_1536_hnsw_l2"
     assert store_cls.call_args.kwargs["routing_value"] == "ROUTING"
 
-    dataset_new = SimpleNamespace(id="dataset-2", index_struct=None, index_struct_dict={})
+    dataset_new = Dataset(id="dataset-2")
 
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_USING_UGC", True)
     with patch.object(lindorm_module, "LindormVectorStore", return_value="vector") as store_cls:
@@ -386,7 +399,7 @@ def test_lindorm_factory_branches(lindorm_module, monkeypatch: pytest.MonkeyPatc
     assert store_cls.call_args.kwargs["routing_value"] == "auto_collection"
     assert dataset_new.index_struct is not None
 
-    dataset_new_plain = SimpleNamespace(id="dataset-3", index_struct=None, index_struct_dict={})
+    dataset_new_plain = Dataset(id="dataset-3")
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_USING_UGC", False)
     with patch.object(lindorm_module, "LindormVectorStore", return_value="vector") as store_cls:
         factory.init_vector(dataset_new_plain, attributes=[], embeddings=embeddings)

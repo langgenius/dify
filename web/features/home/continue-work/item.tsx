@@ -2,15 +2,15 @@
 
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { userProfileIdAtom } from '@/context/account-state'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -30,9 +30,12 @@ type ContinueWorkItemProps = {
 }
 
 export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'explore'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appNameId = useId()
@@ -120,19 +123,17 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   }
 
   return (
-    <Link
-      href={href}
-      prefetch={isPrefetchEnabled ? null : false}
-      onMouseEnter={() => setIsPrefetchEnabled(true)}
-      onFocus={() => setIsPrefetchEnabled(true)}
-      aria-labelledby={`${appNameId} ${appModeId}`}
-      aria-describedby={appMetadataId}
-      className={cn(
-        cardClassName,
-        'touch-manipulation outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-      )}
-    >
+    <div className={cardClassName}>
+      <Link
+        href={href}
+        prefetch={isPrefetchEnabled ? null : false}
+        onMouseEnter={() => setIsPrefetchEnabled(true)}
+        onFocus={() => setIsPrefetchEnabled(true)}
+        aria-labelledby={`${appNameId} ${appModeId}`}
+        aria-describedby={appMetadataId}
+        className="absolute inset-0 z-10 touch-manipulation rounded-xl outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+      />
       {cardContent}
-    </Link>
+    </div>
   )
 }

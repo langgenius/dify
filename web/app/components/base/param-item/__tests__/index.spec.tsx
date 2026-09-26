@@ -32,19 +32,19 @@ describe('ParamItem', () => {
     it('should render a tooltip trigger by default', () => {
       render(<ParamItem {...defaultProps} tip="Some tip text" />)
 
-      expect(screen.getByLabelText('Some tip text')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Test Param' })).toBeInTheDocument()
     })
 
     it('should not render tooltip trigger when noTooltip is true', () => {
       render(<ParamItem {...defaultProps} noTooltip tip="Hidden tip" />)
 
-      expect(screen.queryByLabelText('Hidden tip')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Test Param' })).not.toBeInTheDocument()
     })
 
     it('should render a switch when hasSwitch is true', () => {
       render(<ParamItem {...defaultProps} hasSwitch />)
 
-      expect(screen.getByRole('switch')).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Test Param' })).toBeInTheDocument()
     })
 
     it('should not render a switch by default', () => {

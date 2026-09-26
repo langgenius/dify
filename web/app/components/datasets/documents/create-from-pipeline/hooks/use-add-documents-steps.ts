@@ -6,7 +6,7 @@ import { AddDocumentsStep } from '../types'
  * Hook for managing add documents wizard steps
  */
 export const useAddDocumentsSteps = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const [currentStep, setCurrentStep] = useState(1)
 
   const handleNextStep = useCallback(() => {

@@ -248,7 +248,9 @@ describe('ModelAuthDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
       await waitFor(() => {
-        expect(screen.getByText('common.modelProvider.card.noApiKeysTitle')).toBeInTheDocument()
+        expect(
+          screen.getByText('modelProvider.modelProvider.card.noApiKeysTitle'),
+        ).toBeInTheDocument()
       })
       expect(fetchMock).toHaveBeenCalledTimes(2)
     })
@@ -275,6 +277,7 @@ describe('ModelAuthDropdown', () => {
       await waitFor(() => {
         expect(screen.getByText('Key 1')).toBeInTheDocument()
       })
+      expect(screen.getByRole('dialog', { name: /config/i })).toBeInTheDocument()
     })
 
     it('should load provider detail on first click and reuse it on reopen', async () => {
@@ -296,7 +299,7 @@ describe('ModelAuthDropdown', () => {
           current_credential_usable: true,
         },
       } as unknown as ModelProviderSummaryResponse
-      const rendered = render(
+      render(
         <ModelAuthDropdown
           provider={providerSummary}
           state={createState({ hasCredentials: true, variant: 'api-active' })}
@@ -304,13 +307,13 @@ describe('ModelAuthDropdown', () => {
           onChangePriority={onChangePriority}
         />,
       )
-      const fetchQuery = vi
-        .spyOn(rendered.queryClient, 'fetchQuery')
-        .mockImplementation(async () => {
-          const response = { data: [fullProvider] }
-          rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, response)
-          return response
-        })
+      const fetchMock = vi.mocked(globalThis.fetch)
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [fullProvider] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
       const trigger = screen.getByRole('button', { name: /config/i })
 
       fireEvent.click(trigger)
@@ -318,7 +321,7 @@ describe('ModelAuthDropdown', () => {
       await waitFor(() => {
         expect(screen.getByText('Key 1')).toBeInTheDocument()
       })
-      expect(fetchQuery).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
 
       fireEvent.click(trigger)
       await waitFor(() => {
@@ -329,7 +332,7 @@ describe('ModelAuthDropdown', () => {
       await waitFor(() => {
         expect(screen.getByText('Key 1')).toBeInTheDocument()
       })
-      expect(fetchQuery).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
     it('should render updated provider detail from the query cache', async () => {
@@ -365,11 +368,13 @@ describe('ModelAuthDropdown', () => {
           onChangePriority={onChangePriority}
         />,
       )
-      vi.spyOn(rendered.queryClient, 'fetchQuery').mockImplementation(async () => {
-        const response = { data: [firstProvider] }
-        rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, response)
-        return response
-      })
+      const fetchMock = vi.mocked(globalThis.fetch)
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [firstProvider] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
 
       fireEvent.click(screen.getByRole('button', { name: /config/i }))
       await waitFor(() => expect(screen.getByText('Key 1')).toBeInTheDocument())

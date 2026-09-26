@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
@@ -32,7 +32,7 @@ const ToolPicker: FC<Props> = ({
   onShowChange,
   integrationCategory,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   const allTabs = [
     { key: PLUGIN_TYPE_SEARCH_MAP.all, name: t(($) => $['category.all'], { ns: 'plugin' }) },
@@ -98,7 +98,7 @@ const ToolPicker: FC<Props> = ({
 
   const loadingContent = (
     <div className="flex h-99 items-center justify-center">
-      <Loading />
+      <LoadingPlaceholder />
     </div>
   )
 
@@ -112,7 +112,7 @@ const ToolPicker: FC<Props> = ({
       <PopoverContent
         placement="top"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="relative min-h-20 w-108 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs">
           <div className="flex flex-col overflow-hidden rounded-t-lg border-b border-divider-subtle bg-background-section-burn">

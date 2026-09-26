@@ -56,7 +56,7 @@ const TriggerPluginItem: FC<Props> = ({
   onSelect,
   disabled = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useGetLanguage()
   const { theme } = useTheme()
   const notShowProvider = payload.type === CollectionType.workflow
@@ -171,7 +171,7 @@ const TriggerPluginItem: FC<Props> = ({
         </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
-          <ScrollArea className="relative max-h-60 overflow-hidden">
+          <ScrollArea className="max-h-60 overflow-hidden">
             <ScrollAreaViewport
               aria-label={t(($) => $['tabs.allTriggers'], { ns: 'workflow' })}
               className="max-h-60 overscroll-contain"

@@ -98,7 +98,7 @@ def test_export_config_parser_rejects_unsupported_app_modes():
         )
 
 
-def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypatch):
+def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypatch: pytest.MonkeyPatch):
     calls = []
 
     def fake_get_api_provider(provider: str, tenant_id: str, mask: bool = True):

@@ -1,10 +1,11 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -38,9 +39,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlan = {
-  type: Plan.sandbox,
+  type: 'sandbox',
   usage: {
     buildApps: 0,
     teamMembers: 0,
@@ -60,12 +61,6 @@ let mockPlan = {
     vectorSpace: 0,
   },
 }
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: ({ loc }: { loc: string }) => (
@@ -96,7 +91,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
-  access_mode: 'public_access',
+  access_mode: 'public',
   ...overrides,
 })
 
@@ -107,7 +102,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) =>
       toastMocks.notify({ type: 'success', message, ...options }),
@@ -141,6 +136,13 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
 
 const setAppDetailSpy = vi.fn()
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } },
+  })
+}
+
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -153,9 +155,9 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlan = {
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: {
         buildApps: 0,
         teamMembers: 0,
@@ -217,7 +219,7 @@ describe('SwitchAppModal', () => {
 
     it('should render the apps full warning when plan limits are reached', () => {
       // Arrange
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan = {
         ...mockPlan,
         usage: { ...mockPlan.usage, buildApps: 10 },
@@ -294,13 +296,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: '#F3FEE7' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
@@ -311,7 +313,7 @@ describe('SwitchAppModal', () => {
             body: expect.objectContaining({
               icon_type: 'emoji',
               icon: '🚀',
-              icon_background: '#E4FBCC',
+              icon_background: '#F3FEE7',
             }),
           }),
         )
@@ -324,13 +326,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
-      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
@@ -397,3 +399,5 @@ describe('SwitchAppModal', () => {
     })
   })
 })
+
+mockEmojiData()

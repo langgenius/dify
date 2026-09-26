@@ -1,7 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { RiEqualizer2Line, RiScales3Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,7 +20,7 @@ const ConfigModel = ({
   loadBalancingInvalid,
   credentialRemoved,
 }: ConfigModelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
 
   if (loadBalancingInvalid) {
     return (
@@ -30,12 +29,11 @@ const ConfigModel = ({
         size="small"
         loading={loading}
         disabled={disabled}
-        aria-busy={loading || undefined}
         className="relative h-4.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning shadow-none hover:bg-components-badge-bg-dimm"
         onClick={onClick}
       >
-        <RiScales3Line className="mr-0.5 size-3" />
-        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
+        <span aria-hidden className="i-ri-scales-3-line size-3" />
+        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'modelProvider' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
       </Button>
     )
@@ -47,26 +45,25 @@ const ConfigModel = ({
       size="small"
       loading={loading}
       disabled={disabled}
-      aria-busy={loading || undefined}
       className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
       onClick={onClick}
     >
       {credentialRemoved && (
         <>
-          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'modelProvider' })}
           <StatusDot status="error" />
         </>
       )}
       {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiEqualizer2Line className="size-4" />
+          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
           {t(($) => $['operation.config'], { ns: 'common' })}
         </>
       )}
       {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiScales3Line className="size-4" />
-          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
+          <span aria-hidden className="i-ri-scales-3-line size-4" />
+          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })}
         </>
       )}
     </Button>

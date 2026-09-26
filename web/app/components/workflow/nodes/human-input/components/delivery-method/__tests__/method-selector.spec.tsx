@@ -5,12 +5,16 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DeliveryMethodType } from '../../../types'
 import MethodSelector from '../method-selector'
 
+let emailDeliveryEnabled = true
+
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { human_input_email_delivery_enabled: emailDeliveryEnabled },
+  })
 
 const mockUuid = vi.hoisted(() => vi.fn())
 const mockUseWorkflowNodes = vi.hoisted(() => vi.fn())
-const mockUseProviderContextSelector = vi.hoisted(() => vi.fn())
 
 vi.mock('uuid', () => ({
   v4: () => mockUuid(),
@@ -19,12 +23,6 @@ vi.mock('uuid', () => ({
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   __esModule: true,
   default: () => mockUseWorkflowNodes(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { humanInputEmailDeliveryEnabled: boolean }) => boolean,
-  ) => mockUseProviderContextSelector(selector),
 }))
 
 describe('human-input/delivery-method/method-selector', () => {
@@ -37,11 +35,7 @@ describe('human-input/delivery-method/method-selector', () => {
         data: { type: BlockEnum.Start },
       },
     ] as Node[])
-    mockUseProviderContextSelector.mockImplementation((selector) =>
-      selector({
-        humanInputEmailDeliveryEnabled: true,
-      }),
-    )
+    emailDeliveryEnabled = true
   })
 
   it('should add webapp and email delivery methods when both entries are available', () => {
@@ -51,8 +45,12 @@ describe('human-input/delivery-method/method-selector', () => {
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).toHaveBeenNthCalledWith(1, {
       id: 'generated-id',
@@ -66,10 +64,10 @@ describe('human-input/delivery-method/method-selector', () => {
     })
     expect(handleShowUpgradeTip).not.toHaveBeenCalled()
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.contactTip1'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip1'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.contactTip2'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip2'),
     ).toBeInTheDocument()
   })
 
@@ -96,10 +94,16 @@ describe('human-input/delivery-method/method-selector', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    expect(screen.getAllByText('workflow.nodes.humanInput.deliveryMethod.added')).toHaveLength(2)
+    expect(
+      screen.getAllByText('workflowHumanInput.nodes.humanInput.deliveryMethod.added'),
+    ).toHaveLength(2)
 
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).not.toHaveBeenCalled()
   })
@@ -114,22 +118,24 @@ describe('human-input/delivery-method/method-selector', () => {
         data: { type: BlockEnum.TriggerSchedule },
       },
     ] as Node[])
-    mockUseProviderContextSelector.mockImplementation((selector) =>
-      selector({
-        humanInputEmailDeliveryEnabled: false,
-      }),
-    )
+    emailDeliveryEnabled = false
 
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 
     fireEvent.click(screen.getByRole('button'))
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.notAvailableInTriggerMode'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.notAvailableInTriggerMode',
+      ),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).not.toHaveBeenCalled()
     expect(handleShowUpgradeTip).toHaveBeenCalledTimes(1)

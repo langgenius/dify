@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { FileUploadClient } from './file-upload.js'
 

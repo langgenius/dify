@@ -9,7 +9,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Existing initialized instance: `pnpm -C e2e e2e`
 - Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility:a`
 - Standalone automated WCAG Level AA scan: `pnpm -C e2e e2e:accessibility:aa`
-- One-page automated WCAG scan: `pnpm -C e2e exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
+- One-page automated WCAG scan: `pnpm -C e2e exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
 - Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
@@ -17,6 +17,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Prepare and run external runtime scenarios: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:external`
 - Seed against existing middleware without running Cucumber: `pnpm -C e2e seed -- --profile <prepared|external-runtime|post-merge>`
 - Reset persisted E2E state: `pnpm -C e2e e2e:reset`
+- Build the production Web artifact without starting services: `pnpm -C e2e e2e:web:build`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
 
@@ -44,6 +45,8 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
 - `@browser-smoke` runs focused keyboard and navigation coverage in Chromium and WebKit CI lanes.
+- `@cloud-catalog-runtime` requires an initialized Cloud runtime and an existing E2E workflow in its template catalog. It is excluded from default functional runs. Set `E2E_AGENT_OUTPUT_ROUTES_PREVIEW_APP_ID` to a published workflow with labeled Agent output routes, connections for every route, and a connected failure branch, then run `pnpm -C e2e e2e -- --tags @cloud-catalog-runtime`. Do not use `--full`: Cloud disables local setup. The scenario validates the fixture through the generated catalog and trial-app APIs and never modifies or deletes it. Catalog administrators own fixture preparation; for a local database catalog, prepare and publish the app under `COMMUNITY` before switching the API to `CLOUD` with `HOSTED_FETCH_APP_TEMPLATES_MODE=db`.
+- `@skip` temporarily excludes a scenario from every runner profile. Remove it as soon as the covered product behavior is available again; do not use it for permanent or environment-dependent suppression.
 - Feature-owned services use their own tags. Agent v2 runtime scenarios use `@agent-backend-runtime` and require the explicit runtime-availability step. Set `E2E_START_AGENT_BACKEND=1` to start it locally, or provide `E2E_AGENT_BACKEND_URL` / `AGENT_BACKEND_BASE_URL`.
 
 Seed and Cucumber must share one runtime lifecycle. Combined commands own reset, middleware, services, seed, Cucumber, and teardown; CI must not reproduce that lifecycle in workflow YAML. `E2E_START_AGENT_BACKEND=1` starts a managed local backend before the API; it is mutually exclusive with an explicit Agent backend URL.

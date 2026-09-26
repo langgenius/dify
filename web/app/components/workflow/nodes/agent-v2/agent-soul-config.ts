@@ -18,7 +18,7 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
@@ -89,10 +89,12 @@ export function useWorkflowInlineAgentConfigureSync({
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
-  baseConfigRef.current = baseConfig
-  currentModelRef.current = currentModel
-  enabledRef.current = enabled
-  onDraftSavedRef.current = onDraftSaved
+  useEffect(() => {
+    baseConfigRef.current = baseConfig
+    currentModelRef.current = currentModel
+    enabledRef.current = enabled
+    onDraftSavedRef.current = onDraftSaved
+  }, [baseConfig, currentModel, enabled, onDraftSaved])
 
   const getAgentSoulDraft = useCallback(
     () =>
@@ -170,9 +172,11 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
-  latestDraftSaveRef.current = () => {
-    void saveComposer(getAgentSoulDraft())
-  }
+  useEffect(() => {
+    latestDraftSaveRef.current = () => {
+      void saveComposer(getAgentSoulDraft())
+    }
+  }, [getAgentSoulDraft, saveComposer])
 
   const debouncedSaveDraft = useMemo(
     () =>

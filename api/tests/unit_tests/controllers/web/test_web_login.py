@@ -13,11 +13,15 @@ from werkzeug.exceptions import Unauthorized
 import services.errors.account
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
+from models.account import Account
 from models.model import DifySetup
-from services.entities.auth_entities import LoginFailureReason
+from services.entities.auth_audit_entities import LoginFailureReason
 
-pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+pytestmark = [
+    pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True),
+    pytest.mark.usefixtures("app_query_services"),
+]
 
 
 def encode_code(code: str) -> str:
@@ -45,8 +49,8 @@ def _patch_wraps(
     sqlite_session: Session,
 ):
     wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
+    console_dify = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    web_dify = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     sqlite_session.add(DifySetup(version="test"))
     sqlite_session.commit()
     console_wraps._is_setup_completed.reset_success()
@@ -54,7 +58,10 @@ def _patch_wraps(
     monkeypatch.setattr(console_wraps.db, "session", session_registry)
     with (
         patch("controllers.console.wraps.dify_config", console_dify),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+            return_value=wraps_features.enable_email_password_login,
+        ),
         patch("controllers.web.login.dify_config", web_dify),
     ):
         yield
@@ -71,8 +78,8 @@ class TestEmailCodeLoginSendEmailApi:
         mock_send_email,
         app: Flask,
     ):
-        mock_account = MagicMock()
-        mock_get_user.return_value = mock_account
+        account = Account(name="Test User", email="user@example.com")
+        mock_get_user.return_value = account
         mock_send_email.return_value = "token-123"
 
         with app.test_request_context(
@@ -84,7 +91,7 @@ class TestEmailCodeLoginSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_get_user.assert_called_once_with("User@Example.com", ANY)
-        mock_send_email.assert_called_once_with(account=mock_account, language="en-US")
+        mock_send_email.assert_called_once_with(account=account, language="en-US")
 
 
 class TestEmailCodeLoginApi:
@@ -103,7 +110,7 @@ class TestEmailCodeLoginApi:
         app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
-        mock_get_user.return_value = MagicMock()
+        mock_get_user.return_value = Account(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/email-code-login/validity",
@@ -123,7 +130,7 @@ class TestLoginApi:
     @patch("controllers.web.login.WebAppAuthService.login", return_value="access-tok")
     @patch("controllers.web.login.WebAppAuthService.authenticate")
     def test_login_success(self, mock_auth: MagicMock, mock_login: MagicMock, app: Flask) -> None:
-        mock_auth.return_value = MagicMock()
+        mock_auth.return_value = Account(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/login",
@@ -249,8 +256,10 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token")
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=False)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.requires_permission_check", return_value=False
+    )
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code", return_value="app-1")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_public_app_user_logged_in(
         self,
@@ -271,8 +280,8 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=True)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.requires_permission_check", return_value=True)
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code", return_value="app-1")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_private_app_passport_fails(
         self,
@@ -300,3 +309,13 @@ class TestLogoutApi:
 
         assert response.get_json() == {"result": "success"}
         mock_clear.assert_called_once()
+
+
+def test_unknown_web_app_code_returns_http_not_found(app: Flask) -> None:
+    from flask_restx import Api
+
+    api = Api(app)
+    api.add_resource(LoginStatusApi, "/web/login/status")
+    response = app.test_client().get("/web/login/status?app_code=does-not-exist")
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "app_not_found"

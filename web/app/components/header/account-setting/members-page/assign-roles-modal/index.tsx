@@ -1,14 +1,14 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
@@ -28,21 +28,24 @@ const AssignRolesModalBody = ({
   onClose,
   onSubmit,
 }: AssignRolesModalBodyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)
   const isConfirmDisabled = selected.length === 0
   const title = allowMultipleRoles
-    ? t(($) => $['members.assignRolesModal.title'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRolesModal.title'], {
+        ns: 'workspaceMembers',
+        defaultValue: 'Assign Roles',
+      })
+    : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
   const description = allowMultipleRoles
     ? t(($) => $['members.assignRolesModal.description'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue:
           'Select roles to assign to this member. All permissions from selected roles will be combined.',
       })
     : t(($) => $['members.assignRolesModal.singleDescription'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue: 'Select one role to assign to this member.',
       })
 
@@ -59,7 +62,17 @@ const AssignRolesModalBody = ({
       backdropProps={{ forceRender: true }}
     >
       <div className="relative shrink-0 px-6 pt-6 pb-4">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="pr-8">
           <DialogTitle className="system-xl-semibold text-text-primary">{title}</DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
@@ -79,7 +92,7 @@ const AssignRolesModalBody = ({
         {allowMultipleRoles && (
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['members.assignRolesModal.selectedCount'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: selected.length,
             })}
           </div>

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
@@ -44,14 +45,6 @@ const mockUserProfile = {
   avatar_url: '',
 }
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -90,6 +83,7 @@ const createConsoleQueryClient = () =>
 
 const createWrapper = () => {
   const testQueryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(testQueryClient, mockUserProfile)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )

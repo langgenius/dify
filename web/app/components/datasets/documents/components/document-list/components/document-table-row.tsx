@@ -1,6 +1,8 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { pick } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -10,11 +12,12 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -57,13 +60,16 @@ const DocumentTableRow = React.memo(
     onShowRenameModal,
     onUpdate,
   }: DocumentTableRowProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['datasetDocuments', 'datasetHitTesting'])
     const { formatTime } = useTimestamp()
     const router = useRouter()
     const searchParams = useSearchParams()
     const documentNameId = React.useId()
     const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
     const datasetACLCapabilities = React.useMemo(
       () =>
@@ -79,11 +85,14 @@ const DocumentTableRow = React.memo(
     const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
     const queryString = searchParams.toString()
 
-    const handleRowClick = useCallback(() => {
-      router.push(
-        `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`,
-      )
-    }, [router, datasetId, doc.id, queryString])
+    const documentHref = `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`
+    const handleRowClick = useCallback(
+      (event: React.MouseEvent<HTMLTableRowElement>) => {
+        if ((event.target as HTMLElement).closest('a, button, input')) return
+        router.push(documentHref)
+      },
+      [router, documentHref],
+    )
 
     const stopPropagation = useCallback((e: React.SyntheticEvent) => {
       e.stopPropagation()
@@ -103,27 +112,27 @@ const DocumentTableRow = React.memo(
         onClick={handleRowClick}
       >
         <td className="text-left align-middle text-xs text-text-tertiary">
-          <div
-            className="flex items-center"
-            role="presentation"
-            onClick={stopPropagation}
-            onKeyDown={stopPropagation}
-          >
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation. */}
+          <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
             <Checkbox className="mr-2 shrink-0" value={doc.id} aria-labelledby={documentNameId} />
             {index + 1}
           </div>
         </td>
         <td>
-          <div className="group mr-6 flex max-w-115 items-center hover:mr-0">
+          <div className="group mr-6 flex max-w-115 items-center focus-within:mr-0 hover:mr-0">
             <div className="flex shrink-0 items-center">
               <DocumentSourceIcon doc={doc} fileType={fileType} />
             </div>
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <span id={documentNameId} className="grow truncate text-sm">
+                  <Link
+                    id={documentNameId}
+                    href={documentHref}
+                    className="grow truncate rounded-sm text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                  >
                     {doc.name}
-                  </span>
+                  </Link>
                 }
               />
               <TooltipContent>{doc.name}</TooltipContent>
@@ -134,17 +143,16 @@ const DocumentTableRow = React.memo(
               </div>
             )}
             {datasetACLCapabilities.canEdit && (
-              <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
+              <div className="w-0 shrink-0 overflow-hidden opacity-0 group-focus-within:ml-auto group-focus-within:w-6 group-focus-within:overflow-visible group-focus-within:opacity-100 group-hover:ml-auto group-hover:w-6 group-hover:overflow-visible group-hover:opacity-100">
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover"
+                      <IconButton
+                        aria-label={t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
                         onClick={handleRenameClick}
                       >
-                        <span className="i-ri-edit-line size-4 text-text-tertiary" />
-                      </button>
+                        <span aria-hidden="true" className="i-ri-edit-line size-4" />
+                      </IconButton>
                     }
                   />
                   <TooltipContent>

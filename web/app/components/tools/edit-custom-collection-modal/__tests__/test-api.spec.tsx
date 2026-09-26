@@ -1,6 +1,6 @@
 import type { CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { testAPIAvailable } from '@/service/tools'
 import TestApi from '../test-api'
@@ -124,7 +124,7 @@ describe('TestApi', () => {
             limit: '5',
           },
         })
-        expect(screen.getByText('ok'))!.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('ok')
       })
     })
 
@@ -135,7 +135,7 @@ describe('TestApi', () => {
       fireEvent.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(screen.getByText('API Error occurred'))!.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('API Error occurred')
       })
     })
 

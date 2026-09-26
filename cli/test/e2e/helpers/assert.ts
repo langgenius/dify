@@ -6,11 +6,10 @@
  */
 
 import type { RunResult } from './cli.js'
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 import './vitest-context.js'
 
 // ── ANSI ──────────────────────────────────────────────────────────────────
-// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1B\[[0-9;]*[mGKHFA-DJsuhl]/g
 
 function redact(text: string): string {

@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import type useConfig from '../hooks/use-config'
 import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
 
@@ -24,19 +24,10 @@ vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
   },
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  __esModule: true,
-  default: (props: { children: ReactNode; onClick: () => void }) => (
-    <button type="button" aria-label="action-button" onClick={props.onClick}>
-      {props.children}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -353,13 +344,15 @@ describe('human-input/panel', () => {
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
     await user.click(
-      screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.formContent\.preview/,
+      }),
     )
     await user.click(screen.getByRole('button', { name: 'change-form-content' }))
     await user.click(screen.getByRole('button', { name: 'change-form-inputs' }))
     await user.click(screen.getByRole('button', { name: 'rename-form-input' }))
     await user.click(screen.getByRole('button', { name: 'remove-form-input' }))
-    await user.click(screen.getByRole('button', { name: 'action-button' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
     await user.click(screen.getByRole('button', { name: 'change-action-approve' }))
     await user.click(screen.getByRole('button', { name: 'delete-action-approve' }))
     await user.click(screen.getByRole('button', { name: 'timeout:editable' }))
@@ -413,11 +406,15 @@ describe('human-input/panel', () => {
 
     expect(screen.getByRole('button', { name: 'delivery-method:readonly' })).toBeInTheDocument()
     expect(screen.getByText('form-content:readonly')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.userActions.emptyTip')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+      screen.getByText('workflowHumanInput.nodes.humanInput.userActions.emptyTip'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.formContent\.preview/,
+      }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'action-button' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'timeout:readonly' })).toBeInTheDocument()
     expect(screen.queryByText('form-preview')).not.toBeInTheDocument()
   })

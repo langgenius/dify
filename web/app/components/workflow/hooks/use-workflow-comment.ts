@@ -4,14 +4,13 @@ import type {
   WorkflowCommentList,
 } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useParams } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 
@@ -69,13 +68,26 @@ export const useWorkflowComment = () => {
     () => new Map(mentionableUsers.map((user) => [user.id, user])),
     [mentionableUsers],
   )
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
   })
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
+  const commentFocusToRestoreRef = useRef<string | null>(null)
+
+  useLayoutEffect(() => {
+    const commentId = commentFocusToRestoreRef.current
+    commentFocusToRestoreRef.current = null
+    if (!commentId || activeCommentId) return
+
+    // Closing rebuilds the marker, so resolve its identity after the DOM commit.
+    document.getElementById(`workflow-comment-marker-${commentId}`)?.focus({ preventScroll: true })
+  }, [activeCommentId])
 
   useEffect(() => {
     activeCommentIdRef.current = activeCommentId ?? null
@@ -267,6 +279,7 @@ export const useWorkflowComment = () => {
 
   const handleCommentIconClick = useCallback(
     async (comment: WorkflowCommentList) => {
+      commentFocusToRestoreRef.current = null
       setPendingComment(null)
 
       activeCommentIdRef.current = comment.id
@@ -594,6 +607,7 @@ export const useWorkflowComment = () => {
   )
 
   const handleActiveCommentClose = useCallback(() => {
+    commentFocusToRestoreRef.current = activeCommentIdRef.current
     setActiveComment(null)
     setActiveCommentLoading(false)
     setActiveCommentId(null)

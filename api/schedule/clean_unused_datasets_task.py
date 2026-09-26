@@ -10,7 +10,7 @@ import app
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.pagination import paginate_query
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document

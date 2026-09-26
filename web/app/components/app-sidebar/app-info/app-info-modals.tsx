@@ -2,7 +2,7 @@ import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/consol
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,12 +12,14 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
-import dynamic from '@/next/dynamic'
+import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -33,14 +35,14 @@ const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-ds
 })
 
 type AppInfoModalsProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: App
   activeModal: AppInfoModalType
   closeModal: () => void
   secretEnvList: EnvironmentVariableItemResponse[]
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
-  onExport: (include?: boolean) => Promise<void>
+  onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
@@ -61,9 +63,9 @@ const AppInfoModals = ({
   handleConfirmExport,
   onConfirmDelete,
 }: AppInfoModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [isSecretExporting, setIsSecretExporting] = useState(false)
+  const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
     secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
@@ -85,11 +87,11 @@ const AppInfoModals = ({
 
   const handleExportDialogOpenChange = useCallback(
     (open: boolean) => {
-      if (open || isExporting || isSecretExporting) return
+      if (open || isExporting) return
 
       handleExportDialogClose()
     },
-    [handleExportDialogClose, isExporting, isSecretExporting],
+    [handleExportDialogClose, isExporting],
   )
 
   return (
@@ -146,8 +148,8 @@ const AppInfoModals = ({
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <div className="mt-2">
-                <label className="mb-1 block system-sm-regular text-text-secondary">
+              <Field name="confirm-app-name" className="mt-2 gap-0">
+                <FieldLabel className="system-sm-regular">
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -158,26 +160,28 @@ const AppInfoModals = ({
                       ),
                     }}
                   />
-                </label>
-                <div className="relative">
-                  <Input
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
                     placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                     value={confirmDeleteInput}
-                    onChange={(e) => setConfirmDeleteInput(e.target.value)}
-                    className="pr-20"
+                    onValueChange={setConfirmDeleteInput}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteInput(appDetail.name)}
-                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                  >
-                    {t(($) => $['operation.fill'], { ns: 'common' })}
-                  </button>
-                </div>
-              </div>
+                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(appDetail.name)}
+                      className="rounded-full px-2.5"
+                    >
+                      {t(($) => $['operation.fill'], { ns: 'common' })}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button">
@@ -195,11 +199,11 @@ const AppInfoModals = ({
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
-          <DSLExportConfirmContent
+          <AppExportConfirmContent
             envList={secretEnvList}
             onConfirm={onExport}
             onClose={() => setSecretEnvList([])}
-            onExportingChange={setIsSecretExporting}
+            isExporting={isExporting}
           />
         ) : (
           exportDialogMode === 'warning' && (
@@ -219,11 +223,14 @@ const AppInfoModals = ({
                 <AlertDialogConfirmButton
                   tone="default"
                   loading={isExporting}
+                  aria-labelledby={exportConfirmLabelId}
                   onClick={handleConfirmExport}
                 >
-                  {isExporting
-                    ? t(($) => $['operation.exporting'], { ns: 'common' })
-                    : t(($) => $['operation.confirm'], { ns: 'common' })}
+                  <span id={exportConfirmLabelId}>
+                    {isExporting
+                      ? t(($) => $['operation.exporting'], { ns: 'common' })
+                      : t(($) => $['operation.confirm'], { ns: 'common' })}
+                  </span>
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>

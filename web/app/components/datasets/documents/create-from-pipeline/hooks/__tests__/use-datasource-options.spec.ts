@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/app/components/workflow/types', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('@/app/components/workflow/types')

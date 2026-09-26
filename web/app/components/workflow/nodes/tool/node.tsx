@@ -10,7 +10,7 @@ import { isToolAuthorizationRequired } from './auth'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
   const { isChecking, isMissing, uniqueIdentifier, canInstall, onInstallSuccess, shouldDim } =

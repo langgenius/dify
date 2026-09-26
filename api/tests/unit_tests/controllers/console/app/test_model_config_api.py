@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 from inspect import unwrap
-from typing import Never
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -20,12 +20,13 @@ from models.model import App, AppMode, AppModelConfig
 app_wraps_module = importlib.import_module("controllers.console.app.wraps")
 
 
-def _poison_implicit_app_config_properties(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail(_app: App) -> Never:
-        raise AssertionError("implicit App model-config property was accessed")
-
-    monkeypatch.setattr(App, "app_model_config", property(fail))
-    monkeypatch.setattr(App, "is_agent", property(fail))
+def _assert_no_implicit_app_config_properties() -> None:
+    # `App.is_agent` and `App.app_model_config` used to be poisoned here with a
+    # raising property. Neither exists as an implicit accessor any more, so their
+    # absence enforces the same thing outright — assert it instead of
+    # monkeypatching an attribute that is gone.
+    assert not hasattr(App, "is_agent")
+    assert not hasattr(App, "app_model_config")
 
 
 @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
@@ -52,7 +53,7 @@ def test_post_updates_non_agent_model_config_without_implicit_properties(
     original_config.agent_mode = None
     sqlite_session.add(original_config)
     sqlite_session.commit()
-    _poison_implicit_app_config_properties(monkeypatch)
+    _assert_no_implicit_app_config_properties()
     monkeypatch.setattr(
         model_config_module.AppModelConfigService,
         "validate_configuration",
@@ -139,9 +140,13 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", fail_signal)
 
     method = model_config_module.ModelConfigResource.post
-    while not method.__code__.co_filename.endswith("controllers/common/session.py"):
+    while not os.path.normpath(method.__code__.co_filename).endswith(
+        os.path.join("controllers", "common", "session.py")
+    ):
         method = method.__wrapped__
-    assert method.__wrapped__.__code__.co_filename.endswith("controllers/console/app/wraps.py")
+    assert os.path.normpath(method.__wrapped__.__code__.co_filename).endswith(
+        os.path.join("controllers", "console", "app", "wraps.py")
+    )
 
     api = model_config_module.ModelConfigResource()
     with (
@@ -178,7 +183,7 @@ def test_post_encrypts_agent_tool_parameters(
         updated_by=None,
         updated_at=None,
     )
-    _poison_implicit_app_config_properties(monkeypatch)
+    _assert_no_implicit_app_config_properties()
 
     original_config = AppModelConfig(app_id="app-1", created_by="u1", updated_by="u1")
     original_config.id = "config-0"

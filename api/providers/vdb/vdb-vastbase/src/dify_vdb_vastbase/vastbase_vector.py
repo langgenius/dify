@@ -1,8 +1,11 @@
+import hashlib
 import json
+import logging
 import uuid
 from contextlib import contextmanager
 from typing import Any, override
 
+import psycopg2.errors
 import psycopg2.extras
 import psycopg2.pool
 from pydantic import BaseModel, model_validator
@@ -15,6 +18,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class VastbaseVectorConfig(BaseModel):
@@ -48,6 +53,8 @@ class VastbaseVectorConfig(BaseModel):
         return values
 
 
+# Vastbase G100 stores embeddings in its native floatvector type. Vector retrieval
+# is only supported on the ASTORE (row) storage engine, which is the table default.
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table_name} (
     id UUID PRIMARY KEY,
@@ -57,10 +64,22 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 );
 """
 
+# Graph_Index is Vastbase's recommended ANN index and supersedes the deprecated
+# native HNSW index. Cosine distance matches Dify's `1 - distance` scoring.
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name}
-USING hnsw (embedding floatvector_cosine_ops) WITH (m = 16, ef_construction = 64);
+CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}
+USING graph_index (embedding floatvector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
+
+# Native BM25 full-text index, queried with the `@~@` operator and bm25_score().
+# It tokenizes CJK text correctly, unlike a plain to_tsvector() scan.
+SQL_CREATE_FULLTEXT_INDEX = """
+CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}
+USING fulltext (text);
+"""
+
+# Graph_Index supports up to 16384 dimensions; other ANN indexes cap at 2000.
+MAX_GRAPH_INDEX_DIMENSION = 16384
 
 
 class VastbaseVector(BaseVector):
@@ -68,6 +87,7 @@ class VastbaseVector(BaseVector):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
+        self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
 
     @override
     def get_type(self) -> str:
@@ -99,7 +119,11 @@ class VastbaseVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
-        return self.add_texts(texts, embeddings)
+        ids = self.add_texts(texts, embeddings)
+        # Build indexes after the initial bulk load; Graph_Index and fulltext both
+        # accept incremental inserts afterwards.
+        self._create_index(dimension)
+        return ids
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -145,7 +169,11 @@ class VastbaseVector(BaseVector):
         if not ids:
             return
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            try:
+                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            except psycopg2.errors.UndefinedTable:
+                logger.warning("Table %s not found, skipping delete operation.", self.table_name)
+                return
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
@@ -158,18 +186,25 @@ class VastbaseVector(BaseVector):
         Search the nearest neighbors to a vector.
 
         :param query_vector: The input vector to search for similar items.
-        :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
-
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
+
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        params: list[Any] = [json.dumps(query_vector)]
+        if document_ids_filter:
+            where_clause = " WHERE meta->>'document_id' IN %s"
+            params.append(tuple(document_ids_filter))
+
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f"{where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
-                (json.dumps(query_vector),),
+                params,
             )
             docs = []
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -184,27 +219,30 @@ class VastbaseVector(BaseVector):
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
+
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = "WHERE text @~@ %s"
+        params: list[Any] = [query]
+        if document_ids_filter:
+            where_clause += " AND meta->>'document_id' IN %s"
+            params.append(tuple(document_ids_filter))
+
         with self._get_cursor() as cur:
             cur.execute(
-                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
+                f"""SELECT meta, text, bm25_score() AS score
                 FROM {self.table_name}
-                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
-                ORDER BY score DESC
+                {where_clause}
+                ORDER BY score DESC NULLS LAST
                 LIMIT {top_k}""",
-                # f"'{query}'" is required in order to account for whitespace in query
-                (f"'{query}'", f"'{query}'"),
+                params,
             )
-
             docs = []
-
             for record in cur:
                 metadata, text, score = record
                 metadata["score"] = score
                 docs.append(Document(page_content=text, metadata=metadata))
-
         return docs
 
     @override
@@ -222,10 +260,30 @@ class VastbaseVector(BaseVector):
 
             with self._get_cursor() as cur:
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
-                # Vastbase supports vector dimensions in the range [1, 16,000]
-                if dimension <= 16000:
-                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+    def _create_index(self, dimension: int):
+        index_cache_key = f"vector_index_{self._collection_name}"
+        lock_name = f"{index_cache_key}_lock"
+        with redis_client.lock(lock_name, timeout=60):
+            if redis_client.get(index_cache_key):
+                return
+
+            with self._get_cursor() as cur:
+                if dimension <= MAX_GRAPH_INDEX_DIMENSION:
+                    cur.execute(
+                        SQL_CREATE_INDEX.format(
+                            index_name=f"embedding_cosine_idx_{self.index_hash}",
+                            table_name=self.table_name,
+                        )
+                    )
+                cur.execute(
+                    SQL_CREATE_FULLTEXT_INDEX.format(
+                        index_name=f"embedding_fulltext_idx_{self.index_hash}",
+                        table_name=self.table_name,
+                    )
+                )
+            redis_client.set(index_cache_key, 1, ex=3600)
 
 
 class VastbaseVectorFactory(AbstractVectorFactory):

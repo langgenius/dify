@@ -1,13 +1,15 @@
-/* oxlint-disable react/only-export-components */
 import type { TFunction } from 'i18next'
 import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -159,20 +161,26 @@ const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, 
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map((option) => (
-            <SelectItem key={option} value={option}>
-              <SelectItemText>{option}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-35 overflow-y-auto">
+                {options.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
     </div>
   )
 }
 
-const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction }> = ({
+const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction<['common']> }> = ({
   methods,
   t,
 }) => {
@@ -212,7 +220,7 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
   input,
   nodeName,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'appDebug', 'workflow', 'workflowHumanInput'])
   if (isSelectFormInput(input)) {
     const isVariable = input.option_source.type === 'variable'
     if (isVariable) {
@@ -223,7 +231,9 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
             <Variable path={variablePath} />
           ) : (
             <span>
-              {t(($) => $['nodes.humanInput.insertInputField.variable'], { ns: 'workflow' })}
+              {t(($) => $['nodes.humanInput.insertInputField.variable'], {
+                ns: 'workflowHumanInput',
+              })}
             </span>
           )}
         </div>

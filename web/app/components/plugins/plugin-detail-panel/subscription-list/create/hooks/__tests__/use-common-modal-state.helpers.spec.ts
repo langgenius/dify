@@ -1,8 +1,9 @@
+import type { TFunction } from 'i18next'
 import type { RefObject } from 'react'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
@@ -25,7 +26,7 @@ const { mockToastError, mockIsPrivateOrLocalAddress } = vi.hoisted(() => ({
   mockIsPrivateOrLocalAddress: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -135,7 +136,7 @@ describe('use-common-modal-state helpers', () => {
     const t = withSelectorKey(
       (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
       'pluginTrigger',
-    )
+    ) as TFunction<['pluginTrigger']>
 
     expect(
       getConfirmButtonText({
@@ -175,7 +176,7 @@ describe('use-common-modal-state helpers', () => {
         t: withSelectorKey(
           (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
           'pluginTrigger',
-        ),
+        ) as TFunction<['pluginTrigger']>,
       }),
     )
 
@@ -209,7 +210,7 @@ describe('use-common-modal-state helpers', () => {
         t: withSelectorKey(
           (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
           'pluginTrigger',
-        ),
+        ) as TFunction<['pluginTrigger']>,
       }),
     )
 

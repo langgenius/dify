@@ -2,17 +2,26 @@
 
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
-import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
@@ -61,7 +70,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 }
 
 const SnippetList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'navigation'])
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
@@ -146,10 +155,31 @@ const SnippetList = () => {
     () => pages.flatMap(({ data: pageSnippets }) => pageSnippets),
     [pages],
   )
-  const hasAnySnippet = (pages[0]?.total ?? 0) > 0
+  const totalSnippetCount = pages[0]?.total ?? 0
+  const hasAnySnippet = totalSnippetCount > 0
+  const hasInitialQueryError = canQuerySnippetList && Boolean(error) && pages.length === 0
   const showSkeleton =
-    isLoadingCurrentWorkspace ||
-    (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
+    !hasInitialQueryError &&
+    (isLoadingCurrentWorkspace ||
+      (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0))))
+  const isListBusy =
+    isLoadingCurrentWorkspace || (canQuerySnippetList && (isFetching || isFetchingNextPage))
+  const initialQueryErrorMessage = hasInitialQueryError
+    ? t(($) => $['errorBoundary.title'], { ns: 'common' })
+    : ''
+  const listStatus = showSkeleton
+    ? ''
+    : isListBusy
+      ? t(($) => $.loading, { ns: 'common' })
+      : hasInitialQueryError
+        ? initialQueryErrorMessage
+        : hasAnySnippet
+          ? t(($) => $['operation.searchCount'], {
+              ns: 'common',
+              count: totalSnippetCount,
+              content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
+            })
+          : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
 
   return (
     <div
@@ -158,22 +188,27 @@ const SnippetList = () => {
     >
       <StudioListHeader
         title={
-          <>
-            <Link
-              href="/apps"
-              className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {t(($) => $['menus.apps'], { ns: 'common' })}
-            </Link>
-            <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
-            <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
-            </h1>
-          </>
+          <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })}>
+            <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
+                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />
+              <BreadcrumbItem>
+                <h1 className="min-w-0 truncate">
+                  <BreadcrumbPage>
+                    {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
+                  </BreadcrumbPage>
+                </h1>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
             <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
             <TagFilter
@@ -182,40 +217,37 @@ const SnippetList = () => {
               onChange={setTagIDs}
               onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
-            <div className="relative w-50">
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              />
-              <Input
-                className={cn('pl-6.5', keywords && 'pr-6.5')}
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-              />
-              {!!keywords && (
-                <button
-                  type="button"
-                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                  onClick={() => setKeywords('')}
-                >
-                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              name="snippet-query"
+              className="w-full sm:w-50"
+              value={keywords}
+              onValueChange={setKeywords}
+              placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+              aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+            />
           </div>
           <SnippetCreateButton />
         </div>
       </StudioListHeader>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {listStatus}
+      </div>
       <div
+        aria-busy={isListBusy}
         className={cn(
-          'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
+          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))] sm:px-8',
           !hasAnySnippet && 'overflow-hidden',
         )}
       >
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
+        ) : hasInitialQueryError ? (
+          <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
+            <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
+            <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
         ) : hasAnySnippet ? (
           snippets.map((snippet) => (
             <SnippetCard

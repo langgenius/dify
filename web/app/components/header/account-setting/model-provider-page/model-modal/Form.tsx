@@ -13,7 +13,8 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -65,7 +65,6 @@ type FormProps<
   validatedSuccess?: boolean
   showOnVariableMap: Record<string, string[]>
   isEditMode: boolean
-  isAgentStrategy?: boolean
   readonly?: boolean
   inputClassName?: string
   isShowDefaultValue?: boolean
@@ -100,7 +99,6 @@ function Form<
   validatedSuccess,
   showOnVariableMap,
   isEditMode,
-  isAgentStrategy = false,
   readonly,
   inputClassName,
   isShowDefaultValue = false,
@@ -160,8 +158,17 @@ function Form<
     const infotip = formSchema.tooltip
     const infotipText = infotip?.[language] || infotip?.en_US
     const infotipContent = infotipText && (
-      <Infotip aria-label={infotipText} className="ml-1" popupClassName="w-[200px] max-w-[200px]">
-        {infotipText}
+      <Infotip>
+        <InfotipTrigger
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="ml-1"
+        />
+        <InfotipContent
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="w-50"
+        >
+          {infotipText}
+        </InfotipContent>
       </Infotip>
     )
     if (override) {
@@ -449,7 +456,6 @@ function Form<
             popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
-            isAgentStrategy={isAgentStrategy}
             value={value[variable]}
             setModel={(model) => handleModelChanged(variable, model)}
             readonly={readonly}

@@ -1,5 +1,45 @@
+import type { ToastManager, ToastViewportProps } from '../index'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createToast, createToastManager, toast, ToastHost } from '../index'
+import {
+  createToast,
+  createToastManager,
+  ToastCard,
+  ToastPortal,
+  ToastProvider,
+  ToastViewport,
+  useToastManager,
+} from '../index'
+
+function ToastCards() {
+  const { toasts } = useToastManager<Record<string, never>>()
+  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
+}
+
+function ExampleToastHost({
+  manager,
+  timeout,
+  limit,
+  offset,
+}: {
+  manager: ToastManager
+  timeout?: number
+  limit?: number
+  offset?: ToastViewportProps['offset']
+}) {
+  return (
+    <ToastProvider toastManager={manager} timeout={timeout} limit={limit}>
+      <ToastPortal>
+        <ToastViewport offset={offset}>
+          <ToastCards />
+        </ToastViewport>
+      </ToastPortal>
+    </ToastProvider>
+  )
+}
+
+const manager = createToastManager()
+const toast = createToast(manager)
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -21,7 +61,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should render a success toast when called through the typed shortcut', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast.success('Saved', {
       description: 'Your changes are available now.',
@@ -34,7 +74,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast('First toast')
     await expect.element(screen.getByText('First toast')).toBeInTheDocument()
@@ -46,8 +86,179 @@ describe('@langgenius/dify-ui/toast', () => {
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
   })
 
+  it('should not intercept pointer events below a collapsed top-anchored stack', async () => {
+    const screen = await render(
+      <>
+        <style>{'[role="dialog"] { transition: none !important; }'}</style>
+        <button
+          type="button"
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            width: 400,
+            height: 300,
+          }}
+        >
+          Underlying action
+        </button>
+        <ExampleToastHost manager={manager} timeout={0} />
+      </>,
+    )
+
+    toast('Older notification')
+    toast('Newest notification')
+
+    const newestToast = screen.getByRole('dialog', { name: 'Newest notification' })
+    await expect.element(newestToast).toBeInTheDocument()
+
+    const toastDialogs = Array.from(document.body.querySelectorAll<HTMLElement>('[role="dialog"]'))
+    const newestBounds = newestToast.element().getBoundingClientRect()
+    const stackBottom = Math.max(
+      ...toastDialogs.map((dialog) => dialog.getBoundingClientRect().bottom),
+    )
+    const elementBelowStack = document.elementFromPoint(
+      newestBounds.left + newestBounds.width / 2,
+      stackBottom + 4,
+    )
+
+    expect(elementBelowStack).toBe(
+      screen.getByRole('button', { name: 'Underlying action' }).element(),
+    )
+  })
+
+  it('should reject a downward swipe and dismiss upward from the top-right viewport', async () => {
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"]:not([data-ending-style]) {
+              transition: none !important;
+            }
+            [role="dialog"][data-ending-style] {
+              transition: opacity 10000s !important;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            aria-label="Swipe up destination"
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Swipe down destination"
+            style={{
+              position: 'fixed',
+              top: 360,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <ExampleToastHost manager={manager} timeout={0} offset={{ top: 120 }} />
+        </>,
+      )
+
+      toast('Directional notification')
+
+      const toastDialog = screen.getByRole('dialog', { name: 'Directional notification' })
+      await expect.element(toastDialog).toBeInTheDocument()
+      const toastElement = toastDialog.element()
+      const initialBounds = toastElement.getBoundingClientRect()
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe down destination'), {
+        steps: 10,
+      })
+
+      await expect.element(toastDialog).toBeInTheDocument()
+      expect(toastElement).not.toHaveAttribute('data-ending-style')
+      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(initialBounds.top, 0)
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe up destination'), {
+        steps: 10,
+      })
+
+      await vi.waitFor(() => {
+        expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'up')
+      })
+      expect(toastElement.getBoundingClientRect().bottom).toBeLessThan(initialBounds.top)
+    } finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
+  })
+
+  it('should dismiss an expanded background toast when swiped right', async () => {
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"][data-ending-style] {
+              transition: opacity 10000s !important;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            aria-label="Swipe destination"
+            style={{
+              position: 'fixed',
+              top: 100,
+              right: 0,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <ExampleToastHost manager={manager} timeout={0} />
+        </>,
+      )
+
+      toast('Background notification')
+      toast('Front notification')
+
+      const backgroundToast = screen.getByRole('dialog', { name: 'Background notification' })
+      await expect.element(backgroundToast).toBeInTheDocument()
+      await screen.getByRole('dialog', { name: 'Front notification' }).hover()
+      await expect.element(backgroundToast).toHaveAttribute('data-expanded')
+
+      const toastElement = backgroundToast.element()
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe destination'), {
+        steps: 10,
+      })
+
+      await vi.waitFor(() => {
+        expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'right')
+      })
+      await userEvent.unhover(document.body)
+    } finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
+  })
+
   it('should render a neutral toast when called directly', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast('Neutral toast')
 
@@ -59,8 +270,8 @@ describe('@langgenius/dify-ui/toast', () => {
     const localToast = createToast(localManager)
     const screen = await render(
       <>
-        <ToastHost />
-        <ToastHost manager={localManager} />
+        <ExampleToastHost manager={manager} />
+        <ExampleToastHost manager={localManager} />
       </>,
     )
 
@@ -81,7 +292,7 @@ describe('@langgenius/dify-ui/toast', () => {
   it('should apply custom positioning to the viewport', async () => {
     const localManager = createToastManager()
     const localToast = createToast(localManager)
-    const screen = await render(<ToastHost manager={localManager} offset={{ top: 80 }} />)
+    const screen = await render(<ExampleToastHost manager={localManager} offset={{ top: 80 }} />)
 
     localToast('Positioned viewport')
 
@@ -95,7 +306,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
-    const screen = await render(<ToastHost limit={1} />)
+    const screen = await render(<ExampleToastHost manager={manager} limit={1} />)
 
     toast('First toast')
     toast('Second toast')
@@ -105,7 +316,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should dismiss a toast when dismiss(id) is called', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     const toastId = toast('Closable', {
       description: 'This toast can be removed.',
@@ -122,7 +333,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should close a toast when the dismiss button is clicked', async () => {
     const onClose = vi.fn()
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast('Dismiss me', {
       description: 'Manual dismissal path.',
@@ -179,7 +390,7 @@ describe('@langgenius/dify-ui/toast', () => {
           >
             Underlying action
           </button>
-          <ToastHost />
+          <ExampleToastHost manager={manager} />
         </>,
       )
 
@@ -224,7 +435,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should pass the host timeout to added toasts', async () => {
-    const screen = await render(<ToastHost timeout={1000} />)
+    const screen = await render(<ExampleToastHost manager={manager} timeout={1000} />)
 
     toast('Auto dismiss')
     await expect.element(screen.getByText('Auto dismiss')).toBeInTheDocument()
@@ -240,7 +451,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should keep a toast persistent when its timeout is zero', async () => {
-    const screen = await render(<ToastHost timeout={1000} />)
+    const screen = await render(<ExampleToastHost manager={manager} timeout={1000} />)
 
     toast('Persistent', {
       timeout: 0,
@@ -253,7 +464,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should update an existing toast', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     const toastId = toast.info('Loading', {
       description: 'Preparing your data…',
@@ -272,7 +483,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should upsert an existing toast when add is called with the same id', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast('Draft saving', {
       id: 'draft-save-status',
@@ -295,7 +506,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should render and invoke toast action props', async () => {
     const onAction = vi.fn()
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     toast('Action toast', {
       actionProps: {
@@ -311,7 +522,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should transition a promise toast from loading to success', async () => {
-    const screen = await render(<ToastHost />)
+    const screen = await render(<ExampleToastHost manager={manager} />)
 
     let resolvePromise: ((value: string) => void) | undefined
     const promise = new Promise<string>((resolve) => {

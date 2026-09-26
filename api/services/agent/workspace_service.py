@@ -9,14 +9,20 @@ and deletes ledger rows only after idempotent physical cleanup succeeds.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 
 from dify_agent.client import Client
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
+from core.agent.workspace import (
+    AgentWorkspaceBindingGenerationMismatchError,
+    AgentWorkspaceError,
+    AgentWorkspaceNotFoundError,
+    WorkspaceOwnerScope,
+)
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -26,31 +32,10 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspace,
     AgentWorkspaceBinding,
-    AgentWorkspaceOwnerType,
 )
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
-
-
-class AgentWorkspaceError(RuntimeError):
-    pass
-
-
-class AgentWorkspaceNotFoundError(AgentWorkspaceError):
-    pass
-
-
-class AgentWorkspaceBindingGenerationMismatchError(AgentWorkspaceError):
-    pass
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceOwnerScope:
-    tenant_id: str
-    app_id: str
-    owner_type: AgentWorkspaceOwnerType
-    owner_id: str
-    owner_scope_key: str = "root"
 
 
 class AgentWorkspaceService:
@@ -83,6 +68,20 @@ class AgentWorkspaceService:
         binding_id: str,
         expected_owner_scope: WorkspaceOwnerScope,
     ) -> AgentWorkspaceBinding | None:
+        return AgentWorkspaceRepository(session=session).get_active_binding(
+            tenant_id=tenant_id, binding_id=binding_id, expected_owner_scope=expected_owner_scope
+        )
+
+    @classmethod
+    def resolve_active_binding_for_scope(
+        cls,
+        *,
+        session: Session,
+        scope: WorkspaceOwnerScope,
+        agent_id: str,
+    ) -> AgentWorkspaceBinding | None:
+        """Return the ACTIVE participant for a stable Workspace owner scope."""
+
         return session.scalar(
             select(AgentWorkspaceBinding)
             .join(
@@ -91,16 +90,19 @@ class AgentWorkspaceService:
                 & (AgentWorkspace.id == AgentWorkspaceBinding.workspace_id),
             )
             .where(
-                AgentWorkspaceBinding.id == binding_id,
-                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.tenant_id == scope.tenant_id,
+                AgentWorkspaceBinding.app_id == scope.app_id,
+                AgentWorkspaceBinding.agent_id == agent_id,
                 AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-                AgentWorkspace.tenant_id == expected_owner_scope.tenant_id,
-                AgentWorkspace.app_id == expected_owner_scope.app_id,
-                AgentWorkspace.owner_type == expected_owner_scope.owner_type,
-                AgentWorkspace.owner_id == expected_owner_scope.owner_id,
-                AgentWorkspace.owner_scope_key == expected_owner_scope.owner_scope_key,
+                AgentWorkspace.tenant_id == scope.tenant_id,
+                AgentWorkspace.app_id == scope.app_id,
+                AgentWorkspace.owner_type == scope.owner_type,
+                AgentWorkspace.owner_id == scope.owner_id,
+                AgentWorkspace.owner_scope_key == scope.owner_scope_key,
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
+            .order_by(AgentWorkspaceBinding.created_at.desc())
+            .limit(1)
         )
 
     @classmethod
@@ -247,32 +249,9 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_workspace(cls, *, session: Session, tenant_id: str, workspace_id: str) -> str | None:
-        workspace = session.scalar(
-            select(AgentWorkspace)
-            .where(
-                AgentWorkspace.id == workspace_id,
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-            .with_for_update()
+        return AgentWorkspaceRepository(session=session).retire_workspace(
+            tenant_id=tenant_id, workspace_id=workspace_id
         )
-        if workspace is None:
-            return None
-        now = naive_utc_now()
-        workspace.status = AgentWorkingResourceStatus.RETIRED
-        workspace.active_guard = None
-        workspace.retired_at = now
-        bindings = session.scalars(
-            select(AgentWorkspaceBinding).where(
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.workspace_id == workspace.id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        for binding in bindings:
-            binding.status = AgentWorkingResourceStatus.RETIRED
-            binding.retired_at = now
-        return workspace.id
 
     @classmethod
     def retire_all_for_app(cls, *, session: Session, tenant_id: str, app_id: str) -> list[str]:
@@ -297,17 +276,21 @@ class AgentWorkspaceService:
         return retired
 
     @classmethod
-    def collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
-        try:
-            cls._collect_retired_binding(tenant_id=tenant_id, binding_id=binding_id)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace Binding",
-                extra={"tenant_id": tenant_id, "binding_id": binding_id},
-            )
+    def retire_all_for_conversation(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+    ) -> list[str]:
+        """Retire all ACTIVE conversation-owned Workspaces for one Chatflow conversation."""
+        return AgentWorkspaceRepository(session=session).retire_all_for_conversation(
+            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id
+        )
 
     @classmethod
-    def _collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
+    def collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
         with session_factory.create_session() as session:
             binding = session.scalar(
                 select(AgentWorkspaceBinding).where(
@@ -332,20 +315,13 @@ class AgentWorkspaceService:
         if workspace_id is not None:
             cls.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
             return
-        try:
-            with cls._client() as client:
-                client.destroy_execution_binding_sync(
-                    DestroyExecutionBindingRequest(
-                        binding_ref=backend_binding_ref,
-                        destroy_workspace=False,
-                    )
+        with cls._client() as client:
+            client.destroy_execution_binding_sync(
+                DestroyExecutionBindingRequest(
+                    binding_ref=backend_binding_ref,
+                    destroy_workspace=False,
                 )
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace Binding",
-                extra={"tenant_id": tenant_id, "binding_id": binding_id},
             )
-            return
         with session_factory.create_session() as session:
             binding = session.scalar(
                 select(AgentWorkspaceBinding).where(
@@ -360,16 +336,6 @@ class AgentWorkspaceService:
 
     @classmethod
     def collect_retired_workspace(cls, *, tenant_id: str, workspace_id: str) -> None:
-        try:
-            cls._collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace",
-                extra={"tenant_id": tenant_id, "workspace_id": workspace_id},
-            )
-
-    @classmethod
-    def _collect_retired_workspace(cls, *, tenant_id: str, workspace_id: str) -> None:
         with session_factory.create_session() as session:
             workspace = session.scalar(
                 select(AgentWorkspace).where(
@@ -390,53 +356,68 @@ class AgentWorkspaceService:
                 .order_by(AgentWorkspaceBinding.created_at)
             ).all()
             if not bindings:
-                logger.error(
-                    "RETIRED Workspace has no Binding available for physical collection",
-                    extra={"tenant_id": tenant_id, "workspace_id": workspace_id},
+                raise AgentWorkspaceError(
+                    f"RETIRED Workspace has no RETIRED Binding: tenant_id={tenant_id}, workspace_id={workspace_id}"
                 )
-                return
             anchor = bindings[0]
-            remaining_ids = [binding.id for binding in bindings[1:]]
+            remaining = [(binding.id, binding.backend_binding_ref) for binding in bindings[1:]]
             workspace_ref = workspace.backend_workspace_ref
             binding_ref = anchor.backend_binding_ref
             anchor_id = anchor.id
-        try:
-            with cls._client() as client:
-                client.destroy_execution_binding_sync(
-                    DestroyExecutionBindingRequest(
-                        binding_ref=binding_ref,
-                        workspace_ref=workspace_ref,
-                        destroy_workspace=True,
+
+        failures: list[str] = []
+        first_error: Exception | None = None
+        with cls._client() as client:
+            targets = [(anchor_id, binding_ref, workspace_ref, True)] + [
+                (binding_id, backend_binding_ref, None, False) for binding_id, backend_binding_ref in remaining
+            ]
+            for binding_id, backend_binding_ref, target_workspace_ref, destroy_workspace in targets:
+                try:
+                    client.destroy_execution_binding_sync(
+                        DestroyExecutionBindingRequest(
+                            binding_ref=backend_binding_ref,
+                            workspace_ref=target_workspace_ref,
+                            destroy_workspace=destroy_workspace,
+                        )
                     )
-                )
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace",
-                extra={"tenant_id": tenant_id, "workspace_id": workspace_id, "binding_id": anchor_id},
-            )
-            return
+                except Exception as exc:
+                    failures.append(binding_id)
+                    if first_error is None:
+                        first_error = exc
+                    logger.exception(
+                        "Failed to destroy retired Agent Workspace Binding",
+                        extra={
+                            "tenant_id": tenant_id,
+                            "workspace_id": workspace_id,
+                            "binding_id": binding_id,
+                            "destroy_workspace": destroy_workspace,
+                        },
+                    )
+        if failures:
+            if len(failures) == 1 and first_error is not None:
+                raise first_error
+            raise AgentWorkspaceError(
+                f"Failed to destroy {len(failures)} RETIRED Workspace Binding(s): {', '.join(failures)}"
+            ) from first_error
+
+        binding_ids = [anchor_id, *(binding_id for binding_id, _binding_ref in remaining)]
         with session_factory.create_session() as session:
-            stored_workspace = session.scalar(
-                select(AgentWorkspace).where(
+            session.execute(
+                delete(AgentWorkspaceBinding).where(
+                    AgentWorkspaceBinding.id.in_(binding_ids),
+                    AgentWorkspaceBinding.tenant_id == tenant_id,
+                    AgentWorkspaceBinding.workspace_id == workspace_id,
+                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
+                )
+            )
+            session.execute(
+                delete(AgentWorkspace).where(
                     AgentWorkspace.id == workspace_id,
                     AgentWorkspace.tenant_id == tenant_id,
                     AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED,
                 )
             )
-            stored_anchor = session.scalar(
-                select(AgentWorkspaceBinding).where(
-                    AgentWorkspaceBinding.id == anchor_id,
-                    AgentWorkspaceBinding.tenant_id == tenant_id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
-                )
-            )
-            if stored_workspace is not None:
-                session.delete(stored_workspace)
-            if stored_anchor is not None:
-                session.delete(stored_anchor)
             session.commit()
-        for remaining_id in remaining_ids:
-            cls.collect_retired_binding(tenant_id=tenant_id, binding_id=remaining_id)
 
     @staticmethod
     def validate_binding_generation(
@@ -460,7 +441,11 @@ class AgentWorkspaceService:
         base_url = dify_config.AGENT_BACKEND_BASE_URL
         if not base_url:
             raise AgentWorkspaceError("Dify Agent backend is required for Workspace operations")
-        return Client(base_url=base_url)
+        return create_agent_backend_client(
+            base_url=base_url,
+            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
+        )
 
 
 __all__ = [

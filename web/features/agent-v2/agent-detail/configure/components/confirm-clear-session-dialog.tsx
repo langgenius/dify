@@ -29,8 +29,8 @@ export function AgentConfigureClearSessionConfirmDialog({
   onOpenChange?: (open: boolean) => void
   onConfirm: () => boolean | void | Promise<boolean | void>
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -71,7 +71,7 @@ export function AgentConfigureClearSessionConfirmDialog({
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
-            disabled={confirmDisabled || isConfirming}
+            disabled={confirmDisabled}
             loading={isConfirming}
             onClick={handleConfirm}
           >

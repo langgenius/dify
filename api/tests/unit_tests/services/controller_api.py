@@ -82,7 +82,7 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -97,6 +97,7 @@ from controllers.console.datasets.external import (
     ExternalApiTemplateListApi,
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
+from enums import DeploymentEdition
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum
 
@@ -812,7 +813,8 @@ class TestExternalDatasetApi:
         )
 
     @pytest.fixture
-    def mock_current_account_context(self, app: Flask) -> Iterator[Mock]:
+    def mock_current_account_context(self, app: Flask, config_overrides: Callable[..., None]) -> Iterator[Mock]:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         """Provide the wrapper auth context required by HTTP-client controller tests."""
         mock_user = Account(
             name="Test User",
@@ -829,7 +831,6 @@ class TestExternalDatasetApi:
 
         with (
             patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("libs.login.check_csrf_token", return_value=None),
         ):
             mock_tenant_id = "tenant-123"

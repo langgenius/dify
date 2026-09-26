@@ -1,6 +1,6 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CollectionType } from '@/app/components/tools/types'
 import { useToolSelector } from '../use-tool-selector'
 

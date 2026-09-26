@@ -11,28 +11,28 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelNameMap,
-  providerIconMap,
   providerKeyToPluginId,
+  providerLogoMap,
 } from '../utils'
 import styles from './quota-panel.module.css'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
   key,
-  Icon: providerIconMap[key],
+  logo: providerLogoMap[key],
 }))
 
 type QuotaInfotipProps = {
@@ -52,7 +52,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         closeDelay={200}
         aria-label={tipText}
         onClick={handleClick}
-        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
         <span
           aria-hidden
@@ -61,7 +61,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+        className="max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
       </PopoverContent>
@@ -79,7 +79,7 @@ type MarketplacePluginToInstall = {
 }
 
 const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -167,7 +167,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
 
   const tipText = t(($) => $['modelProvider.card.tip'], {
-    ns: 'common',
+    ns: 'modelProvider',
     modelNames: trialModels
       .map((key) => modelNameMap[key as keyof typeof modelNameMap])
       .filter(Boolean)
@@ -177,7 +177,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   if (isLoading) {
     return (
       <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -196,7 +196,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.quotaLabel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
           <QuotaInfotip tipText={tipText} />
         </div>
         <div className="flex h-6 items-center justify-between gap-3">
@@ -216,7 +216,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                     {formatNumber(totalCredits)}
                   </span>
                   <span className={cn('system-md-medium', creditUsageTextClassName)}>
-                    {t(($) => $['modelProvider.used'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.used'], { ns: 'modelProvider' })}
                   </span>
                 </>
               )}
@@ -228,7 +228,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.ranOutDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(exhaustedAt),
                     interpolation: { escapeValue: false },
                   })}
@@ -242,7 +242,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.resetDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(nextCreditResetDate),
                     interpolation: { escapeValue: false },
                   })}
@@ -253,20 +253,24 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           <div className="flex shrink-0 items-center gap-1">
             {allProviders
               .filter(({ key }) => trialModels.includes(key))
-              .map(({ key, Icon }) => {
+              .map(({ key, logo }) => {
                 const providerType = providerMap.get(key)
                 const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
-                const getTooltipKey = () => {
-                  if (!providerType) return 'modelProvider.card.modelNotSupported'
-                  if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
-                    return 'modelProvider.card.modelAPI'
-                  return 'modelProvider.card.modelSupported'
-                }
-                const tooltipText = t(($) => $[getTooltipKey()], {
-                  modelName: modelNameMap[key],
-                  ns: 'common',
-                })
+                const tooltipText = !providerType
+                  ? t(($) => $['modelProvider.card.modelNotSupported'], {
+                      modelName: modelNameMap[key],
+                      ns: 'modelProvider',
+                    })
+                  : isConfigured && providerType === PreferredProviderTypeEnum.custom
+                    ? t(($) => $['modelProvider.card.modelAPI'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
+                    : t(($) => $['modelProvider.card.modelSupported'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger
@@ -282,7 +286,21 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                           )}
                           onClick={() => handleIconClick(key)}
                         >
-                          <Icon className="size-6 rounded-lg" />
+                          {'image' in logo ? (
+                            <img
+                              aria-hidden
+                              src={logo.image.src}
+                              width={24}
+                              height={24}
+                              alt=""
+                              className="size-6 rounded-lg"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className={cn(logo.iconClassName, 'size-6 rounded-lg')}
+                            />
+                          )}
                           {isLoadingPlugin && (
                             <span
                               aria-hidden

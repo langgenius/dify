@@ -1,6 +1,6 @@
 import type { DocumentListQuery } from '../use-document-list-query-state'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useDocumentsPageState } from '../use-documents-page-state'
 
 const mockUpdateQuery = vi.fn()

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 type TranslationMap = Record<string, string | string[]>
 type TranslationNamespace = string | readonly string[]
@@ -203,6 +203,13 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
  */
 function createTransMock(translations: TranslationMap = {}) {
   return {
+    Translation: ({
+      ns,
+      children,
+    }: {
+      ns?: TranslationNamespace
+      children: (t: ReturnType<typeof createTFunction>) => React.ReactNode
+    }) => children(createTFunction(translations, ns)),
     Trans: <Ns extends TranslationNamespace>({
       i18nKey,
       ns,

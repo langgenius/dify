@@ -170,7 +170,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const collapseButton = within(header).getByRole('button')
+      const collapseButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.collapseSidebar',
+      })
       expect(collapseButton).toBeInTheDocument()
 
       await user.click(collapseButton)
@@ -187,7 +189,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const expandButton = within(header).getByRole('button')
+      const expandButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.expandSidebar',
+      })
       expect(expandButton).toBeInTheDocument()
 
       await user.click(expandButton)

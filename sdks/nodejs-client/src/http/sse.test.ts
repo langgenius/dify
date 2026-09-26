@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {

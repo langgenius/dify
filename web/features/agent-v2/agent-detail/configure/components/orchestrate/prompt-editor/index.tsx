@@ -12,14 +12,16 @@ import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/p
 import type {
   AgentFileNode,
   AgentProviderTool,
+  AgentSkill,
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
+import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -33,20 +35,28 @@ import {
 } from 'lexical'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import {
+  ENABLE_AGENT_CLI_TOOLS,
+  ENABLE_AGENT_KNOWLEDGE_RETRIEVAL,
+} from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { consoleQuery } from '@/service/console'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
+import {
+  useAgentConfigFiles,
+  useAgentConfigSkills,
+  useAgentWorkspaceSkillBindings,
+} from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
@@ -411,17 +421,36 @@ function AgentPromptSelectionBridge({
 }
 
 export function AgentPromptEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const { skills } = useAgentConfigSkills()
+  const { skills: embeddedSkills } = useAgentConfigSkills()
+  const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
+  const skills = useMemo<AgentSkill[]>(() => {
+    const workspaceSkills = workspaceSkillBindingsQuery.data?.data ?? []
+    const workspaceSkillNames = new Set(workspaceSkills.map((skill) => skill.name))
+
+    return [
+      ...workspaceSkills.map((skill) => ({
+        id: skill.name,
+        name: skill.display_name || skill.name,
+        description: skill.description,
+      })),
+      ...embeddedSkills.filter((skill) => !workspaceSkillNames.has(skill.name)),
+    ]
+  }, [embeddedSkills, workspaceSkillBindingsQuery.data?.data])
   const { files } = useAgentConfigFiles()
   const tools = useAtomValue(agentComposerToolsAtom)
   const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
+
   const promptPlaceholder = (
     <AgentPromptPlaceholder
       text={t(($) => $['agentDetail.configure.prompt.placeholder'])}
@@ -820,7 +849,7 @@ export function AgentPromptEditor() {
     [configuredReferenceIds, t, tools],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen) return
 
     const rootElement = positioningRootRef.current
@@ -987,11 +1016,15 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    {
-      key: 'knowledge',
-      label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
-      icon: 'i-ri-book-open-line',
-    },
+    ...(ENABLE_AGENT_KNOWLEDGE_RETRIEVAL
+      ? [
+          {
+            key: 'knowledge' as const,
+            label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
+            icon: 'i-ri-book-open-line',
+          },
+        ]
+      : []),
   ]
   const handleOpenSlashMenuCategory = (view: Exclude<SlashMenuView, 'main'>) => {
     parentSlashMenuItemIndexRef.current = Math.max(
@@ -1032,6 +1065,7 @@ export function AgentPromptEditor() {
           onAddFile={addActions.files}
           onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
+          canAddWorkspaceSkill={enableSkill === true}
           knowledgeRetrievals={retrievals}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
@@ -1053,8 +1087,11 @@ export function AgentPromptEditor() {
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
-          <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+          <Infotip>
+            <InfotipTrigger aria-labelledby="agent-configure-prompt-label" />
+            <InfotipContent aria-labelledby="agent-configure-prompt-label" className="max-w-64">
+              <AgentConfigureTipContent type="prompt" />
+            </InfotipContent>
           </Infotip>
         </div>
         <Tooltip>
@@ -1104,7 +1141,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-26 text-text-primary"
+              className={cn('min-h-26 text-text-primary', readOnly && 'cursor-not-allowed')}
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

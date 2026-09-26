@@ -4,7 +4,6 @@
 
   "tailwindCSS.experimental.configFile": "web/app/styles/globals.css",
 
-  // Format
   "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
@@ -25,9 +24,9 @@
   "[handlebars]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
-  "oxc.fmt.configPath": "./vite.config.ts",
+  "oxc.disableNestedConfig": true,
+  "oxc.fmt.disableNestedConfig": true,
 
-  // Lint fix
   "eslint.useFlatConfig": true,
   "eslint.validate": ["json", "jsonc", "markdown", "yaml", "toml"],
   "editor.codeActionsOnSave": {

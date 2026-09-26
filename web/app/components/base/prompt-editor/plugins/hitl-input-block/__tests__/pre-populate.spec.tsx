@@ -42,11 +42,11 @@ describe('PrePopulate', () => {
     await i18n.use(initReactI18next).init({
       lng: 'en-US',
       fallbackLng: 'en-US',
-      defaultNS: 'workflow',
+      defaultNS: 'workflowHumanInput',
       interpolation: { escapeValue: false },
       resources: {
         'en-US': {
-          workflow: {
+          workflowHumanInput: {
             nodes: {
               humanInput: {
                 insertInputField: {

@@ -1,6 +1,6 @@
 import type { SimpleDetail } from '../../store'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSubscriptionList } from '../use-subscription-list'
 
 let mockDetail: SimpleDetail | undefined

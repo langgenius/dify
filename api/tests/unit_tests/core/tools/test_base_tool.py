@@ -94,7 +94,6 @@ def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
     return DummyTool(entity=entity, runtime=runtime)
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Session):
     runtime = ToolRuntime(
         tenant_id="tenant-1",
@@ -133,7 +132,6 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
     }
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_invoke_preserves_multiple_select_values(sqlite_session: Session):
     tool = _build_tool()
     parameter = ToolParameter.get_simple_instance(
@@ -154,7 +152,6 @@ def test_invoke_preserves_multiple_select_values(sqlite_session: Session):
         tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": "a"})
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_invoke_supports_list_and_generator_results(sqlite_session: Session):
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
@@ -375,7 +372,6 @@ def test_message_factory_helpers():
     assert variable_message.message.stream is False
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_base_abstract_invoke_placeholder_returns_none(sqlite_session: Session):
     tool = _build_tool()
     assert Tool._invoke(tool, session=sqlite_session, user_id="u", tool_parameters={}) is None

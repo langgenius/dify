@@ -2,7 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { TransferMethod } from '@/types/app'
 import ContentItem from '../content-item'
 

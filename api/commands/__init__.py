@@ -22,7 +22,13 @@ from .plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
-from .rbac import migrate_dataset_permissions_to_rbac, migrate_member_roles_to_rbac
+from .rbac import (
+    migrate_agent_permissions_to_rbac,
+    migrate_dataset_permissions_to_rbac,
+    migrate_member_roles_to_rbac,
+    migrate_only_me_resource_whitelist_scopes_to_automatic_include,
+    migrate_resource_whitelist_scopes_to_automatic_include,
+)
 from .retention import (
     archive_workflow_runs,
     archive_workflow_runs_plan,
@@ -76,12 +82,15 @@ __all__ = [
     "install_plugins",
     "install_rag_pipeline_plugins",
     "legacy_model_types",
+    "migrate_agent_permissions_to_rbac",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
     "migrate_dataset_permissions_to_rbac",
     "migrate_knowledge_vector_database",
     "migrate_member_roles_to_rbac",
+    "migrate_only_me_resource_whitelist_scopes_to_automatic_include",
     "migrate_oss",
+    "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
     "old_metadata_migration",
     "remove_orphaned_files_on_storage",

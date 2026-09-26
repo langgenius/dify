@@ -38,14 +38,17 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -71,16 +74,12 @@ def workspace_plan_dependencies(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicM
 def configure_workspace_plans(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    enterprise_enabled: bool = False,
-    billing_enabled: bool = True,
     edition: DeploymentEdition = DeploymentEdition.CLOUD,
 ) -> None:
     monkeypatch.setattr(
         workspace_plan_gateway,
         "dify_config",
         SimpleNamespace(
-            ENTERPRISE_ENABLED=enterprise_enabled,
-            BILLING_ENABLED=billing_enabled,
             DEPLOYMENT_EDITION=edition,
         ),
     )
@@ -202,17 +201,24 @@ class TestWorkspaceQueryRepository:
                 TenantAccountJoin(
                     tenant_id=earlier.id,
                     account_id="account-1",
+                    current=True,
                     last_opened_at=last_opened_at,
                 ),
                 TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
                 TenantAccountJoin(tenant_id=archived.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=archived.id, account_id="account-3"),
                 TenantAccountJoin(tenant_id=other_account.id, account_id="account-2"),
             ]
         )
         workspace_session.commit()
 
-        result = WorkspaceQueryRepository(workspace_session.session_factory).list_for_account("account-1")
+        repository = WorkspaceQueryRepository(workspace_session.session_factory)
+        result = repository.list_for_account("account-1")
+        membership_ids = repository.list_ids_for_account("account-1")
+        access_workspaces = repository.list_account_access_workspaces("account-1")
 
+        assert repository.has_active_for_account("account-1") is True
+        assert repository.has_active_for_account("missing-account") is False
         assert result == (
             WorkspaceRecord(
                 id=earlier.id,
@@ -229,6 +235,13 @@ class TestWorkspaceQueryRepository:
                 last_opened_at=None,
             ),
         )
+        assert set(membership_ids) == {earlier.id, later.id, archived.id}
+        access_by_id = {workspace.id: workspace for workspace in access_workspaces}
+        assert set(access_by_id) == {earlier.id, later.id, archived.id}
+        assert access_by_id[earlier.id].current is True
+        assert access_by_id[earlier.id].role == "normal"
+        assert repository.has_active_membership("account-1") is True
+        assert repository.has_active_membership("account-3") is False
 
 
 class TestDeploymentWorkspacePlanGateway:
@@ -275,7 +288,6 @@ class TestDeploymentWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            billing_enabled=False,
             edition=DeploymentEdition.COMMUNITY,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
@@ -294,8 +306,6 @@ class TestDeploymentWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            enterprise_enabled=True,
-            billing_enabled=False,
             edition=DeploymentEdition.ENTERPRISE,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
@@ -308,7 +318,7 @@ class TestDeploymentWorkspacePlanGateway:
 
 
 class TestWorkspaceListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -317,12 +327,12 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["total"] == 1
         assert result["has_more"] is False
 
-    def test_get_has_next_true(self, app: Flask):
+    def test_get_has_next_true(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -331,7 +341,7 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["has_more"] is True
 
@@ -344,12 +354,12 @@ def test_legacy_current_workspace_routes_are_not_registered():
 
 
 class TestCurrentWorkspaceSummaryApi:
-    def test_get_summary(self, app: Flask):
+    def test_get_summary(self, app: Flask, sqlite_session: Session):
         api = CurrentWorkspaceSummaryApi()
         method = unwrap(api.get)
         tenant = make_tenant()
         user = make_account_with_tenant(tenant)
-        session = MagicMock()
+        session = sqlite_session
         summary = {
             "id": tenant.id,
             "name": tenant.name,
@@ -377,7 +387,7 @@ class TestCurrentWorkspaceSummaryApi:
         }
         get_summary.assert_called_once_with(tenant, user.id, session=session)
 
-    def test_get_archived_tenant_returns_conflict(self, app: Flask):
+    def test_get_archived_tenant_returns_conflict(self, app: Flask, sqlite_session: Session):
         api = CurrentWorkspaceSummaryApi()
         method = unwrap(api.get)
         tenant = make_tenant(status=TenantStatus.ARCHIVE)
@@ -385,7 +395,7 @@ class TestCurrentWorkspaceSummaryApi:
 
         with app.test_request_context("/workspaces/current/summary"):
             with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
-                method(api, MagicMock(), user)
+                method(api, sqlite_session, user)
 
         assert exc_info.value.code == HTTPStatus.CONFLICT
         assert exc_info.value.error_code == "current_workspace_archived"
@@ -436,7 +446,7 @@ class TestSwitchWorkspaceApi:
         assert result["result"] == "success"
         switch_tenant.assert_called_once_with(user, "t2", session=workspace_session)
 
-    def test_switch_not_linked(self, app: Flask):
+    def test_switch_not_linked(self, app: Flask, sqlite_session: Session):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
         payload = {"tenant_id": "bad"}
@@ -446,7 +456,7 @@ class TestSwitchWorkspaceApi:
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
         ):
             with pytest.raises(AccountNotLinkTenantError):
-                method(api, MagicMock(), user)
+                method(api, sqlite_session, user)
 
     def test_switch_tenant_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
@@ -490,7 +500,7 @@ class TestCustomConfigWorkspaceApi:
 
         with (
             app.test_request_context("/workspaces/custom-config"),
-            patch("controllers.console.workspace.workspace.dify_config.FILES_URL", "https://files.example.com"),
+            config_overrides_context(FILES_URL="https://files.example.com"),
         ):
             result = method(api, workspace_session, tenant.id)
 
@@ -574,8 +584,21 @@ class TestWebappLogoWorkspaceApi:
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         file = FileStorage(stream=BytesIO(b"data"), filename="logo.png", content_type="image/png")
-        upload = MagicMock(id="file1")
         user = make_account()
+        upload = UploadFile(
+            tenant_id="t1",
+            storage_type=StorageType.LOCAL,
+            key="logo.png",
+            name="logo.png",
+            size=4,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=user.id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        upload.id = "file1"
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.FileService") as fs,
@@ -649,20 +672,19 @@ class TestWorkspaceInfoApi:
                 ),
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            session.commit.side_effect = lambda: events.append("commit")
+            session = workspace_session()
+            event.listen(session, "after_commit", lambda _session: events.append("commit"))
             result = method(api, session, "t1")
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]
 
-    def test_no_current_tenant(self, app: Flask):
+    def test_no_current_tenant(self, app: Flask, sqlite_session: Session):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
         payload = {"name": "X"}
         with app.test_request_context("/workspaces/info", json=payload):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), None)
+                method(api, sqlite_session, None)
 
 
 class TestWorkspacePermissionApi:

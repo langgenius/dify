@@ -1,12 +1,13 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
 
 const RestoringTitle = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHistory'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { formatTime } = useTimestamp()
   const currentVersion = useStore((state) => state.currentVersion)
@@ -15,12 +16,12 @@ const RestoringTitle = () => {
     ? t(($) => $['common.unpublished'], { ns: 'workflow' })
     : t(($) => $['common.published'], { ns: 'workflow' })
 
-  const versionName = useMemo(() => {
-    if (isDraft) return t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
-    return (
-      currentVersion?.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })
-    )
-  }, [currentVersion, t, isDraft])
+  const versionName = isDraft
+    ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })
+    : getWorkflowVersionName(
+        currentVersion,
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
+      )
 
   return (
     <div className="flex flex-col gap-y-0.5">

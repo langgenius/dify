@@ -9,7 +9,6 @@ Service API controller tests.
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -19,7 +18,7 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.base import TypeBase
-from models.model import App, AppMode, EndUser
+from models.model import ApiToken, App, AppMode, EndUser, EndUserType
 
 
 @dataclass(frozen=True)
@@ -82,11 +81,15 @@ def mock_app_id():
 
 @pytest.fixture
 def mock_end_user(mock_tenant_id):
-    """Create a mock EndUser model with required attributes."""
+    """Create a real EndUser model with required attributes."""
     user = EndUser(
         id=str(uuid.uuid4()),
         external_user_id=f"external_{uuid.uuid4().hex[:8]}",
         tenant_id=mock_tenant_id,
+        app_id=None,
+        type=EndUserType.SERVICE_API,
+        name="Service API User",
+        session_id=str(uuid.uuid4()),
     )
     return user
 
@@ -103,52 +106,44 @@ def mock_app_model(mock_app_id, mock_tenant_id):
         status="normal",
         enable_api=True,
     )
-    app.author_name = "Test Author"
-    app.tags = []
-
-    # Mock workflow for workflow apps
-    app.workflow = None
-    app.app_model_config = None
-
     return app
 
 
 @pytest.fixture
 def mock_tenant(mock_tenant_id):
     """Create a Tenant model."""
-    tenant = Mock()
+    tenant = Tenant(name="Service API Tenant", status=TenantStatus.NORMAL)
     tenant.id = mock_tenant_id
-    tenant.status = TenantStatus.NORMAL
     return tenant
 
 
 @pytest.fixture
 def mock_account():
     """Create an Account model."""
-    account = Mock()
+    account = Account(name="Service API Account", email=f"service-{uuid.uuid4()}@example.com")
     account.id = str(uuid.uuid4())
     return account
 
 
 @pytest.fixture
 def mock_api_token(mock_app_id, mock_tenant_id):
-    """Create a mock API token for authentication tests."""
-    token = Mock()
-    token.app_id = mock_app_id
-    token.tenant_id = mock_tenant_id
-    token.token = f"test_token_{uuid.uuid4().hex[:8]}"
-    token.type = "app"
-    return token
+    """Create a real API token for authentication tests."""
+    return ApiToken(
+        app_id=mock_app_id,
+        tenant_id=mock_tenant_id,
+        token=f"test_token_{uuid.uuid4().hex[:8]}",
+        type="app",
+    )
 
 
 @pytest.fixture
 def mock_dataset_api_token(mock_tenant_id):
-    """Create a mock API token for dataset endpoints."""
-    token = Mock()
-    token.tenant_id = mock_tenant_id
-    token.token = f"dataset_token_{uuid.uuid4().hex[:8]}"
-    token.type = "dataset"
-    return token
+    """Create a real API token for dataset endpoints."""
+    return ApiToken(
+        tenant_id=mock_tenant_id,
+        token=f"dataset_token_{uuid.uuid4().hex[:8]}",
+        type="dataset",
+    )
 
 
 @pytest.fixture

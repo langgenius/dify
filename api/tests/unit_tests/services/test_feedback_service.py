@@ -242,3 +242,23 @@ class TestFeedbackService:
         dislike_feedback = next(item for item in feedback_data if item["feedback_rating_raw"] == "dislike")
         assert like_feedback["feedback_rating"] == "👍"
         assert dislike_feedback["feedback_rating"] == "👎"
+
+
+class TestEndDateBoundary:
+    """Verify that end_date includes feedback from the entire day (fix for #40050)."""
+
+    def test_end_date_includes_entire_day(self):
+        from datetime import timedelta
+
+        end_date = "2026-08-05"
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+
+        assert end_dt == datetime(2026, 8, 6, 0, 0, 0)
+        assert datetime(2026, 8, 5, 14, 30, 0) < end_dt
+        assert datetime(2026, 8, 5, 23, 59, 59) < end_dt
+        assert not (datetime(2026, 8, 6, 0, 0, 1) < end_dt)
+
+    def test_start_date_includes_midnight(self):
+        start_dt = datetime.strptime("2026-08-01", "%Y-%m-%d")
+        assert start_dt == datetime(2026, 8, 1, 0, 0, 0)
+        assert datetime(2026, 8, 1, 0, 0, 0) >= start_dt

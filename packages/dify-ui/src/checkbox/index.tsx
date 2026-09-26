@@ -4,6 +4,7 @@ import type { Checkbox as BaseCheckboxNS } from '@base-ui/react/checkbox'
 import type * as React from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const checkboxRootClassName = cn(
   'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3 transition-colors motion-reduce:transition-none',
@@ -25,23 +26,17 @@ const checkboxIndicatorClassName =
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-type CheckboxRootProps = Omit<BaseCheckboxNS.Root.Props, 'className'> & {
-  className?: string
-}
-function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
-  return <BaseCheckbox.Root className={cn(checkboxRootClassName, className)} {...props} />
-}
+type CheckboxProps = Omit<BaseCheckboxNS.Root.Props, 'children'>
 
-type CheckboxIndicatorProps = Omit<BaseCheckboxNS.Indicator.Props, 'className' | 'children'> & {
-  className?: string
-}
-function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
+function Checkbox({ className, ...props }: CheckboxProps) {
   return (
-    <BaseCheckbox.Indicator
-      className={cn(checkboxIndicatorClassName, className)}
-      render={
-        render ??
-        ((indicatorProps, state) => (
+    <BaseCheckbox.Root
+      className={(state) => cn(checkboxRootClassName, resolveClassName(className, state))}
+      {...props}
+    >
+      <BaseCheckbox.Indicator
+        className={checkboxIndicatorClassName}
+        render={(indicatorProps, state) => (
           <span {...indicatorProps}>
             {state.indeterminate ? (
               <span className="block h-[1.5px] w-1.75 rounded-full bg-current" />
@@ -49,20 +44,9 @@ function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorPro
               <span className="i-ri-check-line block size-3 shrink-0" />
             )}
           </span>
-        ))
-      }
-      {...props}
-    />
-  )
-}
-
-type CheckboxProps = Omit<CheckboxRootProps, 'children'>
-
-function Checkbox({ ...props }: CheckboxProps) {
-  return (
-    <CheckboxRoot {...props}>
-      <CheckboxIndicator />
-    </CheckboxRoot>
+        )}
+      />
+    </BaseCheckbox.Root>
   )
 }
 
@@ -74,6 +58,6 @@ function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
   return <div className={cn(checkboxSkeletonClassName, className)} {...props} />
 }
 
-export { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton }
+export { Checkbox, CheckboxSkeleton }
 
-export type { CheckboxIndicatorProps, CheckboxProps, CheckboxRootProps, CheckboxSkeletonProps }
+export type { CheckboxProps, CheckboxSkeletonProps }

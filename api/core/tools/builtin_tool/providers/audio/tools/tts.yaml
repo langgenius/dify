@@ -3,6 +3,7 @@ identity:
   author: hjlarry
   label:
     en_US: Text To Speech
+    zh_Hans: 文本转语音
 description:
   human:
     en_US: Convert text to audio file.

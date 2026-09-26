@@ -6,7 +6,7 @@
 
 import { access } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode } from '../../helpers/assert.js'
 import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'

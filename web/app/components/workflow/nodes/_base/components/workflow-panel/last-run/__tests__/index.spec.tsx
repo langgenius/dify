@@ -237,4 +237,40 @@ describe('LastRun', () => {
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
   })
+
+  it('should restore a completed last run when refreshing the canvas loses its transient status', () => {
+    mockUseLastRun.mockReturnValue({
+      data: {
+        status: NodeRunningStatus.Succeeded,
+      },
+      isFetching: false,
+      error: undefined,
+    })
+
+    const props = {
+      appId: 'app-1',
+      nodeId: 'node-1',
+      canSingleRun: true,
+      isRunAfterSingleRun: true,
+      updateNodeRunningStatus,
+      onSingleRunClicked,
+    }
+    const { rerender } = render(<LastRun {...props} runningStatus={NodeRunningStatus.Running} />)
+    rerender(<LastRun {...props} runningStatus={NodeRunningStatus.Succeeded} />)
+
+    act(() => {
+      visibilityState = 'hidden'
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    rerender(<LastRun {...props} runningStatus={NodeRunningStatus.NotStart} />)
+    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
+
+    act(() => {
+      visibilityState = 'visible'
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
+    expect(updateNodeRunningStatus).toHaveBeenCalledWith(NodeRunningStatus.Succeeded)
+  })
 })

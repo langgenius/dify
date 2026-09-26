@@ -1,7 +1,7 @@
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -9,7 +9,8 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { isAgentCompatibleModel, isAgentSuggestedModel } from '../model-compatibility'
 
-const createModel = (provider: string): Model => ({
+const createModel = (provider: string): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider,
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: provider, zh_Hans: provider },
@@ -17,7 +18,10 @@ const createModel = (provider: string): Model => ({
   status: ModelStatusEnum.active,
 })
 
-const createModelItem = (model: string, overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  model: string,
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model,
   label: { en_US: model, zh_Hans: model },
   model_type: ModelTypeEnum.textGeneration,
@@ -31,8 +35,8 @@ const createModelItem = (model: string, overrides: Partial<ModelItem> = {}): Mod
 const createModelItemWithLabel = (
   model: string,
   label: string,
-  overrides: Partial<ModelItem> = {},
-): ModelItem =>
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity =>
   createModelItem(model, {
     label: { en_US: label, zh_Hans: label },
     ...overrides,
@@ -189,6 +193,7 @@ describe('isAgentSuggestedModel', () => {
     )
     expect(isAgentSuggestedModel(provider, createModelItem('grok-4.3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-flash'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('kimi-k2.6'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('minimax-m3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('qwen3.7-max'))).toBe(true)

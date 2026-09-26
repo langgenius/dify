@@ -1,28 +1,25 @@
 import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
-import { useProviderContext } from '@/context/provider-context'
+import { vi } from 'vite-plus/test'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+let memberFeatures: ConsoleQueryTestOptions['features'] = {}
+
 const mockConsoleState = vi.hoisted(() => ({
   current: {} as Partial<ConsoleStateFixture>,
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -32,19 +29,20 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
 
 const renderMembersPage = () =>
   renderWithConsoleQuery(<MembersPage />, {
-    systemFeatures: { is_email_setup: true },
+    features: memberFeatures,
+    accountProfile: mockConsoleState.current.userProfile,
+    systemFeatures: { deployment_edition: deploymentEdition, is_email_setup: true },
   })
 
 const getMemberDetailsButton = (memberId: string) =>
   within(screen.getByTestId(`member-row-${memberId}`)).getByRole('button', {
-    name: /members\.memberDetails\.openAria/i,
+    name: memberId === '1' ? 'Owner User' : 'Admin User',
   })
 
 const createRole = (overrides: Partial<Role>): Role => ({
@@ -245,12 +243,8 @@ describe('MembersPage', () => {
       mutateAsync: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: false,
-        isAllowTransferWorkspace: true,
-      }),
-    )
+    deploymentEdition = 'COMMUNITY'
+    memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: true }
 
     vi.mocked(useFormatTimeFromNow).mockReturnValue({
       formatTimeFromNow: mockFormatTimeFromNow,
@@ -265,32 +259,44 @@ describe('MembersPage', () => {
     expect(screen.getByText('Admin User'))!.toBeInTheDocument()
   })
 
-  it('should render fixed name column and flexible role column layout', () => {
+  it('should expose member columns and keep row data separate from the details button', () => {
     renderMembersPage()
 
+    const table = screen.getByRole('table')
     expect(
-      screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('w-65', 'shrink-0')
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.name' }),
+    ).toBeInTheDocument()
     expect(
-      screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('min-w-0', 'grow')
-    expect(getMemberDetailsButton('1').children[0])!.toHaveClass('w-65', 'shrink-0')
-    expect(getMemberDetailsButton('1').children[2])!.toHaveClass('min-w-0', 'grow')
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.lastActive' }),
+    ).toBeInTheDocument()
+    expect(
+      within(table).getByRole('columnheader', { name: 'workspaceMembers.members.role' }),
+    ).toBeInTheDocument()
+    const row = within(table).getByRole('row', { name: /owner@example.com/ })
+    expect(within(row).getByRole('cell', { name: 'just now' })).toBeInTheDocument()
+    expect(within(row).getByRole('cell', { name: 'Owner' })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Owner User' })).not.toHaveTextContent(
+      'owner@example.com',
+    )
   })
 
   it('should render plural roles column header when RBAC is enabled', () => {
     renderWithConsoleQuery(<MembersPage />, {
+      features: memberFeatures,
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         is_email_setup: true,
         rbac_enabled: true,
       },
     })
 
     expect(
-      screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('min-w-0', 'grow')
+      screen.getByRole('columnheader', { name: 'workspaceMembers.members.roles' }),
+    ).toBeInTheDocument()
     expect(
-      screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' }),
+      screen.queryByText('workspaceMembers.members.role', {
+        selector: '.system-xs-medium-uppercase',
+      }),
     ).not.toBeInTheDocument()
   })
 
@@ -330,12 +336,8 @@ describe('MembersPage', () => {
   })
 
   it('should show non-interactive owner role when transfer ownership is not allowed', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: false,
-        isAllowTransferWorkspace: false,
-      }),
-    )
+    deploymentEdition = 'COMMUNITY'
+    memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: false }
 
     renderMembersPage()
 
@@ -398,17 +400,11 @@ describe('MembersPage', () => {
   })
 
   it('should show billing information for limited plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 5 },
+    }
 
     renderMembersPage()
 
@@ -419,17 +415,11 @@ describe('MembersPage', () => {
   })
 
   it('should show unlimited billing information', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: -1 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 0 },
+    }
 
     renderMembersPage()
 
@@ -437,22 +427,16 @@ describe('MembersPage', () => {
   })
 
   it('should show non-billing member format for team plan even when billing is enabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.team,
-          total: { teamMembers: 50 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'team' } },
+      members: { size: 2, limit: 50 },
+    }
 
     renderMembersPage()
 
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
     expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
@@ -547,17 +531,11 @@ describe('MembersPage', () => {
       data: { accounts: [mockAccounts[0]] },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 5 },
+    }
 
     renderMembersPage()
 
@@ -594,7 +572,7 @@ describe('MembersPage', () => {
     expect(screen.getByText('Admin'))!.toBeInTheDocument()
   })
 
-  it('should expose member details as a native row button without nesting member actions', () => {
+  it('should expose a member details button without nesting member actions', () => {
     renderMembersPage()
 
     const row = screen.getByTestId('member-row-2')
@@ -602,16 +580,11 @@ describe('MembersPage', () => {
     const memberMenu = within(row).getByTestId('member-menu')
 
     expect(row).not.toHaveAttribute('role', 'button')
-    expect(row).not.toHaveClass('hover:bg-state-base-hover')
     expect(detailsButton).toHaveAttribute('type', 'button')
-    expect(detailsButton).toHaveClass(
-      'hover:bg-state-base-hover',
-      'focus-visible:bg-state-base-hover',
-    )
     expect(detailsButton).not.toContainElement(memberMenu)
   })
 
-  it('should open member details modal when a member row is clicked', async () => {
+  it('should open member details modal when a member name is clicked', async () => {
     const user = userEvent.setup()
 
     renderMembersPage()
@@ -688,7 +661,9 @@ describe('MembersPage', () => {
     const user = userEvent.setup()
 
     renderWithConsoleQuery(<MembersPage />, {
+      features: memberFeatures,
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         is_email_setup: true,
         rbac_enabled: true,
       },
@@ -718,17 +693,11 @@ describe('MembersPage', () => {
 
   it('should show the upgrade action without blocking the backend-authoritative invite flow', async () => {
     const user = userEvent.setup()
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 2 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 2 },
+    }
 
     renderMembersPage()
 

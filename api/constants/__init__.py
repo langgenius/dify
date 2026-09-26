@@ -36,6 +36,7 @@ _UNSTRUCTURED_DOCUMENT_EXTENSION_BASE: frozenset[str] = frozenset(
         "pptx",
         "xml",
         "epub",
+        "odt",
     )
 )
 _DEFAULT_DOCUMENT_EXTENSION_BASE: frozenset[str] = frozenset(
@@ -53,6 +54,7 @@ _DEFAULT_DOCUMENT_EXTENSION_BASE: frozenset[str] = frozenset(
         "csv",
         "vtt",
         "properties",
+        "odt",
     )
 )
 
@@ -77,3 +79,4 @@ COOKIE_NAME_PASSPORT = "passport"
 HEADER_NAME_CSRF_TOKEN = "X-CSRF-Token"
 HEADER_NAME_APP_CODE = "X-App-Code"
 HEADER_NAME_PASSPORT = "X-App-Passport"
+HEADER_NAME_CATALOG = "X-Dify-Catalog"

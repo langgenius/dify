@@ -1,12 +1,13 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { agentV2SystemTextOutput } from '../../../output-variables'
 import { AgentOutputVariables } from '../index'
 
-const editorLabel = 'workflow.nodes.agent.outputVars.editorLabel'
-const nameLabel = 'workflow.nodes.agent.outputVars.nameLabel'
-const confirmLabel = 'workflow.nodes.agent.outputVars.confirm'
+const editorLabel = 'workflowAgent.nodes.agent.outputVars.editorLabel'
+const nameLabel = 'workflowAgent.nodes.agent.outputVars.nameLabel'
+const confirmLabel = 'workflowAgent.nodes.agent.outputVars.confirm'
 
 async function expandOutputVars(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
@@ -18,7 +19,13 @@ function getAddButton(name: string) {
 
 function getEditButton(name: string) {
   return screen.getByRole('button', {
-    name: `workflow.nodes.agent.outputVars.edit:{"name":"${name}"}`,
+    name: `workflowAgent.nodes.agent.outputVars.edit:{"name":"${name}"}`,
+  })
+}
+
+function getDeleteButton(name: string) {
+  return screen.getByRole('button', {
+    name: `workflowAgent.nodes.agent.outputVars.delete:{"name":"${name}"}`,
   })
 }
 
@@ -32,6 +39,35 @@ async function confirmEditorName(user: ReturnType<typeof userEvent.setup>, name:
 }
 
 describe('AgentOutputVariables', () => {
+  it('should keep system text immutable while custom outputs remain editable', async () => {
+    const user = userEvent.setup()
+    const outputs: DeclaredOutputConfig[] = [
+      agentV2SystemTextOutput,
+      {
+        name: 'summary',
+        type: 'string',
+        required: false,
+      },
+    ]
+
+    render(<AgentOutputVariables outputs={outputs} onChange={vi.fn()} />)
+
+    await expandOutputVars(user)
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'workflowAgent.nodes.agent.outputVars.edit:{"name":"text"}',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'workflowAgent.nodes.agent.outputVars.delete:{"name":"text"}',
+      }),
+    ).not.toBeInTheDocument()
+    expect(getEditButton('summary')).toBeInTheDocument()
+    expect(getDeleteButton('summary')).toBeInTheDocument()
+  })
+
   it('should add an object child without opening the parent editor', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -233,7 +269,23 @@ describe('AgentOutputVariables', () => {
     await user.click(getEditButton('summary'))
     await confirmEditorName(user, 'report.summary')
 
-    expect(screen.getByText('workflow.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it.each(['text', 'switch', '_session'])('should reject reserved output name %s', async (name) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(<AgentOutputVariables outputs={[]} onChange={onChange} />)
+
+    await expandOutputVars(user)
+    await user.click(
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.outputVars.newOutput' }),
+    )
+    await confirmEditorName(user, name)
+
+    expect(screen.getByText('workflowAgent.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

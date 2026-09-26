@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -24,16 +24,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     getNodesReadOnly: mockGetNodesReadOnly,
   }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback: (fn: (...args: unknown[]) => Promise<void>, checkFn: () => boolean) => {
-    return (...args: unknown[]) => {
-      if (!checkFn()) {
-        return fn(...args)
-      }
-    }
-  },
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
@@ -228,6 +218,104 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockSyncWorkflowDraft).toHaveBeenCalled()
+    })
+
+    it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
+      const draftNode = {
+        id: 'node-1',
+        data: { type: 'start' },
+        position: { x: 0, y: 0 },
+      }
+      const draftEdge = {
+        id: 'edge-1',
+        source: 'node-1',
+        target: 'node-2',
+        data: { visible: true },
+      }
+      mockGetNodes.mockReturnValue([draftNode])
+      mockStoreGetState.mockReturnValue({
+        getNodes: mockGetNodes,
+        edges: [draftEdge],
+        transform: [10, 20, 1.5],
+      })
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+      let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+      act(() => {
+        syncPromise = result.current.doSyncWorkflowDraft()
+
+        // Simulate ReactFlow clearing its store immediately after the page starts unmounting.
+        mockGetNodes.mockReturnValue([])
+        mockStoreGetState.mockReturnValue({
+          getNodes: mockGetNodes,
+          edges: [],
+          transform: [0, 0, 1],
+        })
+      })
+
+      await act(async () => {
+        await syncPromise
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: {
+              nodes: [draftNode],
+              edges: [draftEdge],
+              viewport: { x: 10, y: 20, zoom: 1.5 },
+            },
+          }),
+        }),
+      )
+    })
+
+    it('should use the latest hash when sending a previously captured queued graph', async () => {
+      const workflowState = {
+        pipelineId: 'test-pipeline-id',
+        environmentVariables: [],
+        syncWorkflowDraftHash: 'initial-hash',
+        ragPipelineVariables: [],
+        setSyncWorkflowDraftHash: vi.fn(),
+        setDraftUpdatedAt: vi.fn(),
+      }
+      workflowState.setSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+        workflowState.syncWorkflowDraftHash = hash
+      })
+      mockWorkflowStoreGetState.mockImplementation(() => workflowState)
+      mockGetNodes.mockReturnValue([
+        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
+      ])
+      mockSyncWorkflowDraft
+        .mockResolvedValueOnce({ hash: 'hash-after-first-sync', updated_at: 'first-update' })
+        .mockResolvedValueOnce({ hash: 'hash-after-second-sync', updated_at: 'second-update' })
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+      let firstSync!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+      let secondSync!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+      act(() => {
+        firstSync = result.current.doSyncWorkflowDraft()
+        secondSync = result.current.doSyncWorkflowDraft()
+      })
+
+      await act(async () => {
+        await Promise.all([firstSync, secondSync])
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          params: expect.objectContaining({ hash: 'initial-hash' }),
+        }),
+      )
+      expect(mockSyncWorkflowDraft).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          params: expect.objectContaining({ hash: 'hash-after-first-sync' }),
+        }),
+      )
     })
 
     it('should not include source_workflow_id in sync payloads', async () => {

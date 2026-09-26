@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { DataSourceCredential } from './types'
 import {
   DropdownMenu,
@@ -6,15 +7,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
   credentialItem: DataSourceCredential
   onAction: (action: string, credentialItem: DataSourceCredential) => void
   onRename?: () => void
+  triggerRef?: Ref<HTMLButtonElement>
   canUseCredential?: boolean
   canManageCredential?: boolean
 }
@@ -22,10 +24,11 @@ const Operator = ({
   credentialItem,
   onAction,
   onRename,
+  triggerRef,
   canUseCredential = false,
   canManageCredential = false,
 }: OperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { type } = credentialItem
   const handleAction = useCallback(
     (action: string, allowed: boolean) => {
@@ -46,16 +49,17 @@ const Operator = ({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <ActionButton
-            size="l"
-            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+          <IconButton
+            ref={triggerRef}
+            size="lg"
+            aria-label={`${t(($) => $['operation.more'], { ns: 'common' })} ${credentialItem.name}`}
+            className="data-popup-open:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-          </ActionButton>
+          </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-50">
         <DropdownMenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"

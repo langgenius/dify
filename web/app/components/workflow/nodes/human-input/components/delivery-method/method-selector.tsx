@@ -1,26 +1,19 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  RiAddLine,
-  RiDiscordFill,
-  RiLightbulbFlashFill,
-  RiMailSendFill,
-  RiRobot2Fill,
-} from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useMemo, useState } from 'react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { memo, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -32,14 +25,15 @@ type MethodSelectorProps = {
 }
 
 const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowHumanInput'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const [open, setOpen] = useState(false)
-  const humanInputEmailDeliveryEnabled = useProviderContextSelector(
-    (s) => s.humanInputEmailDeliveryEnabled,
+  const { data: humanInputEmailDeliveryEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.human_input_email_delivery_enabled,
+    }),
   )
   const nodes = useWorkflowNodes()
 
@@ -54,27 +48,29 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
 
   const emailDeliveryInfo = useMemo(() => {
     return {
-      noPermission: !humanInputEmailDeliveryEnabled,
+      noPermission: humanInputEmailDeliveryEnabled === false,
       added: data.some((method) => method.type === DeliveryMethodType.Email),
     }
   }, [data, humanInputEmailDeliveryEnabled])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         render={
-          <ActionButton
-            aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
+          <IconButton
+            aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.title`], {
+              ns: 'workflowHumanInput',
+            })}
             className="data-popup-open:bg-state-base-hover"
           >
-            <RiAddLine className="size-4" />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-add-line size-4" />
+          </IconButton>
         }
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
@@ -99,29 +95,32 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   webAppDeliveryInfo.disabled && 'opacity-50',
                 )}
               >
-                <RiRobot2Fill className="size-4 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-ri-robot-2-fill size-4 text-text-primary-on-surface"
+                />
               </div>
               <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
                 <div className="mb-0.5 truncate system-sm-medium text-text-primary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.title`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
                 <div className="truncate system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
               {webAppDeliveryInfo.added && (
                 <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflowHumanInput' })}
                 </div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
                 <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               )}
@@ -129,9 +128,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
             <div
               className={cn(
                 'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
-                emailDeliveryInfo.added && 'cursor-not-allowed bg-transparent hover:bg-transparent',
+                (emailDeliveryInfo.added || humanInputEmailDeliveryEnabled === undefined) &&
+                  'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
               onClick={() => {
+                if (humanInputEmailDeliveryEnabled === undefined) return
                 if (emailDeliveryInfo.noPermission) {
                   onShowUpgradeTip()
                   return
@@ -150,23 +151,26 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   emailDeliveryInfo.added && 'opacity-50',
                 )}
               >
-                <RiMailSendFill className="size-4 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-ri-mail-send-fill size-4 text-text-primary-on-surface"
+                />
               </div>
               <div className={cn('p-1', emailDeliveryInfo.added && 'opacity-50')}>
                 <div className="mb-0.5 truncate system-sm-medium text-text-primary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.title`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
                 <div className="truncate system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
               {emailDeliveryInfo.added && (
                 <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflowHumanInput' })}
                 </div>
               )}
             </div>
@@ -183,17 +187,20 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   'opacity-50',
                 )}
               >
-                <Slack className="size-4 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-custom-public-other-slack size-4 text-text-primary-on-surface"
+                />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
                 <div className="mb-0.5 truncate system-sm-medium text-text-primary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.title`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
                 <div className="truncate system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
@@ -214,17 +221,20 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   'opacity-50',
                 )}
               >
-                <Teams className="size-4 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-custom-public-other-teams size-4 text-text-primary-on-surface"
+                />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
                 <div className="mb-0.5 truncate system-sm-medium text-text-primary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.title`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
                 <div className="truncate system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
@@ -245,17 +255,20 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   'opacity-50',
                 )}
               >
-                <RiDiscordFill className="size-5 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-ri-discord-fill size-5 text-text-primary-on-surface"
+                />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
                 <div className="mb-0.5 truncate system-sm-medium text-text-primary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.title`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
                 <div className="truncate system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.description`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
@@ -273,15 +286,20 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   'rounded-sm border border-divider-regular bg-components-icon-bg-midnight-solid p-1',
                 )}
               >
-                <RiLightbulbFlashFill className="size-4 text-text-primary-on-surface" />
+                <span
+                  aria-hidden
+                  className="i-ri-lightbulb-flash-fill size-4 text-text-primary-on-surface"
+                />
               </div>
               <div className="system-sm-regular text-text-secondary">
                 <div>
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.contactTip1`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.deliveryMethod.contactTip1`], {
+                    ns: 'workflowHumanInput',
+                  })}
                 </div>
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.contactTip2`]}
-                  ns="workflow"
+                  ns="workflowHumanInput"
                   components={{
                     email: (
                       <a href="mailto:support@dify.ai" className="text-text-accent-light-mode-only">
