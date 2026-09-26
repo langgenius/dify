@@ -1,5 +1,5 @@
 import type { KbdColor } from '@langgenius/dify-ui/kbd'
-import type { FormatDisplayOptions, Hotkey, IndividualKey } from '@tanstack/react-hotkeys'
+import type { FormatDisplayOptions, Hotkey } from '@tanstack/react-hotkeys'
 import type { WorkflowCanvasShortcutId } from './definitions'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -18,18 +18,6 @@ type ShortcutKbdProps = ShortcutKbdSource & {
   platform?: FormatDisplayOptions['platform']
 }
 
-const getDisplayKeys = (
-  hotkey: Hotkey | IndividualKey,
-  platform?: FormatDisplayOptions['platform'],
-) => {
-  const displayOptions = platform ? { platform } : undefined
-
-  return hotkey
-    .split('+')
-    .filter(Boolean)
-    .map((key) => formatForDisplay(key, displayOptions))
-}
-
 export const ShortcutKbd = ({
   shortcut,
   hotkey,
@@ -46,7 +34,7 @@ export const ShortcutKbd = ({
   const displayKeys = displayKey
     ? [formatForDisplay(displayKey, displayOptions)]
     : shortcutDisplayKey
-      ? getDisplayKeys(shortcutDisplayKey, platform)
+      ? formatForDisplay(shortcutDisplayKey, { platform, parts: true })
       : []
 
   if (!displayKeys.length) return null

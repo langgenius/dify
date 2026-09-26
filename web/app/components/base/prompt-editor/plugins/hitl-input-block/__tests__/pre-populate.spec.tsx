@@ -68,7 +68,7 @@ describe('PrePopulate', () => {
     vi.clearAllMocks()
   })
 
-  it('should show placeholder initially and switch out of placeholder on Tab key', async () => {
+  it('keeps Tab navigation native and opens static content on activation', async () => {
     const user = userEvent.setup()
     renderWithI18n(<PrePopulate nodeId="node-1" isVariable={false} value="" />)
 
@@ -76,8 +76,10 @@ describe('PrePopulate', () => {
 
     await user.keyboard('{Tab}')
 
-    expect(screen.queryByText('Static Content')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Static Content' })).toHaveFocus()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('textbox')).toHaveFocus()
   })
 
   it('should update constant value and toggle to variable mode when type switch is clicked', async () => {

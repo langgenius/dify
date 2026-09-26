@@ -1,5 +1,6 @@
 import type { NodeActionsMenuProps } from './types'
 import {
+  ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLinkItem,
@@ -13,10 +14,12 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
+import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ChangeBlockPopup } from './change-block-popup'
 import {
   NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
+  NODE_ACTIONS_MENU_WIDTH_CLASS_NAME,
   NodeActionsMenuAbout,
   NodeActionsMenuItemContent,
 } from './shared'
@@ -33,7 +36,17 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
     : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
   return (
-    <>
+    <ContextMenuContent
+      className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
+      sideOffset={4}
+      onKeyDown={(event) =>
+        handleWorkflowMenuKeyDown(event, [
+          ['workflow.copy', hasEditGroup ? model.handleCopy : undefined],
+          ['workflow.duplicate', hasEditGroup ? model.handleDuplicate : undefined],
+          ['workflow.delete', hasDeleteGroup ? model.handleDelete : undefined],
+        ])
+      }
+    >
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
@@ -128,6 +141,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
         description={model.about.description}
         author={`${t(($) => $['panel.createdBy'], { ns: 'workflow' })} ${model.about.author}`}
       />
-    </>
+    </ContextMenuContent>
   )
 }

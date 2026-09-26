@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setSkillFileDragPreview } from './file-tree-drag-preview'
@@ -164,7 +165,7 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.cut.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.cut.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
@@ -179,7 +180,7 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.copy.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.copy.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
@@ -284,7 +285,11 @@ function FileActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
+        <DropdownMenuContent
+          data-skill-file-menu
+          placement="bottom-end"
+          className={skillFileMenuPopupClassName}
+        >
           <FileActionMenuItems
             kind="dropdown"
             node={node}
@@ -513,7 +518,7 @@ export function FileTreeItem({
       <>
         <ContextMenu>
           <ContextMenuTrigger render={trigger} />
-          <ContextMenuContent className={skillFileMenuPopupClassName}>
+          <ContextMenuContent data-skill-file-menu className={skillFileMenuPopupClassName}>
             <FileActionMenuItems
               kind="context"
               node={node}

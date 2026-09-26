@@ -20,6 +20,7 @@ import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from './hooks/use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import { handleWorkflowMenuKeyDown } from './shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
 import { BlockEnum } from './types'
@@ -398,7 +399,18 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <ContextMenuContent className="w-60" sideOffset={4}>
+      <ContextMenuContent
+        className="w-60"
+        sideOffset={4}
+        onKeyDown={(event) => {
+          if (getNodesReadOnly()) return
+          handleWorkflowMenuKeyDown(event, [
+            ['workflow.copy', handleCopyNodes],
+            ['workflow.duplicate', handleDuplicateNodes],
+            ['workflow.delete', handleDeleteNodes],
+          ])
+        }}
+      >
         {canCreateSnippet && (
           <>
             <ContextMenuGroup>

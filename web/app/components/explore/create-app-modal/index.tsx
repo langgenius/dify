@@ -68,6 +68,7 @@ const CreateAppModal = ({
   confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
+  const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null)
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
@@ -106,7 +107,7 @@ const CreateAppModal = ({
     appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
-    if (!isEditModal && (isAppQuotaUnavailable || isAppsFull)) return
+    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -129,6 +130,7 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmDisabled,
     isEditModal,
     isAppQuotaUnavailable,
     isAppsFull,
@@ -144,21 +146,35 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
+  const submitDisabled =
+    isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
   useHotkey(
     SUBMIT_APP_HOTKEY,
-    () => {
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       handleSubmit()
     },
     {
-      enabled: show && !isAppQuotaUnavailable && !(!isEditModal && isAppsFull) && !!name.trim(),
+      target: dialogElement,
+      enabled: !!dialogElement && show && !submitDisabled && !showAppIconPicker,
       ignoreInputs: false,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
 
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
-        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
+        <DialogContent
+          ref={setDialogElement}
+          backdropProps={{ forceRender: true }}
+          className="px-8"
+        >
           <DialogClose
             render={
               <IconButton
@@ -274,12 +290,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
-              disabled={
-                isAppQuotaUnavailable ||
-                (!isEditModal && isAppsFull) ||
-                !name.trim() ||
-                confirmDisabled
-              }
+              disabled={submitDisabled}
               className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
@@ -290,9 +301,9 @@ const CreateAppModal = ({
                   : t(($) => $['operation.save'], { ns: 'common' })}
               </span>
               <KbdGroup>
-                {SUBMIT_APP_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>

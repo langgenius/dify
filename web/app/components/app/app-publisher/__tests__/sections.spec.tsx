@@ -1,5 +1,7 @@
+import type { ComponentProps } from 'react'
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -48,7 +50,108 @@ const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHist
   ...overrides,
 })
 
+function PublisherPopup(props: Partial<ComponentProps<typeof PublisherSummarySection>>) {
+  return (
+    <Popover>
+      <PopoverTrigger>Open publisher</PopoverTrigger>
+      <PopoverContent>
+        <PublisherSummarySection
+          formatTimeFromNow={() => 'just now'}
+          handlePublish={vi.fn().mockResolvedValue(undefined)}
+          handleRestore={vi.fn().mockResolvedValue(undefined)}
+          isChatApp={false}
+          published={false}
+          upgradeHighlightStyle={{}}
+          {...props}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function publishFrom(target: HTMLElement, options: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', {
+    key: 'P',
+    ctrlKey: true,
+    shiftKey: true,
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  })
+  fireEvent(target, event)
+  fireEvent.keyUp(target, { key: 'P', ctrlKey: true, shiftKey: true })
+  return event
+}
+
 describe('app-publisher sections', () => {
+  it('publishes only from its open built-in popup and unregisters when the popup closes', async () => {
+    const user = userEvent.setup()
+    const handlePublish = vi.fn().mockResolvedValue(undefined)
+    render(<PublisherPopup handlePublish={handlePublish} />)
+    expect(publishFrom(document.body).defaultPrevented).toBe(false)
+    expect(handlePublish).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    const button = screen.getByRole('button', { name: /common\.publish\b/ })
+    expect(publishFrom(document.body).defaultPrevented).toBe(false)
+    await act(async () => {
+      expect(publishFrom(button).defaultPrevented).toBe(true)
+    })
+    expect(handlePublish).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    expect(publishFrom(document.body).defaultPrevented).toBe(false)
+    expect(handlePublish).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([{ publishDisabled: true }, { published: true }])(
+    'shares the disabled state between the publish button and shortcut: %o',
+    async (props) => {
+      const user = userEvent.setup()
+      const handlePublish = vi.fn().mockResolvedValue(undefined)
+      render(<PublisherPopup {...props} handlePublish={handlePublish} />)
+      await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+      const button = screen.getByRole('button', { name: /common\.publish/ })
+      expect(button).toBeDisabled()
+      expect(publishFrom(button).defaultPrevented).toBe(false)
+      await user.click(button)
+      expect(handlePublish).not.toHaveBeenCalled()
+    },
+  )
+
+  it('prevents a second publish while the shared publish action is pending', async () => {
+    const user = userEvent.setup()
+    let resolvePublish: () => void = () => {}
+    const handlePublish = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePublish = resolve
+        }),
+    )
+    render(<PublisherPopup handlePublish={handlePublish} />)
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    const button = screen.getByRole('button', { name: /common\.publish\b/ })
+    publishFrom(button)
+    expect(button).toBeDisabled()
+    publishFrom(button)
+    await user.click(button)
+    expect(handlePublish).toHaveBeenCalledTimes(1)
+    await act(async () => resolvePublish())
+    await waitFor(() => expect(button).not.toBeDisabled())
+  })
+
+  it('keeps multiple-model publication behind the model selection action', async () => {
+    const user = userEvent.setup()
+    const handlePublish = vi.fn().mockResolvedValue(undefined)
+    render(<PublisherPopup debugWithMultipleModel handlePublish={handlePublish} />)
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+    const modelButton = screen.getByRole('button', { name: 'publish-multiple-model' })
+    expect(publishFrom(modelButton).defaultPrevented).toBe(false)
+    expect(handlePublish).not.toHaveBeenCalled()
+    await user.click(modelButton)
+    expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
+  })
+
   it('should render restore controls for published chat apps', () => {
     const handleRestore = vi.fn()
 

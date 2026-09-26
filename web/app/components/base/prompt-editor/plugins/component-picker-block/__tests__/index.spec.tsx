@@ -719,12 +719,12 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     expect(firstItem).toHaveAttribute('data-selected', 'true')
     expect(secondItem).toHaveAttribute('data-selected', 'false')
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_TEST_ID), { key: 'ArrowDown' })
 
     expect(firstItem).toHaveAttribute('data-selected', 'false')
     expect(secondItem).toHaveAttribute('data-selected', 'true')
 
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_TEST_ID), { key: 'Enter' })
 
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
       'node-1',

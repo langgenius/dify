@@ -324,6 +324,7 @@ const Item: FC<ItemProps> = ({
 
 type Props = Readonly<{
   hideSearch?: boolean
+  keyboardTarget?: HTMLElement | null
   searchText?: string
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
@@ -341,6 +342,7 @@ type Props = Readonly<{
 }>
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
+  keyboardTarget,
   searchText,
   searchBoxClassName,
   vars,
@@ -457,24 +459,32 @@ const VarReferenceVars: FC<Props> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.defaultPrevented || e.nativeEvent.isComposing) return
       handleKeyboardEvent(e)
     },
     [handleKeyboardEvent],
   )
 
   useEffect(() => {
-    if (!hideSearch) return
+    if (!hideSearch || !keyboardTarget) return
 
-    const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return
+    const handleTargetKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return
       if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) return
 
       handleKeyboardEvent(event)
     }
 
-    document.addEventListener('keydown', handleDocumentKeyDown, true)
-    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
-  }, [handleKeyboardEvent, hideSearch])
+    keyboardTarget.addEventListener('keydown', handleTargetKeyDown, true)
+    return () => keyboardTarget.removeEventListener('keydown', handleTargetKeyDown, true)
+  }, [handleKeyboardEvent, hideSearch, keyboardTarget])
 
   return (
     <>

@@ -4,7 +4,7 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
@@ -99,19 +99,6 @@ const PrePopulate: FC<Props> = ({
 
   const isShowPlaceholder =
     !onPlaceholderClicked && (isVariable ? !valueSelector || valueSelector.length === 0 : !value)
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab' && !onPlaceholderClicked) {
-        e.preventDefault()
-        setOnPlaceholderClicked(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onPlaceholderClicked, setOnPlaceholderClicked])
 
   if (isShowPlaceholder)
     return <Placeholder varPickerProps={varPickerProps} onTypeClick={handleTypeChange} />

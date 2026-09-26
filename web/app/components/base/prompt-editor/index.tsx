@@ -1,10 +1,10 @@
 'use client'
 
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
-  Hotkey,
   ShortcutPopupDisplayMode,
   ShortcutPopupInsertHandler,
 } from './plugins/shortcuts-popup-plugin'

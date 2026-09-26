@@ -643,9 +643,12 @@ function WorkflowGeneratorModal() {
                 value={instruction}
                 onValueChange={setInstruction}
                 onKeyDown={(e) => {
+                  if (e.defaultPrevented || e.nativeEvent.isComposing || e.repeat || isLoading)
+                    return
                   if (matchesKeyboardEvent(e.nativeEvent, WORKFLOW_GENERATOR_SUBMIT_HOTKEY)) {
                     e.preventDefault()
-                    if (!isLoading) onGenerate()
+                    e.stopPropagation()
+                    onGenerate()
                   }
                 }}
                 maxLength={MAX_INSTRUCTION_LENGTH}

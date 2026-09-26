@@ -63,7 +63,7 @@ export function CreateSnippetDialog({
   const nameInputId = useId()
   const descriptionInputId = useId()
   const { t } = useTranslation(['common', 'workflow'])
-  const popupRef = useRef<HTMLDivElement>(null)
+  const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
@@ -82,7 +82,7 @@ export function CreateSnippetDialog({
     const trimmedName = name.trim()
     const trimmedDescription = description.trim()
 
-    if (!trimmedName) return
+    if (!trimmedName || isSubmitting) return
 
     const payload = {
       name: trimmedName,
@@ -94,13 +94,24 @@ export function CreateSnippetDialog({
     onConfirm(payload)
   }
 
-  useHotkey(CREATE_SNIPPET_HOTKEY, handleConfirm, {
-    enabled: isOpen && !isSubmitting,
-    ignoreInputs: false,
-    preventDefault: false,
-    stopPropagation: false,
-    target: popupRef,
-  })
+  useHotkey(
+    CREATE_SNIPPET_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleConfirm()
+    },
+    {
+      enabled: !!popupElement && isOpen && !isSubmitting && !!name.trim(),
+      requireReset: false,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+      target: popupElement,
+    },
+  )
 
   return (
     <>
@@ -108,7 +119,7 @@ export function CreateSnippetDialog({
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
-            ref={popupRef}
+            ref={setPopupElement}
             initialFocus={nameInputRef}
             className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-120 -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
           >

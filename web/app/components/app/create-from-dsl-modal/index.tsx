@@ -94,7 +94,7 @@ function CreateFromDSLModal({
 }: CreateFromDSLModalProps) {
   const { push } = useRouter()
   const { t } = useTranslation(['app', 'common'])
-  const formRef = useRef<HTMLFormElement>(null)
+  const [formElement, setFormElement] = useState<HTMLFormElement | null>(null)
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -291,10 +291,24 @@ function CreateFromDSLModal({
     isAppsFull ||
     (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
 
-  useHotkey(CREATE_FROM_DSL_HOTKEY, () => formRef.current?.requestSubmit(), {
-    enabled: show && !createDisabled && !isImporting && !pendingImport,
-    ignoreInputs: false,
-  })
+  useHotkey(
+    CREATE_FROM_DSL_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      formElement?.requestSubmit()
+    },
+    {
+      target: formElement,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+      enabled: !!formElement && show && !createDisabled && !isImporting && !pendingImport,
+      ignoreInputs: false,
+    },
+  )
 
   return (
     <>
@@ -325,7 +339,7 @@ function CreateFromDSLModal({
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
               </IconButton>
             </div>
-            <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
+            <Form<ImportFormValues> ref={setFormElement} onFormSubmit={handleSubmit}>
               <Tabs value={currentTab} onValueChange={handleTabChange}>
                 <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
                   <TabsTab
@@ -394,9 +408,9 @@ function CreateFromDSLModal({
                 >
                   <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
-                    {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

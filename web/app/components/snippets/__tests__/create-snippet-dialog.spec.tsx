@@ -1,45 +1,9 @@
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { expectLoadingButton } from '@/test/button'
 import { CreateSnippetDialog } from '../create-snippet-dialog'
-
-let capturedKeyPressHandler: (() => void) | undefined
-let capturedHotkey: string | undefined
-let capturedHotkeyOptions:
-  | {
-      enabled?: boolean
-      ignoreInputs?: boolean
-      preventDefault?: boolean
-      stopPropagation?: boolean
-      target?: React.RefObject<HTMLElement | null>
-    }
-  | undefined
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      handler: () => void,
-      options?: {
-        enabled?: boolean
-        ignoreInputs?: boolean
-        preventDefault?: boolean
-        stopPropagation?: boolean
-        target?: React.RefObject<HTMLElement | null>
-      },
-    ) => {
-      capturedHotkey = hotkey
-      capturedKeyPressHandler = () => {
-        if (options?.enabled !== false) handler()
-      }
-      capturedHotkeyOptions = options
-    },
-  }
-})
 
 const selectedGraph: SnippetCanvasData = {
   nodes: [],
@@ -59,9 +23,6 @@ const inputFields: SnippetInputField[] = [
 describe('CreateSnippetDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedKeyPressHandler = undefined
-    capturedHotkey = undefined
-    capturedHotkeyOptions = undefined
   })
 
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
@@ -177,7 +138,14 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).not.toHaveBeenCalled()
 
@@ -191,7 +159,14 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).not.toHaveBeenCalled()
 
@@ -204,21 +179,20 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    capturedKeyPressHandler?.()
+    fireEvent.keyDown(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
+    fireEvent.keyUp(
+      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
+      { key: 'Enter', code: 'Enter', ctrlKey: true },
+    )
 
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Keyboard snippet',
       }),
     )
-    expect(capturedHotkeyOptions).toMatchObject({
-      enabled: true,
-      ignoreInputs: false,
-      preventDefault: false,
-      stopPropagation: false,
-    })
-    expect(capturedHotkeyOptions?.target?.current).toBe(screen.getByRole('dialog'))
-    expect(capturedHotkey).toBe('Mod+Enter')
   })
 
   it('should disable form controls while submitting', () => {

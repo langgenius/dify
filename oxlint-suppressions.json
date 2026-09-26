@@ -1329,14 +1329,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/tag-label.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/component.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

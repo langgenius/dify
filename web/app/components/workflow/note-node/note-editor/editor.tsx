@@ -20,14 +20,8 @@ type EditorProps = {
   placeholder?: string
   onChange?: (editorState: EditorState) => void
   containerElement: HTMLDivElement | null
-  setHistoryShortcutsEnabled?: (v: boolean) => void
 }
-const Editor = ({
-  placeholder,
-  onChange,
-  containerElement,
-  setHistoryShortcutsEnabled,
-}: EditorProps) => {
+const Editor = ({ placeholder, onChange, containerElement }: EditorProps) => {
   const { t } = useTranslation(['workflow'])
   const handleEditorChange = useCallback(
     (editorState: EditorState) => {
@@ -43,8 +37,6 @@ const Editor = ({
           <div>
             <ContentEditable
               aria-label={t(($) => $['nodes.note.editor.label'], { ns: 'workflow' })}
-              onFocus={() => setHistoryShortcutsEnabled?.(false)}
-              onBlur={() => setHistoryShortcutsEnabled?.(true)}
               spellCheck={false}
               className="size-full text-text-secondary caret-primary-600 outline-hidden"
             />

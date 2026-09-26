@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
@@ -60,6 +66,26 @@ function createSelectionSkillDetail() {
 
 describe('SkillDetailPage clipboard', () => {
   beforeEach(resetDetailPageFixture)
+
+  it('leaves shortcuts in another page menu to that menu', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+    await waitFor(() => expect(getFileTreeItem('SKILL.md')).toBeInTheDocument())
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Other actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Other copy</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Other actions' }))
+    const menuItem = await screen.findByRole('menuitem', { name: 'Other copy' })
+    fireEvent.keyDown(menuItem, { key: 'c', code: 'KeyC', ...primaryModifier })
+    fireEvent.keyDown(menuItem, { key: 'x', code: 'KeyX', ...primaryModifier })
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
 
   it('copies the context-menu file with the displayed keyboard shortcut', async () => {
     renderSkillDetailPage()

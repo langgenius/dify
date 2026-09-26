@@ -142,12 +142,32 @@ describe('ImagePreview', () => {
       )
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(document, { key: 'ArrowLeft', code: 'ArrowLeft' })
-      fireEvent.keyDown(document, { key: 'ArrowRight', code: 'ArrowRight' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft', code: 'ArrowLeft' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight', code: 'ArrowRight' })
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
       expect(onNext).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves outside arrows and unavailable image navigation unclaimed', () => {
+      render(
+        <ImagePreview url="https://example.com/image.png" title="Preview" onCancel={vi.fn()} />,
+      )
+      const outside = new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(document.body, outside)
+      expect(outside.defaultPrevented).toBe(false)
+      const unavailable = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(screen.getByRole('dialog'), unavailable)
+      expect(unavailable.defaultPrevented).toBe(false)
     })
 
     it('should zoom in and out from keyboard up/down hotkeys', async () => {
@@ -160,12 +180,12 @@ describe('ImagePreview', () => {
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
 
-      fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
       })
 
-      fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })

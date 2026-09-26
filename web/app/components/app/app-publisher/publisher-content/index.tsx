@@ -95,7 +95,6 @@ export function PublisherContent({
     onClose: closePublisher,
     onPublish,
     onRestore,
-    publishDisabled,
     publishedAt,
     supportsMultiEnvironment,
   })

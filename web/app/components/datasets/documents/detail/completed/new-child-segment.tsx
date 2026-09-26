@@ -3,7 +3,7 @@ import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { ChunkingMode } from '@/models/datasets'
@@ -31,6 +31,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChildChunk,
 }) => {
+  const editorRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const [content, setContent] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
@@ -91,7 +92,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const wordCountText = `${formatNumber(count)} ${t(($) => $['segment.characters'], { ns: 'datasetDocuments', count })}`
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -115,6 +116,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
             <>
               <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
                 loading={loading}
@@ -166,6 +168,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
           <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}
             loading={loading}

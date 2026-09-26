@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { $createLinkNode } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { useEffect } from 'react'
 import { NoteEditorContextProvider } from '../context'
@@ -85,23 +85,6 @@ describe('Editor', () => {
       expect(themeCss).toContain('.note-editor-theme_link')
       expect(themeCss).toContain('font-weight: 500;')
       expect(themeCss).toContain('text-decoration: underline;')
-    })
-  })
-
-  // Focus and blur should toggle workflow shortcuts while editing content.
-  describe('Focus Management', () => {
-    it('should disable shortcuts on focus and re-enable them on blur-sm', () => {
-      const setHistoryShortcutsEnabled = vi.fn()
-
-      renderEditor({ setHistoryShortcutsEnabled })
-
-      const contentEditable = screen.getByRole('textbox')
-
-      fireEvent.focus(contentEditable)
-      fireEvent.blur(contentEditable)
-
-      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(1, false)
-      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(2, true)
     })
   })
 

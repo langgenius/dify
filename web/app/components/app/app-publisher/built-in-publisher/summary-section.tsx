@@ -5,7 +5,8 @@ import type { AppPublisherProps } from '../types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -59,6 +60,9 @@ export function PublisherSummarySection({
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const publishingRef = useRef(false)
+  const [publishing, setPublishing] = useState(false)
   const { t } = useTranslation(['workflow', 'workflowHistory'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
@@ -66,15 +70,46 @@ export function PublisherSummarySection({
   const publisherName = versionInfo?.created_by?.name
   const markedName = versionInfo?.marked_name
   const markedComment = versionInfo?.marked_comment
-  const publishButtonDisabled = publishDisabled || published
+  const publishButtonDisabled = publishDisabled || published || publishing
   const publishButtonLabel = published
     ? t(($) => $['common.published'], { ns: 'workflow' })
     : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
       : t(($) => $['common.publish'], { ns: 'workflow' })
 
+  async function requestPublish(params?: ModelAndParameter | PublishWorkflowParams) {
+    if (publishButtonDisabled || publishingRef.current) return
+    publishingRef.current = true
+    setPublishing(true)
+    try {
+      await handlePublish(params)
+    } finally {
+      publishingRef.current = false
+      setPublishing(false)
+    }
+  }
+
+  useHotkey(
+    APP_PUBLISH_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      void requestPublish()
+    },
+    {
+      target: summaryRef,
+      enabled: !publishButtonDisabled && !debugWithMultipleModel,
+      ignoreInputs: false,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
+
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div ref={summaryRef} className="flex flex-col gap-3 p-4">
       {environmentTabs}
       <div className="flex items-start gap-1 px-1 py-0.5">
         <PublisherTimelineMarker position="top" />
@@ -178,14 +213,14 @@ export function PublisherSummarySection({
           <PublishWithMultipleModel
             disabled={publishButtonDisabled}
             multipleModelConfigs={multipleModelConfigs}
-            onSelect={(item) => handlePublish(item)}
+            onSelect={(item) => requestPublish(item)}
           />
         ) : (
           <>
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => handlePublish()}
+              onClick={() => void requestPublish()}
               disabled={publishButtonDisabled}
             >
               {publishDisabled ? (
@@ -194,9 +229,9 @@ export function PublisherSummarySection({
                 <span className="flex items-center gap-1">
                   <span>{publishButtonLabel}</span>
                   <KbdGroup aria-hidden>
-                    {APP_PUBLISH_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(APP_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white" disabled={publishButtonDisabled}>
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>
