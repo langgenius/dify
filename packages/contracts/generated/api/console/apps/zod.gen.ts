@@ -322,24 +322,6 @@ export const zMessageFeedbackPayload = z.object({
 export const zTextFileResponse = z.string()
 
 /**
- * ModelConfigRequest
- */
-export const zModelConfigRequest = z.object({
-  agent_mode: z.record(z.string(), z.unknown()).nullish(),
-  configs: z.record(z.string(), z.unknown()).nullish(),
-  dataset_configs: z.record(z.string(), z.unknown()).nullish(),
-  model: z.string().nullish(),
-  more_like_this: z.record(z.string(), z.unknown()).nullish(),
-  opening_statement: z.string().nullish(),
-  provider: z.string().nullish(),
-  retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  speech_to_text: z.record(z.string(), z.unknown()).nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  text_to_speech: z.record(z.string(), z.unknown()).nullish(),
-  tools: z.array(z.record(z.string(), z.unknown())).nullish(),
-})
-
-/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
@@ -1169,6 +1151,43 @@ export const zMessageFile = z.object({
   type: z.string(),
   upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
+})
+
+/**
+ * AppModelSelectionPayload
+ */
+export const zAppModelSelectionPayload = z.object({
+  completion_params: z.record(z.string(), z.unknown()),
+  mode: z.string().nullish(),
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * AppModelConfigPayload
+ *
+ * Transport shape; app-mode validators own defaults and feature-specific rules.
+ */
+export const zAppModelConfigPayload = z.object({
+  agent_mode: z.record(z.string(), z.unknown()).nullish(),
+  chat_prompt_config: z.record(z.string(), z.unknown()).nullish(),
+  completion_prompt_config: z.record(z.string(), z.unknown()).nullish(),
+  dataset_configs: z.record(z.string(), z.unknown()).nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: z.array(z.record(z.string(), z.unknown())).nullish(),
+  file_upload: z.record(z.string(), z.unknown()).nullish(),
+  model: zAppModelSelectionPayload,
+  more_like_this: z.record(z.string(), z.unknown()).nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: z.record(z.string(), z.unknown()).nullish(),
+  sensitive_word_avoidance: z.record(z.string(), z.unknown()).nullish(),
+  speech_to_text: z.record(z.string(), z.unknown()).nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: z.record(z.string(), z.unknown()).nullish(),
+  text_to_speech: z.record(z.string(), z.unknown()).nullish(),
+  user_input_form: z.array(z.record(z.string(), z.unknown())).nullish(),
 })
 
 /**
@@ -5654,7 +5673,7 @@ export const zGetAppsByAppIdMessagesByMessageIdPath = z.object({
  */
 export const zGetAppsByAppIdMessagesByMessageIdResponse = zMessageDetailResponse
 
-export const zPostAppsByAppIdModelConfigBody = zModelConfigRequest
+export const zPostAppsByAppIdModelConfigBody = zAppModelConfigPayload
 
 export const zPostAppsByAppIdModelConfigPath = z.object({
   app_id: z.uuid(),

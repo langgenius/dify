@@ -537,35 +537,53 @@ export type MessageDetailResponse = {
   workflow_run_id?: string | null
 }
 
-export type ModelConfigRequest = {
+export type AppModelConfigPayload = {
   agent_mode?: {
     [key: string]: unknown
   } | null
-  configs?: {
+  chat_prompt_config?: {
+    [key: string]: unknown
+  } | null
+  completion_prompt_config?: {
     [key: string]: unknown
   } | null
   dataset_configs?: {
     [key: string]: unknown
   } | null
-  model?: string | null
+  dataset_query_variable?: string | null
+  external_data_tools?: Array<{
+    [key: string]: unknown
+  }> | null
+  file_upload?: {
+    [key: string]: unknown
+  } | null
+  model: AppModelSelectionPayload
   more_like_this?: {
     [key: string]: unknown
   } | null
   opening_statement?: string | null
-  provider?: string | null
-  retrieval_model?: {
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: {
+    [key: string]: unknown
+  } | null
+  sensitive_word_avoidance?: {
     [key: string]: unknown
   } | null
   speech_to_text?: {
     [key: string]: unknown
   } | null
   suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: {
+    [key: string]: unknown
+  } | null
   text_to_speech?: {
     [key: string]: unknown
   } | null
-  tools?: Array<{
+  user_input_form?: Array<{
     [key: string]: unknown
   }> | null
+  [key: string]: unknown
 }
 
 export type AppNamePayload = {
@@ -1618,6 +1636,16 @@ export type MessageFile = {
   type: string
   upload_file_id?: string | null
   url?: string | null
+}
+
+export type AppModelSelectionPayload = {
+  completion_params: {
+    [key: string]: unknown
+  }
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]: unknown
 }
 
 export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
@@ -4944,7 +4972,7 @@ export type GetAppsByAppIdMessagesByMessageIdResponse =
   GetAppsByAppIdMessagesByMessageIdResponses[keyof GetAppsByAppIdMessagesByMessageIdResponses]
 
 export type PostAppsByAppIdModelConfigData = {
-  body: ModelConfigRequest
+  body: AppModelConfigPayload
   path: {
     app_id: string
   }

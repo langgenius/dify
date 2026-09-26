@@ -2811,7 +2811,7 @@ Update application model configuration
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ModelConfigRequest](#modelconfigrequest)<br> |
+|  Yes | **application/json**: [AppModelConfigPayload](#appmodelconfigpayload)<br> |
 
 #### Responses
 
@@ -16189,6 +16189,32 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
+#### AppModelConfigPayload
+
+Transport shape; app-mode validators own defaults and feature-specific rules.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | object |  | No |
+| chat_prompt_config | object |  | No |
+| completion_prompt_config | object |  | No |
+| dataset_configs | object |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools | [ object ] |  | No |
+| file_upload | object |  | No |
+| model | [AppModelSelectionPayload](#appmodelselectionpayload) |  | Yes |
+| more_like_this | object |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource | object |  | No |
+| sensitive_word_avoidance | object |  | No |
+| speech_to_text | object |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | object |  | No |
+| text_to_speech | object |  | No |
+| user_input_form | [ object ] |  | No |
+
 #### AppModelConfigResponse
 
 | Name | Type | Description | Required |
@@ -16217,6 +16243,15 @@ AppMCPServer Status Enum
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
 | user_input_form | [ [AppTextInputFormResponse](#apptextinputformresponse)<br>[AppSelectFormResponse](#appselectformresponse)<br>[AppParagraphFormResponse](#appparagraphformresponse)<br>[AppNumberFormResponse](#appnumberformresponse)<br>[AppCheckboxFormResponse](#appcheckboxformresponse)<br>[AppFileFormResponse](#appfileformresponse)<br>[AppFileListFormResponse](#appfilelistformresponse)<br>[AppExternalDataToolFormResponse](#appexternaldatatoolformresponse)<br>[AppJsonObjectFormResponse](#appjsonobjectformresponse) ] |  | Yes |
+
+#### AppModelSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | Yes |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### AppModelSelectionResponse
 
@@ -20096,23 +20131,6 @@ Metadata operation data
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
-
-#### ModelConfigRequest
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_mode | object | Agent mode configuration | No |
-| configs | object | Model configuration parameters | No |
-| dataset_configs | object | Dataset configurations | No |
-| model | string | Model name | No |
-| more_like_this | object | More like this configuration | No |
-| opening_statement | string | Opening statement | No |
-| provider | string | Model provider | No |
-| retrieval_model | object | Retrieval model configuration | No |
-| speech_to_text | object | Speech to text configuration | No |
-| suggested_questions | [ string ] | Suggested questions | No |
-| text_to_speech | object | Text to speech configuration | No |
-| tools | [ object ] | Available tools | No |
 
 #### ModelCredentialResponse
 
