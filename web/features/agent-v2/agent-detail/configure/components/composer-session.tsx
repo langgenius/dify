@@ -2,7 +2,6 @@
 
 import type {
   AgentAppDetailWithSite,
-  AgentIconType,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
@@ -152,7 +151,6 @@ function AgentConfigurePageComposerSession({
     normalAgentSoulConfig: agentSoulConfig,
     onModeChange: onRightPanelModeChange,
   })
-  const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
       onSuccess: ({
@@ -231,7 +229,6 @@ function AgentConfigurePageComposerSession({
       >
         <AgentConfigurePageComposerContent
           agentId={agentId}
-          agentIconType={agentIconType}
           buildDraft={buildDraft}
           configureData={configureData}
           isRefreshingDebugConversation={
@@ -254,7 +251,6 @@ function AgentConfigurePageComposerSession({
 
 function AgentConfigurePageComposerContent({
   agentId,
-  agentIconType,
   buildDraft,
   configureData,
   isRefreshingDebugConversation,
@@ -269,7 +265,6 @@ function AgentConfigurePageComposerContent({
   onSelectVersion,
 }: {
   agentId: string
-  agentIconType: AgentIconType | null | undefined
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
   configureData: ReturnType<typeof useAgentConfigureData>
   isRefreshingDebugConversation: boolean
@@ -554,9 +549,6 @@ function AgentConfigurePageComposerContent({
               <AgentConfigureRightPanelChat
                 agentId={agentId}
                 answerActionPosition="below"
-                agentIcon={agentQuery.data?.icon}
-                agentIconBackground={agentQuery.data?.icon_background}
-                agentIconType={agentIconType}
                 agentName={agentQuery.data?.name}
                 agentSoulConfig={buildDraft.agentSoulConfig}
                 clearChatList={clearChatByMode[rightPanelChatMode]}

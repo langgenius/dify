@@ -1,7 +1,11 @@
+import type { ReactElement } from 'react'
 import type { AgentChatMessageSender } from '../chat-conversation'
 import type { AgentChatRuntimeProps } from '../chat-runtime'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { render as renderConsole } from '@/test/console/render'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentBuildChat } from '../build-chat'
 import { sendBuildChatMessage } from '../build-chat-request'
 import { AgentPreviewChat } from '../preview-chat'
@@ -26,6 +30,23 @@ const commonProps = {
   agentId: 'agent-1',
   clearChatList: false,
   onClearChatListChange: vi.fn(),
+}
+
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({
+      input: { params: { agent_id: commonProps.agentId } },
+    }),
+    createAgentFixture({ name: 'Research Agent' }),
+  )
+  return renderConsole(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 }
 
 describe('Agent chat mode request routing', () => {
@@ -56,12 +77,11 @@ describe('Agent chat mode request routing', () => {
   })
 
   it('should show the unconfigured notice below the Preview description', () => {
-    render(<AgentPreviewChat {...commonProps} agentName="Research Agent" />)
+    render(<AgentPreviewChat {...commonProps} />)
 
     const renderEmptyState = runtimePropsMock.mock.calls.at(-1)?.[0].renderEmptyState
     const emptyStateView = render(
       renderEmptyState({
-        agentName: 'Research Agent',
         showUnconfiguredNotice: true,
       }),
     )
@@ -79,7 +99,6 @@ describe('Agent chat mode request routing', () => {
 
     emptyStateView.rerender(
       renderEmptyState({
-        agentName: 'Research Agent',
         showUnconfiguredNotice: false,
       }),
     )
