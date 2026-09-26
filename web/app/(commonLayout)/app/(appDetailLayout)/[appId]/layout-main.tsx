@@ -115,7 +115,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = ({ children, appId }) => {
     const subscription =
       import('@/app/components/workflow/collaboration/core/collaboration-manager')
         .then(({ collaborationManager }) =>
-          collaborationManager.onAppMetaUpdate(() => {
+          collaborationManager.onAppMetaUpdate(appId, () => {
             void Promise.all([
               queryClient.invalidateQueries({
                 queryKey: consoleQuery.apps.byAppId.get.queryKey({

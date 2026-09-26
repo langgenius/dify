@@ -49,7 +49,7 @@ vi.mock('@/next/navigation', () => mockNavigation)
 const { metadataListeners } = vi.hoisted(() => ({ metadataListeners: new Set<() => void>() }))
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    onAppMetaUpdate: (listener: () => void) => {
+    onAppMetaUpdate: (_appId: string, listener: () => void) => {
       metadataListeners.add(listener)
       return () => metadataListeners.delete(listener)
     },

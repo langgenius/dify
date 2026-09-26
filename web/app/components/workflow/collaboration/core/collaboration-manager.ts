@@ -172,6 +172,8 @@ export class CollaborationManager {
   private edgesMap: LoroMap<Record<string, Value>> | null = null
   private draftRevisionMap: LoroMap<{ last_replacement_id: string | null }> | null = null
   private eventEmitter = new EventEmitter()
+  // App routes outlive workflow socket connections and release these subscriptions themselves.
+  private appMetaEventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: ReactFlowStore | null = null
   private isLeader = false
@@ -551,6 +553,7 @@ export class CollaborationManager {
 
   destroy = (): void => {
     this.disconnect()
+    this.appMetaEventEmitter.removeAllListeners()
   }
 
   private async loadCrdtRuntime(): Promise<CrdtRuntime> {
@@ -1412,8 +1415,8 @@ export class CollaborationManager {
     return this.eventEmitter.on('appPublishUpdate', callback)
   }
 
-  onAppMetaUpdate(callback: (update: CollaborationUpdate) => void): () => void {
-    return this.eventEmitter.on('appMetaUpdate', callback)
+  onAppMetaUpdate(appId: string, callback: (update: CollaborationUpdate) => void): () => void {
+    return this.appMetaEventEmitter.on(appId, callback)
   }
 
   onNodePanelPresenceUpdate(callback: (presence: NodePanelPresenceMap) => void): () => void {
@@ -2107,6 +2110,7 @@ export class CollaborationManager {
   }
 
   private setupSocketEventListeners(socket: Socket): void {
+    const appId = this.currentAppId
     socket.on(
       'collaboration_update',
       (update: CollaborationUpdate, socketAcknowledgement?: (result: unknown) => void) => {
@@ -2124,7 +2128,8 @@ export class CollaborationManager {
         } else if (update.type === 'vars_and_features_update') {
           this.eventEmitter.emit('varsAndFeaturesUpdate', update)
         } else if (update.type === 'app_meta_update') {
-          this.eventEmitter.emit('appMetaUpdate', update)
+          if (appId && appId === this.currentAppId && socket === this.getActiveSocket())
+            this.appMetaEventEmitter.emit(appId, update)
         } else if (update.type === 'app_publish_update') {
           this.eventEmitter.emit('appPublishUpdate', update)
         } else if (update.type === 'workflow_update') {

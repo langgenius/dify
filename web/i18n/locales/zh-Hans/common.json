@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "生成失败",
   "actionMsg.modifiedSuccessfully": "修改成功",
   "actionMsg.modifiedUnsuccessfully": "修改失败",
-  "actionMsg.noModification": "暂无修改",
   "actionMsg.payCancelled": "已取消支付",
   "actionMsg.paySucceeded": "已支付成功",
   "agentStrategyPage.description": "定义 AI Agent 的推理与决策方式——包括它如何选择工具、处理结果、自主解决问题。",
