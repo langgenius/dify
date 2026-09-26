@@ -103,7 +103,6 @@ describe('SkillDetailPage clipboard', () => {
     const copyMenuItem = screen.getByRole('menuitem', {
       name: /skillManagement\.detail\.copyFile/,
     })
-    copyMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
     fireEvent.keyDown(copyMenuItem, {
       code: 'KeyC',
       key: 'c',
@@ -114,6 +113,68 @@ describe('SkillDetailPage clipboard', () => {
       'skill.skillManagement.detail.copyContentSuccess',
     )
   })
+
+  it('copies the dropdown file instead of the previously selected file', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSelectionSkillDetail()
+    renderSkillDetailPage()
+    await waitFor(() => expect(getFileTreeButton('SKILL.md')).toBeInTheDocument())
+    await user.click(getFileTreeButton('SKILL.md'))
+    await openFileTreeActions(user, 'README.md')
+    const copyMenuItem = await screen.findByRole('menuitem', {
+      name: /skillManagement\.detail\.copyFile/,
+    })
+    fireEvent.keyDown(copyMenuItem, {
+      key: 'c',
+      code: 'KeyC',
+      ...primaryModifier,
+      isComposing: true,
+    })
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled()
+    fireEvent.keyDown(copyMenuItem, { key: 'c', code: 'KeyC', ...primaryModifier })
+    expect(
+      fireEvent.keyDown(copyMenuItem, {
+        key: 'c',
+        code: 'KeyC',
+        ...primaryModifier,
+        repeat: true,
+      }),
+    ).toBe(false)
+
+    expect(mocks.copyToClipboard).toHaveBeenCalledExactlyOnceWith('# README')
+  })
+
+  it.each([false, true])(
+    'cuts the dropdown file while preserving an existing multi-selection: %s',
+    async (multiSelection) => {
+      const user = userEvent.setup()
+      mocks.skillDetail = createSelectionSkillDetail()
+      renderSkillDetailPage()
+      await waitFor(() => expect(getFileTreeButton('SKILL.md')).toBeInTheDocument())
+      await user.click(getFileTreeButton('SKILL.md'))
+      if (multiSelection) fireEvent.click(getFileTreeButton('README.md'), primaryModifier)
+      await openFileTreeActions(user, 'README.md')
+      const cutMenuItem = await screen.findByRole('menuitem', {
+        name: /skillManagement\.detail\.cutFile/,
+      })
+      fireEvent.keyDown(cutMenuItem, { key: 'x', code: 'KeyX', ...primaryModifier })
+      await user.keyboard('{Escape}')
+      await user.click(getFileTreeButton('references'))
+      fireEvent.paste(getFileTreeButton('references'))
+
+      const paths = multiSelection ? ['SKILL.md', 'README.md'] : ['README.md']
+      await waitFor(() => expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(paths.length))
+      expect(mocks.saveDraftFileMutationFn.mock.calls.map(([request]) => request.body)).toEqual(
+        paths.map((path) =>
+          expect.objectContaining({
+            operation: 'rename',
+            path,
+            target_path: `references/${path}`,
+          }),
+        ),
+      )
+    },
+  )
 
   it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
     renderSkillDetailPage()
@@ -131,7 +192,6 @@ describe('SkillDetailPage clipboard', () => {
     const cutMenuItem = screen.getByRole('menuitem', {
       name: /skill\.skillManagement\.detail\.cutFile/,
     })
-    cutMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
     fireEvent.keyDown(cutMenuItem, {
       code: 'KeyX',
       key: 'x',

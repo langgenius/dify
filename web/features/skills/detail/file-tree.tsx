@@ -961,34 +961,12 @@ export function FileTree({
     !readonly && !!shortcutTargetPath && !fileMutation.isPending && !inlineAction
   const isInSidebar = (target: EventTarget | null) =>
     target instanceof Node && !!sidebarRef.current?.contains(target)
-  const handleOpenMenuHotkey = (event: ReactKeyboardEvent<HTMLElement>) => {
+  const handleOpenMenuPaste = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (readonly || fileMutation.isPending || inlineAction) return
     if (event.defaultPrevented || event.nativeEvent.isComposing) return
     if (!(event.target instanceof Element) || !event.target.closest('[data-skill-file-menu]'))
       return
     if (isEditableKeyboardTarget(event.target)) return
-
-    if (
-      shortcutTargetPath &&
-      matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.cut.command)
-    ) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      handleCut(shortcutTargetPath)
-      return
-    }
-
-    if (
-      shortcutTargetPath &&
-      matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.copy.command)
-    ) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      handleCopy(shortcutTargetPath)
-      return
-    }
 
     if (clipboard && matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.paste.command)) {
       event.preventDefault()
@@ -996,6 +974,25 @@ export function FileTree({
       if (event.repeat) return
       handlePaste(getPasteTargetDirectory())
     }
+  }
+
+  const handleRootMenuKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (event.defaultPrevented || event.nativeEvent.isComposing) return
+    if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    const action = matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.copy.command)
+      ? handleCopy
+      : matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.cut.command)
+        ? handleCut
+        : undefined
+    if (!action) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    if (event.repeat) return
+    action(shortcutTargetPath)
   }
 
   useHotkey(
@@ -1165,10 +1162,11 @@ export function FileTree({
 
   return (
     <>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The sidebar delegates paste shortcuts from its portalled menus after child handlers. */}
       <section
         aria-labelledby={filesTitleId}
         ref={sidebarRef}
-        onKeyDownCapture={handleOpenMenuHotkey}
+        onKeyDown={handleOpenMenuPaste}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
           'relative flex h-full shrink-0 bg-background-body p-1',
@@ -1366,6 +1364,7 @@ export function FileTree({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   data-skill-file-menu
+                  onKeyDown={handleRootMenuKeyDown}
                   placement="bottom-end"
                   className={skillFileMenuPopupClassName}
                 >
@@ -1512,7 +1511,11 @@ export function FileTree({
                       </ul>
                     )}
                   </ContextMenuTrigger>
-                  <ContextMenuContent data-skill-file-menu className={skillFileMenuPopupClassName}>
+                  <ContextMenuContent
+                    data-skill-file-menu
+                    className={skillFileMenuPopupClassName}
+                    onKeyDown={handleRootMenuKeyDown}
+                  >
                     <RootFileActionMenuItems
                       kind="context"
                       onCreateFile={() =>
