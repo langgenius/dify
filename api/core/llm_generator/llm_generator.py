@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast
 
 import json_repair
@@ -53,6 +54,14 @@ class SuggestedQuestionsModelConfig(TypedDict):
     provider: str
     name: str
     completion_params: NotRequired[dict[str, object]]
+
+
+@dataclass(frozen=True)
+class PreparedSuggestedQuestionsModel:
+    """Resolved model credentials; ``None`` parameters select the default-model tuning."""
+
+    model_instance: ModelInstance
+    completion_params: dict[str, object] | None
 
 
 def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[dict[str, object], list[str]]:
@@ -305,13 +314,26 @@ class LLMGenerator:
         instruction_prompt: str | None = None,
         model_config: object | None = None,
     ) -> Sequence[str]:
-        output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
-        format_instructions = output_parser.get_format_instructions()
+        prepared_model = cls.prepare_suggested_questions_model(tenant_id, model_config=model_config)
+        if prepared_model is None:
+            return []
+        return cls.invoke_suggested_questions_after_answer(
+            prepared_model, histories, instruction_prompt=instruction_prompt
+        )
 
-        prompt_template = PromptTemplateParser(template="{{histories}}\n{{format_instructions}}\nquestions:\n")
+    @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.SUGGESTED_QUESTIONS)
+    def prepare_suggested_questions_model(
+        cls,
+        tenant_id: str,
+        *,
+        model_config: object | None = None,
+    ) -> PreparedSuggestedQuestionsModel | None:
+        """Resolve the model before its caller releases database sessions.
 
-        prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
-
+        ``None`` means no usable configured or default model was found. Schema
+        inspection and generation belong to invocation, after the read phase.
+        """
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             configured_model = cast(dict[str, object], model_config) if isinstance(model_config, dict) else {}
@@ -346,7 +368,33 @@ class LLMGenerator:
                 )
         except Exception:
             logger.exception("Failed to resolve the suggested-questions model")
-            return []
+            return None
+
+        completion_params: dict[str, object] | None = None
+        if use_configured_model:
+            configured_completion_params = configured_model.get("completion_params")
+            completion_params = (
+                dict(configured_completion_params) if isinstance(configured_completion_params, dict) else {}
+            )
+        return PreparedSuggestedQuestionsModel(
+            model_instance=model_instance,
+            completion_params=completion_params,
+        )
+
+    @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.SUGGESTED_QUESTIONS)
+    def invoke_suggested_questions_after_answer(
+        cls,
+        prepared_model: PreparedSuggestedQuestionsModel,
+        histories: str,
+        *,
+        instruction_prompt: str | None = None,
+    ) -> Sequence[str]:
+        """Generate with an already resolved model without repeating model resolution."""
+        output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
+        format_instructions = output_parser.get_format_instructions()
+        prompt_template = PromptTemplateParser(template="{{histories}}\n{{format_instructions}}\nquestions:\n")
+        prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
 
         prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
@@ -355,12 +403,9 @@ class LLMGenerator:
         try:
             model_parameters: dict[str, object]
             stop: list[str]
-            configured_completion_params = configured_model.get("completion_params")
-            if use_configured_model and isinstance(configured_completion_params, dict):
-                model_parameters, stop = _normalize_completion_params(configured_completion_params)
-            elif use_configured_model:
-                model_parameters = {}
-                stop = []
+            model_instance = prepared_model.model_instance
+            if prepared_model.completion_params is not None:
+                model_parameters, stop = _normalize_completion_params(prepared_model.completion_params)
             else:
                 # Default-model generation keeps the built-in suggested-questions tuning.
                 model_parameters = _default_suggested_questions_model_parameters(model_instance)
