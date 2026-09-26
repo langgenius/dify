@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,8 +22,6 @@ def _binding(
         disabled=disabled,
     )
     binding.id = binding_id
-    binding.created_at = datetime(2026, 1, 1)
-    binding.updated_at = datetime(2026, 1, 2)
     return binding
 
 
