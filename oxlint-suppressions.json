@@ -495,7 +495,7 @@
   },
   "web/app/components/app/log/__tests__/list.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 9
     }
   },
   "web/app/components/app/log/filter.tsx": {
@@ -775,14 +775,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 12
-    }
-  },
-  "web/app/components/base/chat/chat/log/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat/question.tsx": {

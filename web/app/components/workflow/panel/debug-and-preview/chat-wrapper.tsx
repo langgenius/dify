@@ -40,6 +40,7 @@ const ChatWrapper = ({
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const inputs = useStore((s) => s.inputs)
   const setInputs = useStore((s) => s.setInputs)
 
@@ -101,8 +102,9 @@ const ChatWrapper = ({
 
   const handleRestartChat = useCallback(() => {
     handleRestart()
+    setMessageLogItem(undefined)
     setInputs(initialInputs)
-  }, [handleRestart, setInputs, initialInputs])
+  }, [handleRestart, setInputs, initialInputs, setMessageLogItem])
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -223,7 +225,7 @@ const ChatWrapper = ({
         }
         noSpacing
         suggestedQuestions={suggestedQuestions}
-        showPromptLog
+        onOpenLog={setMessageLogItem}
         chatAnswerContainerInner="pr-2!"
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}

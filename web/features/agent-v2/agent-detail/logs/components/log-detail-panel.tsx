@@ -147,7 +147,6 @@ export function AgentLogDetailPanel({
               chatList={chatList}
               noChatInput
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
               onFeedback={handleFeedback}
             />
