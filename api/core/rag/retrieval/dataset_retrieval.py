@@ -1389,7 +1389,9 @@ class DatasetRetrieval:
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
-                top_k=retrieve_config.top_k or 4,
+                # top_k=0 is a legal explicit value (the non-tool MULTIPLE path
+                # honors it); only None falls back to the default.
+                top_k=retrieve_config.top_k if retrieve_config.top_k is not None else 4,
                 score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,

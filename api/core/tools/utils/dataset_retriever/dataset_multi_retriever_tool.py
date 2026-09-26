@@ -171,6 +171,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+            dataset_top_k = retrieval_model.get("top_k")
 
             if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
@@ -178,7 +179,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
-                    top_k=retrieval_model.get("top_k") or 4,
+                    # top_k=0 is a legal explicit value; only None falls back to 4.
+                    top_k=dataset_top_k if dataset_top_k is not None else 4,
                 )
                 if documents:
                     all_documents.extend(documents)
@@ -189,7 +191,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         retrieval_method=retrieval_model["search_method"],
                         dataset_id=dataset.id,
                         query=query,
-                        top_k=retrieval_model.get("top_k") or 4,
+                        # top_k=0 is a legal explicit value; only None falls back to 4.
+                        top_k=dataset_top_k if dataset_top_k is not None else 4,
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,
