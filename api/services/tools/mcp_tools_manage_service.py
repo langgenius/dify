@@ -21,6 +21,7 @@ from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.types import Tool as MCPTool
+from core.mcp.types import Tool as MCPToolType
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
@@ -81,6 +82,37 @@ class MCPToolManageService:
 
     def __init__(self, session: Session):
         self._session = session
+
+    @staticmethod
+    def _normalize_mcp_tool_data(tool: MCPToolType) -> dict[str, Any]:
+        """Normalize MCP tool data before persisting to database.
+
+        Ensures optional fields that are absent from the MCP server response
+        do not get serialized as JSON null, which breaks downstream validation.
+
+        Per MCP spec: if title is not provided, fall back to annotations.title,
+        then to name.
+        """
+        data = tool.model_dump()
+
+        # Ensure description is a non-null string
+        if data.get("description") is None:
+            data["description"] = ""
+
+        # Normalize title: fall back to annotations.title, then name
+        if data.get("title") is None:
+            annotations = data.get("annotations") or {}
+            data["title"] = annotations.get("title") or tool.name
+
+        # Ensure outputSchema is a dict, not None
+        if data.get("outputSchema") is None:
+            data["outputSchema"] = {}
+
+        # Remove meta if None (not part of standard tool schema)
+        if data.get("meta") is None:
+            data.pop("meta", None)
+
+        return data
 
     # ========== Provider CRUD Operations ==========
 
@@ -385,13 +417,8 @@ class MCPToolManageService:
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
 
-        # Update database with retrieved tools (ensure description is a non-null string)
-        tools_payload = []
-        for tool in tools:
-            data = tool.model_dump()
-            if data.get("description") is None:
-                data["description"] = ""
-            tools_payload.append(data)
+        # Update database with retrieved tools
+        tools_payload = [self._normalize_mcp_tool_data(tool) for tool in tools]
         db_provider.tools = json.dumps(tools_payload)
         db_provider.authed = True
         db_provider.updated_at = datetime.now()
@@ -727,13 +754,8 @@ class MCPToolManageService:
                 sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
-                # Ensure tool descriptions are non-null in payload
-                tools_payload = []
-                for t in tools:
-                    d = t.model_dump()
-                    if d.get("description") is None:
-                        d["description"] = ""
-                    tools_payload.append(d)
+                # Normalize tool data to avoid serializing None values
+                tools_payload = [MCPToolManageService._normalize_mcp_tool_data(t) for t in tools]
                 return ReconnectResult(
                     authed=True,
                     tools=json.dumps(tools_payload),

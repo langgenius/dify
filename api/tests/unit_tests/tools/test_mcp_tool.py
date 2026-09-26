@@ -17,11 +17,15 @@ from core.mcp.types import (
     TextContent,
     TextResourceContents,
 )
+from core.mcp.types import (
+    Tool as MCPToolType,
+)
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.mcp_tool.tool import MCPTool
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 
 @pytest.fixture
@@ -375,3 +379,144 @@ class TestMCPToolUsageExtraction:
             )
             if expected_total:
                 assert usage.total_tokens == expected_total
+
+
+class TestMCPToolNormalization:
+    """Test MCP tool data normalization before persistence (issue #42453)."""
+
+    def test_normalize_tool_without_title_falls_back_to_name(self):
+        """When title is absent, fall back to tool name."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "web_search_exa"
+        assert result["description"] == "Search the web"
+        assert result["outputSchema"] == {}
+
+    def test_normalize_tool_with_title_preserves_title(self):
+        """When title is provided, keep it."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            title="Web Search",
+            description="Search the web",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "Web Search"
+
+    def test_normalize_tool_title_falls_back_to_annotations_title(self):
+        """When title is absent but annotations.title exists, use annotations.title."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web",
+            inputSchema={"type": "object"},
+            annotations={"title": "Exa Web Search"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "Exa Web Search"
+
+    def test_normalize_tool_without_description_gives_empty_string(self):
+        """When description is absent, use empty string."""
+        tool = MCPToolType(
+            name="test_tool",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["description"] == ""
+        assert result["title"] == "test_tool"
+
+    def test_normalize_tool_removes_none_meta(self):
+        """None meta field should be removed from output."""
+        tool = MCPToolType(
+            name="test_tool",
+            description="A tool",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert "meta" not in result or result["meta"] is not None
+
+    def test_normalized_tool_no_none_title_in_json(self):
+        """Serialized normalized tool should not contain title: null."""
+        import json
+
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web for any topic",
+            inputSchema={"type": "object", "properties": {}},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        serialized = json.dumps(result)
+        assert '"title": null' not in serialized
+        assert '"title": "web_search_exa"' in serialized
+
+    def test_display_title_consistent_with_normalized_storage(self):
+        """Display title from mcp_tool_to_user_tool must match normalized stored title.
+
+        Calls the real ToolTransformService.mcp_tool_to_user_tool() function
+        to verify that the label.en_US matches what normalization would store.
+        Covers: explicit title, annotations.title only, neither.
+        """
+        import json
+        from unittest.mock import Mock
+
+        from services.tools.tools_transform_service import ToolTransformService
+
+        def _get_label(tool: MCPToolType) -> str:
+            """Call the real display function and return label.en_US."""
+            result = ToolTransformService.mcp_tool_to_user_tool(Mock(), [tool], user_name="test_user")
+            return result[0].label.en_US
+
+        def _roundtrip(tool: MCPToolType) -> MCPToolType:
+            """Simulate save-to-DB then read-back via normalization + JSON."""
+            normalized = MCPToolManageService._normalize_mcp_tool_data(tool)
+            return MCPToolType.model_validate(json.loads(json.dumps(normalized)))
+
+        cases = [
+            # (tool, expected_title)
+            # Case 1: no title, no annotations.title -> name
+            (
+                MCPToolType(name="web_search_exa", description="Search", inputSchema={"type": "object"}),
+                "web_search_exa",
+            ),
+            # Case 2: no title, has annotations.title -> annotations.title
+            (
+                MCPToolType(
+                    name="web_search_exa",
+                    description="Search",
+                    inputSchema={"type": "object"},
+                    annotations={"title": "Exa Web Search"},
+                ),
+                "Exa Web Search",
+            ),
+            # Case 3: explicit title -> title
+            (
+                MCPToolType(
+                    name="web_search_exa",
+                    title="My Search",
+                    description="Search",
+                    inputSchema={"type": "object"},
+                ),
+                "My Search",
+            ),
+        ]
+
+        for tool, expected in cases:
+            # Original tool: display function must produce expected title
+            display_label = _get_label(tool)
+            assert display_label == expected, (
+                f"Display label for {tool.name} (title={tool.title}): expected {expected!r}, got {display_label!r}"
+            )
+
+            # Normalized + JSON roundtrip: display function must produce same title
+            restored = _roundtrip(tool)
+            restored_label = _get_label(restored)
+            assert restored_label == expected, (
+                f"Restored display label for {tool.name}: expected {expected!r}, got {restored_label!r}"
+            )
+
+            # Stored title must also match
+            stored = json.loads(json.dumps(MCPToolManageService._normalize_mcp_tool_data(tool)))
+            assert stored["title"] == expected
