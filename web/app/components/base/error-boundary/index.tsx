@@ -26,7 +26,6 @@ type ErrorBoundaryProps = {
   resetOnPropsChange?: boolean
   isolate?: boolean
   enableRecovery?: boolean
-  canRetry?: (error: Error) => boolean
   customTitle?: string
   customMessage?: string
 }
@@ -106,7 +105,6 @@ class ErrorBoundaryInner extends React.Component<
       className,
       isolate = true,
       enableRecovery = true,
-      canRetry,
       customTitle,
       customMessage,
       copy,
@@ -119,8 +117,6 @@ class ErrorBoundaryInner extends React.Component<
 
         return fallback
       }
-
-      const retryAllowed = canRetry?.(error) ?? true
 
       return (
         <div
@@ -175,16 +171,10 @@ class ErrorBoundaryInner extends React.Component<
 
           {enableRecovery && (
             <div className="flex gap-3">
-              {retryAllowed && (
-                <Button variant="primary" size="small" onClick={resetErrorBoundary}>
-                  {copy.tryAgain}
-                </Button>
-              )}
-              <Button
-                variant={retryAllowed ? 'secondary' : 'primary'}
-                size="small"
-                onClick={() => window.location.reload()}
-              >
+              <Button variant="primary" size="small" onClick={resetErrorBoundary}>
+                {copy.tryAgain}
+              </Button>
+              <Button variant="secondary" size="small" onClick={() => window.location.reload()}>
                 {copy.reload}
               </Button>
             </div>

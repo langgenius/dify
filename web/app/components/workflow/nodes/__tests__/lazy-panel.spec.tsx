@@ -57,72 +57,65 @@ describe('lazy node panels', () => {
     expect(screen.getByRole('textbox', { name: 'Second node' })).toBeInTheDocument()
   })
 
-  it('offers an explicit reload for an import failure without reloading automatically', async () => {
+  it('keeps the surrounding editor available and retries a failed panel import', async () => {
     const user = userEvent.setup()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    const Panel = lazyPanel<EditorProps>(() => Promise.reject(new Error('Chunk unavailable')))
-    try {
-      const { rerender } = render(
-        <>
-          <button type="button">Close panel</button>
-          <Panel title="Unavailable panel" />
-        </>,
-      )
-      const reloadButton = await screen.findByRole('button', {
-        name: 'common.errorBoundary.reloadPage',
-      })
-      expect(
-        screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
-      ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Close panel' })).toBeEnabled()
-      expect(reload).not.toHaveBeenCalled()
-      await user.click(reloadButton)
-      expect(reload).toHaveBeenCalledTimes(1)
-
-      rerender(<div />)
-      rerender(<Panel title="Unavailable panel" />)
-      expect(
-        await screen.findByRole('button', { name: 'common.errorBoundary.reloadPage' }),
-      ).toBeEnabled()
-      expect(
-        screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
-      ).not.toBeInTheDocument()
-      expect(reload).toHaveBeenCalledTimes(1)
-    } finally {
-      reload.mockRestore()
-      consoleError.mockRestore()
-    }
-  })
-
-  it('retries a render failure locally and keeps the imported panel usable after reopening', async () => {
-    const user = userEvent.setup()
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    const load = vi.fn(async () => ({
-      default: ({ broken, ...props }: EditorProps & { broken: boolean }) => {
-        if (broken) throw new Error('Render unavailable')
-        return <Editor {...props} />
-      },
-    }))
+    const load = vi
+      .fn<() => Promise<{ default: ComponentType<EditorProps> }>>()
+      .mockRejectedValueOnce(new Error('Chunk unavailable'))
+      .mockResolvedValueOnce({ default: Editor })
     const Panel = lazyPanel(load)
     try {
-      const { rerender } = render(<Panel title="Recovered panel" broken />)
-      await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
-      rerender(<Panel title="Recovered panel" broken={false} />)
-      await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+      render(
+        <>
+          <button type="button">Close panel</button>
+          <Panel title="Recovered panel" />
+        </>,
+      )
+      await user.click(await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }))
       expect(await screen.findByRole('textbox', { name: 'Recovered panel' })).toBeInTheDocument()
-      expect(reload).not.toHaveBeenCalled()
-
-      rerender(<div />)
-      rerender(<Panel title="Reopened panel" broken={false} />)
-      const input = await screen.findByRole('textbox', { name: 'Reopened panel' })
-      await user.type(input, 'Recovered edit')
-      expect(input).toHaveValue('Recovered edit')
-      expect(load).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('button', { name: 'Close panel' })).toBeEnabled()
+      expect(load).toHaveBeenCalledTimes(2)
     } finally {
-      reload.mockRestore()
       consoleError.mockRestore()
     }
   })
+
+  it.each(['reopen', 'switch'] as const)(
+    'retains a successful import retry across a panel %s',
+    async (transition) => {
+      const user = userEvent.setup()
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const load = vi
+        .fn<() => Promise<{ default: ComponentType<EditorProps> }>>()
+        .mockRejectedValueOnce(new Error('Chunk unavailable'))
+        .mockResolvedValue({ default: Editor })
+      const Panel = lazyPanel(load)
+      try {
+        const { rerender } = render(<Panel key="first-node" title="First node" />)
+        await user.click(
+          await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+        )
+        expect(await screen.findByRole('textbox', { name: 'First node' })).toBeInTheDocument()
+
+        if (transition === 'reopen') {
+          rerender(<div />)
+          expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+        }
+        const nextTitle = transition === 'reopen' ? 'First node' : 'Second node'
+        const nextKey = transition === 'reopen' ? 'first-node' : 'second-node'
+        rerender(<Panel key={nextKey} title={nextTitle} />)
+
+        const input = await screen.findByRole('textbox', { name: nextTitle })
+        await user.type(input, 'Recovered edit')
+        expect(input).toHaveValue('Recovered edit')
+        expect(
+          screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+        ).not.toBeInTheDocument()
+        expect(load).toHaveBeenCalledTimes(2)
+      } finally {
+        consoleError.mockRestore()
+      }
+    },
+  )
 })
