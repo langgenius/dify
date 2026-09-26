@@ -847,7 +847,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_RETRIEVAL_RECALL, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
