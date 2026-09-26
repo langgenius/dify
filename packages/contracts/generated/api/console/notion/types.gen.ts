@@ -10,6 +10,7 @@ export type TextContentResponse = {
 
 export type NotionIntegrateInfoListResponse = {
   notion_info: Array<NotionIntegrateWorkspaceResponse>
+  next_cursor?: string | null
 }
 
 export type NotionIntegrateWorkspaceResponse = {
@@ -59,6 +60,8 @@ export type GetNotionPreImportPagesData = {
   query: {
     credential_id: string
     dataset_id?: string
+    page_size?: number
+    start_cursor?: string
   }
   url: '/notion/pre-import/pages'
 }

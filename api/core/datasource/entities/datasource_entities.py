@@ -266,6 +266,7 @@ class OnlineDocumentPagesMessage(BaseModel):
     """
 
     result: list[OnlineDocumentInfo]
+    next_cursor: str | None = Field(default=None, description="Cursor for the next page of results")
 
 
 class GetOnlineDocumentPageContentRequest(BaseModel):

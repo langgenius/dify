@@ -244,10 +244,65 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(
                     }
                 ],
             }
-        ]
+        ],
+        "next_cursor": None,
     }
     runtime.get_online_document_pages.assert_called_once()
     assert runtime.get_online_document_pages.call_args.kwargs["datasource_parameters"] == {}
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_notion_pre_import_pages_forwards_pagination_to_plugin(
+    flask_app: Flask,
+    current_user: Account,
+    sqlite_session: Session,
+) -> None:
+    page = MagicMock(
+        page_id="page-1",
+        page_name="Page",
+        type="page",
+        parent_id="parent-1",
+        page_icon=None,
+    )
+    online_document_message = MagicMock(
+        result=[
+            MagicMock(
+                workspace_id="workspace-1",
+                workspace_name="Workspace",
+                workspace_icon=None,
+                pages=[page],
+            )
+        ],
+        next_cursor="cursor-2",
+    )
+    runtime = MagicMock(
+        get_online_document_pages=MagicMock(return_value=iter([online_document_message])),
+        datasource_provider_type=MagicMock(return_value="online_document"),
+    )
+    with (
+        flask_app.test_request_context("/?credential_id=credential-1&page_size=50&start_cursor=cursor-1"),
+        patch.object(
+            module.DatasourceProviderService,
+            "get_datasource_credentials",
+            return_value={"token": "token"},
+        ),
+        patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()),
+        patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
+    ):
+        response, status = unwrap(DataSourceNotionListApi().get)(
+            DataSourceNotionListApi(),
+            DataSourceNotionListQuery(credential_id="credential-1", page_size=50, start_cursor="cursor-1"),
+            sqlite_session,
+            "tenant-1",
+            current_user,
+        )
+
+    assert status == 200
+    assert response["next_cursor"] == "cursor-2"
+    assert runtime.get_online_document_pages.call_args.kwargs["datasource_parameters"] == {
+        "page_size": 50,
+        "start_cursor": "cursor-1",
+    }
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
