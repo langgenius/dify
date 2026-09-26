@@ -1102,7 +1102,6 @@ describe('ModerationSettingModal', () => {
         promptMode: 'simple',
         resolvedModelModeType: ModelModeType.chat,
         setCanReturnToSimpleMode: vi.fn(),
-        setPublishedConfig: vi.fn(),
         t: withSelectorKey((key: string) => key) as TFunction<['appDebug', 'common']>,
       })
       const updateModelConfig = vi.fn<Parameters<typeof publish>[0]>().mockResolvedValue(undefined)

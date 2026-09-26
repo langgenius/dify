@@ -1,6 +1,4 @@
 import type { TFunction } from 'i18next'
-import type { Dispatch, SetStateAction } from 'react'
-import type { ConfigurationPublishConfig } from './types'
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -31,7 +29,6 @@ type UseConfigurationPublishParams = {
   promptMode: PromptMode
   resolvedModelModeType: ModelModeType
   setCanReturnToSimpleMode: (value: boolean) => void
-  setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig>>
   t: TFunction<['appDebug', 'common']>
   updateModelConfig: (
     params: Parameters<ConsoleClient['apps']['byAppId']['modelConfig']['post']>[0],
@@ -58,7 +55,6 @@ export function useConfigurationPublish({
   promptMode,
   resolvedModelModeType,
   setCanReturnToSimpleMode,
-  setPublishedConfig,
   t,
   updateModelConfig,
 }: UseConfigurationPublishParams) {
@@ -89,7 +85,6 @@ export function useConfigurationPublish({
         promptMode,
         resolvedModelModeType,
         setCanReturnToSimpleMode,
-        setPublishedConfig,
         t,
       })(updateModelConfig, modelAndParameter, features)
 
@@ -115,7 +110,6 @@ export function useConfigurationPublish({
       promptMode,
       resolvedModelModeType,
       setCanReturnToSimpleMode,
-      setPublishedConfig,
       t,
       updateModelConfig,
     ],

@@ -6,7 +6,7 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
-import { createAppModelConfigFixture } from '@/test/fixtures/app'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -170,6 +170,14 @@ vi.mock('@/service/console', async () => {
   }
 })
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: () => collectionsFixture(),
+  request: async () =>
+    Response.json(createAppDetailFixture({ ...(await appDetailFixture()), id: 'app-1' })),
+}))
+vi.mock('@/service/datasets', () => ({ fetchDatasets: () => datasetsFixture() }))
+
 vi.mock('@/utils/completion-params', () => ({
   fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
     mockFetchAndMergeValidCompletionParams(...args),
@@ -297,7 +305,6 @@ describe('useConfiguration', () => {
     expect(result.current.isAdvancedMode).toBe(true)
     expect(result.current.contextValue.introduction).toBe('hello')
     expect(result.current.contextValue.suggestedQuestions).toEqual(['how are you?'])
-    expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4o')
     expect(result.current.contextValue.isShowVisionConfig).toBe(true)
   })
 
@@ -336,7 +343,7 @@ describe('useConfiguration', () => {
     )
   })
 
-  it('should publish and restore the complete configuration snapshot', async () => {
+  it('should apply a prepared configuration snapshot without using current draft values', async () => {
     const { result } = await renderHook(() => useConfiguration(initialDefaults))
 
     await waitFor(() => {
@@ -353,7 +360,11 @@ describe('useConfiguration', () => {
     await act(async () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
-    expect(result.current.appPublisherProps.publishedConfig.datasetConfigs.top_k).toBe(8)
+    expect(mockUpdateModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ dataset_configs: expect.objectContaining({ top_k: 8 }) }),
+      }),
+    )
 
     act(() => {
       result.current.contextValue.setDatasetConfigs({
@@ -365,9 +376,11 @@ describe('useConfiguration', () => {
     mockSetChatPromptConfig.mockClear()
     mockSetCompletionPromptConfig.mockClear()
     act(() => {
-      result.current.appPublisherProps.resetAppConfig?.()
+      result.current.appPublisherProps.resetAppConfig(initialDefaults.publishedConfig)
     })
-    expect(result.current.contextValue.datasetConfigs.top_k).toBe(8)
+    expect(result.current.contextValue.datasetConfigs.top_k).toBe(
+      initialDefaults.publishedConfig.datasetConfigs.top_k,
+    )
     expect(mockSetChatPromptConfig).toHaveBeenCalledWith({
       prompt: [{ role: 'system', text: 'hi' }],
     })
@@ -457,7 +470,7 @@ describe('useConfiguration', () => {
 
     mockHandleMultipleModelConfigsChange.mockClear()
     act(() => {
-      result.current.appPublisherProps.resetAppConfig?.()
+      result.current.appPublisherProps.resetAppConfig(initialDefaults.publishedConfig)
     })
 
     expect(mockHandleMultipleModelConfigsChange).not.toHaveBeenCalled()
@@ -492,7 +505,11 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.modelConfig.model_id).toBe('gpt-4o')
     expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
     expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.7 })
-    expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
+    expect(mockUpdateModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ model: expect.objectContaining({ name: 'gpt-4.1' }) }),
+      }),
+    )
   })
 
   it('should expose the latest published time supplied by the app detail', async () => {
@@ -698,7 +715,7 @@ describe('useConfiguration', () => {
     expect(result.current.showUseGPT4Confirm).toBe(false)
 
     act(() => {
-      result.current.appPublisherProps.resetAppConfig?.()
+      result.current.appPublisherProps.resetAppConfig(initialDefaults.publishedConfig)
     })
   })
 

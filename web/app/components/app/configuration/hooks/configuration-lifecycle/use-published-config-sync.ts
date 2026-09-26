@@ -3,6 +3,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type {
+  AnnotationReplyConfig,
   DatasetConfigs,
   ModelConfig,
   ModerationConfig,
@@ -15,6 +16,7 @@ import { PromptMode } from '@/models/debug'
 import { Resolution, TransferMethod } from '@/types/app'
 
 type UsePublishedConfigSyncParams = {
+  setAnnotationConfig: (value: AnnotationReplyConfig, notSetFormatChanged?: boolean) => void
   setCanReturnToSimpleMode: (value: boolean) => void
   setChatPromptConfig: (value: ConfigurationPublishConfig['chatPromptConfig']) => void
   setCitationConfig: (value: MoreLikeThisConfig) => void
@@ -36,6 +38,7 @@ type UsePublishedConfigSyncParams = {
 }
 
 export function usePublishedConfigSync({
+  setAnnotationConfig,
   setCanReturnToSimpleMode,
   setChatPromptConfig,
   setCitationConfig,
@@ -59,6 +62,8 @@ export function usePublishedConfigSync({
     (publishedConfig: ConfigurationPublishConfig) => {
       const publishedModelConfig = publishedConfig.modelConfig
       setModelConfig(publishedModelConfig)
+      if (publishedModelConfig.annotation_reply)
+        setAnnotationConfig(publishedModelConfig.annotation_reply, true)
       setCompletionParams(publishedConfig.completionParams)
       setPromptModeState(publishedConfig.promptMode)
       setCanReturnToSimpleMode(publishedConfig.promptMode !== PromptMode.advanced)
@@ -95,6 +100,7 @@ export function usePublishedConfigSync({
       )
     },
     [
+      setAnnotationConfig,
       setCanReturnToSimpleMode,
       setChatPromptConfig,
       setCitationConfig,

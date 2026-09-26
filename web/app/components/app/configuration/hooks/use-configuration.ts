@@ -1,7 +1,6 @@
 'use client'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { buildConfigurationDefaults } from './configuration-lifecycle/load'
-import type { ConfigurationPublishConfig } from './configuration-lifecycle/types'
 import type { ConfigurationViewModel } from './configuration-view-model'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Inputs, ModelConfig, PromptConfig, PromptVariable } from '@/models/debug'
@@ -33,6 +32,7 @@ import { useDatasetSelectHandler } from './configuration-lifecycle/dataset'
 import { useModelChangeHandler } from './configuration-lifecycle/model'
 import { useConfigurationAppContext } from './configuration-lifecycle/use-configuration-app-context'
 import { useConfigurationPublish } from './configuration-lifecycle/use-configuration-publish'
+import { useConfigurationRestore } from './configuration-lifecycle/use-configuration-restore'
 import { useDatasetConfigurationState } from './configuration-lifecycle/use-dataset-configuration-state'
 import { useFeatureConfigurationState } from './configuration-lifecycle/use-feature-configuration-state'
 import { useModelConfigurationState } from './configuration-lifecycle/use-model-configuration-state'
@@ -63,9 +63,6 @@ export const useConfiguration = (
   const [formattingChanged, setFormattingChanged] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
   const featureConfiguration = useFeatureConfigurationState(defaults.publishedConfig)
-  const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig>(
-    defaults.publishedConfig,
-  )
   const [conversationId, setConversationId] = useState<string | null>('')
 
   const media = useBreakpoints()
@@ -76,6 +73,7 @@ export const useConfiguration = (
   const {
     externalDataToolsConfig,
     formattingChangedDispatcher,
+    setAnnotationConfig,
     setCitationConfig,
     setExternalDataToolsConfig,
     setIntroduction,
@@ -128,6 +126,12 @@ export const useConfiguration = (
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
+  const loadPublishedConfig = useConfigurationRestore({
+    appId,
+    currentRerankModel: currentRerankModel?.model,
+    currentRerankProvider: currentRerankProvider?.provider,
+  })
+
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelConfig.provider,
     model: modelConfig.model_id,
@@ -173,6 +177,7 @@ export const useConfiguration = (
   } = advancedPromptConfiguration
 
   const syncToPublishedConfig = usePublishedConfigSync({
+    setAnnotationConfig,
     setCanReturnToSimpleMode,
     setChatPromptConfig,
     setCitationConfig,
@@ -307,7 +312,6 @@ export const useConfiguration = (
     promptMode,
     resolvedModelModeType,
     setCanReturnToSimpleMode,
-    setPublishedConfig,
     t,
     updateModelConfig,
   })
@@ -388,10 +392,8 @@ export const useConfiguration = (
       debugWithMultipleModel,
       multipleModelConfigs,
       onPublish,
-      publishedConfig,
-      resetAppConfig: () => {
-        syncToPublishedConfig(publishedConfig)
-      },
+      loadPublishedConfig,
+      resetAppConfig: syncToPublishedConfig,
     },
     contextValue,
     featuresData,
