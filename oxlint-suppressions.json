@@ -598,16 +598,8 @@
       "count": 2
     }
   },
-  "web/app/components/base/agent-log-modal/detail.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/agent-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -1169,16 +1161,8 @@
       "count": 4
     }
   },
-  "web/app/components/base/message-log-modal/__tests__/index.spec.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/app/components/base/message-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },

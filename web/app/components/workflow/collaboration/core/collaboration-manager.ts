@@ -1,6 +1,7 @@
 'use client'
 
 import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
+import type { useStoreApi } from 'reactflow'
 import type { Socket } from 'socket.io-client'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
@@ -34,6 +35,7 @@ type NodePanelPresenceEventData = {
 }
 
 type ReactFlowStore = {
+  sourceStore: Pick<ReturnType<typeof useStoreApi>, 'getState'>
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -671,8 +673,7 @@ export class CollaborationManager {
       return connectionId
 
     if (this.currentAppId === appId && this.doc) {
-      // Already connected to the same app, only update store if provided and we don't have one
-      if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      if (reactFlowStore) this.reactFlowStore = reactFlowStore
       this.activeConnections.add(connectionId)
 
       return connectionId
@@ -781,6 +782,11 @@ export class CollaborationManager {
 
   isConnected(): boolean {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  }
+
+  ownsReactFlowStore(store: ReactFlowStore['sourceStore']): boolean {
+    // useStoreApi creates a wrapper per hook; its getState function identifies the shared store.
+    return this.reactFlowStore?.sourceStore.getState === store.getState
   }
 
   canUseLocalDraftFallback(): boolean {
@@ -899,8 +905,19 @@ export class CollaborationManager {
     return true
   }
 
-  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
-    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+  replaceGraphFromCommittedDraft(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    nodes: Node[],
+    edges: Edge[],
+  ): boolean {
+    if (
+      this.currentAppId !== appId ||
+      !this.ownsReactFlowStore(store) ||
+      !this.doc ||
+      !this.canApplyLocalGraphMutation()
+    )
+      return false
 
     // A server-side import or restore replaces the whole draft. Its graph must also replace
     // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
@@ -1034,7 +1051,7 @@ export class CollaborationManager {
   }
 
   emitWorkflowUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (this.currentAppId !== appId || !webSocketClient.isConnected(appId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_update',

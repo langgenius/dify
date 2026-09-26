@@ -1,8 +1,9 @@
 import type { Node } from '../../types'
 import { act, waitFor } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import { useNodes, useStoreApi } from 'reactflow'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { BlockEnum } from '../../types'
 import { useAutoGenerateWebhookUrl } from '../use-auto-generate-webhook-url'
 
@@ -12,10 +13,6 @@ type WebhookFlowNode = Node & {
     webhook_debug_url?: string
   }
 }
-
-vi.mock('@/app/components/app/store', async () =>
-  (await import('../../__tests__/service-mock-factory')).createAppStoreMock({ appId: 'app-123' }),
-)
 
 const mockFetchWebhookUrl = vi.fn()
 vi.mock('@/service/apps', () => ({
@@ -35,13 +32,15 @@ describe('useAutoGenerateWebhookUrl', () => {
     }) as WebhookFlowNode,
   ]
 
-  const renderAutoGenerateWebhookUrlHook = () =>
+  const renderAutoGenerateWebhookUrlHook = (appId = 'app-123') =>
     renderWorkflowFlowHook(
       () => ({
         autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
-        nodes: useNodes<WebhookFlowNode>(),
+        store: useStoreApi(),
+        nodes: useNodes<WebhookFlowNode['data']>(),
       }),
       {
+        initialStoreState: { appId },
         nodes: createFlowNodes(),
         edges: [],
       },
@@ -74,6 +73,42 @@ describe('useAutoGenerateWebhookUrl', () => {
     })
   })
 
+  it.each(['app-b', 'app-a'])(
+    'does not broadcast an old webhook into the new %s canvas instance',
+    async (nextAppId) => {
+      let resolveWebhook!: (response: { webhook_url: string; webhook_debug_url: string }) => void
+      mockFetchWebhookUrl.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveWebhook = resolve
+        }),
+      )
+      const broadcastNodes = vi.spyOn(collaborationManager, 'setNodes')
+      const first = renderAutoGenerateWebhookUrlHook('app-a')
+      const pendingWebhook = first.result.current.autoGenerateWebhookUrl('webhook-1')
+      expect(mockFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-a', nodeId: 'webhook-1' })
+      first.unmount()
+      const second = renderAutoGenerateWebhookUrlHook(nextAppId)
+      const ownsStore = vi
+        .spyOn(collaborationManager, 'ownsReactFlowStore')
+        .mockImplementation((store) => store === second.result.current.store)
+
+      await act(async () => {
+        resolveWebhook({
+          webhook_url: 'https://app-a/webhook',
+          webhook_debug_url: 'https://app-a/debug',
+        })
+        await pendingWebhook
+      })
+
+      expect(broadcastNodes).not.toHaveBeenCalled()
+      expect(
+        second.result.current.nodes.find((node) => node.id === 'webhook-1')?.data.webhook_url,
+      ).toBe('')
+      ownsStore.mockRestore()
+      broadcastNodes.mockRestore()
+    },
+  )
+
   it('should not fetch when node is not a webhook trigger', async () => {
     const { result } = renderAutoGenerateWebhookUrlHook()
 
@@ -105,6 +140,7 @@ describe('useAutoGenerateWebhookUrl', () => {
         autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
       }),
       {
+        initialStoreState: { appId: 'app-123' },
         nodes: [
           createNode({
             id: 'webhook-1',

@@ -204,6 +204,7 @@ describe('ChatWrapper', () => {
         ],
         edges: [],
         initialStoreState: {
+          appId: 'app-1',
           inputs: {
             custom: 'value',
           },
@@ -296,6 +297,7 @@ describe('ChatWrapper', () => {
         ],
         edges: [],
         initialStoreState: {
+          appId: 'app-1',
           inputs: {
             existing: 'value',
           },
@@ -398,6 +400,7 @@ describe('ChatWrapper', () => {
         onHide={onHide}
       />,
       {
+        initialStoreState: { appId: 'app-1' },
         nodes: [createStartNode()],
         edges: [],
       },
@@ -418,6 +421,7 @@ describe('ChatWrapper', () => {
         onHide={vi.fn()}
       />,
       {
+        initialStoreState: { appId: 'app-1' },
         nodes: [createStartNode()],
         edges: [],
       },

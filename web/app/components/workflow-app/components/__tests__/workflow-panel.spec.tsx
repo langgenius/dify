@@ -4,6 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fetchRunDetail } from '@/service/log'
 import { AppModeEnum } from '@/types/app'
 import WorkflowPanel from '../workflow-panel'
 
@@ -120,6 +121,7 @@ describe('WorkflowPanel', () => {
       },
     }
     workflowStoreState = {
+      appId: 'app-123',
       historyWorkflowData: undefined,
       showDebugAndPreviewPanel: false,
       showChatVariablePanel: false,
@@ -153,12 +155,13 @@ describe('WorkflowPanel', () => {
       workflow_run_id: 'run-1',
     }
     const { store } = renderWorkflowComponent(<WorkflowPanel />, {
-      initialStoreState: { messageLogItem },
+      initialStoreState: { appId: 'workflow-app-id', messageLogItem },
     })
     expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
+    expect(fetchRunDetail).toHaveBeenCalledWith('/apps/workflow-app-id/workflow-runs/run-1')
     await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
     expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
       'aria-selected',

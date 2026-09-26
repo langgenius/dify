@@ -56,10 +56,9 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
+const mockWorkflowStore = { getState: () => ({ pipelineId: 'test-pipeline-id' }) }
 vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({ pipelineId: 'test-pipeline-id' }),
-  }),
+  useWorkflowStore: () => mockWorkflowStore,
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
@@ -250,7 +249,17 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockEmit).toHaveBeenCalled()
+      expect(mockEmit).toHaveBeenCalledWith({
+        type: 'WORKFLOW_DATA_UPDATE',
+        payload: {
+          target: mockWorkflowStore,
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          hash: 'test-hash',
+          rag_pipeline_variables: [],
+        },
+      })
     })
 
     it('should call handleCheckPluginDependencies on success', async () => {

@@ -44,9 +44,8 @@ const FeaturesTrigger = () => {
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const appDetail = useAppStore((s) => s.appDetail)
   const setAppDetail = useAppStore((s) => s.setAppDetail)
-  const appID = appDetail?.id
+  const appID = useStore((state) => state.appId)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -177,6 +176,7 @@ const FeaturesTrigger = () => {
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(
     async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
+      if (!appID) return
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -202,9 +202,9 @@ const FeaturesTrigger = () => {
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           }
           if (res.warning) toast.warning(res.warning)
-          updatePublishedWorkflow(appID!)
+          updatePublishedWorkflow(appID)
           updateAppDetail()
-          invalidateAppTriggers(appID!)
+          invalidateAppTriggers(appID)
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),

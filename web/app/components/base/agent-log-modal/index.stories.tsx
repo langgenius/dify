@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppToastHost } from '@/app/notifications/host'
 import AgentLogModal from '.'
 
@@ -66,15 +65,8 @@ const MOCK_CHAT_ITEM: IChatItem = {
 
 const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
 
   useEffect(() => {
-    setAppDetail({
-      id: 'app-1',
-      name: 'Analytics Agent',
-      mode: 'agent-chat',
-    } as any)
-
     originalFetchRef.current = globalThis.fetch?.bind(globalThis)
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -98,15 +90,15 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
 
     return () => {
       if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
-      setAppDetail(undefined)
     }
-  }, [setAppDetail])
+  }, [])
 
   return (
     <>
       <AppToastHost />
       <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
+          appId="app-1"
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}
           onCancel={() => {

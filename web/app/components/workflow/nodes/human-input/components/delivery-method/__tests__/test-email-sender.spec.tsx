@@ -11,6 +11,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -67,10 +69,13 @@ const renderWithProviders = (ui: ReactNode) => {
   const queryClient = createQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   const hooksStore = createHooksStore({})
+  const workflowStore = createTestWorkflowStore({ appId: 'app-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      <WorkflowContext.Provider value={workflowStore}>
+        <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      </WorkflowContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -181,7 +186,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: createAppDetailFixture({ name: 'Workflow App' }),
+      appDetail: createAppDetailFixture({ id: 'other-app', name: 'Workflow App' }),
     })
   })
 

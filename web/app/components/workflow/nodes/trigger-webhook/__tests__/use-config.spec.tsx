@@ -1,11 +1,16 @@
 import type { WebhookTriggerNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { fetchWebhookUrl } from '@/service/apps'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { useConfig } from '../use-config'
+
+let workflowAppId: string | undefined = 'app-1'
+const renderHook = <Result, Props = undefined>(
+  callback: (props: Props) => Result,
+  options?: { initialProps: Props },
+) => renderWorkflowHook(callback, { ...options, initialStoreState: { appId: workflowAppId } })
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
@@ -73,9 +78,7 @@ const createPayload = (
 describe('useConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(useAppStore, 'getState').mockReturnValue({
-      appDetail: { id: 'app-1' },
-    } as never)
+    workflowAppId = 'app-1'
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockIsVarUsedInNodes.mockReturnValue(false)
   })
@@ -232,9 +235,7 @@ describe('useConfig', () => {
 
   it('should expose readonly state and skip url generation without app id', async () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
-    vi.spyOn(useAppStore, 'getState').mockReturnValue({
-      appDetail: undefined,
-    } as never)
+    workflowAppId = undefined
 
     const { result } = renderHook(() => useConfig('webhook-node', createPayload()))
 

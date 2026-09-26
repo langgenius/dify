@@ -3,16 +3,9 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import MessageLogModal from '.'
-
-const SAMPLE_APP_DETAIL = {
-  id: 'app-demo-1',
-  name: 'Support Assistant',
-  mode: 'chat',
-} as any
 
 const mockRunDetail: WorkflowRunDetailResponse = {
   id: 'run-demo-1',
@@ -96,9 +89,6 @@ const mockCurrentLogItem: IChatItem = {
 
 const useMessageLogMocks = () => {
   useEffect(() => {
-    const store = useStore.getState()
-    store.setAppDetail(SAMPLE_APP_DETAIL)
-
     const originalFetch = globalThis.fetch?.bind(globalThis) ?? null
 
     const handle = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -128,7 +118,6 @@ const useMessageLogMocks = () => {
 
     return () => {
       globalThis.fetch = originalFetch || globalThis.fetch
-      useStore.getState().setAppDetail(undefined)
     }
   }, [])
 }
@@ -160,6 +149,7 @@ const meta = {
     },
   },
   args: {
+    appId: 'app-demo-1',
     defaultTab: 'DETAIL',
     width: 960,
     fixedWidth: true,
@@ -177,6 +167,7 @@ export const FixedPanel: Story = {}
 
 export const FloatingPanel: Story = {
   args: {
+    appId: 'app-demo-1',
     fixedWidth: false,
   },
 }

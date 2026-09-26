@@ -40,6 +40,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
   })
+  const isAnotherCanvasConnected = useCallback(
+    () =>
+      isCollaborationEnabled &&
+      collaborationManager.isConnected() &&
+      !collaborationManager.ownsReactFlowStore(store),
+    [isCollaborationEnabled, store],
+  )
 
   const getPostParams = useCallback(() => {
     const { getNodes, edges, transform } = store.getState()
@@ -125,7 +132,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly() || isAnotherCanvasConnected()) return
 
     const canPersistOnPageClose =
       !isCollaborationEnabled ||
@@ -136,7 +143,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, isAnotherCanvasConnected])
 
   const performLocalSync = useCallback(
     async (
@@ -146,6 +153,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      if (isAnotherCanvasConnected()) {
+        callback?.onSettled?.()
+        return null
+      }
       const { appId, isWorkflowDataLoaded } = workflowStore.getState()
       if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
         callback?.onSettled?.()
@@ -207,7 +218,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [workflowStore, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled],
+    [
+      workflowStore,
+      getNodesReadOnly,
+      handleRefreshWorkflowDraft,
+      isCollaborationEnabled,
+      isAnotherCanvasConnected,
+    ],
   )
 
   const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
@@ -218,6 +235,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      if (isAnotherCanvasConnected()) {
+        callback?.onSettled?.()
+        return null
+      }
       const { appId, isWorkflowDataLoaded } = workflowStore.getState()
       if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
         callback?.onSettled?.()
@@ -261,6 +282,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
+      isAnotherCanvasConnected,
       workflowStore,
     ],
   )

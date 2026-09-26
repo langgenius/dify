@@ -23,6 +23,7 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     setNodes: vi.fn(),
     setEdges: vi.fn(),
+    ownsReactFlowStore: () => true,
     canApplyLocalGraphMutation: () => true,
   },
 }))
