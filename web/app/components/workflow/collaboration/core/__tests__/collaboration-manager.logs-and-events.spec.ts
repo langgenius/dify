@@ -1,4 +1,5 @@
 import type { LoroMap } from 'loro-crdt'
+import type { useStoreApi } from 'reactflow'
 import type { OnlineUser } from '../../types/collaboration'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -9,7 +10,7 @@ import { webSocketClient } from '../websocket-manager'
 import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
-  sourceStore: object
+  sourceStore: Pick<ReturnType<typeof useStoreApi>, 'getState'>
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -96,7 +97,7 @@ describe('CollaborationManager logs and event helpers', () => {
     manager.setEdges([], [edge])
 
     internals.reactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [
           {
@@ -160,7 +161,7 @@ describe('CollaborationManager logs and event helpers', () => {
     ]
 
     internals.reactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => oldNodes,
         setNodes: vi.fn(),
@@ -184,7 +185,7 @@ describe('CollaborationManager logs and event helpers', () => {
     const { manager, internals } = setupManagerWithDoc()
     internals.currentAppId = 'app-1'
     const store: ReactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -227,10 +228,10 @@ describe('CollaborationManager logs and event helpers', () => {
     ).toEqual(['old-node', 'old-target'])
     expect(manager.getEdges().map((edge) => edge.id)).toEqual(['old-edge'])
 
-    expect(manager.replaceGraphFromCommittedDraft('app-1', { ...store }, [importedNode], [])).toBe(
-      false,
-    )
-    expect(manager.ownsReactFlowStore({ ...store })).toBe(false)
+    expect(
+      manager.replaceGraphFromCommittedDraft('app-1', { getState: vi.fn() }, [importedNode], []),
+    ).toBe(false)
+    expect(manager.ownsReactFlowStore({ getState: vi.fn() })).toBe(false)
     expect(manager.ownsReactFlowStore(store.sourceStore)).toBe(true)
 
     expect(
@@ -258,7 +259,7 @@ describe('CollaborationManager logs and event helpers', () => {
     internals.currentAppId = 'app-1'
     vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     internals.reactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [createNode('old-canvas-node')],
         setNodes: vi.fn(),
@@ -311,7 +312,7 @@ describe('CollaborationManager logs and event helpers', () => {
     internals.setNodesAnomalyLogs = [{ timestamp: 2 }]
     internals.graphSyncDiagnostics = [{ timestamp: 3 }]
     internals.reactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [createNode('rf-1'), createNode('rf-2')],
         setNodes: vi.fn(),
@@ -431,7 +432,7 @@ describe('CollaborationManager logs and event helpers', () => {
     const setNodesSpy = vi.fn()
     const setEdgesSpy = vi.fn()
     internals.reactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [createNode('old-node')],
         setNodes: setNodesSpy,

@@ -102,7 +102,7 @@ describe('useCollaboration', () => {
 
   it('connects, reacts to manager updates, and disconnects on unmount', async () => {
     const reactFlowStore: HookReactFlowStore = {
-      sourceStore: {},
+      sourceStore: { getState: vi.fn() },
       getState: vi.fn(),
     }
     const { result, unmount } = renderHookWithConsoleQuery(

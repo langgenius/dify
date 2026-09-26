@@ -574,6 +574,7 @@ describe('debug-and-preview components', () => {
           ],
           edges: [],
           initialStoreState: {
+            appId: 'app-1',
             inputs: {
               existing: 'value',
             },

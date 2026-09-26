@@ -465,6 +465,9 @@ describe('WorkflowMain', () => {
     }
     render(<Canvas />)
     expect(sourceStore).toBeDefined()
+    const adapter = mockUseCollaboration.mock.calls.at(-1)?.[2]
+    expect(adapter?.sourceStore).not.toBe(sourceStore)
+    expect(adapter?.sourceStore.getState).toBe(sourceStore?.getState)
     expect(mockUseCollaboration).toHaveBeenCalledWith(
       'app-1',
       expect.any(Boolean),

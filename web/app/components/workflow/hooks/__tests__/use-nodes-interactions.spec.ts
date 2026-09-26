@@ -264,6 +264,7 @@ describe('useNodesInteractions', () => {
       }),
     ]
     const isConnectedSpy = vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
+    vi.spyOn(collaborationManager, 'ownsReactFlowStore').mockReturnValue(true)
     const emitHistoryActionSpy = vi
       .spyOn(collaborationManager, 'emitHistoryAction')
       .mockImplementation(() => undefined)

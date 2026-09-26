@@ -1,6 +1,7 @@
 'use client'
 
 import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
+import type { useStoreApi } from 'reactflow'
 import type { Socket } from 'socket.io-client'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
@@ -34,7 +35,7 @@ type NodePanelPresenceEventData = {
 }
 
 type ReactFlowStore = {
-  sourceStore: object
+  sourceStore: Pick<ReturnType<typeof useStoreApi>, 'getState'>
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -783,8 +784,9 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
-  ownsReactFlowStore(store: object): boolean {
-    return this.reactFlowStore?.sourceStore === store
+  ownsReactFlowStore(store: ReactFlowStore['sourceStore']): boolean {
+    // useStoreApi creates a wrapper per hook; its getState function identifies the shared store.
+    return this.reactFlowStore?.sourceStore.getState === store.getState
   }
 
   canUseLocalDraftFallback(): boolean {
@@ -905,7 +907,7 @@ export class CollaborationManager {
 
   replaceGraphFromCommittedDraft(
     appId: string,
-    store: object,
+    store: ReactFlowStore['sourceStore'],
     nodes: Node[],
     edges: Edge[],
   ): boolean {
