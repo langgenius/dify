@@ -1,7 +1,6 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
@@ -19,26 +18,17 @@ const mockConsoleState = vi.hoisted(() => ({
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
+    appDetail: {
+      id: 'app-1',
+      name: 'Test App',
+      mode: mockAppMode,
+      permission_keys: mockAppPermissionKeys,
+    },
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
       enable_app_deploy: false,
     },
   })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: createAppDetailFixture({
-        id: 'app-1',
-        name: 'Test App',
-        mode: mockAppMode,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#fff',
-        permission_keys: mockAppPermissionKeys,
-      }),
-    }),
-}))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -50,6 +40,7 @@ vi.mock('@/context/workspace-state', async () => {
 })
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('../app-info', () => ({

@@ -2,13 +2,16 @@ import type {
   AgentSoulConfig,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode, Ref } from 'react'
+import type { ReactElement, ReactNode, Ref } from 'react'
 import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { AgentScope } from '@/features/agent-v2/analytics'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
@@ -203,7 +206,8 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
   return {
     consoleClient: {
@@ -239,6 +243,7 @@ vi.mock('@/service/console', async () => {
       },
     },
     consoleQuery: {
+      ...actual.consoleQuery,
       systemFeatures: {
         get: {
           queryKey: () => ['system-features'],
@@ -359,6 +364,7 @@ vi.mock('@/service/console', async () => {
       },
       apps: {
         byAppId: {
+          get: actual.consoleQuery.apps.byAppId.get,
           workflowRuns: {
             byWorkflowRunId: {
               agentNodes: {
@@ -491,10 +497,27 @@ function createDeferredPromise<T>() {
   return { promise, resolve }
 }
 
+function render(ui: ReactElement, options: ConsoleQueryTestOptions = {}) {
+  const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
+    ...options,
+    appDetail: { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+  })
+  const store = createTestWorkflowStore({ appId: 'app-1' })
+  return {
+    queryClient,
+    ...renderWithConsoleState(ui, {
+      wrapper: ({ children }) => (
+        <QueryWrapper>
+          <WorkflowContext value={store}>{children}</WorkflowContext>
+        </QueryWrapper>
+      ),
+    }),
+  }
+}
+
 describe('WorkflowInlineAgentConfigureWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
     permission.canCreateAgents = true
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))

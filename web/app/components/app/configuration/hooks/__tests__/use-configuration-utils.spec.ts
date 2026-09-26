@@ -17,14 +17,17 @@ import {
   buildConfigurationDatasetConfigs,
   createDatasetSelectHandler,
 } from '../configuration-lifecycle/dataset'
-import { loadConfigurationState } from '../configuration-lifecycle/load'
+import {
+  buildConfigurationDefaults,
+  getConfigurationDatasetIds,
+} from '../configuration-lifecycle/load'
 import { createModelChangeHandler } from '../configuration-lifecycle/model'
 import { buildPublishBody, createPublishHandler } from '../configuration-lifecycle/publish'
 import { buildPublishedConfig } from '../configuration-lifecycle/published-config'
 
-const mockFetchAppDetailDirect = vi.fn()
-const mockFetchDatasets = vi.fn()
-const mockFetchCollectionList = vi.fn()
+const appDetailFixture = vi.fn()
+const datasetsFixture = vi.fn()
+const collectionsFixture = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.fn()
 const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
@@ -40,20 +43,6 @@ const baseVisionConfig: VisionSettings = {
   detail: Resolution.high,
   transfer_methods: [TransferMethod.remote_url],
 }
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: { byAppId: { get: (...args: unknown[]) => mockFetchAppDetailDirect(...args) } },
-  },
-}))
-
-vi.mock('@/service/datasets', () => ({
-  fetchDatasets: (...args: unknown[]) => mockFetchDatasets(...args),
-}))
-
-vi.mock('@/service/tools', () => ({
-  fetchCollectionList: (...args: unknown[]) => mockFetchCollectionList(...args),
-}))
 
 vi.mock('@/utils/completion-params', () => ({
   fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
@@ -78,6 +67,14 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
     warning: (...args: unknown[]) => mockToastWarning(...args),
   },
 }))
+
+const createDefaultsFixture = async ({ appId, basePath }: { appId: string; basePath?: string }) =>
+  buildConfigurationDefaults({
+    response: createAppDetailFixture({ ...(await appDetailFixture()), id: appId }),
+    collections: await collectionsFixture(),
+    nextDataSets: (await datasetsFixture())?.data ?? [],
+    basePath,
+  })
 
 describe('useConfiguration utils', () => {
   beforeEach(() => {
@@ -130,8 +127,8 @@ describe('useConfiguration utils', () => {
         config: { options: { retries: 2, flags: [true, 'fast'] } },
       },
     ]
-    mockFetchCollectionList.mockResolvedValue([])
-    mockFetchAppDetailDirect.mockResolvedValue(
+    collectionsFixture.mockResolvedValue([])
+    appDetailFixture.mockResolvedValue(
       createAppDetailFixture({
         mode: AppModeEnum.AGENT_CHAT,
         model_config: createAppModelConfigFixture({
@@ -164,7 +161,7 @@ describe('useConfiguration utils', () => {
       }),
     )
 
-    const loaded = await loadConfigurationState({ appId: 'app-1' })
+    const loaded = await createDefaultsFixture({ appId: 'app-1' })
     const published = loaded.publishedConfig
     const body = buildPublishBody({
       chatPromptConfig: published.chatPromptConfig,
@@ -195,7 +192,6 @@ describe('useConfiguration utils', () => {
       expect.arrayContaining(agentMode.tools.map((tool) => expect.objectContaining(tool))),
     )
     expect(body.external_data_tools).toEqual(externalTools)
-    expect(loaded.externalDataToolsConfig).toEqual(published.externalDataToolsConfig)
     expect(body.file_upload.allowed_file_upload_methods).toEqual(['datasource_file', 'tool_file'])
     expect(body.file_upload.image?.transfer_methods).toEqual(['datasource_file', 'tool_file'])
     expect(body.dataset_configs.metadata_filtering_conditions?.conditions?.[0]?.value).toEqual([
@@ -488,13 +484,13 @@ describe('useConfiguration utils', () => {
   })
 
   it('should load and normalize the initial configuration state', async () => {
-    mockFetchCollectionList.mockResolvedValue([
+    collectionsFixture.mockResolvedValue([
       {
         id: 'tool-1',
         icon: '/tool.svg',
       },
     ])
-    mockFetchAppDetailDirect.mockResolvedValue({
+    appDetailFixture.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.CHAT,
       model_config: createAppModelConfigFixture({
@@ -542,28 +538,24 @@ describe('useConfiguration utils', () => {
         pre_prompt: '',
       }),
     })
-    mockFetchDatasets.mockResolvedValue({
+    datasetsFixture.mockResolvedValue({
       data: [{ id: 'dataset-1', name: 'Dataset One' }],
     })
 
-    const state = await loadConfigurationState({
+    const state = await createDefaultsFixture({
       appId: 'app-1',
       basePath: '/console',
     })
 
-    expect(mockFetchCollectionList).toHaveBeenCalledTimes(1)
-    expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
-    expect(mockFetchDatasets).toHaveBeenCalledWith({
-      params: {
-        ids: ['dataset-1'],
-        page: 1,
-      },
-      url: '/datasets',
-    })
+    expect(getConfigurationDatasetIds((await appDetailFixture()).model_config)).toEqual([
+      'dataset-1',
+    ])
     expect(state.collectionList[0]!.icon).toBe('/console/tool.svg')
-    expect(state.promptMode).toBe('advanced')
-    expect(state.nextDataSets).toEqual([{ id: 'dataset-1', name: 'Dataset One' }])
-    expect(state.annotationConfig).toEqual(
+    expect(state.publishedConfig.promptMode).toBe('advanced')
+    expect(state.publishedConfig.modelConfig.dataSets).toEqual([
+      { id: 'dataset-1', name: 'Dataset One' },
+    ])
+    expect(state.publishedConfig.modelConfig.annotation_reply).toEqual(
       expect.objectContaining({
         enabled: true,
         embedding_model: expect.objectContaining({
@@ -575,11 +567,11 @@ describe('useConfiguration utils', () => {
   })
 
   it('should load dataset tools from agent mode and keep disabled annotation config unchanged', async () => {
-    mockFetchCollectionList.mockResolvedValue([])
-    mockFetchDatasets.mockResolvedValue({
+    collectionsFixture.mockResolvedValue([])
+    datasetsFixture.mockResolvedValue({
       data: [{ id: 'dataset-from-tool', name: 'Dataset From Tool' }],
     })
-    mockFetchAppDetailDirect.mockResolvedValue({
+    appDetailFixture.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.AGENT_CHAT,
       model_config: createAppModelConfigFixture({
@@ -620,27 +612,25 @@ describe('useConfiguration utils', () => {
       }),
     })
 
-    const state = await loadConfigurationState({ appId: 'app-2' })
+    const state = await createDefaultsFixture({ appId: 'app-2' })
 
-    expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
-      params: {
-        page: 1,
-        ids: ['dataset-from-tool'],
-      },
-    })
-    expect(state.nextDataSets).toEqual([{ id: 'dataset-from-tool', name: 'Dataset From Tool' }])
-    expect(state.annotationConfig).toEqual(
+    expect(getConfigurationDatasetIds((await appDetailFixture()).model_config)).toEqual([
+      'dataset-from-tool',
+    ])
+    expect(state.publishedConfig.modelConfig.dataSets).toEqual([
+      { id: 'dataset-from-tool', name: 'Dataset From Tool' },
+    ])
+    expect(state.publishedConfig.modelConfig.annotation_reply).toEqual(
       expect.objectContaining({
         enabled: false,
       }),
     )
-    expect(state.chatPromptConfig).toEqual(expect.any(Object))
+    expect(state.publishedConfig.chatPromptConfig).toEqual(expect.any(Object))
   })
 
   it('should initialize the disabled annotation draft from the response', async () => {
-    mockFetchCollectionList.mockResolvedValue([])
-    mockFetchAppDetailDirect.mockResolvedValue({
+    collectionsFixture.mockResolvedValue([])
+    appDetailFixture.mockResolvedValue({
       deleted_tools: [],
       mode: AppModeEnum.CHAT,
       model_config: createAppModelConfigFixture({
@@ -669,9 +659,11 @@ describe('useConfiguration utils', () => {
       }),
     })
 
-    const state = await loadConfigurationState({ appId: 'app-3' })
+    const state = await createDefaultsFixture({ appId: 'app-3' })
 
-    expect(state.annotationConfig).toEqual(expect.objectContaining({ enabled: false, id: '' }))
+    expect(state.publishedConfig.modelConfig.annotation_reply).toEqual(
+      expect.objectContaining({ enabled: false, id: '' }),
+    )
   })
 
   it('should hydrate selected datasets and open the rerank modal when selection changes', () => {
@@ -829,7 +821,7 @@ describe('useConfiguration utils', () => {
     expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
   })
 
-  it('reports an invalid chat prompt without publishing or replacing the saved configuration', async () => {
+  it('reports an invalid chat prompt without publishing', async () => {
     const backendModelConfig = createAppModelConfigFixture({
       model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
     })
@@ -840,7 +832,6 @@ describe('useConfiguration utils', () => {
       mode: AppModeEnum.CHAT,
       nextDataSets: [],
     })
-    const setPublishedConfig = vi.fn()
     const updateModelConfig = vi.fn()
     const onPublish = createPublishHandler({
       appId: 'app-1',
@@ -860,19 +851,16 @@ describe('useConfiguration utils', () => {
       promptMode: 'advanced',
       resolvedModelModeType: ModelModeType.chat,
       setCanReturnToSimpleMode: vi.fn(),
-      setPublishedConfig,
       t,
     })
 
     await expect(onPublish(updateModelConfig)).rejects.toThrow()
     expect(mockToastError).toHaveBeenCalledWith('api.actionFailed')
     expect(updateModelConfig).not.toHaveBeenCalled()
-    expect(setPublishedConfig).not.toHaveBeenCalled()
     expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
   it('should validate and publish configuration changes', async () => {
-    const setPublishedConfig = vi.fn()
     const setCanReturnToSimpleMode = vi.fn()
     const mockUpdateAppModelConfig = vi.fn().mockResolvedValue(undefined)
 
@@ -921,7 +909,6 @@ describe('useConfiguration utils', () => {
       promptMode: 'advanced' as any,
       resolvedModelModeType: ModelModeType.chat,
       setCanReturnToSimpleMode,
-      setPublishedConfig,
       t,
     })
 
@@ -963,22 +950,24 @@ describe('useConfiguration utils', () => {
         params: { app_id: 'app-1' },
       }),
     )
-    expect(setPublishedConfig).toHaveBeenCalledWith(
+    expect(mockUpdateAppModelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
-        completionParams: { temperature: 0.2 },
-        datasetConfigs: expect.objectContaining({ top_k: 7 }),
-        externalDataToolsConfig: [{ enabled: true, variable: 'external' }],
-        modelConfig: expect.objectContaining({
+        body: expect.objectContaining({
+          chat_prompt_config: { prompt: [{ role: 'system', text: 'hi' }] },
+          model: expect.objectContaining({
+            provider: 'published-provider',
+            name: 'published-model',
+            completion_params: { temperature: 0.2 },
+          }),
+          dataset_configs: expect.objectContaining({ top_k: 7 }),
+          external_data_tools: [{ enabled: true, variable: 'external' }],
           file_upload: expect.objectContaining({
             image: expect.objectContaining({ detail: 'low' }),
           }),
-          model_id: 'published-model',
           opening_statement: '',
-          provider: 'published-provider',
           sensitive_word_avoidance: { enabled: true },
+          prompt_type: 'advanced',
         }),
-        promptMode: 'advanced',
       }),
     )
     expect(mockToastSuccess).toHaveBeenCalledWith('api.success')
@@ -1023,7 +1012,6 @@ describe('useConfiguration utils', () => {
         promptMode: 'advanced' as any,
         resolvedModelModeType: ModelModeType.completion,
         setCanReturnToSimpleMode: vi.fn(),
-        setPublishedConfig: vi.fn(),
         t,
         ...overrides,
       })

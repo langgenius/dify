@@ -1,6 +1,4 @@
 import type { TFunction } from 'i18next'
-import type { Dispatch, SetStateAction } from 'react'
-import type { ConfigurationPublishConfig } from './types'
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -31,8 +29,6 @@ type UseConfigurationPublishParams = {
   promptMode: PromptMode
   resolvedModelModeType: ModelModeType
   setCanReturnToSimpleMode: (value: boolean) => void
-  setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
-  syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
   t: TFunction<['appDebug', 'common']>
   updateModelConfig: (
     params: Parameters<ConsoleClient['apps']['byAppId']['modelConfig']['post']>[0],
@@ -59,8 +55,6 @@ export function useConfigurationPublish({
   promptMode,
   resolvedModelModeType,
   setCanReturnToSimpleMode,
-  setPublishedConfig,
-  syncToPublishedConfig,
   t,
   updateModelConfig,
 }: UseConfigurationPublishParams) {
@@ -72,10 +66,6 @@ export function useConfigurationPublish({
         params && 'model' in params && 'provider' in params && 'parameters' in params
           ? params
           : undefined
-      const handlePublishedConfigChange = (config: ConfigurationPublishConfig) => {
-        setPublishedConfig(config)
-        if (modelAndParameter) syncToPublishedConfig(config)
-      }
       const result = await createPublishHandler({
         appId,
         chatPromptConfig,
@@ -95,7 +85,6 @@ export function useConfigurationPublish({
         promptMode,
         resolvedModelModeType,
         setCanReturnToSimpleMode,
-        setPublishedConfig: handlePublishedConfigChange,
         t,
       })(updateModelConfig, modelAndParameter, features)
 
@@ -121,8 +110,6 @@ export function useConfigurationPublish({
       promptMode,
       resolvedModelModeType,
       setCanReturnToSimpleMode,
-      setPublishedConfig,
-      syncToPublishedConfig,
       t,
       updateModelConfig,
     ],

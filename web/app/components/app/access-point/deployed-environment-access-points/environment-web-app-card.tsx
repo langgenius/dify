@@ -11,11 +11,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CustomizeModal from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
@@ -29,6 +29,7 @@ import {
   WebAppAccessControlEntry,
   WebAppAccessControlEntrySkeleton,
 } from '../shared/web-app-access-control'
+import { accessPointAppDetailAtom } from '../state'
 import { EnvironmentAccessControl } from './environment-access-control'
 import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 
@@ -61,7 +62,7 @@ export function EnvironmentWebAppCard({
     'navigation',
   ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const appInfo = useAtomValue(accessPointAppDetailAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)

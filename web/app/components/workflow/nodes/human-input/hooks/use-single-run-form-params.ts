@@ -3,11 +3,12 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -70,7 +71,12 @@ const useSingleRunFormParams = ({
   }
 
   const appId = useStore((state) => state.appId)
-  const isWorkflowMode = useAppStore((state) => state.appDetail?.mode === AppModeEnum.WORKFLOW)
+  const { data: isWorkflowMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode === AppModeEnum.WORKFLOW,
+    }),
+  )
   const fetchURL = useMemo(() => {
     if (!appId) return ''
     if (!isWorkflowMode) {

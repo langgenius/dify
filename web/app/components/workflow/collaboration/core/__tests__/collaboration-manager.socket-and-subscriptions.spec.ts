@@ -167,6 +167,90 @@ describe('CollaborationManager socket and subscription behavior', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps route metadata subscriptions when returning to the same app workflow', async () => {
+    const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
+    const firstSocket = createMockSocket('first-workflow')
+    const nextSocket = createMockSocket('next-workflow')
+    let activeSocket = firstSocket
+    vi.spyOn(webSocketClient, 'connect').mockImplementation(() => activeSocket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockImplementation(
+      () => activeSocket as unknown as Socket,
+    )
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const onMetadata = vi.fn()
+    const unsubscribe = manager.onAppMetaUpdate('app-1', onMetadata)
+    const update: CollaborationUpdate = {
+      type: 'app_meta_update',
+      userId: 'collaborator',
+      timestamp: 1,
+      data: { name: 'Updated app' },
+    }
+
+    const firstConnection = await manager.connect('app-1')
+    firstSocket.trigger('collaboration_update', update)
+    expect(onMetadata).toHaveBeenCalledOnce()
+
+    manager.disconnect(firstConnection)
+    firstSocket.trigger('collaboration_update', update)
+    expect(onMetadata).toHaveBeenCalledOnce()
+    activeSocket = nextSocket
+    const nextConnection = await manager.connect('app-1')
+    firstSocket.trigger('collaboration_update', update)
+    expect(onMetadata).toHaveBeenCalledOnce()
+    nextSocket.trigger('collaboration_update', update)
+    expect(onMetadata).toHaveBeenCalledTimes(2)
+
+    unsubscribe()
+    nextSocket.trigger('collaboration_update', update)
+    expect(onMetadata).toHaveBeenCalledTimes(2)
+    manager.disconnect(nextConnection)
+  })
+
+  it('notifies only the connected app metadata owner and releases listeners on disposal', async () => {
+    const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
+    const firstSocket = createMockSocket('app-1-workflow')
+    const nextSocket = createMockSocket('app-2-workflow')
+    let activeSocket = firstSocket
+    vi.spyOn(webSocketClient, 'connect').mockImplementation(() => activeSocket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockImplementation(
+      () => activeSocket as unknown as Socket,
+    )
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const onFirstMetadata = vi.fn()
+    const onNextMetadata = vi.fn()
+    manager.onAppMetaUpdate('app-1', onFirstMetadata)
+    manager.onAppMetaUpdate('app-2', onNextMetadata)
+    const update: CollaborationUpdate = {
+      type: 'app_meta_update',
+      userId: 'collaborator',
+      timestamp: 1,
+      data: { name: 'Updated app' },
+    }
+
+    await manager.connect('app-1')
+    firstSocket.trigger('collaboration_update', update)
+    expect(onFirstMetadata).toHaveBeenCalledOnce()
+    expect(onNextMetadata).not.toHaveBeenCalled()
+
+    activeSocket = nextSocket
+    const nextConnection = await manager.connect('app-2')
+    firstSocket.trigger('collaboration_update', update)
+    expect(onFirstMetadata).toHaveBeenCalledOnce()
+    expect(onNextMetadata).not.toHaveBeenCalled()
+    nextSocket.trigger('collaboration_update', update)
+    expect(onFirstMetadata).toHaveBeenCalledOnce()
+    expect(onNextMetadata).toHaveBeenCalledOnce()
+
+    manager.disconnect(nextConnection)
+    manager.destroy()
+    const finalConnection = await manager.connect('app-2')
+    nextSocket.trigger('collaboration_update', update)
+    expect(onNextMetadata).toHaveBeenCalledOnce()
+    manager.disconnect(finalConnection)
+  })
+
   it('allows local draft fallback only before the first collaboration connection', () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-fallback')
@@ -498,6 +582,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('routes collaboration_update payloads to corresponding event channels', () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-events')
+    internals.currentAppId = 'app-events'
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
 
     const broadcastSpy = vi
       .spyOn(internals, 'broadcastCurrentGraph')
@@ -518,7 +604,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     let latestCursors: Record<string, unknown> | null = null
 
     manager.onVarsAndFeaturesUpdate(varsFeatureHandler)
-    manager.onAppMetaUpdate(appMetaHandler)
+    manager.onAppMetaUpdate('app-events', appMetaHandler)
     manager.onAppPublishUpdate(appPublishHandler)
     manager.onWorkflowUpdate(workflowUpdateHandler)
     manager.onCommentsUpdate(commentsHandler)

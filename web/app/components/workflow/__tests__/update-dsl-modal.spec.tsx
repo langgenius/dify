@@ -8,6 +8,7 @@ import { ReactFlowProvider } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { seedAppDetail } from '@/test/console/query-data'
 import { useStore as usePluginDependenciesStore } from '../plugin-dependency/store'
 import UpdateDSLModal from '../update-dsl-modal'
 
@@ -30,40 +31,47 @@ vi.mock('@/app/notifications', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 const mockCheckDependencies = vi.fn()
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      imports: {
-        byAppId: {
-          checkDependencies: {
-            get: {
-              mutationOptions: (options: Record<string, unknown>) => ({
-                ...options,
-                mutationFn: ({ params }: { params: unknown }) => mockCheckDependencies(params),
-              }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      apps: {
+        ...actual.consoleQuery.apps,
+        byAppId: actual.consoleQuery.apps.byAppId,
+        imports: {
+          byAppId: {
+            checkDependencies: {
+              get: {
+                mutationOptions: (options: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: ({ params }: { params: unknown }) => mockCheckDependencies(params),
+                }),
+              },
             },
           },
-        },
-        post: {
-          mutationOptions: (options: Record<string, unknown>) => ({
-            ...options,
-            mutationFn: ({ body }: { body: unknown }) => mockImportDSL(body),
-          }),
-        },
-        byImportId: {
-          confirm: {
-            post: {
-              mutationOptions: (options: Record<string, unknown>) => ({
-                ...options,
-                mutationFn: ({ params }: { params: unknown }) => mockImportDSLConfirm(params),
-              }),
+          post: {
+            mutationOptions: (options: Record<string, unknown>) => ({
+              ...options,
+              mutationFn: ({ body }: { body: unknown }) => mockImportDSL(body),
+            }),
+          },
+          byImportId: {
+            confirm: {
+              post: {
+                mutationOptions: (options: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: ({ params }: { params: unknown }) => mockImportDSLConfirm(params),
+                }),
+              },
             },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
@@ -84,16 +92,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: { appId: string }) => T) => selector({ appId: 'app-1' }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
-}))
-
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
@@ -105,7 +103,10 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 }))
 
 function render(children: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  const client = new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false, staleTime: Infinity } },
+  })
+  seedAppDetail(client, { id: 'app-1', mode: 'chat' })
   return rtlRender(
     <QueryClientProvider client={client}>
       <ReactFlowProvider>{children}</ReactFlowProvider>

@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Oluşturma başarısız oldu",
   "actionMsg.modifiedSuccessfully": "Başarıyla değiştirildi",
   "actionMsg.modifiedUnsuccessfully": "Değiştirme başarısız oldu",
-  "actionMsg.noModification": "Şu an için değişiklik yok.",
   "actionMsg.payCancelled": "Ödeme iptal edildi",
   "actionMsg.paySucceeded": "Ödeme başarılı oldu",
   "agentStrategyPage.description": "AI Agent’ın nasıl akıl yürüttüğünü ve karar verdiğini tanımlayın — araç seçimi, sonuçları işleme ve sorunları otonom çözme dahil.",

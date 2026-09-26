@@ -2,15 +2,19 @@ import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { ReactFlowProvider, useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithAccountProfile } from '@/test/console/account-profile'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
+let queryClient = createConsoleQueryClient()
 const render = (ui: ReactNode) =>
-  renderWithAccountProfile(<ReactFlowProvider>{ui}</ReactFlowProvider>)
+  renderWithConsoleQuery(<ReactFlowProvider>{ui}</ReactFlowProvider>, { queryClient })
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
@@ -454,7 +458,8 @@ describe('WorkflowMain', () => {
     mockReplaceGraphFromReactFlow.mockReturnValue(true)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
-    useAppStore.setState({ appDetail: undefined })
+    queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'app-1', mode: 'workflow' })
   })
 
   it('passes the actual ReactFlow store identity through the collaboration adapter', () => {
@@ -614,9 +619,7 @@ describe('WorkflowMain', () => {
   })
 
   it('disables collaboration for view-only apps', () => {
-    useAppStore.setState({
-      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
-    })
+    seedAppDetail(queryClient, { id: 'app-1', permission_keys: [AppACLPermission.ViewLayout] })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 

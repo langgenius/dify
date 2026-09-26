@@ -8,19 +8,15 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
-import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
 import {
+  accessPointCapabilitiesAtom,
+  accessPointEnvironmentQueryEnabledAtom,
   AccessPointStateBoundary,
   BUILT_IN_ENVIRONMENT_ID,
   inUseAppEnvironmentsAtom,
@@ -148,31 +144,24 @@ function AccessPointContent({
   )
 }
 
-export default function AccessPoint({ appId }: AccessPointProps) {
-  const appDetail = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const capabilities = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  })
-  const showEnvironmentTabs =
-    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
-    capabilities.canViewAccessPoint
-
+function AccessPointView({ appId }: AccessPointProps) {
+  const capabilities = useAtomValue(accessPointCapabilitiesAtom)
+  const showEnvironmentTabs = useAtomValue(accessPointEnvironmentQueryEnabledAtom)
   return (
-    <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
-      <AccessPointContent
-        appId={appId}
-        canDeploy={capabilities.canDeploy}
-        canManageAccessPoint={capabilities.canManageAccessPoint}
-        canReleaseAndVersion={capabilities.canReleaseAndVersion}
-        showEnvironmentTabs={showEnvironmentTabs}
-      />
+    <AccessPointContent
+      appId={appId}
+      canDeploy={capabilities.canDeploy}
+      canManageAccessPoint={capabilities.canManageAccessPoint}
+      canReleaseAndVersion={capabilities.canReleaseAndVersion}
+      showEnvironmentTabs={showEnvironmentTabs}
+    />
+  )
+}
+
+export default function AccessPoint({ appId }: AccessPointProps) {
+  return (
+    <AccessPointStateBoundary appId={appId}>
+      <AccessPointView appId={appId} />
     </AccessPointStateBoundary>
   )
 }

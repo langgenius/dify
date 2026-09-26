@@ -2,6 +2,7 @@ import type {
   EducationStatusResponse,
   GetAccountProfileResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
@@ -37,6 +38,7 @@ import {
   ensureWorkspacePermissionsQuery,
   seedWorkspacePermissionsQuery,
 } from '@/test/console/workspace-permissions'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 
 type QueryKeyProvider = {
@@ -91,6 +93,18 @@ const getCurrentWorkspaceQueryKey = () => {
  */
 export const createConsoleQueryClient = (): QueryClient =>
   createTestQueryClient(() => new Promise(() => {}))
+
+export const seedAppDetail = (
+  queryClient: QueryClient,
+  overrides: Partial<AppDetailWithSite> = {},
+): AppDetailWithSite => {
+  const data = createAppDetailFixture(overrides)
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: data.id } } }),
+    data,
+  )
+  return data
+}
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,
@@ -185,6 +199,7 @@ export type ConsoleQueryTestOptions = {
    * Omit or pass `null` to leave it unseeded.
    */
   appDslVersion?: string | null
+  appDetail?: Partial<AppDetailWithSite>
   queryClient?: QueryClient
 }
 
@@ -229,6 +244,7 @@ export const createConsoleQueryWrapper = (
   }
   if (options.appDslVersion !== undefined && options.appDslVersion !== null)
     seedAppDslVersion(queryClient, options.appDslVersion)
+  if (options.appDetail) seedAppDetail(queryClient, options.appDetail)
   const wrapper = createQueryClientWrapper(queryClient)
   return { queryClient, systemFeatures, wrapper }
 }
@@ -250,6 +266,7 @@ export const renderWithConsoleQuery = (
     trialModels,
     workspacePermissionKeys,
     appDslVersion,
+    appDetail,
     queryClient: qc,
     ...renderOptions
   } = options
@@ -263,6 +280,7 @@ export const renderWithConsoleQuery = (
     trialModels,
     workspacePermissionKeys,
     appDslVersion,
+    appDetail,
     queryClient: qc,
   })
   const rendered = render(ui, { wrapper, ...renderOptions })
@@ -286,6 +304,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
     trialModels,
     workspacePermissionKeys,
     appDslVersion,
+    appDetail,
     queryClient: qc,
     ...hookOptions
   } = options
@@ -299,6 +318,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
     trialModels,
     workspacePermissionKeys,
     appDslVersion,
+    appDetail,
     queryClient: qc,
   })
   const rendered = renderHook(callback, { wrapper, ...hookOptions })

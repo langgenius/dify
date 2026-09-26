@@ -1,12 +1,14 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
 import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
+import { AccessPointStateBoundary } from '../state'
 
 const mocks = vi.hoisted(() => ({
   getApi: vi.fn(),
@@ -26,30 +28,10 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-let mockAppMode = 'workflow'
+let mockAppMode: AppMode = 'workflow'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        get mode() {
-          return mockAppMode
-        },
-        icon: '🤖',
-        icon_background: '#FFEAD5',
-        icon_type: 'emoji',
-        icon_url: null,
-        site: {
-          access_token: 'built-in-code',
-          app_base_url: 'https://built-in.example.test',
-        },
-      },
-    }),
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -137,7 +119,20 @@ function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
     },
   })
 
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return renderWithConsoleQuery(
+    <AccessPointStateBoundary appId="app-1">{ui}</AccessPointStateBoundary>,
+    {
+      queryClient,
+      appDetail: {
+        id: 'app-1',
+        mode: mockAppMode,
+        site: createAppSiteFixture({
+          access_token: 'built-in-code',
+          app_base_url: 'https://built-in.example.test',
+        }),
+      },
+    },
+  )
 }
 
 function createDeferredPromise<T>() {

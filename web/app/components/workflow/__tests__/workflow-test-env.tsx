@@ -60,6 +60,7 @@
  * })
  * ```
  */
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   RenderHookOptions,
   RenderHookResult,
@@ -75,7 +76,7 @@ import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
+import { seedAppDetail, seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
 import { render, renderHook } from '@/test/console/render'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
@@ -137,6 +138,7 @@ type WorkflowProviderOptions = {
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
   queryClient?: QueryClient
+  appDetail?: Partial<AppDetailWithSite>
 }
 
 type StoreInstances = {
@@ -154,6 +156,7 @@ function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
   externalQueryClient?: QueryClient,
+  appDetail?: Partial<AppDetailWithSite>,
 ) {
   if (historyConfig) {
     stores.store.temporal.getState().pause()
@@ -176,6 +179,7 @@ function createWorkflowWrapper(
   if (!externalQueryClient) seedSystemFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
+  if (appDetail) seedAppDetail(queryClient, appDetail)
   const QueryClientWrapper = createQueryClientWrapper(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
@@ -218,11 +222,12 @@ export function renderWorkflowHook<R, P = undefined>(
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
+    appDetail,
     ...rest
   } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, appDetail)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
   return { ...renderResult, ...stores }
@@ -253,11 +258,12 @@ export function renderWorkflowComponent(
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
+    appDetail,
     ...renderOptions
   } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, appDetail)
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
   return { ...renderResult, ...stores }
@@ -281,13 +287,15 @@ function createWorkflowFlowWrapper(
   stores: StoreInstances,
   {
     historyStore: historyConfig,
+    queryClient,
+    appDetail,
     nodes = [],
     edges = [],
     reactFlowProps,
     canvasStyle,
   }: WorkflowFlowOptions,
 ) {
-  const workflowWrapper = createWorkflowWrapper(stores, historyConfig)
+  const workflowWrapper = createWorkflowWrapper(stores, historyConfig, queryClient, appDetail)
 
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(
@@ -314,6 +322,8 @@ export function renderWorkflowFlowComponent(
     initialStoreState,
     hooksStoreProps,
     historyStore,
+    queryClient,
+    appDetail,
     nodes,
     edges,
     reactFlowProps,
@@ -324,6 +334,8 @@ export function renderWorkflowFlowComponent(
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
   const wrapper = createWorkflowFlowWrapper(stores, {
     historyStore,
+    queryClient,
+    appDetail,
     nodes,
     edges,
     reactFlowProps,
@@ -342,6 +354,8 @@ export function renderWorkflowFlowHook<R, P = undefined>(
     initialStoreState,
     hooksStoreProps,
     historyStore,
+    queryClient,
+    appDetail,
     nodes,
     edges,
     reactFlowProps,
@@ -352,6 +366,8 @@ export function renderWorkflowFlowHook<R, P = undefined>(
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
   const wrapper = createWorkflowFlowWrapper(stores, {
     historyStore,
+    queryClient,
+    appDetail,
     nodes,
     edges,
     reactFlowProps,

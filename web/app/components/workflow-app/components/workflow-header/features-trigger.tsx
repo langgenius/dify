@@ -13,7 +13,6 @@ import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 // useWorkflowRunValidation,
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -30,7 +29,7 @@ import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflo
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -44,7 +43,6 @@ const FeaturesTrigger = () => {
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const appID = useStore((state) => state.appId)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
@@ -158,17 +156,6 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const updateAppDetail = useCallback(async () => {
-    try {
-      if (!appID) return
-
-      const res = await consoleClient.apps.byAppId.get({ params: { app_id: appID } })
-      setAppDetail({ ...res })
-    } catch (error) {
-      console.error(error)
-    }
-  }, [appID, setAppDetail])
-
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
@@ -203,7 +190,12 @@ const FeaturesTrigger = () => {
           }
           if (res.warning) toast.warning(res.warning)
           updatePublishedWorkflow(appID)
-          updateAppDetail()
+          await queryClient.invalidateQueries({
+            queryKey: consoleQuery.apps.byAppId.get.queryKey({
+              input: { params: { app_id: appID } },
+            }),
+            exact: true,
+          })
           invalidateAppTriggers(appID)
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
@@ -239,7 +231,6 @@ const FeaturesTrigger = () => {
       appID,
       t,
       updatePublishedWorkflow,
-      updateAppDetail,
       invalidateAppTriggers,
       rosterAgentIds,
       queryClient,

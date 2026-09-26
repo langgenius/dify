@@ -1,10 +1,9 @@
 import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import type { ConfigurationPublishConfig } from './types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet } from '@/models/datasets'
-import type { DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug'
+import type { DatasetConfigs, ModelConfig, PromptMode, PromptVariable } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
 import {
   zAppAgentModePayload,
@@ -17,13 +16,10 @@ import {
   zAppUserInputFormPayload,
 } from '@dify/contracts/api/console/apps/zod.gen'
 import { clone } from 'es-toolkit/object'
-import { produce } from 'immer'
 import { toast } from '@/app/components/app/configuration/toast'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
 export function buildPublishBody({
   chatPromptConfig,
@@ -137,7 +133,6 @@ export const createPublishHandler =
     promptMode,
     resolvedModelModeType,
     setCanReturnToSimpleMode,
-    setPublishedConfig,
     t,
   }: {
     appId: string
@@ -158,7 +153,6 @@ export const createPublishHandler =
     promptMode: PromptMode
     resolvedModelModeType: ModelModeType
     setCanReturnToSimpleMode: (value: boolean) => void
-    setPublishedConfig: (config: ConfigurationPublishConfig) => void
     t: TFunction<['appDebug', 'common']>
   }) =>
   async (
@@ -226,61 +220,6 @@ export const createPublishHandler =
     await updateAppModelConfig({
       params: { app_id: appId },
       body: zAppModelConfigPayload.parse(body),
-    })
-    const nextModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.provider = body.model.provider
-      draft.model_id = body.model.name
-      draft.mode = body.model.mode
-      draft.configs.prompt_template = body.pre_prompt
-      draft.prompt_type = body.prompt_type
-      draft.chat_prompt_config = normalizeChatPromptConfig(body.chat_prompt_config)
-      draft.completion_prompt_config = normalizeCompletionPromptConfig(
-        body.completion_prompt_config,
-      )
-      draft.opening_statement = body.opening_statement
-      draft.more_like_this = body.more_like_this
-        ? { ...body.more_like_this, enabled: body.more_like_this.enabled ?? false }
-        : null
-      draft.suggested_questions = body.suggested_questions ?? []
-      draft.suggested_questions_after_answer = features?.suggested
-        ? { ...features.suggested, enabled: features.suggested.enabled ?? false }
-        : null
-      draft.speech_to_text = body.speech_to_text
-        ? { ...body.speech_to_text, enabled: body.speech_to_text.enabled ?? false }
-        : null
-      draft.text_to_speech = body.text_to_speech
-        ? { ...body.text_to_speech, enabled: body.text_to_speech.enabled ?? false }
-        : null
-      draft.file_upload = features?.file ? { ...features.file, fileUploadConfig: undefined } : null
-      draft.retriever_resource = body.retriever_resource
-        ? { ...body.retriever_resource, enabled: body.retriever_resource.enabled ?? false }
-        : null
-      draft.sensitive_word_avoidance = body.sensitive_word_avoidance
-        ? {
-            ...body.sensitive_word_avoidance,
-            enabled: body.sensitive_word_avoidance.enabled ?? false,
-          }
-        : null
-      draft.external_data_tools = externalDataToolsConfig
-      draft.agentConfig = {
-        ...draft.agentConfig,
-        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
-      }
-      draft.dataSets = dataSets
-    })
-
-    setPublishedConfig({
-      modelConfig: nextModelConfig,
-      completionParams: body.model.completion_params,
-      promptMode:
-        body.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple,
-      chatPromptConfig: normalizeChatPromptConfig(body.chat_prompt_config),
-      completionPromptConfig: normalizeCompletionPromptConfig(body.completion_prompt_config),
-      datasetConfigs: {
-        ...datasetConfigs,
-        datasets: { datasets: dataSets.map(({ id }) => ({ enabled: true, id })) },
-      },
-      externalDataToolsConfig: externalDataToolsConfig ?? [],
     })
     toast.success(t(($) => $['api.success'], { ns: 'common' }))
     setCanReturnToSimpleMode(false)

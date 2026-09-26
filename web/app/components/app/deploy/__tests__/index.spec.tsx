@@ -38,6 +38,9 @@ import {
   shouldPollEnvironmentDeployment,
 } from '../utils/environment-deployment'
 
+let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
+let appDetailAvailable = true
+
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
 const VERSION_DESCRIPTION =
@@ -734,7 +737,16 @@ function render(
   })
   seedWorkflowDeploymentConfigurationQueries(queryClient)
 
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    appDetail: appDetailAvailable
+      ? {
+          ...mockBuiltInEnvironment.appDetail,
+          mode: 'workflow',
+          permission_keys: appPermissionKeys,
+        }
+      : undefined,
+  })
 }
 
 function environmentTableProps(
@@ -752,8 +764,6 @@ function environmentTableProps(
   }
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
-let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
@@ -828,18 +838,7 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const appDetail = appDetailAvailable
-      ? {
-          ...mockBuiltInEnvironment.appDetail,
-          permission_keys: appPermissionKeys,
-        }
-      : undefined
-
-    return selector({ appDetail })
-  },
-}))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: APP_ID }) }))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')

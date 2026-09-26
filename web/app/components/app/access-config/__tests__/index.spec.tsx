@@ -1,6 +1,6 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { act, screen } from '@testing-library/react'
-import { useStore } from '@/app/components/app/store'
 import {
   useAppAccessRules,
   useAppResourceWhitelist,
@@ -18,9 +18,11 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 
 let mockIsRbacEnabled = true
+let appDetail: Partial<AppDetailWithSite>
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
+    appDetail,
     accountProfile: mockConsoleState.userProfile,
     systemFeatures: { rbac_enabled: mockIsRbacEnabled },
   })
@@ -143,13 +145,11 @@ describe('AppAccessConfigPage', () => {
     mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers = false
     mockMutations.removeMemberBindingsAsync.mockResolvedValue(undefined)
     mockAccessRulesEditor.props = null
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.AccessConfig],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
-    })
+    appDetail = {
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.AccessConfig],
+    }
   })
 
   it('should render the first paginated member page with config and whitelist data', () => {
@@ -341,13 +341,11 @@ describe('AppAccessConfigPage', () => {
   })
 
   it('should not mount access config data hooks when access permission is missing', () => {
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.ViewLayout],
-      } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
-    })
+    appDetail = {
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.ViewLayout],
+    }
 
     render(<AppAccessConfigPage appId="app-1" />)
 
@@ -367,14 +365,12 @@ describe('AppAccessConfigPage', () => {
   })
 
   it('should not mount access config data hooks for Agent apps', () => {
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        mode: AppModeEnum.AGENT,
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.AccessConfig],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
-    })
+    appDetail = {
+      id: 'app-1',
+      mode: AppModeEnum.AGENT,
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.AccessConfig],
+    }
 
     render(<AppAccessConfigPage appId="app-1" />)
 
@@ -386,13 +382,11 @@ describe('AppAccessConfigPage', () => {
   it('should allow the maintainer with app management workspace permission', () => {
     mockConsoleState.userProfile = { id: 'account-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
-    })
+    appDetail = {
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [],
+    }
 
     render(<AppAccessConfigPage appId="app-1" />)
 

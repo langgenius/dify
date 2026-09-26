@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Generated unsuccessfully",
   "actionMsg.modifiedSuccessfully": "Modified successfully",
   "actionMsg.modifiedUnsuccessfully": "Modified unsuccessfully",
-  "actionMsg.noModification": "No modifications at the moment.",
   "actionMsg.payCancelled": "Payment cancelled",
   "actionMsg.paySucceeded": "Payment succeeded",
   "agentStrategyPage.description": "Bepaal hoe je AI Agent redeneert en beslissingen neemt — inclusief hoe tools worden gekozen, resultaten worden verwerkt en problemen zelfstandig worden opgelost.",

@@ -1,11 +1,9 @@
 'use client'
-
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
@@ -17,6 +15,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
@@ -46,7 +45,12 @@ const WorkflowAppWithAdditionalContext = () => {
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const appACLCapabilities = useMemo(
     () =>
       getAppACLCapabilities(appDetail?.permission_keys, {
@@ -56,7 +60,6 @@ const WorkflowAppWithAdditionalContext = () => {
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const appId = useStore((state) => state.appId)
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache

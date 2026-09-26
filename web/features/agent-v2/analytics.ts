@@ -1,5 +1,7 @@
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 export type AgentScope = (typeof AgentScope)[keyof typeof AgentScope]
@@ -10,7 +12,13 @@ export const AgentScope = {
 } as const
 
 export const useInlineAgentScope = () => {
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const appId = useStore((state) => state.appId)
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode,
+    }),
+  )
 
   return appMode === AppModeEnum.ADVANCED_CHAT ? AgentScope.InChatflow : AgentScope.InWorkflow
 }

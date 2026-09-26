@@ -1,6 +1,8 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
@@ -12,11 +14,9 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
-let appStoreState: {
-  appDetail: {
-    mode: string
-  }
-}
+let appMode: AppMode
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithConsoleQuery(callback, { appDetail: { id: 'app-1', mode: appMode } })
 
 let workflowStoreState: {
   appId: string
@@ -31,13 +31,10 @@ let workflowStoreState: {
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useStore: <T>(selector: (state: typeof workflowStoreState) => T) => selector(workflowStoreState),
   useWorkflowStore: () => ({
     getState: () => workflowStoreState,
   }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
@@ -70,9 +67,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       setConversationVariables: mockSetConversationVariables,
       setIsWorkflowDataLoaded: mockSetIsWorkflowDataLoaded,
     }
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.ADVANCED_CHAT },
-    }
+    appMode = AppModeEnum.ADVANCED_CHAT
     mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
   })
 
@@ -229,9 +224,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
   })
 
   it('should restore a local start placeholder for workflow drafts without an entry node', async () => {
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.WORKFLOW },
-    }
+    appMode = AppModeEnum.WORKFLOW
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'server-hash',
       graph: {

@@ -72,11 +72,20 @@ export function AppDeployStateBoundary({
   return children
 }
 
+const appDetailQueryAtom = atomWithQuery((get) => {
+  const appId = get(appDeployAppIdAtom)
+  return consoleQuery.apps.byAppId.get.queryOptions({
+    input: appId ? { params: { app_id: appId } } : skipToken,
+  })
+})
+
+export const appDeployAppDetailAtom = selectAtom(appDetailQueryAtom, (query) => query.data)
+
 const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
   return appWorkflowQueryOptions(get(appDeployAppIdAtom))
 })
 
-const latestPublishedWorkflowAtom = selectAtom(
+export const latestPublishedWorkflowAtom = selectAtom(
   latestPublishedWorkflowQueryAtom,
   (query) => query.data,
 )

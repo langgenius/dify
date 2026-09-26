@@ -1,20 +1,26 @@
 'use client'
 import type { FC } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import Annotation from '@/app/components/app/annotation'
 import Log from '@/app/components/app/log'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowLog from '@/app/components/app/workflow-log'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 type Props = Readonly<{
+  appId: string
   pageType: PageType
 }>
 
-const LogAnnotation: FC<Props> = ({ pageType }) => {
-  const appDetail = useAppStore((state) => state.appDetail)
+const LogAnnotation: FC<Props> = ({ appId, pageType }) => {
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
 
   if (!appDetail) {
     return (

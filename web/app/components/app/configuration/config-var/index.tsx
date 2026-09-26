@@ -383,6 +383,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
 
       {isShowEditModal && (
         <EditModal
+          supportJson={mode === AppModeEnum.ADVANCED_CHAT || mode === AppModeEnum.WORKFLOW}
           payload={currItemToEdit!}
           isShow={isShowEditModal}
           onClose={hideEditModal}

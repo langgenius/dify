@@ -12,19 +12,19 @@ import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getEnterpriseDocUrl } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDocLanguage } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { EnvironmentTable } from './environment-table'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
 import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
-import { AppDeployStateBoundary } from './state'
+import { appDeployAppDetailAtom, AppDeployStateBoundary } from './state'
 import { toDeploymentVersion } from './utils/version'
 
 const DeploymentDialog = dynamic(() =>
@@ -153,8 +153,8 @@ function AppDeployContent({
   )
 }
 
-export default function AppDeploy() {
-  const appDetail = useAppStore((state) => state.appDetail)
+function AppDeployView() {
+  const appDetail = useAtomValue(appDeployAppDetailAtom)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -175,9 +175,14 @@ export default function AppDeploy() {
   )
     return null
 
+  return <AppDeployContent appId={appDetail.id} canViewAccessPoint={canViewAccessPoint} />
+}
+
+export default function AppDeploy() {
+  const { appId } = useParams<{ appId: string }>()
   return (
-    <AppDeployStateBoundary appId={appDetail.id}>
-      <AppDeployContent appId={appDetail.id} canViewAccessPoint={canViewAccessPoint} />
+    <AppDeployStateBoundary appId={appId}>
+      <AppDeployView />
     </AppDeployStateBoundary>
   )
 }

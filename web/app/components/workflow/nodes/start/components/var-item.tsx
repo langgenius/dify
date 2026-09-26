@@ -138,6 +138,7 @@ const VarItem: FC<Props> = ({
       </div>
       {isShowEditVarModal && (
         <ConfigVarModal
+          supportJson
           isShow
           supportFile
           payload={payload}

@@ -1,8 +1,9 @@
-import { waitFor } from '@testing-library/react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { renderHookWithConsoleQuery, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -18,20 +19,12 @@ const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 
+let appDetailFixture: AppDetailWithSite
 const renderHook = <Result>(callback: () => Result) =>
-  renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  renderHookWithConsoleQuery(callback, {
+    accountProfile: { id: 'user-1' },
+    appDetail: appDetailFixture,
   })
-
-let appStoreState: {
-  appDetail: {
-    id: string
-    name: string
-    mode: string
-    permission_keys?: string[]
-    maintainer?: string
-  }
-}
 
 let workflowConfigState: {
   data: Record<string, unknown> | null
@@ -48,10 +41,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -63,7 +52,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('../use-workflow-template', () => ({
   useWorkflowTemplate: () => ({
     nodes:
-      appStoreState.appDetail.mode === 'workflow'
+      appDetailFixture.mode === 'workflow'
         ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
         : [{ id: 'start', data: { type: BlockEnum.Start } }],
     edges: [],
@@ -120,14 +109,12 @@ const draftResponse = {
 describe('useWorkflowInit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.Edit],
-      },
-    }
+    appDetailFixture = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'workflow',
+      permission_keys: [AppACLPermission.Edit],
+    })
     workflowConfigState = { data: null, isLoading: false }
     mockWorkflowStoreGetState.mockReturnValue({
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
@@ -159,7 +146,6 @@ describe('useWorkflowInit', () => {
   )
 
   it('loads draft, block defaults and published workflow with the constructor identity', async () => {
-    appStoreState.appDetail.id = 'other-app'
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
     const { result } = renderHook(() => useWorkflowInit())
 
@@ -171,6 +157,28 @@ describe('useWorkflowInit', () => {
     expect(mockFetchPublishedWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/publish')
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith(
       expect.objectContaining({ appId: expect.anything() }),
+    )
+  })
+
+  it('keeps the initialized draft when app metadata refreshes', async () => {
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    const { result, queryClient } = renderHook(() => useWorkflowInit())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const initializedDraft = result.current.data
+    mockWorkflowStoreSetState.mockClear()
+    mockSetSyncWorkflowDraftHash.mockClear()
+    await act(async () => {
+      seedAppDetail(queryClient, {
+        ...appDetailFixture,
+        name: 'Renamed App',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+    })
+    expect(result.current.data).toBe(initializedDraft)
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith(
+      expect.objectContaining({ environmentVariables: expect.anything() }),
     )
   })
 
@@ -216,14 +224,12 @@ describe('useWorkflowInit', () => {
   })
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'advanced-chat',
-        permission_keys: [AppACLPermission.Edit],
-      },
-    }
+    appDetailFixture = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'advanced-chat',
+      permission_keys: [AppACLPermission.Edit],
+    })
     mockFetchWorkflowDraft
       .mockReset()
       .mockRejectedValueOnce(notExistError())
@@ -255,14 +261,12 @@ describe('useWorkflowInit', () => {
   })
 
   it('should keep readonly users local when the first workflow draft does not exist', async () => {
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.ViewLayout],
-      },
-    }
+    appDetailFixture = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'workflow',
+      permission_keys: [AppACLPermission.ViewLayout],
+    })
     mockFetchWorkflowDraft.mockReset().mockRejectedValueOnce(notExistError())
 
     const { result } = renderHook(() => useWorkflowInit())
@@ -363,7 +367,6 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.hash).toBe('server-hash')
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appName: 'Test' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         envSecrets: { 'env-secret': 'top-secret' },

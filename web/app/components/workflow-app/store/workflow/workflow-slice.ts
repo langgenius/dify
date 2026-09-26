@@ -3,7 +3,6 @@ import type { StateCreator } from 'zustand'
 export type WorkflowSliceShape = {
   appId: string
   workflowRunAbortController: AbortController | null
-  appName: string
   notInitialWorkflow: boolean
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
   shouldAutoOpenStartNodeSelector: boolean
@@ -23,7 +22,6 @@ export const createWorkflowSlice =
   (set) => ({
     appId,
     workflowRunAbortController: null,
-    appName: '',
     notInitialWorkflow: false,
     setNotInitialWorkflow: (notInitialWorkflow) => set(() => ({ notInitialWorkflow })),
     shouldAutoOpenStartNodeSelector: false,

@@ -4,7 +4,7 @@ import type {
   AppPublisherPublishParams,
 } from '@/app/components/app/app-publisher/types'
 import type { ConfigurationPublishConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
-import type { Features, FileUpload } from '@/app/components/base/features/types'
+import type { Features } from '@/app/components/base/features/types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,14 +14,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { produce } from 'immer'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppPublisher } from '@/app/components/app/app-publisher'
+import { toast } from '@/app/components/app/configuration/toast'
+import { buildConfigurationFeaturesData } from '@/app/components/app/configuration/utils'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { Resolution } from '@/types/app'
 
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
   onPublish?: (
@@ -29,8 +28,8 @@ type Props = Omit<AppPublisherProps, 'onPublish'> & {
     features?: Features,
     options?: AppPublisherPublishOptions,
   ) => Promise<unknown> | unknown
-  publishedConfig: ConfigurationPublishConfig
-  resetAppConfig?: () => void
+  loadPublishedConfig: () => Promise<ConfigurationPublishConfig>
+  resetAppConfig: (config: ConfigurationPublishConfig) => void
 }
 
 const FeaturesWrappedAppPublisher = (props: Props) => {
@@ -38,55 +37,22 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
-  const { resetAppConfig } = props
-  const {
-    more_like_this,
-    opening_statement,
-    suggested_questions,
-    sensitive_word_avoidance,
-    speech_to_text,
-    text_to_speech,
-    suggested_questions_after_answer,
-    retriever_resource,
-    annotation_reply,
-    file_upload,
-  } = props.publishedConfig.modelConfig
+  const { mutate: restore, isPending: isRestoring } = useMutation({
+    mutationFn: props.loadPublishedConfig,
+  })
+
+  const applyPublishedConfig = (config: ConfigurationPublishConfig) => {
+    props.resetAppConfig(config)
+    const { features, setFeatures } = featuresStore!.getState()
+    setFeatures(buildConfigurationFeaturesData(config.modelConfig, features.file?.fileUploadConfig))
+    setRestoreConfirmOpen(false)
+  }
 
   const handleConfirm = () => {
-    resetAppConfig?.()
-    const { features, setFeatures } = featuresStore!.getState()
-    const newFeatures = produce(features, (draft) => {
-      draft.moreLikeThis = more_like_this || { enabled: false }
-      draft.opening = {
-        enabled: !!opening_statement,
-        opening_statement: opening_statement || '',
-        suggested_questions: suggested_questions || [],
-      }
-      draft.moderation = sensitive_word_avoidance || { enabled: false }
-      draft.speech2text = speech_to_text || { enabled: false }
-      draft.text2speech = text_to_speech || { enabled: false }
-      draft.suggested = suggested_questions_after_answer || { enabled: false }
-      draft.citation = retriever_resource || { enabled: false }
-      draft.annotationReply = annotation_reply || { enabled: false }
-      draft.file = {
-        image: {
-          detail: file_upload?.image?.detail || Resolution.high,
-          enabled: !!file_upload?.image?.enabled,
-          number_limits: file_upload?.image?.number_limits || 3,
-          transfer_methods: file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        },
-        enabled: !!(file_upload?.enabled || file_upload?.image?.enabled),
-        allowed_file_types: file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions:
-          file_upload?.allowed_file_extensions ||
-          FILE_EXTS[SupportUploadFileTypes.image]!.map((ext) => `.${ext}`),
-        allowed_file_upload_methods: file_upload?.allowed_file_upload_methods ||
-          file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
-      } as FileUpload
+    restore(undefined, {
+      onSuccess: applyPublishedConfig,
+      onError: () => toast.error(t(($) => $['api.actionFailed'], { ns: 'common' })),
     })
-    setFeatures(newFeatures)
-    setRestoreConfirmOpen(false)
   }
 
   const handlePublish = useCallback(
@@ -108,7 +74,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
       />
       <AlertDialog
         open={restoreConfirmOpen}
-        onOpenChange={(open) => !open && setRestoreConfirmOpen(false)}
+        onOpenChange={(open) => !open && !isRestoring && setRestoreConfirmOpen(false)}
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
@@ -120,10 +86,10 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isRestoring}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleConfirm}>
+            <AlertDialogConfirmButton onClick={handleConfirm} loading={isRestoring}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

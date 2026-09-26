@@ -1,8 +1,17 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { useWorkflowRun } from '../use-workflow-run'
+
+let queryClient = createConsoleQueryClient()
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithConsoleQuery(callback, { queryClient })
 
 type WorkflowStoreState = {
   appId?: string
@@ -33,13 +42,6 @@ type WorkflowRunFailedTrackingEvent = {
 }
 
 const mocks = vi.hoisted(() => {
-  const appStoreState = {
-    appDetail: {
-      id: 'app-1',
-      mode: 'workflow',
-      name: 'Workflow App',
-    },
-  }
   const reactFlowStoreState = {
     edges: [{ id: 'edge-1' }],
     getNodes: vi.fn(),
@@ -61,7 +63,6 @@ const mocks = vi.hoisted(() => {
   })
 
   return {
-    appStoreState,
     reactFlowStoreState,
     workflowStoreState,
     workflowStoreSetState,
@@ -117,21 +118,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const useStore = Object.assign(
-    vi.fn((selector: (state: typeof mocks.appStoreState) => unknown) =>
-      selector(mocks.appStoreState),
-    ),
-    {
-      getState: () => mocks.appStoreState,
-    },
-  )
-
-  return {
-    useStore,
-  }
-})
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mocks.mockTrackEvent,
 }))
@@ -163,6 +149,8 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useStore: <T>(selector: (state: WorkflowStoreState) => T) =>
+    selector(mocks.mockUseWorkflowStore().getState()),
   useWorkflowStore: () => mocks.mockUseWorkflowStore(),
 }))
 
@@ -253,7 +241,8 @@ describe('useWorkflowRun', () => {
       getState: () => mocks.workflowStoreState,
       setState: mocks.workflowStoreSetState,
     })
-    mocks.appStoreState.appDetail = { id: 'other-app', mode: 'workflow', name: 'Workflow App' }
+    queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'app-1', mode: 'workflow', name: 'Workflow App' })
     document.body.innerHTML = '<div id="workflow-container"></div>'
     const workflowContainer = document.getElementById('workflow-container')!
     Object.defineProperty(workflowContainer, 'clientWidth', { value: 960, configurable: true })
@@ -629,9 +618,9 @@ describe('useWorkflowRun', () => {
     )
   })
 
-  it('keeps run and stop requests bound to the workflow session when global app metadata changes', async () => {
+  it('keeps run and stop requests bound to the workflow session when another app metadata is cached', async () => {
     const { result } = renderHook(() => useWorkflowRun())
-    mocks.appStoreState.appDetail = { id: 'app-2', mode: 'advanced-chat', name: 'Other app' }
+    seedAppDetail(queryClient, { id: 'app-2', mode: 'advanced-chat', name: 'Other app' })
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
     })
@@ -670,6 +659,8 @@ describe('useWorkflowRun', () => {
   })
 
   it('keeps separate workflow sessions isolated when old stop and completion callbacks run', async () => {
+    seedAppDetail(queryClient, { id: 'app-a', mode: 'workflow' })
+    seedAppDetail(queryClient, { id: 'app-b', mode: 'workflow' })
     const firstStore = createTestWorkflowStore({ appId: 'app-a' })
     mocks.mockUseWorkflowStore.mockReturnValue(firstStore)
     const first = renderHook(() => useWorkflowRun())

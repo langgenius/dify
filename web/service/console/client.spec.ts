@@ -7,7 +7,7 @@ import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAgentFixture } from '@/test/fixtures/agent'
-import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
@@ -626,12 +626,126 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('keeps site reset pending until active detail readers refresh without replacing detail with a partial response', async () => {
+    let resolveRefreshed!: (response: Response) => void
+    const refreshed = new Promise<Response>((resolve) => {
+      resolveRefreshed = resolve
+    })
+    const request = vi.fn((url: string) => {
+      if (url.endsWith('/site/access-token-reset'))
+        return Promise.resolve(Response.json({ access_token: 'new-token' }))
+      return refreshed
+    })
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+    const original = createAppDetailFixture()
+    const options = consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: original.id } },
+    })
+    const otherOptions = consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: 'other-app' } },
+    })
+    client.setQueryData(options.queryKey, original)
+    client.setQueryData(otherOptions.queryKey, createAppDetailFixture({ id: 'other-app' }))
+    const reader = new QueryObserver(client, options)
+    const stop = reader.subscribe(() => {})
+    const onSuccess = vi.fn()
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({ onSuccess }),
+    )
+    try {
+      const saved = mutation.mutate({ params: { app_id: original.id } })
+      await vi.waitFor(() => expect(reader.getCurrentResult().isFetching).toBe(true))
+      expect(onSuccess).toHaveBeenCalledOnce()
+      expect(mutation.getCurrentResult().isPending).toBe(true)
+      expect(reader.getCurrentResult().data).toEqual(original)
+      const updated = createAppDetailFixture({
+        site: createAppSiteFixture({ access_token: 'new-token' }),
+      })
+      resolveRefreshed(Response.json(updated))
+      await saved
+      expect(reader.getCurrentResult().data).toEqual(updated)
+      expect(mutation.getCurrentResult().isSuccess).toBe(true)
+      expect(client.getQueryState(otherOptions.queryKey)?.isInvalidated).toBe(false)
+    } finally {
+      stop()
+      client.clear()
+    }
+  })
+
+  it('preserves detail and reports a failed write through the local callback', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValue(Response.json({ message: 'Save failed' }, { status: 500 }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const client = new QueryClient()
+    const original = createAppDetailFixture()
+    const options = consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: original.id } },
+    })
+    client.setQueryData(options.queryKey, original)
+    const onError = vi.fn()
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.put.mutationOptions({ onError }),
+    )
+    try {
+      await expect(
+        mutation.mutate({ params: { app_id: original.id }, body: { name: 'Unsaved name' } }),
+      ).rejects.toBeDefined()
+      expect(onError).toHaveBeenCalledOnce()
+      expect(client.getQueryData(options.queryKey)).toEqual(original)
+      expect(client.getQueryState(options.queryKey)?.isInvalidated).toBe(false)
+    } finally {
+      client.clear()
+    }
+  })
+
+  it('removes deleted detail and prevents a late in-flight response from restoring it', async () => {
+    let resolveStaleRead!: (response: Response) => void
+    const staleRead = new Promise<Response>((resolve) => {
+      resolveStaleRead = resolve
+    })
+    const request = vi.fn((_url: string, _options: unknown, transport: { request: Request }) =>
+      transport.request.method === 'DELETE'
+        ? Promise.resolve(new Response(null, { status: 204 }))
+        : staleRead,
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+    const original = createAppDetailFixture()
+    const options = consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: original.id } },
+    })
+    client.setQueryData(options.queryKey, original)
+    const reader = new QueryObserver(client, options)
+    const stop = reader.subscribe(() => {})
+    const refresh = reader.refetch()
+    const onSuccess = vi.fn()
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.delete.mutationOptions({ onSuccess }),
+    )
+    try {
+      await mutation.mutate({ params: { app_id: original.id } })
+      expect(onSuccess).toHaveBeenCalledOnce()
+      expect(client.getQueryState(options.queryKey)).toBeUndefined()
+      resolveStaleRead(Response.json(original))
+      await refresh
+      expect(client.getQueryState(options.queryKey)).toBeUndefined()
+    } finally {
+      stop()
+      client.clear()
+    }
+  })
+
   it('should invalidate the exact app detail after access mutations', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi
       .spyOn(queryClient, 'invalidateQueries')
-      .mockImplementation(() => new Promise(() => {}))
+      .mockResolvedValue(undefined)
     const context = createMutationContext(queryClient)
     const appDetail: AppDetail = createAppDetailFixture()
     const appSite: AppSiteResponse = {
@@ -677,7 +791,13 @@ describe('consoleQuery app mutation defaults', () => {
         ),
     ]
 
-    expect(results).toEqual([undefined, undefined, undefined, undefined])
+    expect(results.slice(0, 3)).toEqual([
+      expect.any(Promise),
+      expect.any(Promise),
+      expect.any(Promise),
+    ])
+    expect(results[3]).toBeUndefined()
+    await Promise.all(results)
     expect(invalidateQueries).toHaveBeenCalledTimes(3)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -714,8 +834,9 @@ describe('consoleQuery app mutation defaults', () => {
     queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
 
     const mutationOptions = consoleQuery.apps.byAppId.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSettled?.(
       updatedApp,
+      null,
       {
         params: { app_id: 'app-1' },
         body: { name: updatedApp.name },
@@ -855,8 +976,9 @@ describe('consoleQuery app mutation defaults', () => {
       })
     const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
 
-    const synchronization = mutationOptions.onSuccess?.(
+    const synchronization = mutationOptions.onSettled?.(
       undefined,
+      null,
       { params: { app_id: 'app-1' } },
       undefined,
       createMutationContext(queryClient),
@@ -865,7 +987,7 @@ describe('consoleQuery app mutation defaults', () => {
     void Promise.resolve(synchronization).then(() => {
       synchronized = true
     })
-    await Promise.resolve()
+    await vi.waitFor(() => expect(invalidateQueries).toHaveBeenCalled())
 
     expect(synchronized).toBe(false)
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -1541,8 +1663,9 @@ describe('consoleQuery Web app access mutation defaults', () => {
 
     const mutationOptions =
       consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSettled?.(
       { message: 'updated' },
+      null,
       {
         body: {
           appId: 'app-1',
@@ -1561,6 +1684,9 @@ describe('consoleQuery Web app access mutation defaults', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.byAgentId.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.get.key(),

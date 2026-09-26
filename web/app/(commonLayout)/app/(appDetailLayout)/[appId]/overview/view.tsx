@@ -1,12 +1,12 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ChartView from './chart-view'
 import TracingPanel from './tracing/panel'
@@ -16,7 +16,11 @@ type OverviewViewProps = {
 }
 
 const OverviewView = ({ appId }: OverviewViewProps) => {
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -40,7 +44,11 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       <div className="min-h-0 flex-1">
         <ChartView
           appId={appId}
-          headerRight={appACLCapabilities.canConfigureTracing ? <TracingPanel /> : null}
+          headerRight={
+            appACLCapabilities.canConfigureTracing ? (
+              <TracingPanel key={appId} appId={appId} />
+            ) : null
+          }
         />
       </div>
     </div>
