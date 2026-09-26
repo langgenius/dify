@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
@@ -122,7 +123,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 )
 class MessageListApi(Resource):
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageListQuery)
@@ -146,7 +147,7 @@ class MessageListApi(Resource):
 )
 class MessageFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageFeedbackPayload)
@@ -174,7 +175,7 @@ class MessageFeedbackApi(Resource):
 )
 class MessageMoreLikeThisApi(Resource):
     @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(MoreLikeThisQuery)
@@ -201,7 +202,7 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_message_errors

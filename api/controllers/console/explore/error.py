@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 
@@ -14,115 +16,115 @@ class InstalledAppHTTPError(BaseHTTPException):
 class InstalledAppNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "installed_app_not_found"
     description = "The app was not found in this workspace."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class InstalledAppUnavailableHTTPError(InstalledAppHTTPError):
     error_code = "installed_app_unavailable"
     description = "The app is not available in this app library."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class InstalledAppInvalidCursorError(InstalledAppHTTPError):
     error_code = "invalid_cursor"
     description = "The app list cursor is invalid. Refresh the list and try again."
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class WebAppAccessUnavailableHTTPError(InstalledAppHTTPError):
     error_code = "web_app_access_unavailable"
     description = "The app access service is unavailable. Try again later."
-    code = 503
+    code = HTTPStatus.SERVICE_UNAVAILABLE
 
 
 class ConversationNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "conversation_not_found"
     description = "The conversation was not found for this account and app."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class ConversationCursorNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "conversation_cursor_not_found"
     description = "The conversation cursor is not in the current list. Refresh the list and try again."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class ConversationFirstMessageNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "conversation_first_message_not_found"
     description = "The conversation has no message from which to generate a name."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class ConversationNameRequiredHTTPError(InstalledAppHTTPError):
     error_code = "conversation_name_required"
     description = "A name is required when automatic naming is disabled."
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class MessageNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "message_not_found"
     description = "The message was not found for this account and app."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class MessageCursorNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "message_cursor_not_found"
     description = "The message cursor is not in this conversation. Refresh the list and try again."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class MessageFeedbackRatingRequiredHTTPError(InstalledAppHTTPError):
     error_code = "message_feedback_rating_required"
     description = "A rating is required when there is no existing feedback to remove."
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Not Completion App"
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class NotChatAppError(BaseHTTPException):
     error_code = "not_chat_app"
     description = "App mode is invalid."
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Only support workflow app."
-    code = 400
+    code = HTTPStatus.BAD_REQUEST
 
 
 class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
     error_code = "app_suggested_questions_after_answer_disabled"
     description = "Function Suggested questions after answer disabled."
-    code = 403
+    code = HTTPStatus.FORBIDDEN
 
 
 class AppAccessDeniedError(BaseHTTPException):
     error_code = "access_denied"
     description = "App access denied."
-    code = 403
+    code = HTTPStatus.FORBIDDEN
 
 
 class RecommendedAppNotFoundError(BaseHTTPException):
     error_code = "recommended_app_not_found"
     description = "Recommended app not found."
-    code = 404
+    code = HTTPStatus.NOT_FOUND
 
 
 class AppPreviewSiteUnavailableError(BaseHTTPException):
     error_code = "app_site_unavailable"
     description = "The app preview site is unavailable."
-    code = 403
+    code = HTTPStatus.FORBIDDEN
 
 
 class AppPreviewOwnerUnavailableError(BaseHTTPException):
     error_code = "app_owner_unavailable"
     description = "The app preview owner is unavailable."
-    code = 403
+    code = HTTPStatus.FORBIDDEN
 
 
 class TrialAppNotAllowed(BaseHTTPException):
@@ -132,7 +134,7 @@ class TrialAppNotAllowed(BaseHTTPException):
     """
 
     error_code = "trial_app_not_allowed"
-    code = 403
+    code = HTTPStatus.FORBIDDEN
     description = "the app is not allowed to be trial."
 
 
@@ -143,11 +145,11 @@ class TrialAppLimitExceeded(BaseHTTPException):
     """
 
     error_code = "trial_app_limit_exceeded"
-    code = 403
+    code = HTTPStatus.FORBIDDEN
     description = "The user has exceeded the trial app limit."
 
 
 class TrialAppFeatureDisabledError(BaseHTTPException):
     error_code = "trial_app_feature_disabled"
-    code = 403
+    code = HTTPStatus.FORBIDDEN
     description = "Trial app feature is not enabled."

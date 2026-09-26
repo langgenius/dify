@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 from flask import Response
 from flask_restx import Resource
@@ -44,7 +45,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(WorkflowRunPayload)
@@ -89,7 +90,7 @@ class InstalledAppWorkflowRunApi(Resource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def post(self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str) -> dict[str, object]:
