@@ -220,7 +220,9 @@ class TestParentChildIndexProcessor:
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
 
-    def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
+    def test_load_creates_vector_and_keyword_indexes_for_child_docs(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
         parent_doc = Document(
             page_content="parent",
             metadata={},
@@ -232,7 +234,10 @@ class TestParentChildIndexProcessor:
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
         session = self.session
 
-        with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls:
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
             vector = mock_vector_cls.return_value
             processor.load(dataset, [parent_doc], multimodal_documents=multimodal_docs, session=session)
 
@@ -242,12 +247,70 @@ class TestParentChildIndexProcessor:
         assert len(formatted_docs) == 2
         assert all(isinstance(doc, Document) for doc in formatted_docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            formatted_docs, session, update_segment_keywords=False
+        )
+
+    def test_load_skips_keyword_index_when_disabled(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        parent_doc = Document(
+            page_content="parent",
+            metadata={},
+            children=[ChildDocument(page_content="child", metadata={})],
+        )
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.load(dataset, [parent_doc], with_keywords=False, session=self.session)
+
+        mock_vector_cls.return_value.create.assert_called_once()
+        mock_keyword_cls.assert_not_called()
+
+    def test_load_skips_empty_child_batches(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
+        parent_doc = Document(page_content="parent", metadata={}, children=[])
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.load(dataset, [parent_doc], session=self.session)
+
+        mock_vector_cls.assert_called_once_with(dataset, session=self.session)
+        mock_vector_cls.return_value.create.assert_not_called()
+        mock_keyword_cls.assert_not_called()
+
+    def test_load_economy_indexes_keywords_without_vectors(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        parent_doc = Document(
+            page_content="parent",
+            metadata={},
+            children=[ChildDocument(page_content="child", metadata={})],
+        )
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.load(dataset, [parent_doc], session=self.session)
+
+        mock_vector_cls.assert_not_called()
+        keyword_documents = mock_keyword_cls.return_value.add_texts.call_args.args[0]
+        assert [document.page_content for document in keyword_documents] == ["child"]
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            keyword_documents, self.session, update_segment_keywords=False
+        )
 
     def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(
@@ -260,6 +323,7 @@ class TestParentChildIndexProcessor:
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
         assert session.query(ChildChunk).count() == 0
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
 
     def test_clean_queries_child_ids_when_not_precomputed(
         self, processor: ParentChildIndexProcessor, dataset: Dataset
@@ -298,23 +362,64 @@ class TestParentChildIndexProcessor:
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(dataset, ["node-1"], delete_child_chunks=False, session=session)
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
+
+    def test_clean_skips_keyword_cleanup_when_disabled(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.clean(
+                dataset,
+                ["node-1"],
+                with_keywords=False,
+                precomputed_child_node_ids=["child-1"],
+                session=self.session,
+            )
+
+        mock_vector_cls.return_value.delete_by_ids.assert_called_once_with(["child-1"])
+        mock_keyword_cls.assert_not_called()
+
+    def test_clean_economy_removes_keywords_without_vectors(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.clean(
+                dataset,
+                ["node-1"],
+                precomputed_child_node_ids=["child-1"],
+                session=self.session,
+            )
+
+        mock_vector_cls.assert_not_called()
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1"], self.session)
 
     def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(dataset, None, delete_child_chunks=True, session=session)
 
         vector.delete.assert_called_once()
         assert session.query(ChildChunk).count() == 0
+        mock_keyword_cls.return_value.delete.assert_called_once_with(session=session)
 
     def test_clean_deletes_summaries_when_requested(
         self, processor: ParentChildIndexProcessor, dataset: Dataset
@@ -339,6 +444,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[], session=session)
 
@@ -352,6 +458,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             session = self.session
             processor.clean(dataset, None, delete_summaries=True, session=session)
@@ -420,6 +527,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts"
             ) as mock_token_counter,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [11]
             mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
@@ -439,8 +547,14 @@ class TestParentChildIndexProcessor:
             save_child=True,
         )
         mock_vector_cls.assert_called_once_with(dataset, session=session)
-        assert mock_vector_cls.return_value.create.call_count == 1
+        indexed_child_documents = mock_vector_cls.return_value.create.call_args.args[0]
+        assert [document.page_content for document in indexed_child_documents] == ["child-1", "child-2"]
+        assert all(type(document) is Document for document in indexed_child_documents)
+        mock_vector_cls.return_value.create.assert_called_once_with(indexed_child_documents)
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            indexed_child_documents, session, update_segment_keywords=False
+        )
 
     def test_index_uses_content_files_when_files_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
@@ -478,12 +592,52 @@ class TestParentChildIndexProcessor:
                 return_value=[11],
             ),
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
         mock_files.assert_called_once()
         load_user.assert_called_once_with(dataset_document.created_by, account_session)
         assert account_session is not session
+
+    def test_index_skips_child_indexes_when_parent_has_no_children(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
+    ) -> None:
+        parent_childs = SimpleNamespace(
+            parent_mode=ParentMode.PARAGRAPH,
+            parent_child_chunks=[
+                SimpleNamespace(
+                    parent_content="parent",
+                    child_contents=[],
+                    files=[SimpleNamespace(id="file-1", filename="image.png")],
+                )
+            ],
+        )
+        session = self.session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.ParentChildStructureChunk.model_validate",
+                return_value=parent_childs,
+            ),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
+                return_value="hash",
+            ),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.DatasetDocumentStore"),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts",
+                return_value=[11],
+            ),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
+
+        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_vector_cls.return_value.create.assert_not_called()
+        mock_vector_cls.return_value.create_multimodal.assert_called_once()
+        mock_keyword_cls.assert_not_called()
 
     def test_index_raises_when_account_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
