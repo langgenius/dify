@@ -184,7 +184,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
   const imageUrl =
-    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
+    agent?.icon_type === 'image'
+      ? agent.icon_url
+      : agent?.icon_type === 'link'
+        ? agent.icon
+        : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
 
   return (
@@ -211,7 +215,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
                 size="large"
                 rounded
                 iconType={iconType}
-                icon={agent?.icon ?? undefined}
+                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
                 background={agent?.icon_background}
                 imageUrl={imageUrl}
               />
