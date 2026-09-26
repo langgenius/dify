@@ -40,8 +40,8 @@ let workflowConfigState: {
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T>(
-    selector: (state: { setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T,
-  ): T => selector({ setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
+    selector: (state: { appId: string; setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T,
+  ): T => selector({ appId: 'app-1', setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
   useWorkflowStore: () => ({
     setState: mockWorkflowStoreSetState,
     getState: mockWorkflowStoreGetState,
@@ -157,6 +157,22 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.graph.viewport).toEqual(viewport)
     },
   )
+
+  it('loads draft, block defaults and published workflow with the constructor identity', async () => {
+    appStoreState.appDetail.id = 'other-app'
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+    expect(mockFetchNodesDefaultConfigs).toHaveBeenCalledWith(
+      '/apps/app-1/workflows/default-workflow-block-configs',
+    )
+    expect(mockFetchPublishedWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/publish')
+    expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith(
+      expect.objectContaining({ appId: expect.anything() }),
+    )
+  })
 
   it('should create an empty backend draft and restore a local start placeholder when the workflow draft does not exist', async () => {
     mockFetchWorkflowDraft
@@ -347,7 +363,7 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.hash).toBe('server-hash')
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appId: 'app-1', appName: 'Test' })
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appName: 'Test' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         envSecrets: { 'env-secret': 'top-secret' },

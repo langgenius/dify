@@ -10,7 +10,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -30,6 +30,12 @@ import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } f
 const WorkflowAppWithAdditionalContext = () => {
   const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
+  useEffect(
+    () => () => {
+      workflowStore.getState().workflowRunAbortController?.abort()
+    },
+    [workflowStore],
+  )
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: currentUserId } = useSuspenseQuery({
@@ -50,7 +56,7 @@ const WorkflowAppWithAdditionalContext = () => {
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const appId = appDetail?.id
+  const appId = useStore((state) => state.appId)
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
@@ -135,10 +141,11 @@ const WorkflowAppWithAdditionalContext = () => {
   )
 }
 
-const WorkflowAppWrapper = () => {
+const WorkflowAppWrapper = ({ appId }: { appId: string }) => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      key={appId}
+      injectWorkflowStoreSliceFn={createWorkflowSlice(appId) as InjectWorkflowStoreSliceFn}
     >
       <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>

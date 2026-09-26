@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
 import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
@@ -92,16 +94,23 @@ const createDeferred = <T>() => {
 }
 
 let queryClient: QueryClient
+let workflowStore: ReturnType<typeof createWorkflowStore>
 const wrapper = ({ children }: { children: ReactNode }) =>
-  createElement(QueryClientProvider, { client: queryClient }, children)
+  createElement(
+    QueryClientProvider,
+    { client: queryClient },
+    createElement(WorkflowContext.Provider, { value: workflowStore }, children),
+  )
 
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    workflowStore = createWorkflowStore({})
+    workflowStore.setState({ appId: 'app-1' })
     appStoreState = {
       appDetail: {
-        id: 'app-1',
+        id: 'other-app',
         name: 'Workflow App',
       },
     }
@@ -237,10 +246,62 @@ workflow:
     expect(mockEmit).toHaveBeenCalledWith({
       type: DSL_EXPORT_CHECK,
       payload: {
+        target: workflowStore,
         data: secretVars,
       },
     })
     expect(mockExportAppConfig).not.toHaveBeenCalled()
+  })
+
+  it('keeps a late export check targeted to its original workflow session', async () => {
+    const pendingVariables = createDeferred<{
+      items: Array<{ id: string; value_type: string; value: string }>
+    }>()
+    mockFetchEnvironmentVariables.mockReturnValueOnce(pendingVariables.promise)
+    const { result, unmount } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    const pendingCheck = result.current.exportCheck()
+    unmount()
+
+    await act(async () => {
+      pendingVariables.resolve({
+        items: [{ id: 'secret-1', value_type: 'secret', value: 'secret' }],
+      })
+      await pendingCheck
+    })
+
+    expect(mockEmit).toHaveBeenCalledWith({
+      type: DSL_EXPORT_CHECK,
+      payload: {
+        target: workflowStore,
+        data: [{ id: 'secret-1', value_type: 'secret', value: 'secret' }],
+      },
+    })
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
+  })
+
+  it('exports the captured app and name when a secret check settles after identity changes', async () => {
+    const pendingVariables = createDeferred<{ items: [] }>()
+    mockFetchEnvironmentVariables.mockReturnValueOnce(pendingVariables.promise)
+    const { result, rerender } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    const pendingCheck = result.current.exportCheck()
+
+    act(() => {
+      workflowStore.setState({ appId: 'app-2' })
+      appStoreState = { appDetail: { id: 'app-2', name: 'Next App' } }
+      rerender()
+    })
+    await act(async () => {
+      pendingVariables.resolve({ items: [] })
+      await pendingCheck
+    })
+
+    expect(mockExportAppConfig).toHaveBeenCalledWith(
+      { params: { app_id: 'app-1' }, query: { include_secret: false, workflow_id: undefined } },
+      { context: { silent: true } },
+    )
+    expect(mockDownloadBlob).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: 'Workflow App.yml' }),
+    )
   })
 
   it('should return early when app detail is unavailable', async () => {

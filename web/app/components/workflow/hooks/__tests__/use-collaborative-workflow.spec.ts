@@ -4,6 +4,7 @@ import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 const mocks = vi.hoisted(() => ({
   canApplyLocalGraphMutation: vi.fn(),
+  ownsReactFlowStore: vi.fn(),
   collabSetNodes: vi.fn(),
   collabSetEdges: vi.fn(),
   getNodes: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('reactflow', () => ({
 vi.mock('../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     canApplyLocalGraphMutation: mocks.canApplyLocalGraphMutation,
+    ownsReactFlowStore: mocks.ownsReactFlowStore,
     setNodes: mocks.collabSetNodes,
     setEdges: mocks.collabSetEdges,
   },
@@ -59,8 +61,25 @@ const newEdge = {
 describe('useCollaborativeWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.ownsReactFlowStore.mockReturnValue(true)
     mocks.getNodes.mockReturnValue([oldNode])
     mocks.edges = [oldEdge]
+  })
+
+  it('keeps another canvas updates local while the collaboration owner is not ready', () => {
+    mocks.ownsReactFlowStore.mockReturnValue(false)
+    mocks.canApplyLocalGraphMutation.mockReturnValue(false)
+    const { result } = renderHook(() => useCollaborativeWorkflow())
+
+    act(() => {
+      result.current.setNodes([newNode])
+      result.current.setEdges([newEdge])
+    })
+
+    expect(mocks.collabSetNodes).not.toHaveBeenCalled()
+    expect(mocks.collabSetEdges).not.toHaveBeenCalled()
+    expect(mocks.reactFlowSetNodes).toHaveBeenCalledWith([newNode])
+    expect(mocks.reactFlowSetEdges).toHaveBeenCalledWith([newEdge])
   })
 
   it('drops user graph mutations while collaborative state is not ready', () => {

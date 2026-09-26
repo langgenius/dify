@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
+
+const render = (ui: ReactNode) =>
+  renderWithAccountProfile(<ReactFlowProvider>{ui}</ReactFlowProvider>)
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
@@ -129,7 +133,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useReactFlow: () => ({
     getNodes: () => [],
     setNodes: vi.fn(),
@@ -450,6 +455,21 @@ describe('WorkflowMain', () => {
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
     useAppStore.setState({ appDetail: undefined })
+  })
+
+  it('passes the actual ReactFlow store identity through the collaboration adapter', () => {
+    let sourceStore: ReturnType<typeof useStoreApi> | undefined
+    const Canvas = () => {
+      sourceStore = useStoreApi()
+      return <WorkflowMain nodes={[]} edges={[]} />
+    }
+    render(<Canvas />)
+    expect(sourceStore).toBeDefined()
+    expect(mockUseCollaboration).toHaveBeenCalledWith(
+      'app-1',
+      expect.any(Boolean),
+      expect.objectContaining({ sourceStore }),
+    )
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {

@@ -1,24 +1,18 @@
 import type { Edge, Node } from '../types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
+import { EventEmitterContext } from '@/context/event-emitter'
 import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
 import { ControlMode } from '../types'
 import { renderWorkflowComponent } from './workflow-test-env'
 
-type WorkflowUpdateEvent = {
-  type: string
-  payload: {
-    nodes: Node[]
-    edges: Edge[]
-  }
-}
-
-const eventEmitterState = vi.hoisted(() => ({
-  subscription: null as null | ((payload: WorkflowUpdateEvent) => void),
-}))
+const EventEmitterProvider = EventEmitterContext.Provider
+let eventEmitter: EventEmitter<EventEmitterValue>
 
 const reactFlowBridge = vi.hoisted(() => ({
   store: null as null | ReturnType<typeof useStoreApi>,
@@ -169,16 +163,6 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (handler: (payload: WorkflowUpdateEvent) => void) => {
-        eventEmitterState.subscription = handler
-      },
-    },
-  }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -504,11 +488,13 @@ function renderSubject(options?: {
   } = options ?? {}
 
   return renderWorkflowComponent(
-    <ReactFlowProvider>
-      <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
-        <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
-      </Workflow>
-    </ReactFlowProvider>,
+    <EventEmitterProvider value={{ eventEmitter }}>
+      <ReactFlowProvider>
+        <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
+          <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
+        </Workflow>
+      </ReactFlowProvider>
+    </EventEmitterProvider>,
     {
       initialStoreState,
       hooksStoreProps: {
@@ -564,7 +550,7 @@ describe('Workflow edge event wiring', () => {
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
     collaborationBridge.isConnected.mockReturnValue(true)
-    eventEmitterState.subscription = null
+    eventEmitter = new EventEmitter<EventEmitterValue>()
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
     collaborationBridge.historyActionHandler = null
@@ -646,9 +632,10 @@ describe('Workflow edge event wiring', () => {
     })
 
     act(() => {
-      eventEmitterState.subscription?.({
+      eventEmitter.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
+          target: store,
           nodes: baseNodes,
           edges: [],
         },
@@ -657,6 +644,35 @@ describe('Workflow edge event wiring', () => {
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
+
+  it.each(['app-1', 'app-2'])(
+    'keeps a mounted %s canvas unchanged by an older workflow session event',
+    (appId) => {
+      const previous = renderSubject({ initialStoreState: { appId: 'app-1' } })
+      previous.unmount()
+      const current = renderSubject({
+        initialStoreState: { appId, contextMenuTarget: { type: 'edge', edgeId: 'edge-1' } },
+      })
+
+      act(() =>
+        eventEmitter.emit({
+          type: WORKFLOW_DATA_UPDATE,
+          payload: { target: previous.store, nodes: [], edges: [] },
+        }),
+      )
+      expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
+      expect(current.store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'edge-1' })
+
+      act(() =>
+        eventEmitter.emit({
+          type: WORKFLOW_DATA_UPDATE,
+          payload: { target: current.store, nodes: [], edges: [] },
+        }),
+      )
+      expect(screen.queryByText('Workflow node node-1')).not.toBeInTheDocument()
+      expect(current.store.getState().contextMenuTarget).toBeUndefined()
+    },
+  )
 
   it('should show a persistent error toast when saving the draft on unmount fails', () => {
     workflowHookMocks.handleSyncWorkflowDraft.mockImplementationOnce(
@@ -712,11 +728,13 @@ describe('Workflow edge event wiring', () => {
     })
 
     rerender(
-      <ReactFlowProvider>
-        <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
-          <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
-        </Workflow>
-      </ReactFlowProvider>,
+      <EventEmitterProvider value={{ eventEmitter }}>
+        <ReactFlowProvider>
+          <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
+            <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
+          </Workflow>
+        </ReactFlowProvider>
+      </EventEmitterProvider>,
     )
 
     expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()

@@ -2,17 +2,23 @@
 
 import type { Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
+import type {
+  WorkflowDataUpdateEvent,
+  WorkflowDataUpdatePayload,
+} from './workflow-data-update-event'
+import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
@@ -20,6 +26,7 @@ import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
+import { useStore, useWorkflowStore } from './store'
 import {
   getImportNotificationPayload,
   isImportCompleted,
@@ -34,155 +41,208 @@ type UpdateDSLModalProps = {
   onImport?: () => void
 }
 
+type PreparedImport = {
+  response: Import
+  workflowData?: WorkflowDataUpdatePayload
+  refreshError?: string
+}
+
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
+  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const workflowStore = useWorkflowStore()
+  const reactFlowStore = useStoreApi()
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
-  const { handleCheckPluginDependencies } = usePluginDependencies()
-
-  const handleWorkflowUpdate = useCallback(
-    async (app_id: string) => {
-      const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
-
-      const { nodes, edges, viewport } = graph
-      const importedNodes = initialNodes(nodes, edges)
-      const importedEdges = initialEdges(edges, nodes)
-      if (
-        collaborationManager.isConnected() &&
-        !collaborationManager.replaceGraphFromCommittedDraft(app_id, importedNodes, importedEdges)
-      )
-        throw new Error('Collaborative graph is not ready to apply the imported draft.')
-
-      eventEmitter?.emit({
-        type: WORKFLOW_DATA_UPDATE,
-        payload: {
-          nodes: importedNodes,
-          edges: importedEdges,
-          viewport,
-          features: normalizeWorkflowFeatures(features),
-          hash,
-          conversation_variables: conversation_variables || [],
-          environment_variables: environment_variables || [],
-        },
-      })
-    },
-    [eventEmitter],
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+  )
+  const { mutateAsync: requestConfirmation } = useMutation(
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: requestDependencies } = useMutation(
+    consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
-  const handleCompletedImport = useCallback(
-    async (status: Import['status'], appId?: string | null, warnings: Import['warnings'] = []) => {
-      if (!appId) {
+  const prepareImport = async (response: Import): Promise<PreparedImport> => {
+    if (!isImportCompleted(response.status) || !response.app_id) return { response }
+
+    let workflowData: WorkflowDataUpdatePayload
+    try {
+      const { graph, features, hash, conversation_variables, environment_variables } =
+        await fetchWorkflowDraft(`/apps/${response.app_id}/workflows/draft`)
+      const { nodes, edges, viewport } = graph
+      workflowData = {
+        nodes: initialNodes(nodes, edges),
+        edges: initialEdges(edges, nodes),
+        viewport,
+        features: normalizeWorkflowFeatures(features),
+        hash,
+        conversation_variables: conversation_variables || [],
+        environment_variables: environment_variables || [],
+      }
+    } catch (error) {
+      return { response, refreshError: await getAppTransferErrorMessage(error) }
+    }
+
+    return { response, workflowData }
+  }
+
+  const dependencyMutation = useMutation({
+    mutationFn: async (appId: string): Promise<{ dependencies: Dependency[]; error?: string }> => {
+      try {
+        const { leaked_dependencies } = await requestDependencies({ params: { app_id: appId } })
+        return {
+          dependencies: (leaked_dependencies ?? []).map((dependency) => ({
+            ...dependency,
+            value: { ...dependency.value, version: dependency.value.version ?? undefined },
+          })),
+        }
+      } catch (error) {
+        return { dependencies: [], error: await getAppTransferErrorMessage(error) }
+      }
+    },
+  })
+
+  const handleImportResponse = (result: PreparedImport | undefined) => {
+    if (!result) return
+    const { response, workflowData, refreshError } = result
+    if (isImportCompleted(response.status)) {
+      if (!response.app_id) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
 
-      const payload = getImportNotificationPayload(status, t)
-      toast[payload.type](
-        payload.message,
-        payload.children
+      const notification = getImportNotificationPayload(response.status, t)
+      toast[notification.type](
+        notification.message,
+        notification.children
           ? {
               description: (
-                <DSLImportWarningDescription warnings={warnings} fallback={payload.children} />
+                <DSLImportWarningDescription
+                  warnings={response.warnings ?? []}
+                  fallback={notification.children}
+                />
               ),
             }
           : undefined,
       )
-      try {
-        await handleWorkflowUpdate(appId)
-      } catch (error) {
-        collaborationManager.emitWorkflowUpdate(appId)
+
+      const cannotApplyGraph =
+        workflowData &&
+        collaborationManager.ownsReactFlowStore(reactFlowStore) &&
+        collaborationManager.isConnected() &&
+        !collaborationManager.replaceGraphFromCommittedDraft(
+          response.app_id,
+          reactFlowStore,
+          workflowData.nodes,
+          workflowData.edges,
+        )
+      if (refreshError || cannotApplyGraph) {
+        collaborationManager.emitWorkflowUpdate(response.app_id)
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description:
+              refreshError || 'Collaborative graph is not ready to apply the imported draft.',
           },
         )
-        // Reload the committed graph before the old canvas can resume autosaving.
+        // Reload the committed graph before this canvas can resume autosaving.
         window.location.reload()
         return
       }
-      collaborationManager.emitWorkflowUpdate(appId)
-      onImport?.()
-      // Dependency checks own their feedback after the import has already succeeded.
-      await handleCheckPluginDependencies(appId)
-      onCancel()
-    },
-    [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t],
-  )
 
-  const handleImportResponse = async (response: Import) => {
-    if (isImportCompleted(response.status)) {
-      await handleCompletedImport(response.status, response.app_id, response.warnings)
+      if (workflowData) {
+        eventEmitter?.emit({
+          type: WORKFLOW_DATA_UPDATE,
+          payload: { ...workflowData, target: workflowStore },
+        } satisfies WorkflowDataUpdateEvent)
+      }
+      collaborationManager.emitWorkflowUpdate(response.app_id)
+      onImport?.()
+      dependencyMutation.mutate(response.app_id, {
+        onSuccess: ({ dependencies, error }) => {
+          usePluginDependenciesStore.getState().setDependencies(dependencies)
+          if (error)
+            toast.error(
+              t(($) => $.error, { ns: 'common' }),
+              { description: error },
+            )
+          onCancel()
+        },
+      })
     } else if (response.status === DSLImportStatus.FAILED) {
       toast.error(
         t(($) => $['common.importFailure'], { ns: 'workflow' }),
-        {
-          description: response.error || undefined,
-        },
+        { description: response.error || undefined },
       )
     }
   }
 
-  const notifyImportError = async (error: unknown) => {
+  const notifyImportError = (error: Error) => {
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
-      {
-        description: await getAppTransferErrorMessage(error),
-      },
+      { description: error.message },
     )
   }
 
-  const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
-  )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!appDetail) return
-      if (file.name.toLowerCase().endsWith('.ifpkg'))
-        return requestImport({ body: { file, app_id: appDetail.id } })
+      if (!appId || !appMode) return
+      try {
+        if (file.name.toLowerCase().endsWith('.ifpkg'))
+          return prepareImport(await requestImport({ body: { file, app_id: appId } }))
 
-      const content = await file.text()
-      if (!content || !validateDSLContent(content, appDetail.mode)) {
-        toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
-        return
+        const content = await file.text()
+        if (!content || !validateDSLContent(content, appMode))
+          throw new Error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+
+        return prepareImport(
+          await requestImport({
+            body: {
+              mode: DSLImportMode.YAML_CONTENT,
+              yaml_content: content,
+              app_id: appId,
+            },
+          }),
+        )
+      } catch (error) {
+        throw new Error(await getAppTransferErrorMessage(error))
       }
-      return requestImport({
-        body: {
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: content,
-          app_id: appDetail.id,
-        },
-      })
-    },
-    onError: notifyImportError,
-    onSettled: async (response) => {
-      if (response) await handleImportResponse(response)
     },
   })
-  const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-      onError: (error) => notifyImportError(error),
-      onSettled: async (response) => {
-        if (response) await handleImportResponse(response)
-      },
-    }),
-  )
-  const pendingImport = importMutation.data?.status === 'pending' ? importMutation.data : undefined
-  const isImporting = importMutation.isPending || confirmImportMutation.isPending
+  const confirmImportMutation = useMutation({
+    mutationFn: async (importId: string) => {
+      try {
+        return prepareImport(await requestConfirmation({ params: { import_id: importId } }))
+      } catch (error) {
+        throw new Error(await getAppTransferErrorMessage(error))
+      }
+    },
+  })
+  const pendingImport =
+    importMutation.data?.response.status === 'pending' ? importMutation.data.response : undefined
+  const isImporting =
+    importMutation.isPending || confirmImportMutation.isPending || dependencyMutation.isPending
 
   const handleImport: MouseEventHandler = () => {
-    if (isImporting || !currentFile || !appDetail) return
-    importMutation.mutate(currentFile)
+    if (isImporting || !currentFile || !appId || !appMode) return
+    importMutation.mutate(currentFile, {
+      onSuccess: handleImportResponse,
+      onError: notifyImportError,
+    })
   }
 
   const onUpdateDSLConfirm: MouseEventHandler = () => {
     if (!pendingImport || isImporting) return
-
-    confirmImportMutation.mutate({
-      params: { import_id: pendingImport.id },
+    confirmImportMutation.mutate(pendingImport.id, {
+      onSuccess: handleImportResponse,
+      onError: notifyImportError,
     })
   }
 
@@ -253,11 +313,11 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
             <Button
-              disabled={isImporting || !currentFile || !appDetail}
+              disabled={isImporting || !currentFile || !appId || !appMode}
               variant="primary"
               tone="destructive"
               onClick={handleImport}
-              loading={importMutation.isPending}
+              loading={isImporting}
             >
               {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
@@ -297,7 +357,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               variant="primary"
               tone="destructive"
               disabled={isImporting}
-              loading={confirmImportMutation.isPending}
+              loading={isImporting}
               onClick={onUpdateDSLConfirm}
             >
               {t(($) => $['newApp.Confirm'], { ns: 'app' })}

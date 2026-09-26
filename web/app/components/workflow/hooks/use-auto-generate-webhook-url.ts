@@ -1,16 +1,17 @@
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { fetchWebhookUrl } from '@/service/apps'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 export const useAutoGenerateWebhookUrl = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
+  const workflowStore = useWorkflowStore()
 
   return useCallback(
     async (nodeId: string) => {
-      const appId = useAppStore.getState().appDetail?.id
+      const { appId } = workflowStore.getState()
       if (!appId) return
 
       const { nodes } = collaborativeWorkflow.getState()
@@ -40,6 +41,6 @@ export const useAutoGenerateWebhookUrl = () => {
         console.error('Failed to auto-generate webhook URL:', error)
       }
     },
-    [collaborativeWorkflow],
+    [collaborativeWorkflow, workflowStore],
   )
 }

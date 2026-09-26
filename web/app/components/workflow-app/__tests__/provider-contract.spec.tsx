@@ -54,7 +54,7 @@ vi.mock('../hooks/use-workflow-init', async () => {
       const workflowStore = useWorkflowStore()
 
       React.useEffect(() => {
-        workflowStore.setState({ appId: 'initialized-app' })
+        workflowStore.setState({ appName: 'Initialized App' })
       }, [workflowStore])
 
       return {
@@ -100,12 +100,13 @@ vi.mock('../components/workflow-main', async () => {
 
   const WorkflowMainProbe = () => {
     const appId = useStore((state) => state.appId)
+    const appName = useStore((state) => state.appName)
     const hasWorkflowSlice = useStore((state) => typeof state.setNotInitialWorkflow === 'function')
     const { store } = useWorkflowHistoryStore()
 
     return (
       <div>
-        {`app:${appId} history:${store.getState().nodes.length} slice:${String(hasWorkflowSlice)}`}
+        {`app:${appId} name:${appName} history:${store.getState().nodes.length} slice:${String(hasWorkflowSlice)}`}
       </div>
     )
   }
@@ -130,10 +131,12 @@ describe('WorkflowApp provider contract', () => {
   it('shares one workflow store between initialization and the initialized canvas', async () => {
     render(
       <StrictMode>
-        <WorkflowApp />
+        <WorkflowApp appId="app-1" />
       </StrictMode>,
     )
 
-    expect(await screen.findByText('app:initialized-app history:1 slice:true')).toBeInTheDocument()
+    expect(
+      await screen.findByText('app:app-1 name:Initialized App history:1 slice:true'),
+    ).toBeInTheDocument()
   })
 })

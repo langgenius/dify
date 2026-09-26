@@ -1,9 +1,10 @@
 import WorkflowApp from '@/app/components/workflow-app'
 
-const Page = () => {
+const Page = async ({ params }: { params: Promise<{ appId: string }> }) => {
+  const { appId } = await params
   return (
     <div className="size-full overflow-x-auto">
-      <WorkflowApp />
+      <WorkflowApp appId={appId} />
     </div>
   )
 }

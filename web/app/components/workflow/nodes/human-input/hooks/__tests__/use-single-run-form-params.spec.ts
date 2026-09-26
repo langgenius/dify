@@ -2,11 +2,16 @@ import type { HumanInputNodeType } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
+
+let workflowAppId: string | undefined = 'app-1'
+const renderHook = <Result>(callback: () => Result) =>
+  renderWorkflowHook(callback, { initialStoreState: { appId: workflowAppId } })
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseAppStore = vi.hoisted(() => vi.fn())
@@ -90,6 +95,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    workflowAppId = 'app-1'
     currentInputs = createPayload()
     appDetail = {
       id: 'app-1',
@@ -344,12 +350,13 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   })
 
   it('should use the advanced-chat endpoint and skip remote fetches when app detail is missing', async () => {
+    workflowAppId = 'app-2'
     appDetail = {
       id: 'app-2',
       mode: AppModeEnum.ADVANCED_CHAT,
     }
 
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender, store } = renderHook(() =>
       useSingleRunFormParams({
         id: 'node-9',
         payload: currentInputs,
@@ -371,6 +378,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     )
 
     appDetail = undefined
+    act(() => store.setState({ appId: undefined }))
     rerender()
 
     await act(async () => {

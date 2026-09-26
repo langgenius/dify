@@ -38,6 +38,10 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({}),
+}))
+
 vi.mock('next-themes', () => ({
   useTheme: () => ({
     setTheme: mockSetTheme,
@@ -142,8 +146,6 @@ describe('SlashCommandProvider', () => {
 
     unmount()
 
-    // Unregister is always called for the preview commands (a no-op when they
-    // were never registered) so toggling the flag off mid-session stays clean.
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
@@ -152,8 +154,6 @@ describe('SlashCommandProvider', () => {
       'models',
       'account',
       'go',
-      'create',
-      'refine',
     ])
   })
 
@@ -163,6 +163,8 @@ describe('SlashCommandProvider', () => {
     const { unmount } = render(<SlashCommandProvider />)
 
     expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
+      'create',
+      'refine',
       'theme',
       'language',
       'docs',
@@ -170,13 +172,13 @@ describe('SlashCommandProvider', () => {
       'models',
       'account',
       'go',
-      'create',
-      'refine',
     ])
 
     unmount()
 
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
+      'create',
+      'refine',
       'theme',
       'language',
       'docs',
@@ -184,8 +186,6 @@ describe('SlashCommandProvider', () => {
       'models',
       'account',
       'go',
-      'create',
-      'refine',
     ])
   })
 

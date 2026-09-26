@@ -1,20 +1,12 @@
 import { act, renderHook } from '@testing-library/react'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowRun } from '../use-workflow-run'
 
-type DebugAbortControllerRef = {
-  abort: () => void
-}
-
-type DebugControllerWindow = Window & {
-  __webhookDebugAbortController?: DebugAbortControllerRef
-  __pluginDebugAbortController?: DebugAbortControllerRef
-  __scheduleDebugAbortController?: DebugAbortControllerRef
-  __allTriggersDebugAbortController?: DebugAbortControllerRef
-}
-
 type WorkflowStoreState = {
+  appId?: string
+  workflowRunAbortController?: AbortController | null
   backupDraft?: unknown
   environmentVariables?: unknown
   workflowRunningData?: unknown
@@ -76,6 +68,7 @@ const mocks = vi.hoisted(() => {
     featuresStoreState,
     featuresStoreSetState,
     mockGetViewport: vi.fn(),
+    mockUseWorkflowStore: vi.fn(),
     mockDoSyncWorkflowDraft: vi.fn(),
     mockHandleUpdateWorkflowCanvas: vi.fn(),
     mockFetchInspectVars: vi.fn(),
@@ -125,9 +118,14 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => {
-  const useStore = Object.assign(vi.fn(), {
-    getState: () => mocks.appStoreState,
-  })
+  const useStore = Object.assign(
+    vi.fn((selector: (state: typeof mocks.appStoreState) => unknown) =>
+      selector(mocks.appStoreState),
+    ),
+    {
+      getState: () => mocks.appStoreState,
+    },
+  )
 
   return {
     useStore,
@@ -165,10 +163,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => mocks.workflowStoreState,
-    setState: mocks.workflowStoreSetState,
-  }),
+  useWorkflowStore: () => mocks.mockUseWorkflowStore(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -229,6 +224,8 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
 })
 
 const createWorkflowStoreState = () => ({
+  appId: 'app-1',
+  workflowRunAbortController: null,
   backupDraft: undefined,
   environmentVariables: [{ id: 'env-current', value: 'secret' }],
   workflowRunningData: undefined,
@@ -252,6 +249,11 @@ const createWorkflowStoreState = () => ({
 describe('useWorkflowRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mockUseWorkflowStore.mockReturnValue({
+      getState: () => mocks.workflowStoreState,
+      setState: mocks.workflowStoreSetState,
+    })
+    mocks.appStoreState.appDetail = { id: 'other-app', mode: 'workflow', name: 'Workflow App' }
     document.body.innerHTML = '<div id="workflow-container"></div>'
     const workflowContainer = document.getElementById('workflow-container')!
     Object.defineProperty(workflowContainer, 'clientWidth', { value: 960, configurable: true })
@@ -363,7 +365,7 @@ describe('useWorkflowRun', () => {
     )
     expect(mocks.mockSsePost).toHaveBeenCalledWith(
       '/apps/app-1/workflows/draft/run',
-      { body: { inputs: { query: 'hello' } } },
+      { body: { inputs: { query: 'hello' } }, signal: expect.any(AbortSignal) },
       expect.objectContaining({
         getAbortController: expect.any(Function),
       }),
@@ -627,54 +629,144 @@ describe('useWorkflowRun', () => {
     )
   })
 
-  it('should stop workflow runs by task id or by aborting active debug controllers', async () => {
+  it('keeps run and stop requests bound to the workflow session when global app metadata changes', async () => {
     const { result } = renderHook(() => useWorkflowRun())
-
+    mocks.appStoreState.appDetail = { id: 'app-2', mode: 'advanced-chat', name: 'Other app' }
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
     })
+    expect(mocks.mockSsePost).toHaveBeenCalledWith(
+      '/apps/app-1/workflows/draft/run',
+      expect.any(Object),
+      expect.any(Object),
+    )
+    result.current.handleStopRun('task-from-app-1')
+    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
+      '/apps/app-1/workflow-runs/tasks/task-from-app-1/stop',
+    )
+  })
 
-    act(() => {
-      result.current.handleStopRun('task-1')
+  it('cancels a pending draft operation through a second consumer before any run request starts', async () => {
+    let resolveDraft!: () => void
+    mocks.mockDoSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const first = renderHook(() => useWorkflowRun())
+    const second = renderHook(() => useWorkflowRun())
+    const pendingRun = first.result.current.handleRun({ inputs: {} })
+    const controller = mocks.workflowStoreState.workflowRunAbortController!
+    first.unmount()
+    expect(controller.signal.aborted).toBe(false)
+    act(() => second.result.current.handleStopRun(''))
+    expect(controller.signal.aborted).toBe(true)
+    await act(async () => {
+      resolveDraft()
+      await pendingRun
     })
+    expect(mocks.mockSsePost).not.toHaveBeenCalled()
+    expect(mocks.mockPost).not.toHaveBeenCalled()
+  })
 
+  it('keeps separate workflow sessions isolated when old stop and completion callbacks run', async () => {
+    const firstStore = createTestWorkflowStore({ appId: 'app-a' })
+    mocks.mockUseWorkflowStore.mockReturnValue(firstStore)
+    const first = renderHook(() => useWorkflowRun())
+    await act(async () => {
+      await first.result.current.handleRun({ inputs: {} })
+    })
+    const firstController = firstStore.getState().workflowRunAbortController!
+    const firstCallbacks = mocks.mockSsePost.mock.calls.at(-1)![2]
+
+    const secondStore = createTestWorkflowStore({ appId: 'app-b' })
+    mocks.mockUseWorkflowStore.mockReturnValue(secondStore)
+    const second = renderHook(() => useWorkflowRun())
+    await act(async () => {
+      await second.result.current.handleRun({ inputs: {} })
+    })
+    const secondController = secondStore.getState().workflowRunAbortController!
+    act(() => first.result.current.handleStopRun(''))
+    await firstCallbacks.onCompleted(false)
+    expect(firstController.signal.aborted).toBe(true)
+    expect(secondController.signal.aborted).toBe(false)
+    expect(secondStore.getState().workflowRunAbortController).toBe(secondController)
+    expect(secondStore.getState().workflowRunningData?.result.status).toBe(
+      WorkflowRunningStatus.Running,
+    )
+  })
+
+  it('does not let a replaced run completion or old task stop clear the next run', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+    await act(async () => {
+      await result.current.handleRun({ inputs: {} })
+    })
+    const firstController = mocks.workflowStoreState.workflowRunAbortController!
+    const firstCallbacks = mocks.mockSsePost.mock.calls.at(-1)![2]
+    await act(async () => {
+      await result.current.handleRun({ inputs: {} })
+    })
+    const secondController = mocks.workflowStoreState.workflowRunAbortController!
+    const runningData = mocks.workflowStoreState.workflowRunningData
+    expect(firstController.signal.aborted).toBe(true)
+    await firstCallbacks.onCompleted(false)
+    firstCallbacks.onError('late failure')
+    result.current.handleStopRun('old-task')
+    expect(secondController.signal.aborted).toBe(false)
+    expect(mocks.workflowStoreState.workflowRunAbortController).toBe(secondController)
+    expect(mocks.workflowStoreState.workflowRunningData).toBe(runningData)
+  })
+
+  it('keeps a new draft operation alive when the previous server task is stopped', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+    mocks.workflowStoreState.workflowRunningData = {
+      task_id: 'previous-task',
+      result: { status: WorkflowRunningStatus.Paused },
+    }
+    let resolveDraft!: () => void
+    mocks.mockDoSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const pendingRun = result.current.handleRun({ inputs: {} })
+    const nextController = mocks.workflowStoreState.workflowRunAbortController!
+    result.current.handleStopRun('previous-task')
+    expect(nextController.signal.aborted).toBe(false)
+    expect(mocks.workflowStoreState.workflowRunAbortController).toBe(nextController)
+    await act(async () => {
+      resolveDraft()
+      await pendingRun
+    })
+    expect(mocks.mockSsePost).toHaveBeenCalledWith(
+      '/apps/app-1/workflows/draft/run',
+      expect.objectContaining({ signal: nextController.signal }),
+      expect.any(Object),
+    )
+  })
+
+  it('stops the current server task and aborts its actual request signal', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+    await act(async () => {
+      await result.current.handleRun({ inputs: {} })
+    })
+    const signal = mocks.mockSsePost.mock.calls.at(-1)![1].signal
+    mocks.workflowStoreState.workflowRunningData = {
+      task_id: 'task-1',
+      result: { status: WorkflowRunningStatus.Running },
+    }
+    const stopper = renderHook(() => useWorkflowRun())
+    act(() => stopper.result.current.handleStopRun('task-1'))
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
       '/apps/app-1/workflow-runs/tasks/task-1/stop',
     )
-    expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
+    expect(signal.aborted).toBe(true)
+    expect(mocks.workflowStoreState.workflowRunAbortController).toBeNull()
+    expect(mocks.workflowStoreState.workflowRunningData).toEqual(
       expect.objectContaining({
-        result: expect.objectContaining({
-          status: WorkflowRunningStatus.Stopped,
-        }),
+        result: expect.objectContaining({ status: WorkflowRunningStatus.Stopped }),
       }),
     )
-
-    const webhookAbort = vi.fn()
-    const pluginAbort = vi.fn()
-    const scheduleAbort = vi.fn()
-    const allTriggersAbort = vi.fn()
-    const windowWithDebugControllers = window as DebugControllerWindow
-    windowWithDebugControllers.__webhookDebugAbortController = { abort: webhookAbort }
-    windowWithDebugControllers.__pluginDebugAbortController = { abort: pluginAbort }
-    windowWithDebugControllers.__scheduleDebugAbortController = { abort: scheduleAbort }
-    windowWithDebugControllers.__allTriggersDebugAbortController = { abort: allTriggersAbort }
-    const refController = new AbortController()
-    const refAbortSpy = vi.spyOn(refController, 'abort')
-    const lastCall = mocks.mockSsePost.mock.calls.at(-1)
-    const { getAbortController } = (lastCall?.[2] ?? {}) as {
-      getAbortController?: (controller: AbortController) => void
-    }
-    getAbortController?.(refController)
-
-    act(() => {
-      result.current.handleStopRun('')
-    })
-
-    expect(webhookAbort).toHaveBeenCalled()
-    expect(pluginAbort).toHaveBeenCalled()
-    expect(scheduleAbort).toHaveBeenCalled()
-    expect(allTriggersAbort).toHaveBeenCalled()
-    expect(refAbortSpy).toHaveBeenCalled()
   })
 
   it('should restore published workflow graph, features, and environment variables', () => {

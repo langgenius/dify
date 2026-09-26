@@ -74,7 +74,6 @@ describe('LastRun', () => {
 
     render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun={false}
@@ -90,7 +89,6 @@ describe('LastRun', () => {
   it('should show a running result panel while a single run is still executing', () => {
     render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun
@@ -118,7 +116,6 @@ describe('LastRun', () => {
 
     render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun={false}
@@ -147,7 +144,6 @@ describe('LastRun', () => {
 
     render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun
@@ -180,7 +176,6 @@ describe('LastRun', () => {
 
     const { rerender } = render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun
@@ -194,7 +189,6 @@ describe('LastRun', () => {
 
     rerender(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun
@@ -218,7 +212,6 @@ describe('LastRun', () => {
 
     render(
       <LastRun
-        appId="app-1"
         nodeId="node-1"
         canSingleRun
         isRunAfterSingleRun
@@ -248,7 +241,6 @@ describe('LastRun', () => {
     })
 
     const props = {
-      appId: 'app-1',
       nodeId: 'node-1',
       canSingleRun: true,
       isRunAfterSingleRun: true,

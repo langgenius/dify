@@ -1,7 +1,8 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
 import { fetchAgentLogDetail } from '@/service/log'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AgentLogModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -23,10 +24,6 @@ vi.mock('@/service/log', () => ({
 
 vi.mock('@/app/notifications', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
@@ -82,6 +79,7 @@ const mockLog = {
 } as IChatItem
 
 const mockProps = {
+  appId: 'app-id',
   currentLogItem: mockLog,
   width: 1000,
   onCancel: vi.fn(),
@@ -140,6 +138,11 @@ describe('AgentLogModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
+    })
+    expect(fetchAgentLogDetail).toHaveBeenCalledWith({
+      appID: 'app-id',
+      signal: expect.any(AbortSignal),
+      params: { conversation_id: 'conv-id', message_id: 'msg-id' },
     })
   })
 

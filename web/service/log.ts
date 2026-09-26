@@ -54,9 +54,15 @@ export const fetchTracingList = ({ url }: { url: string }): Promise<NodeTracingL
 export const fetchAgentLogDetail = ({
   appID,
   params,
+  signal,
 }: {
   appID: string
   params: AgentLogDetailRequest
+  signal: AbortSignal
 }): Promise<AgentLogDetailResponse> => {
-  return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
+  return get<AgentLogDetailResponse>(
+    `/apps/${appID}/agent/logs`,
+    { params, signal },
+    { silent: true },
+  )
 }

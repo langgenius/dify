@@ -588,6 +588,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       {logKind === 'workflow' && (
         <WorkflowContextProvider>
           <MessageLogModal
+            appId={appDetail.id}
             width={width}
             currentLogItem={selectedLogItem}
             onCancel={() => setSelectedLogItem(undefined)}
@@ -596,6 +597,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       )}
       {logKind === 'agent' && (
         <AgentLogModal
+          appId={appDetail.id}
           floating
           width={width}
           currentLogItem={selectedLogItem}

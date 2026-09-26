@@ -57,6 +57,7 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
 export const useWorkflowInit = () => {
   const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
+  const appId = useStore((state) => state.appId)
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
   const appDetail = useAppStore((state) => state.appDetail)!
   const { data: currentUserId } = useSuspenseQuery({
@@ -78,8 +79,8 @@ export const useWorkflowInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
+    workflowStore.setState({ appName: appDetail.name })
+  }, [appDetail.name, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
     (config: FileUploadConfigResponse) => {
@@ -92,8 +93,9 @@ export const useWorkflowInit = () => {
     useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
+    if (!appId) return
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const res = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
       const initialData = {
         ...res,
         graph: {
@@ -166,7 +168,7 @@ export const useWorkflowInit = () => {
             }
 
             syncWorkflowDraft({
-              url: `/apps/${appDetail.id}/workflows/draft`,
+              url: `/apps/${appId}/workflows/draft`,
               params: {
                 graph: initialGraph,
                 features: {
@@ -184,6 +186,7 @@ export const useWorkflowInit = () => {
       }
     }
   }, [
+    appId,
     appACLCapabilities.canEdit,
     appDetail,
     getWorkflowDraftGraphForCanvas,
@@ -198,9 +201,10 @@ export const useWorkflowInit = () => {
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
+    if (!appId) return
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
-      fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
-      queryClient.query(appWorkflowQueryOptions(appDetail.id)),
+      fetchNodesDefaultConfigs(`/apps/${appId}/workflows/default-workflow-block-configs`),
+      queryClient.query(appWorkflowQueryOptions(appId)),
     ])
 
     if (nodesDefaultConfigsResult.status === 'fulfilled') {
@@ -229,7 +233,7 @@ export const useWorkflowInit = () => {
       console.error(publishedWorkflowResult.reason)
       workflowStore.getState().setLastPublishedHasUserInput(false)
     }
-  }, [workflowStore, appDetail, queryClient])
+  }, [workflowStore, appId, queryClient])
 
   useEffect(() => {
     handleFetchPreloadData()

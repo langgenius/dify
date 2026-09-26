@@ -62,6 +62,7 @@ type UserCallbackHandlers = {
 }
 
 type CallbackContext = {
+  abortController: AbortController
   clientWidth: number
   clientHeight: number
   runHistoryUrl: string
@@ -85,10 +86,10 @@ type BaseCallbacksContext = CallbackContext & {
 type FinalCallbacksContext = CallbackContext & {
   baseSseOptions: IOtherOptions
   player: AudioPlayer | null
-  setAbortController: (controller: AbortController) => void
 }
 
 export const createBaseWorkflowRunCallbacks = ({
+  abortController,
   clientWidth,
   clientHeight,
   runHistoryUrl,
@@ -150,6 +151,7 @@ export const createBaseWorkflowRunCallbacks = ({
   let hasStartedResumeStream = false
 
   const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
+    if (abortController.signal.aborted) return
     clearAbortController()
     handleWorkflowFailed(params)
     const workflowData = getWorkflowRunningData()
@@ -162,6 +164,7 @@ export const createBaseWorkflowRunCallbacks = ({
   }
 
   const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError, errorMessage) => {
+    if (abortController.signal.aborted) return
     clearAbortController()
     clearListeningState()
     if (onCompleted) onCompleted(hasError, errorMessage)
@@ -169,6 +172,7 @@ export const createBaseWorkflowRunCallbacks = ({
 
   const baseSseOptions: IOtherOptions = {
     ...restCallback,
+    getAbortController: () => restCallback.getAbortController?.(abortController),
     onWorkflowStarted: (params) => {
       handleWorkflowStarted(params)
       invalidateRunHistory(runHistoryUrl)
@@ -258,13 +262,18 @@ export const createBaseWorkflowRunCallbacks = ({
       if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
+      if (abortController.signal.aborted) return
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
-        sseGet(url, {}, baseSseOptions)
+        sseGet(
+          url,
+          { signal: abortController.signal },
+          { ...baseSseOptions, onCompleted: wrappedOnCompleted },
+        )
       }
     },
     onHumanInputRequired: (params) => {
@@ -280,13 +289,16 @@ export const createBaseWorkflowRunCallbacks = ({
       if (onHumanInputFormTimeout) onHumanInputFormTimeout(params)
     },
     onError: wrappedOnError,
-    onCompleted: wrappedOnCompleted,
+    onCompleted: (hasError, errorMessage) => {
+      if (!hasStartedResumeStream) wrappedOnCompleted(hasError, errorMessage)
+    },
   }
 
   return baseSseOptions
 }
 
 export const createFinalWorkflowRunCallbacks = ({
+  abortController,
   clientWidth,
   clientHeight,
   runHistoryUrl,
@@ -303,7 +315,6 @@ export const createFinalWorkflowRunCallbacks = ({
   restCallback,
   baseSseOptions,
   player,
-  setAbortController,
 }: FinalCallbacksContext): IOtherOptions => {
   const {
     handleWorkflowFinished,
@@ -348,9 +359,6 @@ export const createFinalWorkflowRunCallbacks = ({
 
   const finalCallbacks: IOtherOptions = {
     ...baseSseOptions,
-    getAbortController: (controller: AbortController) => {
-      setAbortController(controller)
-    },
     onWorkflowFinished: (params) => {
       handleWorkflowFinished(params)
       invalidateRunHistory(runHistoryUrl)
@@ -362,6 +370,7 @@ export const createFinalWorkflowRunCallbacks = ({
       }
     },
     onError: (params, code) => {
+      if (abortController.signal.aborted) return
       clearAbortController()
       handleWorkflowFailed(params)
       const workflowData = getWorkflowRunningData()
@@ -439,13 +448,18 @@ export const createFinalWorkflowRunCallbacks = ({
       player?.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
+      if (abortController.signal.aborted) return
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
-        sseGet(url, {}, finalCallbacks)
+        sseGet(
+          url,
+          { signal: abortController.signal },
+          { ...finalCallbacks, onCompleted: baseSseOptions.onCompleted },
+        )
       }
     },
     onHumanInputRequired: (params) => {
@@ -461,6 +475,10 @@ export const createFinalWorkflowRunCallbacks = ({
       if (onHumanInputFormTimeout) onHumanInputFormTimeout(params)
     },
     ...restCallback,
+    getAbortController: () => restCallback.getAbortController?.(abortController),
+    onCompleted: (hasError, errorMessage) => {
+      if (!hasStartedResumeStream) baseSseOptions.onCompleted?.(hasError, errorMessage)
+    },
   }
 
   return finalCallbacks

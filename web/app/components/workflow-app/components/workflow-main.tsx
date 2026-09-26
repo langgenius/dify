@@ -8,7 +8,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -61,10 +61,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     isReady: false,
   })
   const reactFlow = useReactFlow()
+  const sourceStore = useStoreApi()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
   const reactFlowStore = useMemo(
     () => ({
+      sourceStore,
       getState: () => ({
         getNodes: () => reactFlow.getNodes(),
         setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
@@ -72,7 +74,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
       }),
     }),
-    [reactFlow],
+    [reactFlow, sourceStore],
   )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),

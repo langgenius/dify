@@ -1,8 +1,13 @@
-import { act, render, screen } from '@testing-library/react'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { act, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import * as React from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { EventEmitterContext } from '@/context/event-emitter'
 import WorkflowChildren from '../workflow-children'
 
 type WorkflowStoreState = {
@@ -46,9 +51,8 @@ const mockAutoGenerateWebhookUrl = vi.fn()
 
 let workflowStoreState: WorkflowStoreState
 let mockCanEdit = true
-let eventSubscription:
-  | ((value: { type: string; payload: { data: Array<Record<string, unknown>> } }) => void)
-  | null = null
+const EventEmitterProvider = EventEmitterContext.Provider
+let eventEmitter: EventEmitter<EventEmitterValue>
 let lastGenerateNodeInput: Record<string, unknown> | null = null
 
 vi.mock('reactflow', () => ({
@@ -58,10 +62,6 @@ vi.mock('reactflow', () => ({
       setEdges: mockSetEdges,
     }),
   }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
@@ -74,16 +74,6 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
         canEdit: mockCanEdit,
       },
     }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (callback: typeof eventSubscription) => {
-        eventSubscription = callback
-      },
-    },
-  }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
@@ -330,6 +320,21 @@ vi.mock('@/app/components/workflow-app/components/workflow-onboarding-modal', ()
   ),
 }))
 
+const render = (ui: React.ReactElement, appId = 'app-1') => {
+  const store = createWorkflowStore({})
+  store.setState({ appId, ...workflowStoreState })
+  return {
+    ...rtlRender(ui, {
+      wrapper: ({ children }) => (
+        <EventEmitterProvider value={{ eventEmitter }}>
+          <WorkflowContext value={store}>{children}</WorkflowContext>
+        </EventEmitterProvider>
+      ),
+    }),
+    store,
+  }
+}
+
 describe('WorkflowChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -342,7 +347,7 @@ describe('WorkflowChildren', () => {
       setHasSelectedStartNode: mockSetHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
     }
-    eventSubscription = null
+    eventEmitter = new EventEmitter<EventEmitterValue>()
     lastGenerateNodeInput = null
     mockCanEdit = true
     mockHandleSyncWorkflowDraft.mockImplementation(
@@ -380,13 +385,17 @@ describe('WorkflowChildren', () => {
   it('should react to DSL export check events by showing the confirm modal and closing it', async () => {
     const user = userEvent.setup()
 
-    render(<WorkflowChildren />)
+    const { store } = render(<WorkflowChildren />)
 
     await act(async () => {
-      eventSubscription?.({
+      eventEmitter.emit({
         type: DSL_EXPORT_CHECK,
         payload: {
-          data: [{ id: 'env-1' }, { id: 'env-2' }],
+          target: store,
+          data: [
+            { name: 'First', value: 'secret-1' },
+            { name: 'Second', value: 'secret-2' },
+          ],
         },
       })
     })
@@ -403,11 +412,40 @@ describe('WorkflowChildren', () => {
     expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
   })
 
+  it.each(['app-1', 'app-2'])(
+    'ignores the previous session export event after mounting %s',
+    async (appId) => {
+      const previous = render(<WorkflowChildren />)
+      previous.unmount()
+      const current = render(<WorkflowChildren />, appId)
+      const payload = { data: [{ name: 'API_KEY', value: 'secret' }] }
+
+      act(() =>
+        eventEmitter.emit({
+          type: DSL_EXPORT_CHECK,
+          payload: { ...payload, target: previous.store },
+        }),
+      )
+      expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
+
+      act(() =>
+        eventEmitter.emit({
+          type: DSL_EXPORT_CHECK,
+          payload: { ...payload, target: current.store },
+        }),
+      )
+      expect(await screen.findByTestId('dsl-export-confirm-modal')).toHaveAttribute(
+        'data-env-count',
+        '1',
+      )
+    },
+  )
+
   it('should ignore unrelated workflow events when listening for DSL export checks', async () => {
     render(<WorkflowChildren />)
 
     await act(async () => {
-      eventSubscription?.({
+      eventEmitter.emit({
         type: 'UNRELATED_EVENT',
         payload: {
           data: [{ id: 'env-1' }],
