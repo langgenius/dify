@@ -8,6 +8,7 @@ import { visit } from 'unist-util-visit'
 import { validateDirectiveProps } from './components/markdown-with-directive-schema'
 import WithIconCardItem from './components/with-icon-card-item'
 import WithIconCardList from './components/with-icon-card-list'
+import '@/app/styles/markdown.css'
 
 // Adapter to map generic props to WithIconListProps
 function WithIconCardListAdapter(props: Record<string, unknown>) {

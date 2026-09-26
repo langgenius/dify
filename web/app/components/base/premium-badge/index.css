@@ -5,30 +5,6 @@
 
 @utility pb-allow-hover {
   @apply cursor-pointer;
-  &.premium-badge-blue:hover {
-    @apply bg-util-colors-blue-blue-300;
-    background-image:
-      linear-gradient(90deg, #296dffe6 0%, #004aebe6 100%),
-      linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #00329e 100%);
-  }
-  &.premium-badge-indigo:hover {
-    @apply bg-util-colors-indigo-indigo-300;
-    background-image:
-      linear-gradient(90deg, #6172f3e6 0%, #2d31a6e6 100%),
-      linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #2d31a6 100%);
-  }
-  &.premium-badge-gray:hover {
-    @apply bg-util-colors-gray-gray-300;
-    background-image:
-      linear-gradient(90deg, #676f83e6 0%, #354052e6 100%),
-      linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #354052 100%);
-  }
-  &.premium-badge-orange:hover {
-    @apply bg-util-colors-orange-orange-300;
-    background-image:
-      linear-gradient(90deg, #ff4405e6 0%, #b93815e6 100%),
-      linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #e62e05 100%);
-  }
 }
 
 @utility premium-badge-m {

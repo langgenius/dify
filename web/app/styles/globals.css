@@ -10,3 +10,7 @@
 @source not '../../**/*.stories.{js,ts,jsx,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
+
+/* Static vendor code and development tooling contain CSS keywords, not app utilities. */
+@source not '../../public';
+@source not '../../plugins';

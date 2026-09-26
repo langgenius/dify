@@ -4,6 +4,7 @@ import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
+import '@/app/styles/markdown.css'
 
 const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
 
