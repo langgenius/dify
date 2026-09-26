@@ -1,7 +1,28 @@
 from datetime import UTC, datetime
+from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytz  # type: ignore[import-untyped]
 from croniter import croniter
+
+
+# ZoneInfo keeps only its 8 most recent zones strongly, so a poll over more zones would re-read a zone file per
+# plan; the names a process schedules in are few, and a failed lookup is not cached. ZoneInfo.clear_cache() does
+# not clear this cache: a test that changes zone data must also call _resolve_zone.cache_clear().
+@lru_cache(maxsize=1024)
+def _resolve_zone(timezone: str) -> ZoneInfo:
+    # croniter assumes a pytz zone's DST is positive and fails at negative-DST fall-backs (e.g. Europe/Dublin);
+    # with a zoneinfo zone it picks the repeated hour by fold instead. pytz still resolves the name, ignoring case
+    # as before: a name it does not know, including an empty or path-like one, raises pytz.UnknownTimeZoneError,
+    # and so does a known name that zoneinfo's zone data lacks.
+    zone_name = pytz.timezone(timezone).zone
+    # pytz names every zone it returns; the None its type stubs allow is treated as an unknown name.
+    if zone_name is None:
+        raise pytz.UnknownTimeZoneError(timezone)
+    try:
+        return ZoneInfo(zone_name)
+    except ZoneInfoNotFoundError as e:
+        raise pytz.UnknownTimeZoneError(timezone) from e
 
 
 def calculate_next_run_at(
@@ -38,7 +59,7 @@ def calculate_next_run_at(
             f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"
         )
 
-    tz = pytz.timezone(timezone)
+    tz = _resolve_zone(timezone)
 
     if base_time is None:
         base_time = datetime.now(UTC)
