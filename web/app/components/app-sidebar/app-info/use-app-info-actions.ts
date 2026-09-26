@@ -43,11 +43,9 @@ export function useAppInfoActions() {
     consoleQuery.apps.byAppId.delete.mutationOptions({
       onSuccess: (_data, { params }) => {
         markAppDeletionSucceeded(params.app_id)
-        toast(
-          t(($) => $.appDeleted, { ns: 'app' }),
-          { type: 'success' },
-        )
-        replace('/apps')
+      },
+      onError: (_error, { params }) => {
+        markAppDeletionFailed(params.app_id)
       },
     }),
   )
@@ -131,28 +129,37 @@ export function useAppInfoActions() {
     async ({ name, icon_type, icon, icon_background }) => {
       if (!appDetail) return
       try {
-        const newApp = await copyApp({
-          params: { app_id: appDetail.id },
-          body: { name, icon_type, icon, icon_background },
-        })
-        if (!('mode' in newApp)) {
-          toast(
-            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-            { type: 'error' },
-          )
-          return
-        }
-        closeModal()
-        toast(
-          t(($) => $['newApp.appCreated'], { ns: 'app' }),
-          { type: 'success' },
+        await copyApp(
+          {
+            params: { app_id: appDetail.id },
+            body: { name, icon_type, icon, icon_background },
+          },
+          {
+            onSuccess: (newApp) => {
+              if (!('mode' in newApp)) {
+                toast(
+                  t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+                  { type: 'error' },
+                )
+                return
+              }
+              closeModal()
+              toast(
+                t(($) => $['newApp.appCreated'], { ns: 'app' }),
+                { type: 'success' },
+              )
+              getRedirection(newApp, replace, { isRbacEnabled })
+            },
+            onError: () => {
+              toast(
+                t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+                { type: 'error' },
+              )
+            },
+          },
         )
-        getRedirection(newApp, replace, { isRbacEnabled })
       } catch {
-        toast(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          { type: 'error' },
-        )
+        // The mounted mutation observer owns feedback; the modal only awaits completion.
       }
     },
     [appDetail, closeModal, copyApp, isRbacEnabled, replace, t],
@@ -195,16 +202,29 @@ export function useAppInfoActions() {
     if (!appDetail) return
     markAppDeletionStarted(appDetail.id)
     try {
-      await deleteApp({ params: { app_id: appDetail.id } })
-    } catch (e: unknown) {
-      markAppDeletionFailed(appDetail.id)
-      toast(
-        `${t(($) => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
-        { type: 'error' },
+      await deleteApp(
+        { params: { app_id: appDetail.id } },
+        {
+          onSuccess: () => {
+            toast(
+              t(($) => $.appDeleted, { ns: 'app' }),
+              { type: 'success' },
+            )
+            replace('/apps')
+          },
+          onError: (error) => {
+            toast(
+              `${t(($) => $.appDeleteFailed, { ns: 'app' })}${error instanceof Error && error.message ? `: ${error.message}` : ''}`,
+              { type: 'error' },
+            )
+          },
+          onSettled: closeModal,
+        },
       )
+    } catch {
+      // The mounted mutation observer owns feedback; the modal only awaits completion.
     }
-    closeModal()
-  }, [appDetail, closeModal, deleteApp, t])
+  }, [appDetail, closeModal, deleteApp, replace, t])
 
   return {
     appDetail,

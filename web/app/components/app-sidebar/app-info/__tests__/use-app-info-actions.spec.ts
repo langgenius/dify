@@ -44,6 +44,14 @@ const appListQueryKeys = [
   consoleQuery.apps.recent.get.key(),
 ]
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 const renderActions = () => {
   const queryClient = createConsoleQueryClient()
   if (mockAppDetail) queryClient.setQueryData(appDetailQueryKey, mockAppDetail)
@@ -563,5 +571,49 @@ describe('useAppInfoActions', () => {
         message: expect.stringContaining('app.appDeleteFailed'),
       })
     })
+
+    it('does not navigate away from another app when an old sidebar deletion finishes', async () => {
+      const deletion = createDeferred<void>()
+      mockDeleteApp.mockReturnValue(deletion.promise)
+      const view = renderActions()
+      let submitted: Promise<void> | undefined
+      act(() => {
+        submitted = view.result.current.onConfirmDelete()
+      })
+      await waitFor(() => expect(mockDeleteApp).toHaveBeenCalledOnce())
+      view.unmount()
+
+      await act(async () => {
+        deletion.resolve()
+        await submitted
+      })
+
+      expect(mockMarkAppDeletionSucceeded).toHaveBeenCalledWith('app-1')
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+  })
+
+  it('does not navigate away from another app when an old sidebar copy finishes', async () => {
+    const copy = createDeferred<AppDetailWithSite>()
+    mockCopyApp.mockReturnValue(copy.promise)
+    const view = renderActions()
+    let submitted: void | Promise<void>
+    act(() => {
+      submitted = view.result.current.onCopy({
+        name: 'Copy',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+      })
+    })
+    await waitFor(() => expect(mockCopyApp).toHaveBeenCalledOnce())
+    view.unmount()
+
+    await act(async () => {
+      copy.resolve(createAppDetailFixture({ id: 'copied-app', name: 'Copy' }))
+      await submitted
+    })
+
+    expect(getRedirection).not.toHaveBeenCalled()
   })
 })
