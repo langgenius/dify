@@ -188,10 +188,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [appId, setStoredSidebarCollapseState],
   )
-  const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
-    scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
-    userId: isInstalledApp ? userId : appData?.end_user_id,
-  })
+  const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
+    useConversationSelection({
+      scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
+      userId: isInstalledApp ? userId : appData?.end_user_id,
+    })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -252,6 +253,20 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation must clear the rendered chat.
     setClearChatList(true)
   }, [appChatListError, handleConversationIdInfoChange])
+  // When the backend reports the conversation no longer exists (404), clear the
+  // stale conversation_id so the chatbot falls back to a new conversation
+  // instead of retrying forever (issue #39484). Environment addresses have their
+  // own 404 protocol handled by the effect above.
+  useEffect(() => {
+    if (resolveWebAppAddress()?.kind === 'environment') return
+    if (!(appChatListError instanceof Response) || appChatListError.status !== 404) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing conversation resets the active conversation.
+    setNewConversationId('')
+    removeConversationIdInfo()
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing conversation must clear the rendered chat.
+    setClearChatList(true)
+  }, [appChatListError, removeConversationIdInfo])
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length
