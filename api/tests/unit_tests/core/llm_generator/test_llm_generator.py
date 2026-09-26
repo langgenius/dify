@@ -12,10 +12,13 @@ import pytest
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.app_config.entities import ModelConfig
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
+from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
+from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
@@ -462,6 +465,62 @@ class TestLLMGenerator:
         invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
         assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
         assert invoke_kwargs["stop"] == ["END"]
+
+    @pytest.mark.parametrize("use_configured_model", [False, True])
+    def test_prepared_suggested_questions_defer_provider_calls_without_resolving_again(
+        self, monkeypatch: pytest.MonkeyPatch, use_configured_model: bool
+    ) -> None:
+        model_instance = Mock(spec=ModelInstance)
+        model_instance.get_model_schema.return_value.parameter_rules = []
+        manager = Mock(spec=ModelManager)
+        manager.get_model_instance.return_value = model_instance
+        manager.get_default_model_instance.return_value = model_instance
+        resolve_manager = Mock(return_value=manager)
+        monkeypatch.setattr(ModelManager, "for_tenant", resolve_manager)
+        original_metadata = get_credit_usage_metadata()
+        original_timeout = _get_plugin_daemon_request_timeout()
+
+        def invoke(**_kwargs: object) -> LLMResult:
+            metadata = get_credit_usage_metadata()
+            assert metadata is not None
+            assert metadata["created_by"] == CreditUsageCreatedBy.SUGGESTED_QUESTIONS
+            timeout = _get_plugin_daemon_request_timeout()
+            assert timeout is not None
+            assert timeout.read == 30.0
+            return _llm_result('["Next question?"]')
+
+        model_instance.invoke_llm.side_effect = invoke
+        model_config = (
+            {
+                "provider": "openai",
+                "name": "custom-model",
+                "completion_params": {"temperature": 0.2, "stop": ["END"], "max_tokens": 0},
+            }
+            if use_configured_model
+            else None
+        )
+        prepared_model = LLMGenerator.prepare_suggested_questions_model("tenant_id", model_config=model_config)
+
+        assert prepared_model is not None
+        model_instance.get_model_schema.assert_not_called()
+        model_instance.invoke_llm.assert_not_called()
+        resolve_manager.side_effect = AssertionError("Model lookup must finish in the preparation phase")
+
+        result = LLMGenerator.invoke_suggested_questions_after_answer(
+            prepared_model, "Human: hello\nAssistant: world", instruction_prompt="Ask a follow-up"
+        )
+
+        assert result == ["Next question?"]
+        parameters = model_instance.invoke_llm.call_args.kwargs
+        assert parameters["model_parameters"] == (
+            {"temperature": 0.2} if use_configured_model else {"max_tokens": 256, "temperature": 0.0}
+        )
+        assert parameters["stop"] == (["END"] if use_configured_model else [])
+        assert parameters["stream"] is False
+        assert "Human: hello\nAssistant: world" in parameters["prompt_messages"][0].content
+        assert "Ask a follow-up" in parameters["prompt_messages"][0].content
+        assert get_credit_usage_metadata() == original_metadata
+        assert _get_plugin_daemon_request_timeout() == original_timeout
 
     def test_generate_rule_config_no_variable_success(self, mock_model_instance, model_config_entity):
         payload = RuleGeneratePayload(
