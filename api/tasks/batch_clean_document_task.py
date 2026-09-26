@@ -46,6 +46,8 @@ def batch_clean_document_task(
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
+    attachment_ids: list[str] = []
+    orphan_attachment_ids: list[str] = []
     dataset_tenant_id: str | None = None
 
     try:
@@ -65,16 +67,45 @@ def batch_clean_document_task(
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
 
-                total_image_upload_file_ids.extend(
-                    session.scalars(
-                        select(SegmentAttachmentBinding.attachment_id).where(
-                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
-                            SegmentAttachmentBinding.dataset_id == dataset_id,
-                            SegmentAttachmentBinding.document_id.in_(document_ids),
-                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
-                        )
-                    ).all()
+                # Multimodal attachments are kept apart from inline images: an attachment may be
+                # bound to segments of other documents, so it can only be removed once no binding
+                # references it any more.
+                attachment_ids = list(
+                    dict.fromkeys(
+                        session.scalars(
+                            select(SegmentAttachmentBinding.attachment_id).where(
+                                SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                                SegmentAttachmentBinding.dataset_id == dataset_id,
+                                SegmentAttachmentBinding.document_id.in_(document_ids),
+                                SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                            )
+                        ).all()
+                    )
                 )
+                if attachment_ids:
+                    # Only attachments no document outside this batch still binds may be removed.
+                    shared_attachment_ids = set(
+                        session.scalars(
+                            select(SegmentAttachmentBinding.attachment_id).where(
+                                SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                                SegmentAttachmentBinding.document_id.not_in(document_ids),
+                            )
+                        ).all()
+                    )
+                    orphan_attachment_ids = [
+                        attachment_id for attachment_id in attachment_ids if attachment_id not in shared_attachment_ids
+                    ]
+                    if orphan_attachment_ids:
+                        storage_keys_to_delete.extend(
+                            f.key
+                            for f in session.scalars(
+                                select(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids))
+                            ).all()
+                            if f and f.key
+                        )
+                        # Attachment vectors live under doc_id == UploadFile.id, so they are not
+                        # covered by the segment index_node_ids cleaned in Step 2.
+                        index_node_ids.extend(orphan_attachment_ids)
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -137,6 +168,29 @@ def batch_clean_document_task(
                 document_ids,
             )
 
+        # ============ Step 3.5: Release segment attachment bindings and orphan rows ============
+        # Bindings must go before the attachment rows, and only the attachments computed as
+        # orphans in Step 1 may be deleted. Their vectors were cleaned together with the segment
+        # node ids in Step 2.
+        if segment_ids:
+            try:
+                with session_factory.create_session() as session, session.begin():
+                    session.execute(
+                        delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                        )
+                    )
+                    if orphan_attachment_ids:
+                        session.execute(delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids)))
+            except Exception:
+                logger.exception(
+                    "Failed to release segment attachments for dataset_id: %s, document_ids: %s",
+                    dataset_id,
+                    document_ids,
+                )
+
         # ============ Step 4: Batch delete UploadFile records (multiple short transactions) ============
         if total_image_upload_file_ids:
             failed_batches = 0
@@ -172,13 +226,7 @@ def batch_clean_document_task(
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
-                        binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
-                            SegmentAttachmentBinding.dataset_id == dataset_id,
-                            SegmentAttachmentBinding.document_id.in_(document_ids),
-                            SegmentAttachmentBinding.segment_id.in_(batch),
-                        )
-                        session.execute(binding_delete_stmt)
+                        # Bindings were already released in Step 3.5.
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()

@@ -6,6 +6,7 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -20,7 +22,7 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType
+from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
 from tests.unit_tests.model_factories import make_document
@@ -321,3 +323,134 @@ class TestVectorCleanupResilience:
             survivor_segment_id=survivor_segment_id,
         )
         schedule_refresh.assert_not_called()
+
+
+def _persist_attachment(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    created_by: str,
+    bound_to: list[tuple[str, str]],
+) -> tuple[str, str]:
+    """Persist one attachment plus a binding for each (document_id, segment_id) it belongs to."""
+    attachment = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/attachment.png",
+        name="attachment.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    attachment.id = str(uuid.uuid4())
+    session.add(attachment)
+    for bound_document_id, bound_segment_id in bound_to:
+        session.add(
+            SegmentAttachmentBinding(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                document_id=bound_document_id,
+                segment_id=bound_segment_id,
+                attachment_id=attachment.id,
+            )
+        )
+    session.commit()
+    return attachment.id, attachment.key
+
+
+class TestSegmentAttachmentCleanup:
+    """Deleting a document must release only the attachments nothing else references."""
+
+    def test_orphan_attachment_vectors_and_rows_are_cleaned(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage,
+        mock_index_processor_factory,
+    ) -> None:
+        """An attachment no other document binds is removed from the vector store too.
+
+        Attachment vectors are written under ``doc_id == UploadFile.id``, so the segment
+        ``index_node_id`` list cleaned for the document does not cover them.
+        """
+        _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=["seg-1"],
+        )
+        attachment_id, attachment_key = _persist_attachment(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            created_by=str(uuid.uuid4()),
+            bound_to=[(document_id, "seg-1")],
+        )
+
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh"):
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+            )
+
+        cleaned_node_ids: set[str] = set()
+        for call in mock_index_processor_factory["processor"].clean.call_args_list:
+            cleaned_node_ids.update(call.args[1])
+        assert attachment_id in cleaned_node_ids
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(UploadFile, attachment_id) is None
+        assert attachment_key in {call.args[0] for call in mock_storage.delete.call_args_list}
+
+    def test_attachment_bound_to_another_document_survives(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage,
+        mock_index_processor_factory,
+    ) -> None:
+        """An attachment another document still binds keeps its vector, row and blob."""
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=["seg-1"],
+        )
+        attachment_id, attachment_key = _persist_attachment(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            created_by=str(uuid.uuid4()),
+            bound_to=[(document_id, "seg-1"), (other_document_id, survivor_segment_id)],
+        )
+
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh"):
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+            )
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(UploadFile, attachment_id) is not None
+        assert attachment_key not in {call.args[0] for call in mock_storage.delete.call_args_list}
+        cleaned_node_ids: set[str] = set()
+        for call in mock_index_processor_factory["processor"].clean.call_args_list:
+            cleaned_node_ids.update(call.args[1])
+        assert attachment_id not in cleaned_node_ids
