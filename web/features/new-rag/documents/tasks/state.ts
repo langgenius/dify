@@ -1,5 +1,5 @@
 import { atom } from 'jotai'
-import { taskIsActive } from '../model'
+import { taskGraphIsActive, taskIsActive } from '../model'
 import { backgroundTasksAtom, baseTasksAtom, documentsAtom } from '../state/queries'
 import { taskRuntimeStateAtom } from '../state/scoped'
 import { transitionTaskRuntimeState } from './runtime-state'
@@ -58,5 +58,7 @@ export const drawerTasksAtom = atom((get) => {
 
   return get(backgroundTasksAtom)
     .map((task) => effectiveTaskById.get(task.id) ?? task)
-    .filter((task) => taskIsActive(task) || !dismissedTaskIds.has(task.id))
+    .filter(
+      (task) => taskIsActive(task) || taskGraphIsActive(task) || !dismissedTaskIds.has(task.id),
+    )
 })

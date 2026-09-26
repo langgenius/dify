@@ -1298,6 +1298,21 @@ export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
 })
 
 /**
+ * KnowledgeFSSemanticEnrichmentResponse
+ */
+export const zKnowledgeFsSemanticEnrichmentResponse = z.object({
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  nodes_completed: z.int().gte(0),
+  nodes_total: z.int().gte(0).nullish(),
+  provider_calls: z.int().gte(0).nullish(),
+  provider_calls_maximum: z.int().gte(0).nullish(),
+  state: z.enum(['disabled', 'failed', 'not_scheduled', 'pending', 'ready', 'running']),
+  updated_at: z.iso.datetime().nullish(),
+})
+
+/**
  * KnowledgeFSBackgroundTaskResponse
  */
 export const zKnowledgeFsBackgroundTaskResponse = z.object({
@@ -1330,6 +1345,7 @@ export const zKnowledgeFsBackgroundTaskResponse = z.object({
   progress_failed: z.int().gte(0),
   progress_percent: z.int().gte(0).lte(100),
   progress_total: z.int().gte(0),
+  semantic_enrichment: zKnowledgeFsSemanticEnrichmentResponse.nullish(),
   source_id: z.string().nullish(),
   source_title: z.string().nullish(),
   state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),

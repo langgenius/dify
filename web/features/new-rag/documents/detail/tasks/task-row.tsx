@@ -14,9 +14,16 @@ import {
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../../knowledge-fs-task-error'
-import { taskCanCancel, taskCanRetry, taskIsActive } from '../../model'
+import {
+  taskCanCancel,
+  taskCanRetry,
+  taskGraphIsActive,
+  taskGraphIsIncomplete,
+  taskIsActive,
+} from '../../model'
 import { backgroundTaskFromApi } from '../../models'
 import { taskLifecycle, taskProgress, taskTime } from '../../tasks/drawer-model'
+import { DocumentGraphStatus } from '../../tasks/graph-status'
 import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentCanEditAtom, retryDocumentWritePermissionAtom } from '../state/workflow'
 import { useRefreshDocumentWritePermission } from '../write-permission'
@@ -151,15 +158,21 @@ export function DocumentTaskRow({
     task.failure,
     task.errorCode ?? (task.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
   )
-  const recoveryPath = knowledgeFsTaskRecoveryPath(task.failure, knowledgeSpaceId)
+  const recoveryFailure = taskGraphIsIncomplete(task)
+    ? (task.semanticEnrichment?.failure ?? undefined)
+    : task.failure
+  const recoveryPath = knowledgeFsTaskRecoveryPath(recoveryFailure, knowledgeSpaceId)
   const recoveryLabel =
-    task.failure?.action === 'configure_model'
+    recoveryFailure?.action === 'configure_model'
       ? tCommon(($) => $['datasetMenus.settings'])
-      : task.failure?.action === 'configure_source'
+      : recoveryFailure?.action === 'configure_source'
         ? t(($) => $.openSource)
-        : task.failure?.action === 'reupload'
+        : recoveryFailure?.action === 'reupload'
           ? t(($) => $.addDocument)
           : undefined
+  const retryLabel = taskGraphIsIncomplete(task)
+    ? t(($) => $.graphRepairRetry, { ns: 'knowledgeTasks' })
+    : t(($) => $.retryTask)
   const actionTarget = `${title} · ${task.id}`
 
   async function performAction(action: TaskAction) {
@@ -186,13 +199,14 @@ export function DocumentTaskRow({
       <span
         aria-hidden
         className={
-          task.state === 'failed'
+          task.state === 'failed' ||
+          (task.state === 'succeeded' && task.semanticEnrichment?.state === 'failed')
             ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
             : task.state === 'dispatch_pending' ||
                 task.state === 'queued' ||
                 task.state === 'retry_wait'
               ? 'i-ri-time-line size-4 shrink-0 text-text-tertiary'
-              : taskIsActive(task)
+              : taskIsActive(task) || taskGraphIsActive(task)
                 ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
                 : task.state === 'succeeded'
                   ? 'i-ri-check-line size-4 shrink-0 text-text-success'
@@ -206,6 +220,7 @@ export function DocumentTaskRow({
         <p className="mt-0.75 truncate system-xs-regular text-text-tertiary" title={status}>
           {status}
         </p>
+        <DocumentGraphStatus task={task} />
         {taskFailureMessageKey && (
           <KnowledgeTaskFailure messageKey={taskFailureMessageKey} failure={task.failure} />
         )}
@@ -232,14 +247,12 @@ export function DocumentTaskRow({
       ) : canEdit && taskCanRetry(task) ? (
         <Button
           ref={actionButtonRef}
-          aria-label={
-            retryActionCount > 1 ? `${t(($) => $.retryTask)} · ${actionTarget}` : undefined
-          }
+          aria-label={retryActionCount > 1 ? `${retryLabel} · ${actionTarget}` : undefined}
           size="small"
           loading={pending}
           onClick={() => void performAction('retry')}
         >
-          {t(($) => $.retryTask)}
+          {retryLabel}
         </Button>
       ) : canEdit && recoveryPath && recoveryLabel ? (
         <Link

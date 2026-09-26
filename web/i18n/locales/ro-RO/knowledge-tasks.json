@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Sarcini de adăugare a documentelor, sincronizare a surselor și reindexare.",
   "dismissTask": "Ascunde activitatea",
+  "graphRepairFailed": "Textul poate fi căutat. Graful de cunoștințe este incomplet deoarece procesarea sa a eșuat.",
+  "graphRepairPending": "Textul poate fi căutat. Graful de cunoștințe este în curs de completare.",
+  "graphRepairRetry": "Reîncearcă procesarea grafului",
   "interruptTask": "Întrerupe",
   "noBackgroundTasks": "Nu există încă sarcini de fundal.",
   "overview.operation.document_delete": "ștergerea documentului",

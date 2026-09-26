@@ -3542,6 +3542,9 @@ export default interface Resources {
   knowledgeTasks: {
     backgroundTasksDescription: 'Document adds, source syncs, and re-index jobs.'
     dismissTask: 'Dismiss task'
+    graphRepairFailed: 'Text is searchable. The knowledge graph is incomplete because graph processing failed.'
+    graphRepairPending: 'Text is searchable. The knowledge graph is being completed.'
+    graphRepairRetry: 'Retry graph processing'
     interruptTask: 'Interrupt'
     noBackgroundTasks: 'No background tasks yet.'
     'overview.operation.document_delete': 'document deletion'

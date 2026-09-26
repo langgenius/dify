@@ -95,6 +95,32 @@ describe('document detail task drawer polling', () => {
     },
   )
 
+  it.each(['ready', 'failed'] as const)(
+    'keeps polling published text until graph repair is %s',
+    async (state) => {
+      const pending = taskResponse('document', 'completed')
+      pending.data[0]!.semantic_enrichment = { state: 'pending', nodes_completed: 0 }
+      const failed = taskResponse('document', 'completed')
+      failed.data[0]!.semantic_enrichment = { state, nodes_completed: 0 }
+      failed.data[0]!.can_retry = state === 'failed'
+      listTasks.mockResolvedValueOnce(pending).mockResolvedValue(failed)
+      store.set(documentTaskDrawerOpenAtom, true)
+      await observeTasks()
+      expect(store.get(documentBackgroundTasksAtom)[0]).toMatchObject({
+        state: 'succeeded',
+        semanticEnrichment: { state: 'pending' },
+      })
+      await vi.advanceTimersByTimeAsync(5001)
+      expect(store.get(documentBackgroundTasksAtom)[0]).toMatchObject({
+        state: 'succeeded',
+        canRetry: state === 'failed',
+        semanticEnrichment: { state },
+      })
+      await vi.advanceTimersByTimeAsync(15000)
+      expect(listTasks).toHaveBeenCalledTimes(2)
+    },
+  )
+
   it('pauses polling when closed and resumes on reopening', async () => {
     listTasks.mockResolvedValue(taskResponse('document_bulk', 'running'))
     await observeTasks()

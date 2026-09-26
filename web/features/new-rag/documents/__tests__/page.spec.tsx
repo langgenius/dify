@@ -214,6 +214,7 @@ const revisionApiResponse = vi.hoisted(
   }),
 )
 const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
+  semantic_enrichment: item.semanticEnrichment ?? null,
   can_cancel: item.canCancel ?? true,
   can_retry: item.canRetry ?? item.state === 'failed',
   completed_at: item.completedAt ?? null,
@@ -1125,6 +1126,39 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('combobox')).toHaveTextContent('knowledgeSpace.documentStatus.failed')
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('keeps published text ready and retries only its failed graph task', async () => {
+    const user = userEvent.setup()
+    const latestTask = task({
+      state: 'succeeded',
+      canCancel: false,
+      canRetry: true,
+      semanticEnrichment: { state: 'failed', nodes_completed: 0 },
+    })
+    documentsQuery.data = { pages: [{ items: [document({ latestTask })] }] }
+    tasksQuery.data = { pages: [{ items: [latestTask] }] }
+    retryMutation.mutateAsync.mockResolvedValue({
+      ...latestTask,
+      canRetry: false,
+      semanticEnrichment: { state: 'pending', nodes_completed: 0 },
+    })
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeTasks.graphRepairFailed')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeDocuments.tasksWithAttention:{"count":1}' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.graphRepairRetry' }))
+    expect(retryMutation.mutateAsync).toHaveBeenCalled()
+    expect(await screen.findAllByText('knowledgeTasks.graphRepairPending')).not.toHaveLength(0)
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeTasks.graphRepairRetry' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
   })
 
   it('reveals the latest document task failure reason from the failed status', async () => {
@@ -6518,7 +6552,9 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(12)
       const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
-      expect(taskOptions?.refetchInterval).toBeUndefined()
+      expect(
+        taskOptions?.refetchInterval?.({ state: { data: rawTaskQueryData(tasksQuery.data!) } }),
+      ).toBe(false)
       expect(
         screen.getByRole('button', {
           name: 'knowledgeDocuments.tasksWithAttention:{"count":20}',

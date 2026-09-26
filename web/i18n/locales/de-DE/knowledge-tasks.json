@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Aufgaben zum Hinzufügen von Dokumenten, Synchronisieren von Quellen und Neuindizieren.",
   "dismissTask": "Aufgabe ausblenden",
+  "graphRepairFailed": "Der Text ist durchsuchbar. Der Wissensgraph ist unvollständig, da die Graphverarbeitung fehlgeschlagen ist.",
+  "graphRepairPending": "Der Text ist durchsuchbar. Der Wissensgraph wird vervollständigt.",
+  "graphRepairRetry": "Graphverarbeitung erneut versuchen",
   "interruptTask": "Unterbrechen",
   "noBackgroundTasks": "Noch keine Hintergrundaufgaben.",
   "overview.operation.document_delete": "Dokumentlöschung",

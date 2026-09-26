@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "مهام إضافة المستندات ومزامنة المصادر وإعادة الفهرسة.",
   "dismissTask": "تجاهل المهمة",
+  "graphRepairFailed": "يمكن البحث في النص. الرسم البياني المعرفي غير مكتمل بسبب فشل معالجته.",
+  "graphRepairPending": "يمكن البحث في النص. جارٍ استكمال الرسم البياني المعرفي.",
+  "graphRepairRetry": "إعادة محاولة معالجة الرسم البياني",
   "interruptTask": "إيقاف",
   "noBackgroundTasks": "لا توجد مهام خلفية حتى الآن.",
   "overview.operation.document_delete": "حذف الوثيقة",

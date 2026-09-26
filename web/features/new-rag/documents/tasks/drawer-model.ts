@@ -1,6 +1,12 @@
 import type { BackgroundTask } from '../models'
 import type { ProcessingTaskProgressEvent } from './events'
-import { taskCanRetry, taskIsActive, taskVersionIsAfter } from '../model'
+import {
+  taskCanRetry,
+  taskGraphIsActive,
+  taskGraphIsIncomplete,
+  taskIsActive,
+  taskVersionIsAfter,
+} from '../model'
 
 export const TASK_DRAWER_LIMIT = 100
 
@@ -70,7 +76,11 @@ function newestTasks(
 export function selectTaskDrawerTasks(tasks: BackgroundTask[], visibleTaskLimit: number) {
   const reservedLimit = Math.min(TASK_DRAWER_LIMIT / 2, visibleTaskLimit)
   const retryableTasks = newestTasks(tasks, reservedLimit, taskCanRetry)
-  const activeTasks = newestTasks(tasks, reservedLimit, taskIsActive)
+  const activeTasks = newestTasks(
+    tasks,
+    reservedLimit,
+    (task) => taskIsActive(task) || taskGraphIsActive(task),
+  )
   const attentionTaskIds = new Set([
     ...retryableTasks.map((task) => task.id),
     ...activeTasks.map((task) => task.id),
@@ -78,7 +88,9 @@ export function selectTaskDrawerTasks(tasks: BackgroundTask[], visibleTaskLimit:
   const remainingAttentionTasks = newestTasks(
     tasks,
     visibleTaskLimit - attentionTaskIds.size,
-    (task) => (taskCanRetry(task) || taskIsActive(task)) && !attentionTaskIds.has(task.id),
+    (task) =>
+      (taskCanRetry(task) || taskIsActive(task) || taskGraphIsIncomplete(task)) &&
+      !attentionTaskIds.has(task.id),
   )
   for (const task of remainingAttentionTasks) attentionTaskIds.add(task.id)
   const terminalTasks = newestTasks(

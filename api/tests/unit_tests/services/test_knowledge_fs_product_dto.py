@@ -18,6 +18,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDiffResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentOutlineResponse,
+    KnowledgeFSDocumentProcessingTaskResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSFindQuery,
@@ -1791,3 +1792,64 @@ def test_logical_document_serializes_its_latest_task_snapshot() -> None:
     assert serialized["latest_task"]["document_id"] == serialized["id"]
     assert serialized["latest_task"]["state"] == "running"
     assert "latestTask" not in serialized
+
+
+@pytest.mark.parametrize("state", ["pending", "running", "ready", "failed"])
+def test_background_task_preserves_graph_repair_status_for_completed_text(state: str) -> None:
+    response = KnowledgeFSBackgroundTaskResponse.model_validate(
+        {
+            "id": "task-1",
+            "knowledgeSpaceId": "space-1",
+            "operation": "document_processing",
+            "taskKind": "document",
+            "state": "completed",
+            "canCancel": False,
+            "canRetry": state == "failed",
+            "createdAt": "2026-09-26T12:00:00Z",
+            "updatedAt": "2026-09-26T12:01:00Z",
+            "progressCompleted": 1,
+            "progressFailed": 0,
+            "progressPercent": 100,
+            "progressTotal": 1,
+            "semanticEnrichment": {
+                "state": state,
+                "nodesCompleted": 2,
+                "nodesTotal": 3,
+                "providerCalls": 4,
+                "providerCallsMaximum": 8,
+                "updatedAt": "2026-09-26T12:01:00Z",
+            },
+        }
+    ).model_dump(mode="json")
+    assert response["state"] == "completed"
+    assert response["semantic_enrichment"] == {
+        "state": state,
+        "nodes_completed": 2,
+        "nodes_total": 3,
+        "provider_calls": 4,
+        "provider_calls_maximum": 8,
+        "updated_at": "2026-09-26T12:01:00Z",
+        "error_code": None,
+        "error_message": None,
+        "failure": None,
+    }
+    assert response["can_retry"] is (state == "failed")
+
+
+def test_document_task_preserves_graph_repair_for_service_consumers() -> None:
+    response = KnowledgeFSDocumentProcessingTaskResponse.model_validate(
+        {
+            "id": "task-1",
+            "knowledgeSpaceId": "space-1",
+            "documentId": "document-1",
+            "documentRevision": 1,
+            "state": "succeeded",
+            "stage": "published",
+            "progressPercent": 100,
+            "createdAt": "2026-09-26T12:00:00Z",
+            "updatedAt": "2026-09-26T12:01:00Z",
+            "semanticEnrichment": {"state": "pending", "nodesCompleted": 0},
+        }
+    ).model_dump(mode="json")
+    assert response["state"] == "succeeded"
+    assert response["semantic_enrichment"]["state"] == "pending"

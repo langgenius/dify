@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "문서 추가, 소스 동기화 및 재색인 작업.",
   "dismissTask": "작업 숨기기",
+  "graphRepairFailed": "텍스트를 검색할 수 있습니다. 그래프 처리에 실패하여 지식 그래프가 불완전합니다.",
+  "graphRepairPending": "텍스트를 검색할 수 있습니다. 지식 그래프를 완성하는 중입니다.",
+  "graphRepairRetry": "그래프 처리 다시 시도",
   "interruptTask": "중단",
   "noBackgroundTasks": "아직 백그라운드 작업이 없습니다.",
   "overview.operation.document_delete": "문서 삭제",

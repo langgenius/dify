@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "Aggiunte di documenti, sincronizzazioni di origini e processi di reindicizzazione.",
   "dismissTask": "Ignora attività",
+  "graphRepairFailed": "Il testo è ricercabile. Il grafo della conoscenza è incompleto perché la sua elaborazione non è riuscita.",
+  "graphRepairPending": "Il testo è ricercabile. Il grafo della conoscenza è in fase di completamento.",
+  "graphRepairRetry": "Riprova elaborazione del grafo",
   "interruptTask": "Interrompere",
   "noBackgroundTasks": "Ancora nessuna attività in background.",
   "overview.operation.document_delete": "cancellazione del documento",

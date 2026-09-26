@@ -2,6 +2,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { taskGraphIsIncomplete } from '../model'
+import { DocumentGraphStatus } from '../tasks/graph-status'
 import { DOCUMENT_DETAIL_TITLE_ID } from './header'
 import {
   documentLatestTaskAtom,
@@ -41,6 +43,16 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
             {t(($) => $.documentReindexStatus, { ns: 'knowledgeDocuments' })}
           </span>
           <Button size="small" variant="ghost-accent" onClick={onViewTasks}>
+            {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
+          </Button>
+        </div>
+      )}
+      {latestTask && taskGraphIsIncomplete(latestTask) && (
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-state-warning-hover px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <DocumentGraphStatus task={latestTask} />
+          </div>
+          <Button size="small" variant="ghost" onClick={onViewTasks}>
             {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
           </Button>
         </div>

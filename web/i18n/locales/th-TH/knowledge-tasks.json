@@ -1,6 +1,9 @@
 {
   "backgroundTasksDescription": "การเพิ่มเอกสาร การซิงค์แหล่งที่มา และงานจัดทำดัชนีใหม่",
   "dismissTask": "ซ่อนงาน",
+  "graphRepairFailed": "ค้นหาข้อความได้แล้ว กราฟความรู้ยังไม่สมบูรณ์เนื่องจากการประมวลผลกราฟล้มเหลว",
+  "graphRepairPending": "ค้นหาข้อความได้แล้ว กำลังเติมกราฟความรู้ให้สมบูรณ์",
+  "graphRepairRetry": "ลองประมวลผลกราฟอีกครั้ง",
   "interruptTask": "ขัดจังหวะ",
   "noBackgroundTasks": "ยังไม่มีงานพื้นหลัง",
   "overview.operation.document_delete": "การลบเอกสาร",

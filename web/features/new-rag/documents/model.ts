@@ -90,7 +90,7 @@ export function documentDisplayStatus(
 }
 
 export function taskNeedsAttention(task: BackgroundTask) {
-  return ATTENTION_TASK_STATES.has(task.state)
+  return ATTENTION_TASK_STATES.has(task.state) || taskGraphIsIncomplete(task)
 }
 
 export function taskIsActive(task: BackgroundTask) {
@@ -108,4 +108,18 @@ export function taskCanRetry(task: BackgroundTask) {
       (task.state === 'failed' || task.state === 'canceled')
     )
   return task.canRetry ?? (task.state === 'failed' || task.state === 'canceled')
+}
+
+export function taskGraphIsActive(task: BackgroundTask) {
+  return (
+    task.state === 'succeeded' &&
+    (task.semanticEnrichment?.state === 'pending' || task.semanticEnrichment?.state === 'running')
+  )
+}
+
+export function taskGraphIsIncomplete(task: BackgroundTask) {
+  return (
+    taskGraphIsActive(task) ||
+    (task.state === 'succeeded' && task.semanticEnrichment?.state === 'failed')
+  )
 }
