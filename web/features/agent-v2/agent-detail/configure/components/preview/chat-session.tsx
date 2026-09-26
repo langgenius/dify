@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, Ref } from 'react'
 import type {
   AgentChatMessageSender,
@@ -29,9 +29,6 @@ export function AgentPreviewChatSession({
   conversationSessionKey,
   agentId,
   answerActionPosition,
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
   agentName,
   agentSoulConfig,
   clearChatList,
@@ -57,10 +54,7 @@ export function AgentPreviewChatSession({
   conversationSessionKey: string
   agentId: string
   answerActionPosition?: AgentChatRuntimeProps['answerActionPosition']
-  agentIcon?: string | null
-  agentIconBackground?: string | null
-  agentIconType?: AgentIconType | null
-  agentName?: string
+  agentName?: AgentChatRuntimeProps['agentName']
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
@@ -234,10 +228,6 @@ export function AgentPreviewChatSession({
           {isEmptyChat && (
             <div className="w-full p-3 pb-0">
               {renderEmptyState({
-                agentIcon,
-                agentIconBackground,
-                agentIconType,
-                agentName,
                 showUnconfiguredNotice,
               })}
             </div>
