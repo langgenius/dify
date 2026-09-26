@@ -3,6 +3,7 @@ import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/typ
 import type { FC } from 'react'
 import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -25,11 +26,9 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -406,33 +405,40 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode, handleVisionConfigInMultipleModel])
 
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showPromptLogModal,
-    setShowPromptLogModal,
-    showAgentLogModal,
-    setShowAgentLogModal,
-  } = useAppStore(
-    useShallow((state) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showPromptLogModal: state.showPromptLogModal,
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      showAgentLogModal: state.showAgentLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-    })),
-  )
-  const [width, setWidth] = useState(0)
+  const [selectedLogItem, setSelectedLogItem] = useState<IChatItem>()
+  const [logModalWidth, setLogModalWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
+  const singleChatContainerRef = useRef<HTMLDivElement>(null)
 
-  const adjustModalWidth = () => {
-    if (ref.current) setWidth(document.body.clientWidth - (ref.current?.clientWidth + 16) - 8)
+  const handleOpenLog = (item: IChatItem) => {
+    const container =
+      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
+        ? ref.current
+        : singleChatContainerRef.current
+    if (container) setLogModalWidth(document.body.clientWidth - (container.clientWidth + 16) - 8)
+    setSelectedLogItem(item)
   }
 
   useEffect(() => {
-    adjustModalWidth()
-  }, [])
+    if (!selectedLogItem) return
+    const container =
+      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
+        ? ref.current
+        : singleChatContainerRef.current
+    if (!container) return
+
+    const adjustModalWidth = () => {
+      setLogModalWidth(document.body.clientWidth - (container.clientWidth + 16) - 8)
+    }
+    const observer = new ResizeObserver(adjustModalWidth)
+    observer.observe(container)
+    window.addEventListener('resize', adjustModalWidth)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', adjustModalWidth)
+    }
+  }, [debugWithMultipleModel, mode, selectedLogItem])
 
   const [expanded, setExpanded] = useState(true)
 
@@ -544,27 +550,8 @@ const Debug: FC<IDebug> = ({
             onMultipleModelConfigsChange={onMultipleModelConfigsChange}
             onDebugWithMultipleModelChange={handleChangeToSingleModel}
             checkCanSend={checkCanSend}
+            onOpenLog={handleOpenLog}
           />
-          {showPromptLogModal && (
-            <PromptLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowPromptLogModal(false)
-              }}
-            />
-          )}
-          {showAgentLogModal && (
-            <AgentLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowAgentLogModal(false)
-              }}
-            />
-          )}
         </div>
       )}
       {!debugWithMultipleModel && (
@@ -596,7 +583,12 @@ const Debug: FC<IDebug> = ({
           {/* Chat */}
           {mode !== AppModeEnum.COMPLETION && (
             <div className="h-0 grow overflow-hidden">
-              <DebugWithSingleModel ref={debugWithSingleModelRef} checkCanSend={checkCanSend} />
+              <DebugWithSingleModel
+                ref={debugWithSingleModelRef}
+                checkCanSend={checkCanSend}
+                onOpenLog={handleOpenLog}
+                chatContainerRef={singleChatContainerRef}
+              />
             </div>
           )}
           {/* Text  Generation */}
@@ -619,6 +611,7 @@ const Debug: FC<IDebug> = ({
                       isError={false}
                       onRetry={noop}
                       siteInfo={null}
+                      onOpenLog={handleOpenLog}
                     />
                   </div>
                 </>
@@ -636,21 +629,25 @@ const Debug: FC<IDebug> = ({
               )}
             </>
           )}
-          {mode === AppModeEnum.COMPLETION && showPromptLogModal && (
-            <PromptLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowPromptLogModal(false)
-              }}
-            />
-          )}
           {isShowCannotQueryDataset && (
             <CannotQueryDataset onConfirm={() => setShowCannotQueryDataset(false)} />
           )}
         </div>
       )}
+      {selectedLogItem &&
+        (selectedLogItem.agent_thoughts?.length ? (
+          <AgentLogModal
+            width={logModalWidth}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
+          />
+        ) : (
+          <PromptLogModal
+            width={logModalWidth}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
+          />
+        ))}
       {isShowFormattingChangeConfirm && (
         <FormattingChanged onConfirm={handleConfirm} onCancel={handleCancel} />
       )}

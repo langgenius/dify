@@ -107,14 +107,6 @@ vi.mock('@/app/components/base/new-audio-button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/chat/chat/log', () => ({
-  default: () => (
-    <button data-testid="log-btn">
-      <div className="i-ri-file-list-3-line" />
-    </button>
-  ),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ appId: 'test-app' })),
   usePathname: vi.fn(() => '/apps/test-app'),
@@ -177,7 +169,6 @@ type OperationProps = {
   item: ChatItem
   question: string
   index: number
-  showPromptLog?: boolean
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
@@ -241,6 +232,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
     mockContextValue.showRegenerate = false
+    mockContextValue.onOpenLog = undefined
 
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
   })
@@ -343,26 +335,29 @@ describe('Operation', () => {
       expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
 
-    it('should show prompt log when showPromptLog is true', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
-      expect(screen.getByTestId('log-btn'))!.toBeInTheDocument()
+    it('should show the log action when the owner provides it', () => {
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
+      expect(screen.getByRole('button', { name: 'operation.log' }))!.toBeInTheDocument()
     })
 
     it('should keep hover-only controls visible when a descendant popup is open', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
 
       expect(screen.getByTestId('operation-actions')).toHaveClass(
         'group-has-[[data-popup-open]]:flex',
       )
-      expect(screen.getByTestId('log-btn').parentElement).toHaveClass(
-        'group-has-[[data-popup-open]]:block',
-      )
+      expect(
+        screen.getByRole('button', { name: 'operation.log' }).parentElement?.parentElement,
+      ).toHaveClass('group-has-[[data-popup-open]]:block')
     })
 
     it('should not show prompt log for opening statements', () => {
       const item = { ...baseItem, isOpeningStatement: true }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
-      expect(screen.queryByTestId('log-btn')).not.toBeInTheDocument()
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
+      expect(screen.queryByRole('button', { name: 'operation.log' })).not.toBeInTheDocument()
     })
   })
 
@@ -897,7 +892,8 @@ describe('Operation', () => {
         feedback: { rating: 'like' as const },
         adminFeedback: { rating: 'dislike' as const },
       }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
       expect(bar)!.toBeInTheDocument()
     })

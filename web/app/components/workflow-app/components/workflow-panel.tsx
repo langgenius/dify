@@ -1,7 +1,6 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
@@ -37,33 +36,16 @@ const GlobalVariablePanel = dynamic(
 )
 
 const WorkflowPanelOnLeft = () => {
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showMessageLogModal,
-    setShowMessageLogModal,
-    currentLogModalActiveTab,
-  } = useAppStore(
-    useShallow((state) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showMessageLogModal: state.showMessageLogModal,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-      currentLogModalActiveTab: state.currentLogModalActiveTab,
-    })),
-  )
+  const messageLogItem = useStore((state) => state.messageLogItem)
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   return (
     <>
-      {showMessageLogModal && (
+      {messageLogItem && (
         <MessageLogModal
           fixedWidth
           width={400}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-          defaultTab={currentLogModalActiveTab}
+          currentLogItem={messageLogItem}
+          onCancel={() => setMessageLogItem(undefined)}
         />
       )}
     </>

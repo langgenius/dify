@@ -53,6 +53,7 @@ const ChatRecord = () => {
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
@@ -106,7 +107,10 @@ const ChatRecord = () => {
               className="flex size-6 cursor-pointer items-center justify-center"
               onClick={() => {
                 handleLoadBackupDraft()
-                workflowStore.setState({ historyWorkflowData: undefined })
+                workflowStore.setState({
+                  historyWorkflowData: undefined,
+                  messageLogItem: undefined,
+                })
               }}
             >
               <RiCloseLine className="size-4 text-text-tertiary" />
@@ -128,7 +132,7 @@ const ChatRecord = () => {
               chatNode={<UserInput />}
               noChatInput
               allToolIcons={{}}
-              showPromptLog
+              onOpenLog={setMessageLogItem}
               switchSibling={switchSibling}
               noSpacing
               chatAnswerContainerInner="pr-2!"

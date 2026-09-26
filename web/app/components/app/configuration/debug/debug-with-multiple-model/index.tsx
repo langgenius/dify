@@ -3,7 +3,6 @@ import type { DebugWithMultipleModelContextType } from './context'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -22,6 +21,7 @@ const DebugWithMultipleModel = () => {
     appId,
     readonly,
     canTestAndRun = false,
+    onOpenFeatures,
   } = useDebugConfigurationContext()
   const speech2text = useFeatures((s) => s.features.speech2text)
   const file = useFeatures((s) => s.features.file)
@@ -94,7 +94,6 @@ const DebugWithMultipleModel = () => {
     [twoLine, threeLine, fourLine],
   )
 
-  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
   const inputsForm = modelConfig.configs.prompt_variables
     .filter((item) => item.type !== 'api')
     .map((item) => ({
@@ -133,7 +132,7 @@ const DebugWithMultipleModel = () => {
             showFeatureBar
             featureBarReadonly={readonly}
             showFileUpload={false}
-            onFeatureBarClick={setShowAppConfigureFeaturesModal}
+            onFeatureBarClick={onOpenFeatures}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
             speechToTextTarget={{ type: 'consoleApp', appId }}
@@ -154,6 +153,7 @@ const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
   multipleModelConfigs,
   onDebugWithMultipleModelChange,
   checkCanSend,
+  onOpenLog,
 }) => {
   return (
     <DebugWithMultipleModelContextProvider
@@ -161,6 +161,7 @@ const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
       multipleModelConfigs={multipleModelConfigs}
       onDebugWithMultipleModelChange={onDebugWithMultipleModelChange}
       checkCanSend={checkCanSend}
+      onOpenLog={onOpenLog}
     >
       <DebugWithMultipleModelMemoed />
     </DebugWithMultipleModelContextProvider>

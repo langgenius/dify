@@ -42,9 +42,7 @@ import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
@@ -81,7 +79,6 @@ import {
 } from './list-utils'
 import VarPanel from './var-panel'
 
-type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
 type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
@@ -174,29 +171,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     select: (data) => data.profile.timezone ?? undefined,
   })
   const { formatTime } = useTimestamp()
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showMessageLogModal,
-    setShowMessageLogModal,
-    showPromptLogModal,
-    setShowPromptLogModal,
-    showAgentLogModal,
-    setShowAgentLogModal,
-    currentLogModalActiveTab,
-  } = useAppStore(
-    useShallow((state: AppStoreState) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showMessageLogModal: state.showMessageLogModal,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-      showPromptLogModal: state.showPromptLogModal,
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      showAgentLogModal: state.showAgentLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-      currentLogModalActiveTab: state.currentLogModalActiveTab,
-    })),
-  )
+  const [selectedLogItem, setSelectedLogItem] = useState<IChatItem>()
   const { t } = useTranslation(['appLog', 'common'])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
@@ -427,7 +402,13 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail.mode === AppModeEnum.ADVANCED_CHAT
-  const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
+  const logKind = selectedLogItem?.workflow_run_id
+    ? 'workflow'
+    : selectedLogItem?.agent_thoughts?.length
+      ? 'agent'
+      : selectedLogItem?.log
+        ? 'prompt'
+        : undefined
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
@@ -518,7 +499,6 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onRetry={noop}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              hideLogAction
               onFeedback={(feedback) => onFeedback(detail.message.id, feedback)}
               isShowTextToSpeech
               siteInfo={null}
@@ -547,9 +527,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
               noChatInput
-              showPromptLog={isAdvanced}
+              onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
               switchSibling={switchSibling}
             />
@@ -589,9 +568,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
                 onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
                 noChatInput
-                showPromptLog={isAdvanced}
+                onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
                 hideProcessDetail
-                hideLogModal
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
@@ -607,38 +585,28 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           </div>
         )}
       </div>
-      {showMessageLogModal && (
+      {logKind === 'workflow' && (
         <WorkflowContextProvider>
           <MessageLogModal
             width={width}
-            currentLogItem={currentLogItem}
-            onCancel={() => {
-              setCurrentLogItem()
-              setShowMessageLogModal(false)
-            }}
-            defaultTab={currentLogModalActiveTab}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
           />
         </WorkflowContextProvider>
       )}
-      {showAgentLogModal && (
+      {logKind === 'agent' && (
         <AgentLogModal
           floating
           width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowAgentLogModal(false)
-          }}
+          currentLogItem={selectedLogItem}
+          onCancel={() => setSelectedLogItem(undefined)}
         />
       )}
-      {shouldShowPromptLogModal && (
+      {logKind === 'prompt' && (
         <PromptLogModal
           width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowPromptLogModal(false)
-          }}
+          currentLogItem={selectedLogItem}
+          onCancel={() => setSelectedLogItem(undefined)}
         />
       )}
     </div>
@@ -707,6 +675,7 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
 
   return (
     <DetailPanel
+      key={`${appDetail.id}:${conversationId}`}
       appDetail={appDetail}
       detail={conversationDetail}
       onClose={onClose}
@@ -768,6 +737,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
 
   return (
     <DetailPanel
+      key={`${appDetail.id}:${conversationId}`}
       appDetail={appDetail}
       detail={conversationDetail}
       onClose={onClose}
@@ -800,14 +770,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
   const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
-  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(
-    useShallow((state: AppStoreState) => ({
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-    })),
-  )
-
   const activeConversationId =
     conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 
@@ -874,22 +836,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     onRefresh()
     setShowDrawer(false)
     setCurrentConversation(undefined)
-    setShowPromptLogModal(false)
-    setShowAgentLogModal(false)
-    setShowMessageLogModal(false)
     pendingConversationIdRef.current = null
     pendingConversationCacheRef.current = undefined
     closingConversationIdRef.current = conversationIdInUrl ?? null
 
     if (conversationIdInUrl) void setConversationIdInUrl(null, { history: 'replace' })
-  }, [
-    conversationIdInUrl,
-    onRefresh,
-    setConversationIdInUrl,
-    setShowAgentLogModal,
-    setShowMessageLogModal,
-    setShowPromptLogModal,
-  ])
+  }, [conversationIdInUrl, onRefresh, setConversationIdInUrl])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (

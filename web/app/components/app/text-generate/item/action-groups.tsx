@@ -23,7 +23,6 @@ type GenerationActionGroupsProps = {
   currentTab: string
   depth: number
   feedback?: FeedbackType
-  hideLogAction?: boolean
   isError: boolean
   isInWebApp: boolean
   isResponding?: boolean
@@ -33,7 +32,7 @@ type GenerationActionGroupsProps = {
   moreLikeThis?: boolean
   onFeedback?: (feedback: FeedbackType) => void
   onMoreLikeThis: () => void
-  onOpenLogModal: () => void
+  onOpenLog?: () => void
   onRetry: () => void
   onSave?: (messageId: string) => void
   supportFeedback?: boolean
@@ -47,7 +46,6 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   currentTab,
   depth,
   feedback,
-  hideLogAction,
   isError,
   isInWebApp,
   isResponding,
@@ -57,7 +55,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   moreLikeThis,
   onFeedback,
   onMoreLikeThis,
-  onOpenLogModal,
+  onOpenLog,
   onRetry,
   onSave,
   supportFeedback,
@@ -70,7 +68,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
 
   return (
     <>
-      {!hideLogAction &&
+      {onOpenLog &&
         !isInWebApp &&
         appSourceType !== AppSourceTypeEnum.installedApp &&
         !isResponding && (
@@ -79,7 +77,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               aria-label={t(($) => $['operation.log'], { ns: 'common' })}
               disabled={isError || !messageId}
               title={t(($) => $['operation.log'], { ns: 'common' })}
-              onClick={onOpenLogModal}
+              onClick={onOpenLog}
             >
               <span aria-hidden="true" className="i-ri-file-list-3-line size-4" />
             </IconButton>
