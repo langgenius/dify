@@ -5,7 +5,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -35,7 +35,6 @@ import {
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
-  clearWindowDebugControllers,
   isDebuggableTriggerType,
   mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
@@ -47,17 +46,6 @@ import {
 type WorkflowRunParams = Record<string, unknown> & {
   token?: string
   appId?: string
-}
-
-type DebugAbortController = {
-  abort: () => void
-}
-
-type WorkflowDebugWindow = Window & {
-  __webhookDebugAbortController?: DebugAbortController
-  __pluginDebugAbortController?: DebugAbortController
-  __scheduleDebugAbortController?: DebugAbortController
-  __allTriggersDebugAbortController?: DebugAbortController
 }
 
 const WORKFLOW_DATA_CHUNK_SIZE = 900
@@ -113,6 +101,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const appMode = useAppStore((state) => state.appDetail?.mode)
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
@@ -125,8 +114,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
   })
-
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   const {
     handleWorkflowStarted,
@@ -191,8 +178,29 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       callback?: IOtherOptions,
       options?: HandleRunOptions,
     ) => {
+      const { appId } = workflowStore.getState()
+      if (!appId) return
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
+      const url = resolveWorkflowRunUrl(appId, appMode, runMode)
+      if (!url) return
+      const validationMessage = validateWorkflowRunRequest(runMode, options)
+      if (validationMessage) {
+        console.error(validationMessage)
+        return
+      }
+
+      const abortController = new AbortController()
+      workflowStore.getState().workflowRunAbortController?.abort()
+      workflowStore.setState({
+        workflowRunAbortController: abortController,
+        workflowRunningData: undefined,
+      })
+      const clearAbortController = () => {
+        if (workflowStore.getState().workflowRunAbortController === abortController)
+          workflowStore.setState({ workflowRunAbortController: null })
+      }
+
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
         draft.forEach((node) => {
@@ -201,7 +209,13 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      await doSyncWorkflowDraft()
+      try {
+        await doSyncWorkflowDraft()
+      } catch (error) {
+        clearAbortController()
+        throw error
+      }
+      if (abortController.signal.aborted) return
 
       const {
         onWorkflowStarted,
@@ -225,27 +239,14 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const appDetail = useAppStore.getState().appDetail
-      const runHistoryUrl = buildRunHistoryUrl(appDetail)
+      const runHistoryUrl = buildRunHistoryUrl(appId, appMode)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const isInWorkflowDebug = appDetail?.mode === AppModeEnum.WORKFLOW
+      const isInWorkflowDebug = appMode === AppModeEnum.WORKFLOW
 
-      const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
-
-      if (!url) return
-
-      const validationMessage = validateWorkflowRunRequest(runMode, options)
-      if (validationMessage) {
-        console.error(validationMessage)
-        return
-      }
-
-      abortControllerRef.current?.abort()
-      abortControllerRef.current = null
 
       const {
         setWorkflowRunningData,
@@ -287,11 +288,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           )
 
         return player
-      }
-
-      const clearAbortController = () => {
-        abortControllerRef.current = null
-        clearWindowDebugControllers(window as unknown as Record<string, unknown>)
       }
 
       const clearListeningStateInStore = () => {
@@ -379,6 +375,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       const baseSseOptions = createBaseWorkflowRunCallbacks({
+        abortController,
         clientWidth,
         clientHeight,
         runHistoryUrl,
@@ -402,10 +399,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           url,
           requestBody,
           baseSseOptions,
-          controllerTarget: window as unknown as Record<string, unknown>,
-          setAbortController: (controller) => {
-            abortControllerRef.current = controller
-          },
+          signal: abortController.signal,
           clearAbortController,
           clearListeningState: clearListeningStateInStore,
           setWorkflowRunningData,
@@ -414,6 +408,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       const finalCallbacks = createFinalWorkflowRunCallbacks({
+        abortController,
         clientWidth,
         clientHeight,
         runHistoryUrl,
@@ -430,21 +425,20 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         restCallback,
         baseSseOptions,
         player,
-        setAbortController: (controller) => {
-          abortControllerRef.current = controller
-        },
       })
 
       ssePost(
         url,
         {
           body: requestBody,
+          signal: abortController.signal,
         },
         finalCallbacks,
       )
     },
     [
       store,
+      appMode,
       doSyncWorkflowDraft,
       workflowStore,
       pathname,
@@ -495,32 +489,15 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       }
 
+      const { appId, workflowRunAbortController, workflowRunningData } = workflowStore.getState()
       if (taskId) {
-        const appId = useAppStore.getState().appDetail?.id
+        if (!appId) return
         stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-        setStoppedState()
-        return
+        if (workflowRunningData?.task_id !== taskId) return
       }
 
-      // Try webhook debug controller from global variable first
-      const debugWindow = window as WorkflowDebugWindow
-
-      const webhookController = debugWindow.__webhookDebugAbortController
-      if (webhookController) webhookController.abort()
-
-      const pluginController = debugWindow.__pluginDebugAbortController
-      if (pluginController) pluginController.abort()
-
-      const scheduleController = debugWindow.__scheduleDebugAbortController
-      if (scheduleController) scheduleController.abort()
-
-      const allTriggerController = debugWindow.__allTriggersDebugAbortController
-      if (allTriggerController) allTriggerController.abort()
-
-      // Also try the ref
-      if (abortControllerRef.current) abortControllerRef.current.abort()
-
-      abortControllerRef.current = null
+      workflowRunAbortController?.abort()
+      workflowStore.setState({ workflowRunAbortController: null })
       setStoppedState()
     },
     [workflowStore],

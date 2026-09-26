@@ -183,7 +183,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
-  const appMode = useAppStore.getState().appDetail?.mode
+  const appMode = useAppStore((state) => state.appDetail?.mode)
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
@@ -651,7 +651,7 @@ export const useChecklistBeforePublish = () => {
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const appMode = useAppStore.getState().appDetail?.mode
+  const appMode = useAppStore((state) => state.appDetail?.mode)
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 

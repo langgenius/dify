@@ -71,6 +71,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       eventEmitter?.emit({
         type: DSL_EXPORT_CHECK,
         payload: {
+          target: workflowStore,
           data: list,
         },
       } satisfies ExportSecretEnvironmentEvent)

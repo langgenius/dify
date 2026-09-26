@@ -2,8 +2,8 @@ import type { SelectorParam } from 'i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { fetchWebhookUrl } from '@/service/apps'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
@@ -34,7 +34,7 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
-  const appId = useAppStore.getState().appDetail?.id
+  const appId = useStore((state) => state.appId)
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const notifyVarError = useCallback(

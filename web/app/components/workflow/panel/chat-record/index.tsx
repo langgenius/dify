@@ -2,7 +2,6 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
 import { RiCloseLine } from '@remixicon/react'
 import { memo, useCallback, useEffect, useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -51,7 +50,7 @@ const ChatRecord = () => {
   const [fetched, setFetched] = useState(false)
   const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
   const workflowStore = useWorkflowStore()
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const { handleLoadBackupDraft } = useWorkflowRun()
@@ -59,10 +58,10 @@ const ChatRecord = () => {
   const currentConversationID = historyWorkflowData?.conversation_id
 
   const handleFetchConversationMessages = useCallback(async () => {
-    if (appDetail && currentConversationID) {
+    if (appId && currentConversationID) {
       try {
         setFetched(false)
-        const res = await fetchConversationMessages(appDetail.id, currentConversationID)
+        const res = await fetchConversationMessages(appId, currentConversationID)
 
         const newAllChatItems = getFormattedChatList((res as any).data)
 
@@ -74,11 +73,11 @@ const ChatRecord = () => {
         setFetched(true)
       }
     }
-  }, [appDetail, currentConversationID])
+  }, [appId, currentConversationID])
 
   useEffect(() => {
     handleFetchConversationMessages()
-  }, [currentConversationID, appDetail, handleFetchConversationMessages])
+  }, [currentConversationID, appId, handleFetchConversationMessages])
 
   const switchSibling = useCallback(
     (siblingMessageId: string) => {

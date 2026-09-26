@@ -40,7 +40,7 @@ describe('useWorkflowUpdate', () => {
   })
 
   it('emits initialized data and only sets a valid viewport', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowUpdate())
+    const { result, store } = renderWorkflowHook(() => useWorkflowUpdate())
 
     act(() => {
       result.current.handleUpdateWorkflowCanvas({
@@ -60,6 +60,7 @@ describe('useWorkflowUpdate', () => {
     expect(mockEventEmit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WORKFLOW_DATA_UPDATE',
+        payload: expect.objectContaining({ target: store }),
       }),
     )
     expect(mockSetViewport).toHaveBeenCalledTimes(1)

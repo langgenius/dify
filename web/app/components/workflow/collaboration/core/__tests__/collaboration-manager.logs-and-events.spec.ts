@@ -9,6 +9,7 @@ import { webSocketClient } from '../websocket-manager'
 import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
+  sourceStore: object
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -95,6 +96,7 @@ describe('CollaborationManager logs and event helpers', () => {
     manager.setEdges([], [edge])
 
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [
           {
@@ -158,6 +160,7 @@ describe('CollaborationManager logs and event helpers', () => {
     ]
 
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => oldNodes,
         setNodes: vi.fn(),
@@ -180,6 +183,16 @@ describe('CollaborationManager logs and event helpers', () => {
   it('replaces a stale CRDT graph with the committed draft before a refresh', () => {
     const { manager, internals } = setupManagerWithDoc()
     internals.currentAppId = 'app-1'
+    const store: ReactFlowStore = {
+      sourceStore: {},
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    internals.reactFlowStore = store
     vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     const oldNode = createNode('old-node')
     const oldTarget = createNode('old-target')
@@ -201,6 +214,7 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(
       manager.replaceGraphFromCommittedDraft(
         'another-app',
+        store.sourceStore,
         [importedNode, importedTarget],
         [importedEdge],
       ),
@@ -213,9 +227,16 @@ describe('CollaborationManager logs and event helpers', () => {
     ).toEqual(['old-node', 'old-target'])
     expect(manager.getEdges().map((edge) => edge.id)).toEqual(['old-edge'])
 
+    expect(manager.replaceGraphFromCommittedDraft('app-1', { ...store }, [importedNode], [])).toBe(
+      false,
+    )
+    expect(manager.ownsReactFlowStore({ ...store })).toBe(false)
+    expect(manager.ownsReactFlowStore(store.sourceStore)).toBe(true)
+
     expect(
       manager.replaceGraphFromCommittedDraft(
         'app-1',
+        store.sourceStore,
         [importedNode, importedTarget],
         [importedEdge],
       ),
@@ -237,6 +258,7 @@ describe('CollaborationManager logs and event helpers', () => {
     internals.currentAppId = 'app-1'
     vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [createNode('old-canvas-node')],
         setNodes: vi.fn(),
@@ -245,9 +267,14 @@ describe('CollaborationManager logs and event helpers', () => {
       }),
     }
 
-    expect(manager.replaceGraphFromCommittedDraft('app-1', [createNode('imported-node')], [])).toBe(
-      true,
-    )
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-1',
+        internals.reactFlowStore.sourceStore,
+        [createNode('imported-node')],
+        [],
+      ),
+    ).toBe(true)
     expect(manager.getNodes().map((node) => node.id)).toEqual(['imported-node'])
   })
 
@@ -284,6 +311,7 @@ describe('CollaborationManager logs and event helpers', () => {
     internals.setNodesAnomalyLogs = [{ timestamp: 2 }]
     internals.graphSyncDiagnostics = [{ timestamp: 3 }]
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [createNode('rf-1'), createNode('rf-2')],
         setNodes: vi.fn(),
@@ -403,6 +431,7 @@ describe('CollaborationManager logs and event helpers', () => {
     const setNodesSpy = vi.fn()
     const setEdgesSpy = vi.fn()
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [createNode('old-node')],
         setNodes: setNodesSpy,

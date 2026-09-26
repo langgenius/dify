@@ -12,7 +12,6 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -233,7 +232,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
-  const appDetail = useAppStore((state) => state.appDetail)
 
   const hasClickRunning = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -725,7 +723,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         {!isStartPlaceholderPanel && (
           <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
-              appId={appDetail?.id || ''}
               nodeId={id}
               canSingleRun={isSupportSingleRun}
               runningStatus={runningStatus}

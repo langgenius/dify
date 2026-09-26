@@ -1,78 +1,60 @@
 'use client'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { uniq } from 'es-toolkit/array'
-import { flatten } from 'es-toolkit/compat'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
 type AgentLogDetailProps = Readonly<{
+  appId: string
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem
   messageID: string
 }>
 const AgentLogDetail: FC<AgentLogDetailProps> = ({
+  appId,
   activeTab = 'DETAIL',
   conversationID,
   messageID,
   log,
 }) => {
-  const { t } = useTranslation(['runLog'])
-  const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore((s) => s.appDetail)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
-  const [list, setList] = useState<AgentIteration[]>([])
-  const tools = useMemo(() => {
-    const res = uniq(
-      flatten(
-        runDetail?.iterations.map((iteration) => {
-          return iteration.tool_calls.map((tool: any) => tool.tool_name).filter(Boolean)
+  const { t } = useTranslation(['runLog', 'common'])
+  const [currentTab, setCurrentTab] = useState(activeTab)
+  const {
+    data: runDetail,
+    isPending: loading,
+    isLoadingError,
+    refetch,
+  } = useQuery(
+    queryOptions({
+      queryKey: ['log', 'agent-detail', appId, conversationID, messageID],
+      queryFn: ({ signal }) =>
+        fetchAgentLogDetail({
+          appID: appId,
+          params: { conversation_id: conversationID, message_id: messageID },
+          signal,
         }),
-      ).filter(Boolean),
-    )
-    return res
-  }, [runDetail])
-  const getLogDetail = useCallback(
-    async (appID: string, conversationID: string, messageID: string) => {
-      try {
-        const res = await fetchAgentLogDetail({
-          appID,
-          params: {
-            conversation_id: conversationID,
-            message_id: messageID,
-          },
-        })
-        setRunDetail(res)
-        setList(res.iterations)
-      } catch (err) {
-        toast.error(`${err}`)
-      }
-    },
-    [],
+      retry: false,
+    }),
   )
-  const getData = async (appID: string, conversationID: string, messageID: string) => {
-    setLoading(true)
-    await getLogDetail(appID, conversationID, messageID)
-    setLoading(false)
-  }
-  const switchTab = async (tab: string) => {
+  const tools = [
+    ...new Set(
+      runDetail?.iterations.flatMap((iteration) =>
+        iteration.tool_calls.flatMap((tool) => (tool.tool_name ? [tool.tool_name] : [])),
+      ),
+    ),
+  ]
+  const switchTab = (tab: typeof currentTab) => {
     setCurrentTab(tab)
   }
-  useEffect(() => {
-    // fetch data
-    if (appDetail) getData(appDetail.id, conversationID, messageID)
-  }, [appDetail, conversationID, messageID])
   return (
     <div className="relative flex grow flex-col">
       {/* tab */}
@@ -112,7 +94,17 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
             <LoadingPlaceholder />
           </div>
         )}
-        {!loading && currentTab === 'DETAIL' && runDetail && (
+        {isLoadingError && (
+          <div role="alert" className="flex h-full flex-col items-center justify-center gap-3">
+            <p className="system-sm-regular text-text-tertiary">
+              {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+            </p>
+            <Button size="small" variant="secondary" onClick={() => void refetch()}>
+              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
+        {!loading && !isLoadingError && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
             inputs={log.input}
             outputs={log.content}
@@ -127,7 +119,9 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
             iterations={runDetail.iterations.length}
           />
         )}
-        {!loading && currentTab === 'TRACING' && <TracingPanel list={list} />}
+        {!loading && !isLoadingError && currentTab === 'TRACING' && (
+          <TracingPanel list={runDetail?.iterations ?? []} />
+        )}
       </div>
     </div>
   )

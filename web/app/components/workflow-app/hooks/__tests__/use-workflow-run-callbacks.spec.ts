@@ -76,6 +76,55 @@ describe('useWorkflowRun callbacks helpers', () => {
     vi.clearAllMocks()
   })
 
+  it.each(['trigger', 'user-input'])(
+    'keeps the %s resume stream owned until its terminal completion',
+    async (mode) => {
+      const abortController = new AbortController()
+      const clearAbortController = vi.fn()
+      const clearListeningState = vi.fn()
+      const getAbortController = vi.fn()
+      const handlers = createHandlers()
+      const context = {
+        abortController,
+        clientWidth: 320,
+        clientHeight: 240,
+        runHistoryUrl: '/apps/app-1/workflow-runs',
+        isInWorkflowDebug: true,
+        fetchInspectVars: vi.fn(),
+        invalidAllLastRun: vi.fn(),
+        invalidateRunHistory: vi.fn(),
+        clearAbortController,
+        clearListeningState,
+        getWorkflowRunningData: createWorkflowData,
+        trackWorkflowRunFailed: vi.fn(),
+        handlers,
+        callbacks: {},
+        restCallback: { getAbortController },
+      }
+      const baseSseOptions = createBaseWorkflowRunCallbacks({
+        ...context,
+        getOrCreatePlayer: () => null,
+      })
+      const callbacks =
+        mode === 'trigger'
+          ? baseSseOptions
+          : createFinalWorkflowRunCallbacks({ ...context, baseSseOptions, player: null })
+      callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-1' } as never)
+      await callbacks.onCompleted?.(false)
+      expect(clearAbortController).not.toHaveBeenCalled()
+      const resumeOptions = mockSseGet.mock.calls[0]![2]
+      expect(mockSseGet.mock.calls[0]![1].signal).toBe(abortController.signal)
+      resumeOptions.getAbortController(new AbortController())
+      expect(getAbortController).toHaveBeenCalledWith(abortController)
+      await resumeOptions.onCompleted(false)
+      expect(clearAbortController).toHaveBeenCalledTimes(1)
+
+      abortController.abort()
+      resumeOptions.onError('aborted old stream')
+      expect(handlers.handleWorkflowFailed).not.toHaveBeenCalled()
+    },
+  )
+
   it('should create base callbacks that wrap workflow events, errors, pause continuation, and lazy tts playback', () => {
     const handlers = createHandlers()
     const clearAbortController = vi.fn()
@@ -95,6 +144,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     const getOrCreatePlayer = vi.fn<() => AudioPlayer | null>(() => player)
 
     const callbacks = createBaseWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 320,
       clientHeight: 240,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -147,8 +197,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userOnWorkflowPaused).toHaveBeenCalled()
     expect(mockSseGet).toHaveBeenCalledWith(
       '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      callbacks,
+      { signal: expect.any(AbortSignal) },
+      expect.objectContaining({ onWorkflowPaused: callbacks.onWorkflowPaused }),
     )
     expect(mockSseGet).toHaveBeenCalledTimes(1)
   })
@@ -156,12 +206,13 @@ describe('useWorkflowRun callbacks helpers', () => {
   it('should create final callbacks that preserve rest callback override order and eager abort-controller wiring', () => {
     const handlers = createHandlers()
     const restOnNodeStarted = vi.fn()
-    const setAbortController = vi.fn()
+    const getAbortController = vi.fn()
     const player = {
       playAudioWithAudio: vi.fn(),
     } as unknown as AudioPlayer
 
     const baseSseOptions = createBaseWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 320,
       clientHeight: 240,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -180,6 +231,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     })
 
     const finalCallbacks = createFinalWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 320,
       clientHeight: 240,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -195,15 +247,15 @@ describe('useWorkflowRun callbacks helpers', () => {
       callbacks: {},
       restCallback: {
         onNodeStarted: restOnNodeStarted,
+        getAbortController,
       },
       baseSseOptions,
       player,
-      setAbortController,
     })
 
     const controller = new AbortController()
     finalCallbacks.getAbortController?.(controller)
-    expect(setAbortController).toHaveBeenCalledWith(controller)
+    expect(getAbortController).toHaveBeenCalledWith(expect.any(AbortController))
 
     finalCallbacks.onNodeStarted?.({ node_id: 'node-1' } as never)
     expect(restOnNodeStarted).toHaveBeenCalled()
@@ -234,6 +286,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     } as unknown as AudioPlayer
 
     const callbacks = createBaseWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 640,
       clientHeight: 360,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -329,8 +382,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
     expect(mockSseGet).toHaveBeenCalledWith(
       '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      callbacks,
+      { signal: expect.any(AbortSignal) },
+      expect.objectContaining({ onWorkflowPaused: callbacks.onWorkflowPaused }),
     )
     expect(mockSseGet).toHaveBeenCalledTimes(1)
     expect(clearAbortController).toHaveBeenCalled()
@@ -351,6 +404,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     const getOrCreatePlayer = vi.fn<() => AudioPlayer | null>(() => null)
 
     const callbacks = createBaseWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 320,
       clientHeight: 240,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -389,12 +443,13 @@ describe('useWorkflowRun callbacks helpers', () => {
     const trackWorkflowRunFailed = vi.fn()
     const workflowData = createWorkflowData()
     const getWorkflowRunningData = vi.fn(() => workflowData)
-    const setAbortController = vi.fn()
+    const getAbortController = vi.fn()
     const player = {
       playAudioWithAudio: vi.fn(),
     } as unknown as AudioPlayer
 
     const baseSseOptions = createBaseWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 480,
       clientHeight: 320,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -408,11 +463,12 @@ describe('useWorkflowRun callbacks helpers', () => {
       trackWorkflowRunFailed: vi.fn(),
       handlers,
       callbacks: {},
-      restCallback: {},
+      restCallback: { getAbortController },
       getOrCreatePlayer: vi.fn<() => AudioPlayer | null>(() => player),
     })
 
     const finalCallbacks = createFinalWorkflowRunCallbacks({
+      abortController: new AbortController(),
       clientWidth: 480,
       clientHeight: 320,
       runHistoryUrl: '/apps/app-1/workflow-runs',
@@ -426,10 +482,9 @@ describe('useWorkflowRun callbacks helpers', () => {
       trackWorkflowRunFailed,
       handlers,
       callbacks: userCallbacks,
-      restCallback: {},
+      restCallback: { getAbortController },
       baseSseOptions,
       player,
-      setAbortController,
     })
 
     finalCallbacks.getAbortController?.(new AbortController())
@@ -457,7 +512,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     await finalCallbacks.onCompleted?.(true, 'done')
     finalCallbacks.onError?.({ error: 'failed' } as never, '500')
 
-    expect(setAbortController).toHaveBeenCalled()
+    expect(getAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
     expect(userCallbacks.onWorkflowFinished).toHaveBeenCalled()
     expect(fetchInspectVars).toHaveBeenCalledWith({})
@@ -497,8 +552,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
     expect(mockSseGet).toHaveBeenCalledWith(
       '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      finalCallbacks,
+      { signal: expect.any(AbortSignal) },
+      expect.objectContaining({ onWorkflowPaused: finalCallbacks.onWorkflowPaused }),
     )
     expect(mockSseGet).toHaveBeenCalledTimes(1)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, undefined)

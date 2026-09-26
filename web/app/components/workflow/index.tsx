@@ -6,8 +6,8 @@ import type { CursorPosition, OnlineUser } from './collaboration/types/collabora
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
-import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
-import type { EventEmitterValue } from '@/context/event-emitter'
+import type { Edge, Node } from './types'
+import type { WorkflowDataUpdatePayload } from './workflow-data-update-event'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
@@ -65,7 +65,7 @@ import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
 import { CommentPlacementPreview } from './comment/placement-preview'
 import { CommentThread } from './comment/thread'
-import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
+import { CUSTOM_EDGE, CUSTOM_NODE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
@@ -105,6 +105,7 @@ import SyncingDataModal from './syncing-data-modal'
 import { ControlMode, WorkflowRunningStatus } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { WorkflowContextmenu } from './workflow-contextmenu'
+import { isWorkflowDataUpdateEvent } from './workflow-data-update-event'
 import 'reactflow/dist/style.css'
 import './style.css'
 
@@ -118,16 +119,6 @@ const nodeTypes = {
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
-}
-
-type WorkflowDataUpdatePayload = {
-  nodes: Node[]
-  edges: Edge[]
-  viewport?: Viewport
-  hash?: string
-  features?: unknown
-  conversation_variables?: ConversationVariable[]
-  environment_variables?: EnvironmentVariable[]
 }
 
 export type WorkflowProps = {
@@ -319,9 +310,10 @@ export const Workflow: FC<WorkflowProps> = memo(
       [activeComment, handleCommentIconClick, visibleComments],
     )
 
-    eventEmitter?.useSubscription((v: EventEmitterValue) => {
-      if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
-        const payload = v.payload as WorkflowDataUpdatePayload
+    eventEmitter?.useSubscription((event) => {
+      if (isWorkflowDataUpdateEvent(event)) {
+        const { target, ...payload } = event.payload
+        if (target !== workflowStore) return
         setNodes(payload.nodes)
         store.getState().setNodes(payload.nodes)
         setEdges(payload.edges)

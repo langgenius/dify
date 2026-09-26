@@ -23,11 +23,6 @@ export type HandleRunOptions = {
 
 type DebuggableTriggerType = Exclude<TriggerType, typeof TriggerType.UserInput>
 
-type AppDetailLike = {
-  id?: string
-  mode?: AppMode
-}
-
 type TTSParamsLike = {
   token?: string
   appId?: string
@@ -53,18 +48,10 @@ type TriggerDebugRunnerOptions = {
   url: string
   requestBody: unknown
   baseSseOptions: IOtherOptions
-  controllerTarget: Record<string, unknown>
-  setAbortController: (controller: AbortController | null) => void
+  signal: AbortSignal
   clearAbortController: () => void
   clearListeningState: () => void
   setWorkflowRunningData: ListeningStateActions['setWorkflowRunningData']
-}
-
-const controllerKeyMap: Record<DebuggableTriggerType, string> = {
-  [TriggerType.Webhook]: '__webhookDebugAbortController',
-  [TriggerType.Plugin]: '__pluginDebugAbortController',
-  [TriggerType.All]: '__allTriggersDebugAbortController',
-  [TriggerType.Schedule]: '__scheduleDebugAbortController',
 }
 
 const debugLabelMap: Record<DebuggableTriggerType, string> = {
@@ -115,44 +102,27 @@ export const createFailedWorkflowState = (error: string) => {
   }
 }
 
-export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-    ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
-    : `/apps/${appDetail?.id}/workflow-runs`
+export const buildRunHistoryUrl = (appId: string, appMode: AppMode | undefined) => {
+  return appMode === AppModeEnum.ADVANCED_CHAT
+    ? `/apps/${appId}/advanced-chat/workflow-runs`
+    : `/apps/${appId}/workflow-runs`
 }
 
 export const resolveWorkflowRunUrl = (
-  appDetail: AppDetailLike | undefined,
+  appId: string,
+  appMode: AppMode | undefined,
   runMode: HandleRunMode,
-  isInWorkflowDebug: boolean,
 ) => {
   if (
     runMode === TriggerType.Plugin ||
     runMode === TriggerType.Webhook ||
     runMode === TriggerType.Schedule
-  ) {
-    if (!appDetail?.id) {
-      console.error('handleRun: missing app id for trigger plugin run')
-      return ''
-    }
-
-    return `/apps/${appDetail.id}/workflows/draft/trigger/run`
-  }
-
-  if (runMode === TriggerType.All) {
-    if (!appDetail?.id) {
-      console.error('handleRun: missing app id for trigger run all')
-      return ''
-    }
-
-    return `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
-  }
-
-  if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT)
-    return `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
-
-  if (isInWorkflowDebug && appDetail?.id) return `/apps/${appDetail.id}/workflows/draft/run`
-
+  )
+    return `/apps/${appId}/workflows/draft/trigger/run`
+  if (runMode === TriggerType.All) return `/apps/${appId}/workflows/draft/trigger/run-all`
+  if (appMode === AppModeEnum.ADVANCED_CHAT)
+    return `/apps/${appId}/advanced-chat/workflows/draft/run`
+  if (appMode === AppModeEnum.WORKFLOW) return `/apps/${appId}/workflows/draft/run`
   return ''
 }
 
@@ -270,13 +240,6 @@ export const applyStoppedState = (
   actions.setShowVariableInspectPanel(true)
 }
 
-export const clearWindowDebugControllers = (controllerTarget: Record<string, unknown>) => {
-  delete controllerTarget.__webhookDebugAbortController
-  delete controllerTarget.__pluginDebugAbortController
-  delete controllerTarget.__scheduleDebugAbortController
-  delete controllerTarget.__allTriggersDebugAbortController
-}
-
 export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) => {
   let ttsUrl = ''
   let ttsIsPublic = false
@@ -343,18 +306,11 @@ export const runTriggerDebug = async ({
   url,
   requestBody,
   baseSseOptions,
-  controllerTarget,
-  setAbortController,
+  signal,
   clearAbortController,
   clearListeningState,
   setWorkflowRunningData,
 }: TriggerDebugRunnerOptions) => {
-  const controller = new AbortController()
-  setAbortController(controller)
-
-  const controllerKey = controllerKeyMap[debugType]
-  controllerTarget[controllerKey] = controller
-
   const debugLabel = debugLabelMap[debugType]
 
   const poll = async (): Promise<void> => {
@@ -363,14 +319,14 @@ export const runTriggerDebug = async ({
         url,
         {
           body: requestBody,
-          signal: controller.signal,
+          signal,
         },
         {
           needAllResponseContent: true,
         },
       )
 
-      if (controller.signal.aborted) return
+      if (signal.aborted) return
 
       if (!response) {
         const message = `${debugLabel} debug request failed`
@@ -386,6 +342,7 @@ export const runTriggerDebug = async ({
         try {
           data = (await response.json()) as Record<string, unknown>
         } catch (jsonError) {
+          if (signal.aborted) return
           console.error(
             `handleRun: ${debugLabel.toLowerCase()} debug response parse error`,
             jsonError,
@@ -396,12 +353,12 @@ export const runTriggerDebug = async ({
           return
         }
 
-        if (controller.signal.aborted) return
+        if (signal.aborted) return
 
         if (data?.status === 'waiting') {
           const delay = Number(data.retry_in) || 2000
-          await waitWithAbort(controller.signal, delay)
-          if (controller.signal.aborted) return
+          await waitWithAbort(signal, delay)
+          if (signal.aborted) return
           await poll()
           return
         }
@@ -451,10 +408,11 @@ export const runTriggerDebug = async ({
         baseSseOptions.onDataSourceNodeError,
       )
     } catch (error) {
-      if (controller.signal.aborted) return
+      if (signal.aborted) return
 
       if (error instanceof Response) {
         const data = (await error.clone().json()) as Record<string, unknown>
+        if (signal.aborted) return
         const errorMessage = typeof data?.error === 'string' ? data.error : ''
         toast.error(errorMessage)
         clearAbortController()

@@ -34,6 +34,7 @@ type NodePanelPresenceEventData = {
 }
 
 type ReactFlowStore = {
+  sourceStore: object
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -671,8 +672,7 @@ export class CollaborationManager {
       return connectionId
 
     if (this.currentAppId === appId && this.doc) {
-      // Already connected to the same app, only update store if provided and we don't have one
-      if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      if (reactFlowStore) this.reactFlowStore = reactFlowStore
       this.activeConnections.add(connectionId)
 
       return connectionId
@@ -781,6 +781,10 @@ export class CollaborationManager {
 
   isConnected(): boolean {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  }
+
+  ownsReactFlowStore(store: object): boolean {
+    return this.reactFlowStore?.sourceStore === store
   }
 
   canUseLocalDraftFallback(): boolean {
@@ -899,8 +903,19 @@ export class CollaborationManager {
     return true
   }
 
-  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
-    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+  replaceGraphFromCommittedDraft(
+    appId: string,
+    store: object,
+    nodes: Node[],
+    edges: Edge[],
+  ): boolean {
+    if (
+      this.currentAppId !== appId ||
+      !this.ownsReactFlowStore(store) ||
+      !this.doc ||
+      !this.canApplyLocalGraphMutation()
+    )
+      return false
 
     // A server-side import or restore replaces the whole draft. Its graph must also replace
     // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
@@ -1034,7 +1049,7 @@ export class CollaborationManager {
   }
 
   emitWorkflowUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (this.currentAppId !== appId || !webSocketClient.isConnected(appId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_update',

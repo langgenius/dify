@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { useStore } from '@/app/components/workflow/store'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -68,9 +69,8 @@ const useSingleRunFormParams = ({
       .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
+  const appId = useStore((state) => state.appId)
+  const isWorkflowMode = useAppStore((state) => state.appDetail?.mode === AppModeEnum.WORKFLOW)
   const fetchURL = useMemo(() => {
     if (!appId) return ''
     if (!isWorkflowMode) {

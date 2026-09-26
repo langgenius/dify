@@ -7,7 +7,6 @@ const mockGetNodes = vi.fn()
 const mockGetFeaturesState = vi.fn()
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 const mockHandleRun = vi.fn()
-const mockDoSyncWorkflowDraft = vi.fn()
 const mockUseIsChatMode = vi.fn()
 
 const mockSetShowDebugAndPreviewPanel = vi.fn()
@@ -53,12 +52,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
-vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
-}))
-
 vi.mock('../use-workflow-run', () => ({
   useWorkflowRunByCanEdit: () => ({
     handleRun: mockHandleRun,
@@ -97,7 +90,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
         },
       },
     })
-    mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockUseIsChatMode.mockReturnValue(false)
   })
 
@@ -105,12 +97,12 @@ describe('useWorkflowStartRunByCanEdit', () => {
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
 
     await act(async () => {
-      await result.current.handleWorkflowStartRunInWorkflow()
+      result.current.handleWorkflowStartRunInWorkflow()
+      expect(mockHandleRun).toHaveBeenCalledWith({ inputs: {}, files: [] })
     })
 
     expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
     expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockHandleRun).toHaveBeenCalledWith({ inputs: {}, files: [] })
     expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
@@ -127,7 +119,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
     expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
     expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
@@ -144,7 +135,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
     expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
@@ -167,7 +157,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
     expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
@@ -185,7 +174,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     })
 
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
@@ -205,7 +193,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     })
 
     expect(mockSetShowEnvPanel).not.toHaveBeenCalled()
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
@@ -224,7 +211,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith('schedule-1')
     expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith(['schedule-1'])
     expect(mockSetListeningTriggerIsAll).toHaveBeenCalledWith(false)
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockHandleRun).toHaveBeenCalledWith({}, undefined, {
       mode: TriggerType.Schedule,
       scheduleNodeId: 'schedule-1',
@@ -246,7 +232,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     })
 
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
@@ -273,7 +258,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await invoke(result.current)
     })
 
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
@@ -309,7 +293,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       })
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(warnMessage, expect.stringContaining('missing'))
-      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
       expect(mockHandleRun).not.toHaveBeenCalled()
 
       consoleWarnSpy.mockRestore()
@@ -354,7 +337,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
       expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith(nodeId)
       expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith([nodeId])
       expect(mockSetListeningTriggerIsAll).toHaveBeenCalledWith(false)
-      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       expect(mockHandleRun).toHaveBeenCalledWith(expectedParams, undefined, expectedOptions)
     },
   )
@@ -373,7 +355,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith(['trigger-1', 'trigger-2'])
     expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith(null)
     expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockHandleRun).toHaveBeenCalledWith(
       { node_ids: ['trigger-1', 'trigger-2'] },
       undefined,
@@ -392,7 +373,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     })
 
     expect(mockSetListeningTriggerIsAll).not.toHaveBeenCalled()
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 

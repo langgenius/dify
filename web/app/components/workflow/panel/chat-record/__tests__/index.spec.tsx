@@ -24,7 +24,7 @@ describe('ChatRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: createAppDetailFixture(),
+      appDetail: createAppDetailFixture({ id: 'other-app' }),
     })
   })
 
@@ -60,7 +60,7 @@ describe('ChatRecord', () => {
     } as never)
 
     renderWorkflowComponent(<ChatRecord />, {
-      initialStoreState: { historyWorkflowData },
+      initialStoreState: { appId: 'app-1', historyWorkflowData },
       hooksStoreProps: {
         handleLoadBackupDraft: vi.fn(),
       },
@@ -103,7 +103,7 @@ describe('ChatRecord', () => {
     } as never)
 
     const { container, store } = renderWorkflowComponent(<ChatRecord />, {
-      initialStoreState: { historyWorkflowData },
+      initialStoreState: { appId: 'app-1', historyWorkflowData },
       hooksStoreProps: { handleLoadBackupDraft },
     })
 
@@ -122,7 +122,7 @@ describe('ChatRecord', () => {
     mockFetchConversationMessages.mockRejectedValue(new Error('network error'))
 
     const { container } = renderWorkflowComponent(<ChatRecord />, {
-      initialStoreState: { historyWorkflowData },
+      initialStoreState: { appId: 'app-1', historyWorkflowData },
       hooksStoreProps: {
         handleLoadBackupDraft: vi.fn(),
       },

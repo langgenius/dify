@@ -18,6 +18,7 @@ import { attachCrdtRuntime } from './test-crdt-runtime'
 const { webSocketClient } = websocketManager
 
 type ReactFlowStore = {
+  sourceStore: object
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -189,6 +190,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const socket = createMockSocket('socket-initial-failure')
     socket.connected = false
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -255,6 +257,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     attachCrdtRuntime(manager)
     const socket = createMockSocket('socket-established-failure')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -294,7 +297,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     manager.emitCursorMove({ x: 11, y: 22, userId: 'u-1', timestamp: Date.now() })
     const syncPromise = manager.requestWorkflowSync()
-    manager.emitWorkflowUpdate('wf-1')
+    manager.emitWorkflowUpdate('another-app')
+    manager.emitWorkflowUpdate('app-1')
 
     expect(socket.emit).toHaveBeenCalledTimes(3)
     const payloads = socket.emit.mock.calls.map(
@@ -307,7 +311,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     ])
     expect(payloads[0]?.data).toMatchObject({ x: 11, y: 22 })
     expect(payloads[1]?.data.graphSnapshot).toBeInstanceOf(Uint8Array)
-    expect(payloads[2]?.data).toMatchObject({ appId: 'wf-1' })
+    expect(payloads[2]?.data).toMatchObject({ appId: 'app-1' })
 
     const syncCall = socket.emit.mock.calls.find(
       (call) => (call[1] as { type?: string })?.type === 'sync_request',
@@ -834,6 +838,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       reactFlowEdges = edges
     })
     internals.reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => reactFlowNodes,
         setNodes: setNodesSpy,
@@ -976,6 +981,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     )
 
     const reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -1018,6 +1024,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const socket = createMockSocket('socket-reconnect')
     const authoritativeNode = createNode('node-latest', 'Latest')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [authoritativeNode],
         setNodes: vi.fn(),
@@ -1078,6 +1085,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const socket = createMockSocket('socket-reconnect-promotion')
     const staleNode = createNode('node-stale', 'Stale')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [staleNode],
         setNodes: vi.fn(),
@@ -1118,6 +1126,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       const manager = new CollaborationManager()
       const socket = createMockSocket('socket-resync-retry')
       const reactFlowStore: ReactFlowStore = {
+        sourceStore: {},
         getState: () => ({
           getNodes: () => [],
           setNodes: vi.fn(),
@@ -1162,6 +1171,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const manager = new CollaborationManager()
     const socket = createMockSocket('socket-snapshot-race')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [createNode('node-stale', 'Stale')],
         setNodes: vi.fn(),
@@ -1208,6 +1218,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const manager = new CollaborationManager()
     const socket = createMockSocket('socket-double-reconnect')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [createNode('node-local')],
         setNodes: vi.fn(),
@@ -1349,6 +1360,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers merge/import log helper branches and log cap', () => {
     const { manager, internals } = setupManagerWithDoc()
     const reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [{ ...createNode('local-node'), selected: true }],
         setNodes: vi.fn(),
@@ -1536,6 +1548,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(resyncSpy).not.toHaveBeenCalled()
 
     const reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -1599,6 +1612,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers import subscription skip branches', () => {
     const { internals } = setupManagerWithDoc()
     const reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -1686,6 +1700,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       edges = nextEdges
     })
     const reactFlowStore = {
+      sourceStore: {},
       getState: () => ({
         getNodes: () => nodes,
         setNodes: setNodesSpy,
@@ -1801,6 +1816,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
       stubVisibilityState('visible')
       const connectionId = await manager.connect('app-visibility', {
+        sourceStore: {},
         getState: () => ({
           getNodes: () => [],
           setNodes: vi.fn(),

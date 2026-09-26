@@ -9,7 +9,6 @@ import {
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
-  clearWindowDebugControllers,
   createFailedWorkflowState,
   createRunningWorkflowState,
   createStoppedWorkflowState,
@@ -53,37 +52,23 @@ describe('useWorkflowRun utils', () => {
   })
 
   it('should resolve run history urls and run endpoints for workflow modes', () => {
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW })).toBe(
-      '/apps/app-1/workflow-runs',
-    )
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })).toBe(
+    expect(buildRunHistoryUrl('app-1', AppModeEnum.WORKFLOW)).toBe('/apps/app-1/workflow-runs')
+    expect(buildRunHistoryUrl('app-1', AppModeEnum.ADVANCED_CHAT)).toBe(
       '/apps/app-1/advanced-chat/workflow-runs',
     )
 
-    expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
-        TriggerType.UserInput,
-        true,
-      ),
-    ).toBe('/apps/app-1/workflows/draft/run')
-    expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
-        TriggerType.UserInput,
-        false,
-      ),
-    ).toBe('/apps/app-1/advanced-chat/workflows/draft/run')
-    expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
-        TriggerType.Schedule,
-        true,
-      ),
-    ).toBe('/apps/app-1/workflows/draft/trigger/run')
-    expect(
-      resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.All, true),
-    ).toBe('/apps/app-1/workflows/draft/trigger/run-all')
+    expect(resolveWorkflowRunUrl('app-1', AppModeEnum.WORKFLOW, TriggerType.UserInput)).toBe(
+      '/apps/app-1/workflows/draft/run',
+    )
+    expect(resolveWorkflowRunUrl('app-1', AppModeEnum.ADVANCED_CHAT, TriggerType.UserInput)).toBe(
+      '/apps/app-1/advanced-chat/workflows/draft/run',
+    )
+    expect(resolveWorkflowRunUrl('app-1', AppModeEnum.WORKFLOW, TriggerType.Schedule)).toBe(
+      '/apps/app-1/workflows/draft/trigger/run',
+    )
+    expect(resolveWorkflowRunUrl('app-1', AppModeEnum.WORKFLOW, TriggerType.All)).toBe(
+      '/apps/app-1/workflows/draft/trigger/run-all',
+    )
   })
 
   it('should build request bodies and validation errors for trigger runs', () => {
@@ -116,23 +101,9 @@ describe('useWorkflowRun utils', () => {
     expect(validateWorkflowRunRequest(TriggerType.All, { allNodeIds: [] })).toBe('')
   })
 
-  it('should return empty trigger urls when app id is missing and keep user-input urls empty outside workflow debug', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    expect(resolveWorkflowRunUrl(undefined, TriggerType.Plugin, true)).toBe('')
-    expect(resolveWorkflowRunUrl(undefined, TriggerType.All, true)).toBe('')
-    expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
-        TriggerType.UserInput,
-        false,
-      ),
-    ).toBe('')
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger plugin run')
-    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger run all')
-
-    consoleErrorSpy.mockRestore()
+  it('should keep user-input runs unavailable outside workflow and advanced chat modes', () => {
+    expect(resolveWorkflowRunUrl('app-1', AppModeEnum.CHAT, TriggerType.UserInput)).toBe('')
+    expect(resolveWorkflowRunUrl('app-1', undefined, TriggerType.UserInput)).toBe('')
   })
 
   it('should configure listening state for trigger and non-trigger modes', () => {
@@ -177,15 +148,6 @@ describe('useWorkflowRun utils', () => {
 
     expect(stoppedActions.setWorkflowRunningData).toHaveBeenCalledWith(createStoppedWorkflowState())
     expect(stoppedActions.setShowVariableInspectPanel).toHaveBeenCalledWith(true)
-
-    const controllerTarget = {
-      __webhookDebugAbortController: { abort: vi.fn() },
-      __pluginDebugAbortController: { abort: vi.fn() },
-      __scheduleDebugAbortController: { abort: vi.fn() },
-      __allTriggersDebugAbortController: { abort: vi.fn() },
-    }
-    clearWindowDebugControllers(controllerTarget)
-    expect(controllerTarget).toEqual({})
   })
 
   it('should derive listening node ids, tts config, and published workflow mappings', () => {
@@ -258,9 +220,8 @@ describe('useWorkflowRun utils', () => {
   it('should handle trigger debug null and invalid json responses as request failures', async () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
-    const setAbortController = vi.fn()
     const setWorkflowRunningData = vi.fn()
-    const controllerTarget: Record<string, unknown> = {}
+    const controller = new AbortController()
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     mockPost.mockResolvedValueOnce(null)
@@ -270,8 +231,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'webhook-1' },
       baseSseOptions: {},
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -292,8 +252,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'schedule-1' },
       baseSseOptions: {},
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -314,9 +273,8 @@ describe('useWorkflowRun utils', () => {
   it('should handle trigger debug json failures and stream responses', async () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
-    const setAbortController = vi.fn()
     const setWorkflowRunningData = vi.fn()
-    const controllerTarget: Record<string, unknown> = {}
+    const controller = new AbortController()
     const baseSseOptions = {
       onData: vi.fn(),
       onCompleted: vi.fn(),
@@ -333,14 +291,12 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'webhook-1' },
       baseSseOptions,
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
     })
 
-    expect(setAbortController).toHaveBeenCalledTimes(1)
     expect(mockToastError).toHaveBeenCalledWith('Webhook failed')
     expect(clearAbortController).toHaveBeenCalled()
     expect(clearListeningStateSpy).toHaveBeenCalled()
@@ -357,8 +313,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'plugin-1' },
       baseSseOptions,
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -372,9 +327,8 @@ describe('useWorkflowRun utils', () => {
     vi.useFakeTimers()
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
-    const setAbortController = vi.fn()
     const setWorkflowRunningData = vi.fn()
-    const controllerTarget: Record<string, unknown> = {}
+    const controller = new AbortController()
     const baseSseOptions = {
       onData: vi.fn(),
       onCompleted: vi.fn(),
@@ -397,8 +351,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run-all',
       requestBody: { node_ids: ['trigger-1'] },
       baseSseOptions,
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -418,7 +371,7 @@ describe('useWorkflowRun utils', () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
     const setWorkflowRunningData = vi.fn()
-    const controllerTarget: Record<string, unknown> = {}
+    const controller = new AbortController()
 
     mockPost.mockResolvedValueOnce(
       new Response('data: ok', {
@@ -426,15 +379,13 @@ describe('useWorkflowRun utils', () => {
       }),
     )
 
+    controller.abort()
     await runTriggerDebug({
       debugType: TriggerType.Plugin,
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'plugin-1' },
       baseSseOptions: {},
-      controllerTarget,
-      setAbortController: (controller) => {
-        controller?.abort()
-      },
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -450,9 +401,8 @@ describe('useWorkflowRun utils', () => {
   it('should handle Response and non-Response trigger debug exceptions correctly', async () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
-    const setAbortController = vi.fn()
     const setWorkflowRunningData = vi.fn()
-    const controllerTarget: Record<string, unknown> = {}
+    const controller = new AbortController()
 
     mockPost.mockRejectedValueOnce(
       new Response(JSON.stringify({ error: 'Plugin failed' }), {
@@ -465,8 +415,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'plugin-1' },
       baseSseOptions: {},
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,
@@ -484,8 +433,7 @@ describe('useWorkflowRun utils', () => {
       url: '/apps/app-1/workflows/draft/trigger/run',
       requestBody: { node_id: 'plugin-1' },
       baseSseOptions: {},
-      controllerTarget,
-      setAbortController,
+      signal: controller.signal,
       clearAbortController,
       clearListeningState: clearListeningStateSpy,
       setWorkflowRunningData,

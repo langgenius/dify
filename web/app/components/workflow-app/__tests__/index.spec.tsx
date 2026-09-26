@@ -1,16 +1,19 @@
 import type { ReactElement, ReactNode } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
+import { useStore } from '@/app/components/workflow/store'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
+const mockUseAppTriggers = vi.fn()
 const mockSetTriggerStatuses = vi.fn()
 const mockSetInputs = vi.fn()
 const mockSetShowInputsPanel = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
 let mockIsWorkflowDataLoaded = true
+let mockWorkflowRunAbortController: AbortController | null = null
 const mockWorkflowStoreSetState = vi.fn((state: Record<string, unknown>) => {
   if (typeof state.isWorkflowDataLoaded === 'boolean')
     mockIsWorkflowDataLoaded = state.isWorkflowDataLoaded
@@ -75,6 +78,7 @@ const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
   getState: () => ({
     isWorkflowDataLoaded: mockIsWorkflowDataLoaded,
+    workflowRunAbortController: mockWorkflowRunAbortController,
     setInputs: mockSetInputs,
     setShowInputsPanel: mockSetShowInputsPanel,
     setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
@@ -88,7 +92,8 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
+vi.mock('@/app/components/workflow/store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/workflow/store')>()),
   useWorkflowStore: () => mockWorkflowStore,
 }))
 
@@ -128,7 +133,10 @@ vi.mock('@/service/log', () => ({
 }))
 
 vi.mock('@/service/use-tools', () => ({
-  useAppTriggers: () => appTriggersState,
+  useAppTriggers: (...args: unknown[]) => {
+    mockUseAppTriggers(...args)
+    return appTriggersState
+  },
 }))
 
 vi.mock('../hooks/use-workflow-init', () => ({
@@ -188,10 +196,6 @@ vi.mock('@/app/components/workflow', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: ReactNode }) => children,
-}))
-
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
   default: function WorkflowMainMock({
     nodes,
@@ -202,6 +206,9 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     edges: Array<Record<string, unknown>>
     viewport: Record<string, unknown>
   }) {
+    const appId = useStore((state) => state.appId)
+    const inputs = useStore((state) => state.inputs)
+    const setInputs = useStore((state) => state.setInputs)
     useEffect(() => {
       return () => {
         const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = mockWorkflowStore.getState()
@@ -219,7 +226,14 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
         data-viewport={JSON.stringify(viewport)}
-      />
+      >
+        <span>{appId}</span>
+        <input
+          aria-label="Workflow query"
+          value={String(inputs.query ?? '')}
+          onChange={(event) => setInputs({ query: event.target.value })}
+        />
+      </div>
     )
   },
 }))
@@ -228,6 +242,7 @@ describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsWorkflowDataLoaded = true
+    mockWorkflowRunAbortController = null
     appStoreState = {
       appDetail: {
         id: 'app-1',
@@ -265,6 +280,42 @@ describe('WorkflowApp', () => {
     mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '/runs/run-1' })
   })
 
+  it('cancels run resources when the owning workflow session changes or exits', () => {
+    const firstController = new AbortController()
+    mockWorkflowRunAbortController = firstController
+    const { rerender, unmount } = render(<WorkflowApp appId="route-app-a" />)
+    rerender(<WorkflowApp appId="route-app-a" />)
+    expect(firstController.signal.aborted).toBe(false)
+
+    rerender(<WorkflowApp appId="route-app-b" />)
+    expect(firstController.signal.aborted).toBe(true)
+    const secondController = new AbortController()
+    mockWorkflowRunAbortController = secondController
+    expect(secondController.signal.aborted).toBe(false)
+    unmount()
+    expect(secondController.signal.aborted).toBe(true)
+  })
+
+  it('creates route identity before child requests and resets the workflow session when the route changes', () => {
+    const { rerender } = render(<WorkflowApp appId="route-app-a" />)
+
+    expect(mockUseAppTriggers.mock.calls[0]?.[0]).toBe('route-app-a')
+    expect(screen.getByText('route-app-a')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Workflow query' }), {
+      target: { value: 'Draft input from A' },
+    })
+    expect(screen.getByRole('textbox', { name: 'Workflow query' })).toHaveValue(
+      'Draft input from A',
+    )
+
+    rerender(<WorkflowApp appId="route-app-b" />)
+
+    expect(mockUseAppTriggers.mock.calls.at(-1)?.[0]).toBe('route-app-b')
+    expect(screen.getByText('route-app-b')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Workflow query' })).toHaveValue('')
+    expect(screen.queryByText('route-app-a')).not.toBeInTheDocument()
+  })
+
   it('should render the loading shell while workflow data is still loading', () => {
     workflowInitState = {
       data: null,
@@ -272,7 +323,7 @@ describe('WorkflowApp', () => {
       fileUploadConfigResponse: null,
     }
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     expect(screen.getByTestId('loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
@@ -288,7 +339,7 @@ describe('WorkflowApp', () => {
       },
     }
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
       'data-nodes',
@@ -310,7 +361,7 @@ describe('WorkflowApp', () => {
   })
 
   it('should not sync trigger statuses when trigger data is unavailable', () => {
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(mockSetTriggerStatuses).not.toHaveBeenCalled()
@@ -323,7 +374,7 @@ describe('WorkflowApp', () => {
         '{"sys.query":"hidden","foo":"bar","count":2,"flag":true,"obj":{"nested":true},"nil":null}',
     })
 
-    const { unmount } = render(<WorkflowApp />)
+    const { unmount } = render(<WorkflowApp appId="app-1" />)
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
@@ -342,7 +393,7 @@ describe('WorkflowApp', () => {
   })
 
   it('should keep loaded workflow state available for the canvas unmount sync', () => {
-    const { unmount } = render(<WorkflowApp />)
+    const { unmount } = render(<WorkflowApp appId="app-1" />)
 
     unmount()
 
@@ -351,7 +402,7 @@ describe('WorkflowApp', () => {
   })
 
   it('should skip replay lookups when replayRunId is missing', () => {
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
     expect(mockFetchRunDetail).not.toHaveBeenCalled()
@@ -368,7 +419,7 @@ describe('WorkflowApp', () => {
       },
     }
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     await waitFor(() => {
       expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
@@ -383,7 +434,7 @@ describe('WorkflowApp', () => {
     searchParamsValue = 'run-1'
     mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '' })
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     await waitFor(() => {
       expect(mockGetWorkflowRunAndTraceUrl).toHaveBeenCalledWith('run-1')
@@ -400,7 +451,7 @@ describe('WorkflowApp', () => {
       inputs: '{invalid-json}',
     })
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
@@ -423,7 +474,7 @@ describe('WorkflowApp', () => {
       inputs: '{"sys.query":"hidden","sys.user_id":"u-1"}',
     })
 
-    render(<WorkflowApp />)
+    render(<WorkflowApp appId="app-1" />)
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
