@@ -62,7 +62,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")

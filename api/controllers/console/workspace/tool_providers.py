@@ -62,6 +62,7 @@ from core.tools.entities.tool_entities import (
     WorkflowToolParameterConfiguration,
 )
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import alphanumeric, dump_response, uuid_value
@@ -664,9 +665,9 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 
@@ -1363,9 +1364,9 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 

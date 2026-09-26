@@ -24,6 +24,7 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.common_entities import I18nObject
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -32,7 +33,6 @@ from libs.login import login_required
 from models import Account
 from models.enums import PermissionEnum
 from models.provider_ids import DatasourceProviderID
-from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
 
@@ -176,7 +176,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         provider_name = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
-        oauth_config = DatasourceProviderService().get_oauth_client(
+        oauth_config = application_services().data_sources.providers.get_oauth_client(
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
@@ -246,7 +246,7 @@ class DatasourceOAuthCallback(Resource):
         tenant_id: str = context["tenant_id"]
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         oauth_client_params = datasource_provider_service.get_oauth_client(
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
@@ -315,7 +315,7 @@ class DatasourceAuth(Resource):
     @model_validate(DatasourceCredentialPayload)
     def post(self, req_data: DatasourceCredentialPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
 
         try:
             datasource_provider_service.add_datasource_api_key_provider(
@@ -342,14 +342,14 @@ class DatasourceAuth(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, user: Account, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
 
         datasources = datasource_provider_service.list_datasource_credentials(
             tenant_id=current_tenant_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
             user=user,
-            session=db.session(),
+            credential_query=application_services().credential_queries,
         )
         return dump_response(DatasourceCredentialListResponse, {"result": datasources}), 200
 
@@ -370,7 +370,7 @@ class DatasourceAuthDeleteApi(Resource):
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
 
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.remove_datasource_credentials(
             tenant_id=current_tenant_id,
             auth_id=req_data.credential_id,
@@ -397,7 +397,7 @@ class DatasourceAuthUpdateApi(Resource):
     def post(self, req_data: DatasourceCredentialUpdatePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
 
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.update_datasource_credentials(
             tenant_id=current_tenant_id,
             auth_id=req_data.credential_id,
@@ -422,9 +422,12 @@ class DatasourceAuthListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, user: Account):
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasources = datasource_provider_service.get_all_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session(), user=user
+            tenant_id=current_tenant_id,
+            session=db.session(),
+            user=user,
+            credential_query=application_services().credential_queries,
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
@@ -442,9 +445,12 @@ class DatasourceHardCodeAuthListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, user: Account):
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasources = datasource_provider_service.get_hard_code_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session(), user=user
+            tenant_id=current_tenant_id,
+            session=db.session(),
+            user=user,
+            credential_query=application_services().credential_queries,
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
@@ -464,7 +470,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @model_validate(DatasourceCustomClientPayload)
     def post(self, req_data: DatasourceCustomClientPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.setup_oauth_custom_client_params(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
@@ -482,7 +488,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.remove_oauth_custom_client_params(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
@@ -503,7 +509,7 @@ class DatasourceAuthDefaultApi(Resource):
     @model_validate(DatasourceDefaultPayload)
     def post(self, req_data: DatasourceDefaultPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.set_default_datasource_provider(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
@@ -525,7 +531,7 @@ class DatasourceUpdateProviderNameApi(Resource):
     @model_validate(DatasourceUpdateNamePayload)
     def post(self, req_data: DatasourceUpdateNamePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service = application_services().data_sources.providers
         datasource_provider_service.update_datasource_provider_name(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,

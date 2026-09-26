@@ -14,7 +14,8 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
-from services.external_knowledge_service import ExternalDatasetService
+from repositories.knowledge.segment_read_adapter import sign_segment_content
+from services.knowledge.external.service import ExternalDatasetService
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -175,9 +176,11 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         segment = record.segment
                         # Build content: if summary exists, add it before the segment content
                         if segment.answer:
-                            segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
+                            segment_content = (
+                                f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                            )
                         else:
-                            segment_content = segment.get_sign_content()
+                            segment_content = sign_segment_content(segment, session=session)
 
                         # If summary exists, prepend it to the content
                         if record.summary:

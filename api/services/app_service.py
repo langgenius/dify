@@ -60,7 +60,7 @@ from services.entities.app_entities import (
     AppListSortBy,
     CreateAppParams,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService

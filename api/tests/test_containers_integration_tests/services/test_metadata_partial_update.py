@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
-from unittest.mock import patch
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -13,12 +13,24 @@ from sqlalchemy.orm import Session, sessionmaker
 from models import Account, Tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
-from services.entities.knowledge_entities.knowledge_entities import (
+from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
+from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataDetail,
     MetadataOperationData,
 )
-from services.metadata_service import MetadataService
+from services.knowledge.metadata.application import MetadataService
+from services.knowledge.resource_scope import DatasetRef
+
+
+def _metadata_service(session: Session) -> MetadataService:
+    return MetadataService(
+        store=SQLAlchemyMetadataRepository(
+            session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        ),
+        dataset_access=create_autospec(DatasetAccess, instance=True),
+    )
 
 
 def _create_dataset(db_session: Session, *, tenant_id: str, built_in_field_enabled: bool = False) -> Dataset:
@@ -112,8 +124,8 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
+        _metadata_service(db_session_with_containers).update_documents_metadata(
+            DatasetRef(dataset.tenant_id, dataset.id), metadata_args, actor_id=current_account.id
         )
         db_session_with_containers.expire_all()
 
@@ -171,7 +183,7 @@ class TestMetadataPartialUpdate:
             _context: object,
             _executemany: bool,
         ) -> None:
-            if "FROM documents" in statement and "FOR UPDATE" in statement:
+            if "FROM datasets" in statement and "FOR UPDATE" in statement:
                 locked_selects.append(None)
                 locked_select_barrier.wait(timeout=10)
 
@@ -179,15 +191,13 @@ class TestMetadataPartialUpdate:
             with session_factory() as session:
                 owned_dataset = session.get(Dataset, dataset_id)
                 assert owned_dataset is not None
-                MetadataService.update_documents_metadata(
-                    owned_dataset, metadata_args, current_account, session=session
+                _metadata_service(session).update_documents_metadata(
+                    DatasetRef(owned_dataset.tenant_id, owned_dataset.id), metadata_args, actor_id=current_account.id
                 )
 
         event.listen(engine, "before_cursor_execute", synchronize_locked_select)
         try:
             with (
-                patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
-                patch("services.metadata_service.redis_client.delete"),
                 ThreadPoolExecutor(max_workers=2) as executor,
             ):
                 futures = [executor.submit(update, operation) for operation in operations]
@@ -227,8 +237,8 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
+        _metadata_service(db_session_with_containers).update_documents_metadata(
+            DatasetRef(dataset.tenant_id, dataset.id), metadata_args, actor_id=current_account.id
         )
         db_session_with_containers.expire_all()
 
@@ -273,8 +283,8 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
+        _metadata_service(db_session_with_containers).update_documents_metadata(
+            DatasetRef(dataset.tenant_id, dataset.id), metadata_args, actor_id=current_account.id
         )
         db_session_with_containers.expire_all()
 
@@ -311,8 +321,20 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        with patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")):
+        service = _metadata_service(db_session_with_containers)
+
+        def fail_commit(_session: Session) -> None:
+            raise RuntimeError("database connection lost")
+
+        event.listen(Session, "before_commit", fail_commit)
+        try:
             with pytest.raises(RuntimeError, match="database connection lost"):
-                MetadataService.update_documents_metadata(
-                    dataset, metadata_args, current_account, session=db_session_with_containers
+                service.update_documents_metadata(
+                    DatasetRef(dataset.tenant_id, dataset.id), metadata_args, actor_id=current_account.id
                 )
+        finally:
+            event.remove(Session, "before_commit", fail_commit)
+        db_session_with_containers.expire_all()
+        unchanged = db_session_with_containers.get(Document, document.id)
+        assert unchanged is not None
+        assert unchanged.doc_metadata == {"existing_key": "existing_value"}

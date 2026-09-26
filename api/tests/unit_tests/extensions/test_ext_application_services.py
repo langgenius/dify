@@ -40,6 +40,7 @@ from models.model import (
     Site,
     TrialApp,
 )
+from models.provider import ProviderCredential
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -95,10 +96,14 @@ from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
-from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
+from services.data_source.binding_application_service import DataSourceBindingApplicationService
+from services.data_source.credential_gateway import ActorAwareDatasourceCredentialGateway
+from services.data_source.notion_import_adapters import PluginNotionSourceGateway
+from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
@@ -107,6 +112,15 @@ from services.installed_app_access_service import InstalledAppAccessDeniedError,
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
+from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.datasets.application import DatasetApplicationService
+from services.knowledge.document_sync import DocumentSyncApplicationService
+from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.external.application import ExternalKnowledgeApplicationService
+from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
+from services.knowledge.indexing.adapters.sources import NotionSourceResolver
+from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
+from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
@@ -221,6 +235,7 @@ def test_build_application_services_preserves_composed_boundaries(
 
     assert isinstance(services.app_api_keys, AppApiKeyService)
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
+    assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert redis.register_script.call_count == 3
 
@@ -228,6 +243,7 @@ def test_build_application_services_preserves_composed_boundaries(
     installed_apps = services.installed_app_access._installed_apps
     assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
     assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_apps._installed_apps is installed_apps
     runtime = services.installed_app_generation._runtime
     assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
     assert runtime._session_factory is sqlite_session_factory
@@ -744,7 +760,73 @@ def test_build_application_services_wires_data_source_api_key_auth(
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+    assert isinstance(services.data_sources.api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_groups_dataset_services_and_reuses_repositories(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)
+    assert isinstance(services.data_sources.notion_imports, NotionImportApplicationService)
+    assert isinstance(services.knowledge.document_sync, DocumentSyncApplicationService)
+    assert isinstance(services.knowledge.documents, DatasetDocumentApplicationService)
+    assert isinstance(services.knowledge.datasets, DatasetApplicationService)
+    assert isinstance(services.knowledge.external, ExternalKnowledgeApplicationService)
+    assert services.knowledge.datasets._dataset_access is services.knowledge.document_sync._dataset_access
+    assert services.knowledge.external._dataset_access is services.knowledge.document_sync._dataset_access
+    assert services.knowledge.documents._dataset_access is services.knowledge.document_sync._dataset_access
+    assert isinstance(services.knowledge.indexing_estimates, IndexingEstimateApplicationService)
+    assert isinstance(services.knowledge.segments, DatasetSegmentApplicationService)
+    assert services.data_sources.bindings._bindings is services.data_sources.oauth["notion"]._bindings
+    assert services.data_sources.notion_imports._dataset_access is services.knowledge.document_sync._dataset_access
+    assert services.data_sources.notion_imports._dataset_access is services.knowledge.indexing_estimates._dataset_access
+    assert services.data_sources.notion_imports._documents is services.knowledge.document_sync._documents
+    assert services.data_sources.notion_imports._documents is services.knowledge.indexing_estimates._documents
+    notion_source = services.data_sources.notion_imports._source
+    estimate_service = services.knowledge.indexing_estimates
+    dataset_access = services.data_sources.notion_imports._dataset_access
+    assert isinstance(notion_source, PluginNotionSourceGateway)
+    assert isinstance(estimate_service._runner, IndexingEstimateAdapter)
+    assert isinstance(estimate_service._process_rules, SQLAlchemyProcessRuleReader)
+    assert isinstance(dataset_access, DatasetAccessService)
+    notion_resolver = estimate_service._notion
+    assert isinstance(notion_resolver, NotionSourceResolver)
+    actor_credentials = notion_source._credentials
+    assert isinstance(actor_credentials, ActorAwareDatasourceCredentialGateway)
+    assert actor_credentials is notion_resolver._actor_credentials
+    assert services.data_sources.providers._credentials is actor_credentials._credentials
+    assert services.knowledge.pipeline_generator._datasource_providers is services.data_sources.providers
+    assert notion_resolver._stored_credentials is not notion_resolver._actor_credentials
+    assert services.workspace_member_queries._members is dataset_access._workspace_roles
+
+
+def test_build_application_services_wires_credential_query(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    tenant_id, actor_id = str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        credential = ProviderCredential(
+            tenant_id=tenant_id, provider_name="openai", credential_name="Team", encrypted_config="encrypted"
+        )
+        session.add(credential)
+        credential_id = credential.id
+
+    records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
+
+    assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
@@ -825,6 +907,19 @@ def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> Installe
             app_mode=app.mode.value,
         )
     return result
+
+
+def test_build_application_services_reuses_installed_app_generation_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert services.installed_app_access._installed_apps is services.installed_app_generation._usage
 
 
 @pytest.mark.parametrize(

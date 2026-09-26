@@ -5074,30 +5074,9 @@ Get compliance document download link
 ### [GET] /data-source/integrates
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### [PATCH] /data-source/integrates
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### [GET] /data-source/integrates/{binding_id}/{action}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| action | path |  | Yes | string |
-| binding_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
 
 ### [PATCH] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5109,9 +5088,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /datasets
 Get list of datasets
@@ -5146,7 +5125,7 @@ Create a new dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+| 201 | Dataset created successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [GET] /datasets/api-base-info
@@ -5208,25 +5187,6 @@ Delete dataset API key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
-
-### [POST] /datasets/batch_import_status/{job_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [BatchImportPayload](#batchimportpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
 ### [POST] /datasets/external
 Create external knowledge dataset
@@ -5960,20 +5920,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
-
-### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string (uuid) |
-| document_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
 #### Parameters
@@ -17452,7 +17398,7 @@ Site token customization strategy
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | parent_id | string |  | Yes |
-| type | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
 
 #### DataSourceIntegrateResponse
 
@@ -20404,14 +20350,29 @@ Coarse node-level status used by Inspector to pick a banner.
 | notifications | [ [NotificationItemResponse](#notificationitemresponse) ] |  | Yes |
 | should_show | boolean |  | Yes |
 
+#### NotionEstimatePagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page_id | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
+
 #### NotionEstimatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | doc_form | string, <br>**Default:** text_model |  | No |
 | doc_language | string, <br>**Default:** English |  | No |
-| notion_info_list | [ object ] |  | Yes |
+| notion_info_list | [ [NotionEstimateWorkspacePayload](#notionestimateworkspacepayload) ] |  | Yes |
 | process_rule | object |  | Yes |
+
+#### NotionEstimateWorkspacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | Yes |
+| pages | [ [NotionEstimatePagePayload](#notionestimatepagepayload) ] |  | Yes |
+| workspace_id | string |  | Yes |
 
 #### NotionIcon
 
@@ -20444,7 +20405,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | parent_id | string |  | Yes |
-| type | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
 
 #### NotionIntegrateWorkspaceResponse
 
@@ -20463,6 +20424,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | type | string |  | Yes |
+
+#### NotionPageType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotionPageType | string |  |  |
 
 #### OAuthCallbackQuery
 
@@ -21599,7 +21566,13 @@ Verification of the plugin.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
-| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
+| id | [PreProcessingRuleKey](#preprocessingrulekey) | Rule identifier. | Yes |
+
+#### PreProcessingRuleKey
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PreProcessingRuleKey | string |  |  |
 
 #### PreviewDetail
 

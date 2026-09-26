@@ -6,11 +6,11 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -67,39 +67,27 @@ def clean_document_task(
             logger.exception("Cleaned document when document deleted failed")
             return
 
-    # check segment is exist
-    if index_node_ids:
-        # Wrap vector / keyword index cleanup in try/except so that a transient
-        # failure here (e.g. billing API hiccup propagated via FeatureService when
-        # ModelManager is initialized inside ``Vector(dataset)``) does not abort
-        # the entire task and leave document_segments / child_chunks / image_files
-        # / metadata bindings stranded in PG. Mirrors the pattern already used in
-        # ``clean_dataset_task`` so the document row's hard delete (already
-        # committed by the caller) does not produce orphan PG rows just because
-        # the vector backend or one of its transitive dependencies was unhappy.
-        try:
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            with session_factory.create_session() as session, session.begin():
-                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-                if dataset:
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=True,
-                        delete_summaries=True,
-                        session=session,
-                    )
-                    vector_cleanup_succeeded = True
-        except Exception:
-            logger.exception(
-                "Failed to clean vector / keyword index in clean_document_task, "
-                "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
-                "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
-                document_id,
-                dataset_id,
-                len(index_node_ids),
+    # A retry must also find summaries whose segments were already removed.
+    # Preserve relational cleanup if the external index is temporarily unavailable.
+    try:
+        vector_cleanup_succeeded = (
+            clean_document_indexes(
+                dataset_id=dataset_id,
+                document_ids=[document_id],
+                doc_form=doc_form,
+                new_session=session_factory.create_session,
             )
+            is not None
+        )
+    except Exception:
+        logger.exception(
+            "Failed to clean vector / keyword index in clean_document_task, "
+            "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
+            "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
+            document_id,
+            dataset_id,
+            len(index_node_ids),
+        )
 
     total_image_files = []
     with session_factory.create_session() as session, session.begin():

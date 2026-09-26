@@ -194,30 +194,40 @@ def test_openapi_json_endpoints_render():
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
-def test_agent_tts_routes_document_voice_queries_and_binary_audio():
+def test_console_segment_mutation_contracts_survive_admission() -> None:
     from controllers.console import bp as console_bp
-    from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(console_bp)
+
     payload = app.test_client().get("/console/api/openapi.json").get_json()
+    paths = payload["paths"]
+    document_path = "/datasets/{dataset_id}/documents/{document_id}"
+    mutations = (
+        (f"{document_path}/segment", "post", "SegmentCreatePayload", "SegmentDetailResponse"),
+        (f"{document_path}/segments/{{segment_id}}", "patch", "SegmentUpdatePayload", "SegmentDetailResponse"),
+        (
+            f"{document_path}/segments/{{segment_id}}/child_chunks",
+            "patch",
+            "ChildChunkBatchUpdatePayload",
+            "ChildChunkBatchUpdateResponse",
+        ),
+    )
+    for path, method, request_schema, response_schema in mutations:
+        operation = paths[path][method]
+        assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{request_schema}"
+        }
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{response_schema}"
+        }
 
-    voices = payload["paths"]["/agent/{agent_id}/text-to-audio/voices"]["get"]
-    language = _parameters_by_name(voices)["language"]
-    assert language["in"] == "query"
-    assert language["required"] is True
-    assert "requestBody" not in voices
-
-    preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
-    required_fields = _json_body_schema(payload, preview)["required"]
-    assert isinstance(required_fields, list)
-    assert "text" in required_fields
-    assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
-    for media in preview["responses"]["200"]["content"].values():
-        assert media["schema"] == {"type": "string", "format": "binary"}
-    for status in ("400", "403", "404"):
-        assert _response_content_types(preview, status) == {"application/json"}
+    delete_operation = paths[f"{document_path}/segments"]["delete"]
+    assert set(delete_operation["responses"]) == {"204"}
+    parameters = _parameters_by_name(delete_operation)
+    assert parameters["segment_id"]["in"] == "query"
+    assert parameters["segment_id"]["schema"]["type"] == "array"
 
 
 def test_service_document_file_routes_document_multipart_form_data():
@@ -989,3 +999,29 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path:
         "source",
         "version",
     }
+
+
+def test_agent_tts_routes_document_voice_queries_and_binary_audio():
+    from controllers.console import bp as console_bp
+    from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+
+    voices = payload["paths"]["/agent/{agent_id}/text-to-audio/voices"]["get"]
+    language = _parameters_by_name(voices)["language"]
+    assert language["in"] == "query"
+    assert language["required"] is True
+    assert "requestBody" not in voices
+
+    preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
+    required_fields = _json_body_schema(payload, preview)["required"]
+    assert isinstance(required_fields, list)
+    assert "text" in required_fields
+    assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
+    for media in preview["responses"]["200"]["content"].values():
+        assert media["schema"] == {"type": "string", "format": "binary"}
+    for status in ("400", "403", "404"):
+        assert _response_content_types(preview, status) == {"application/json"}

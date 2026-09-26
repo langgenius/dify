@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.dataset_service import DocumentService
+from services.knowledge.dataset_service import DocumentService
 
 
 def _create_dataset(db_session_with_containers) -> Dataset:

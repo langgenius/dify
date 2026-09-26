@@ -46,6 +46,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from factories import variable_factory
 from fields.base import ResponseModel
@@ -66,10 +67,10 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_service import DatasetService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
@@ -303,7 +304,13 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -338,7 +345,13 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_loop(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -374,6 +387,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -409,6 +423,7 @@ class PublishedRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -450,6 +465,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
                     datasource_type=req_data.datasource_type,
                     is_published=False,
                     credential_id=req_data.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -483,6 +499,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
                     datasource_type=req_data.datasource_type,
                     is_published=False,
                     credential_id=req_data.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -1016,7 +1033,9 @@ class DatasourceListApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
-        providers = RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id)
+        providers = RagPipelineManageService.list_rag_pipeline_datasources(
+            current_tenant_id, datasource_providers=application_services().data_sources.providers
+        )
         return RagPipelineDatasourceListResponse.model_validate(providers, from_attributes=True).model_dump(mode="json")
 
 

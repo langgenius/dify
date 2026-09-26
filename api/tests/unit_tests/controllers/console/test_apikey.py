@@ -18,6 +18,7 @@ from controllers.console.agent import roster
 from controllers.console.datasets import datasets
 from core.rbac import RBACPermission
 from enums import DeploymentEdition
+from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.knowledge import build_dataset_api_key_service
 from extensions.ext_application_services import ApplicationServices
 from libs.login import AccountWithTenant
@@ -25,6 +26,7 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import ApiToken
+from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from services.app.api_key_service import AppApiKeyNotReadyError
 from services.auth.api_key_contracts import (
     ApiKeyLimitExceededError,
@@ -282,7 +284,14 @@ def persisted_keys_app(
         ]
     )
     sqlite_session.commit()
-    service = build_dataset_api_key_service(database_client=sqlite_session_factory)
+    dataset_access = build_dataset_dependencies(
+        database_client=sqlite_session_factory,
+        workspace_roles=WorkspaceMemberQueryRepository(session_factory=sqlite_session_factory),
+    ).access
+    service = build_dataset_api_key_service(
+        database_client=sqlite_session_factory,
+        dataset_access=dataset_access,
+    )
     services = Mock(dataset_api_keys=service)
     monkeypatch.setattr(apikey, "application_services", lambda: services)
     monkeypatch.setattr(datasets, "application_services", lambda: services)

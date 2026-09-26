@@ -4,8 +4,8 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 from machinery.context import RequestContext
-from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
-from services.entities.data_source_api_key_auth_entities import (
+from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
+from services.data_source.entities.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthBindingRecord,
     DataSourceApiKeyAuthCredentials,

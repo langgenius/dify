@@ -6,10 +6,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
@@ -391,7 +392,11 @@ class TestGetBuiltinToolProviderCredentialInfo:
         )
 
         result = BuiltinToolManageService.get_builtin_tool_provider_credential_info(
-            "tenant-1", "google", session=repository_session
+            "tenant-1",
+            "google",
+            credential_query=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+            ),
         )
 
         assert result.credentials == []
@@ -404,7 +409,11 @@ class TestGetBuiltinToolProviderCredentials:
         _persist_provider(repository_session, credential_id="other", tenant_id="other-tenant")
 
         result = BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            "tenant-1", "google", session=repository_session
+            "tenant-1",
+            "google",
+            credential_query=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+            ),
         )
 
         assert result == []
@@ -426,23 +435,23 @@ class TestGetBuiltinToolProviderCredentials:
             "create_tool_encrypter",
             MagicMock(return_value=(encrypter, MagicMock())),
         )
-        credential_entity = MagicMock()
-        convert = MagicMock(return_value=credential_entity)
-        monkeypatch.setattr(
-            service_module.ToolTransformService,
-            "convert_builtin_provider_to_credential_entity",
-            convert,
-        )
 
         result = BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            "tenant-1", "google", session=repository_session
+            "tenant-1",
+            "google",
+            credential_query=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+            ),
         )
 
-        assert result == [credential_entity]
-        converted_provider = convert.call_args.kwargs["provider"]
-        assert isinstance(converted_provider, BuiltinToolProvider)
-        assert converted_provider.tenant_id == "tenant-1"
-        assert converted_provider.is_default is True
+        assert len(result) == 1
+        assert result[0].id == "cred-1"
+        assert result[0].credentials == {"key": "***"}
+        assert result[0].is_default is True
+        repository_session.expire_all()
+        stored = repository_session.get(BuiltinToolProvider, "cred-1")
+        assert stored is not None
+        assert stored.is_default is False
 
 
 class TestGetBuiltinProvider:

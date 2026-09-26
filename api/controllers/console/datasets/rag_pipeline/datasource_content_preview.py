@@ -9,6 +9,7 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import login_required
 from models import Account
@@ -51,5 +52,6 @@ class DataSourceContentPreviewApi(Resource):
             datasource_type=datasource_type,
             is_published=True,
             credential_id=req_data.credential_id,
+            datasource_providers=application_services().data_sources.providers,
         )
         return preview_content, 200

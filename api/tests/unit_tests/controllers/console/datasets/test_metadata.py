@@ -1,340 +1,122 @@
-import uuid
-from inspect import unwrap
-from unittest.mock import PropertyMock, patch
+"""Console metadata routes use admission, explicit context, and response models."""
+
+from types import SimpleNamespace
+from unittest.mock import create_autospec
+from uuid import uuid4
 
 import pytest
 from flask import Flask
-from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from flask_restx import Api
 
-from controllers.common.controller_schemas import MetadataUpdatePayload
-from controllers.common.rbac import DatasetId
+from controllers.common.rbac import DatasetId, RBACPermission
 from controllers.console import console_ns
-from controllers.console.datasets.metadata import (
-    DatasetMetadataApi,
-    DatasetMetadataBuiltInFieldActionApi,
-    DatasetMetadataBuiltInFieldApi,
-    DatasetMetadataCreateApi,
-    DocumentMetadataEditApi,
-)
-from controllers.console.wraps import RBACPermission
-from models.account import Account
-from models.dataset import Dataset
-from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import MetadataArgs, MetadataOperationData
-from services.errors.account import NoPermissionError
+from controllers.console.datasets.metadata import DatasetMetadataCreateApi
+from enums import DeploymentEdition
+from libs.login import AccountWithTenant
+from models.account import Account, TenantAccountRole
 from services.errors.metadata import MetadataResourceNotFoundError
-from services.metadata_service import MetadataService
-from tests.unit_tests.config_override import config_overrides_context
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.metadata.application import MetadataService
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
-def app():
-    app = Flask("test_dataset_metadata")
-
-    app.config["TESTING"] = True
-    return app
-
-
-@pytest.fixture
-def current_user() -> Account:
-    user = Account(name="Test User", email="test@example.com")
-    user.id = "user-1"
-    return user
-
-
-@pytest.fixture
-def dataset() -> Dataset:
-    return Dataset(id="dataset-1", tenant_id="tenant-1", name="Test Dataset", created_by="user-1")
-
-
-@pytest.fixture
-def dataset_id():
-    return uuid.uuid4()
+def routes(monkeypatch: pytest.MonkeyPatch, config_overrides):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True, RBAC_ENABLED=False)
+    app = Flask(__name__)
+    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
+    Api(app).add_namespace(console_ns, path="/console/api")
+    account = Account(name="Owner", email="metadata@example.com")
+    account.id = "account-1"
+    account.role = TenantAccountRole.OWNER
+    identity = AccountWithTenant(account=account, tenant_id="tenant-1")
+    monkeypatch.setattr("controllers.console.flask_admission.current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
+    service = create_autospec(MetadataService, instance=True, spec_set=True)
+    service.require_dataset.side_effect = lambda context, dataset_id: DatasetRef(
+        context.active_workspace_id, dataset_id
+    )
+    app.extensions["application_services"] = SimpleNamespace(knowledge=SimpleNamespace(metadata=service))
+    return app.test_client(), service
 
 
-@pytest.fixture
-def metadata_id():
-    return uuid.uuid4()
+def test_create_serializes_result_and_passes_actor(routes):
+    client, service = routes
+    dataset_id = str(uuid4())
+    service.create_metadata.return_value = {"id": str(uuid4()), "name": "author", "type": "string"}
+    response = client.post(f"/console/api/datasets/{dataset_id}/metadata", json={"type": "string", "name": "author"})
+    assert response.status_code == 201
+    assert response.get_json()["name"] == "author"
+    assert service.create_metadata.call_args.args[0] == DatasetRef("tenant-1", dataset_id)
+    assert service.create_metadata.call_args.kwargs == {"actor_id": "account-1"}
 
 
-@pytest.fixture(autouse=True)
-def bypass_decorators(mocker: MockerFixture):
-    """Bypass setup/login/license decorators."""
-    mocker.patch("controllers.console.datasets.metadata.setup_required", lambda f: f)
-    mocker.patch("controllers.console.datasets.metadata.login_required", lambda f: f)
-    mocker.patch("controllers.console.datasets.metadata.account_initialization_required", lambda f: f)
-    mocker.patch("controllers.console.datasets.metadata.enterprise_license_required", lambda f: f)
+@pytest.mark.parametrize("payload", [{"name": None, "type": "string"}, {"name": "author", "type": None}])
+def test_create_rejects_invalid_payload_before_application(routes, payload):
+    client, service = routes
+    response = client.post(f"/console/api/datasets/{uuid4()}/metadata", json=payload)
+    assert response.status_code == 422
+    service.create_metadata.assert_not_called()
 
 
-class TestDatasetMetadataCreateApi:
-    def test_get_requires_dataset_readonly_permission(self):
-        [check] = rbac_checks(DatasetMetadataCreateApi.get)
-
-        assert check.scene is RBACPermission.DATASET_READONLY
-        assert isinstance(check.locator, DatasetId)
-
-    def test_create_metadata_success(self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.post)
-        payload = {"name": "author"}
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(
-                MetadataArgs,
-                "model_validate",
-                return_value=MetadataArgs(type="string", name="author"),
-            ),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(
-                MetadataService, "create_metadata", return_value={"id": "m1", "type": "string", "name": "author"}
-            ),
-        ):
-            result, status = method(
-                api, MetadataArgs(type="string", name="author"), sqlite_session, "tenant-1", current_user, dataset_id
-            )
-        assert status == 201
-        assert result["type"] == "string"
-        assert result["name"] == "author"
-
-    def test_create_metadata_dataset_not_found(self, app: Flask, current_user, dataset_id, sqlite_session: Session):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.post)
-        valid_payload = {"type": "string", "name": "author"}
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=valid_payload),
-            patch.object(
-                MetadataArgs,
-                "model_validate",
-                return_value=MetadataArgs(type="string", name="author"),
-            ),
-            patch.object(DatasetService, "get_dataset", return_value=None),
-        ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(
-                    api,
-                    MetadataArgs(type="string", name="author"),
-                    sqlite_session,
-                    "tenant-1",
-                    current_user,
-                    dataset_id,
-                )
+@pytest.mark.parametrize(("error", "status"), [(DatasetNotFoundError(), 404), (DatasetAccessDeniedError(), 403)])
+def test_get_maps_access_errors(routes, error, status):
+    client, service = routes
+    service.require_dataset.side_effect = error
+    assert client.get(f"/console/api/datasets/{uuid4()}/metadata").status_code == status
+    service.get_dataset_metadatas.assert_not_called()
 
 
-class TestDatasetMetadataGetApi:
-    def test_get_metadata_success(self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.get)
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
-            patch.object(DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(
-                MetadataService,
-                "get_dataset_metadatas",
-                return_value={
-                    "doc_metadata": [{"id": "m1", "name": "author", "type": "string", "count": 0}],
-                    "built_in_field_enabled": False,
-                },
-            ),
-        ):
-            result, status = method(api, sqlite_session, "tenant-1", current_user, dataset_id)
-        assert status == 200
-        assert result["doc_metadata"] == [{"id": "m1", "name": "author", "type": "string", "count": 0}]
-        assert result["built_in_field_enabled"] is False
-        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=sqlite_session)
-        check_permission.assert_called_once_with(dataset, current_user, sqlite_session)
-
-    def test_get_metadata_rejects_foreign_tenant_before_read(
-        self, app: Flask, current_user, dataset_id, sqlite_session: Session
-    ):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.get)
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=None) as get_dataset,
-            patch.object(DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(MetadataService, "get_dataset_metadatas") as get_metadata,
-        ):
-            with pytest.raises(NotFound):
-                method(api, sqlite_session, "tenant-1", current_user, dataset_id)
-
-        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=sqlite_session)
-        check_permission.assert_not_called()
-        get_metadata.assert_not_called()
-
-    def test_get_metadata_delegates_permission_check_in_rbac_mode(
-        self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session
-    ):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.get)
-        with (
-            app.test_request_context("/"),
-            config_overrides_context(RBAC_ENABLED=True),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(
-                MetadataService,
-                "get_dataset_metadatas",
-                return_value={"doc_metadata": [], "built_in_field_enabled": False},
-            ),
-        ):
-            _, status = method(api, sqlite_session, "tenant-1", current_user, dataset_id)
-
-        assert status == 200
-        check_permission.assert_called_once_with(dataset, current_user, sqlite_session)
-
-    def test_get_metadata_rejects_inaccessible_dataset(
-        self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session
-    ):
-        api = DatasetMetadataCreateApi()
-        method = unwrap(api.get)
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission", side_effect=NoPermissionError),
-            patch.object(MetadataService, "get_dataset_metadatas") as get_metadata,
-        ):
-            with pytest.raises(Forbidden):
-                method(api, sqlite_session, "tenant-1", current_user, dataset_id)
-
-        get_metadata.assert_not_called()
+def test_get_serializes_field_counts(routes):
+    client, service = routes
+    service.get_dataset_metadatas.return_value = {"doc_metadata": [], "built_in_field_enabled": False}
+    response = client.get(f"/console/api/datasets/{uuid4()}/metadata")
+    assert response.status_code == 200
+    assert response.get_json() == {"doc_metadata": [], "built_in_field_enabled": False}
 
 
-class TestDatasetMetadataApi:
-    def test_update_metadata_success(
-        self, app: Flask, current_user, dataset, dataset_id, metadata_id, sqlite_session: Session
-    ):
-        api = DatasetMetadataApi()
-        method = unwrap(api.patch)
-        payload = {"name": "updated-name"}
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(
-                MetadataService,
-                "update_metadata_name",
-                return_value={"id": "m1", "type": "string", "name": "updated-name"},
-            ) as update_metadata,
-        ):
-            result, status = method(
-                api,
-                MetadataUpdatePayload(name="updated-name"),
-                sqlite_session,
-                "tenant-1",
-                current_user,
-                dataset_id,
-                metadata_id,
-            )
-        assert status == 200
-        assert result["type"] == "string"
-        assert result["name"] == "updated-name"
-        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=sqlite_session)
-        update_metadata.assert_called_once_with(
-            dataset, str(metadata_id), "updated-name", current_user, session=sqlite_session
-        )
-
-    def test_delete_metadata_success(
-        self, app: Flask, current_user, dataset, dataset_id, metadata_id, sqlite_session: Session
-    ):
-        api = DatasetMetadataApi()
-        method = unwrap(api.delete)
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataService, "delete_metadata") as delete_metadata,
-        ):
-            result, status = method(api, sqlite_session, "tenant-1", current_user, dataset_id, metadata_id)
-        assert status == 204
-        assert result == ""
-        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=sqlite_session)
-        delete_metadata.assert_called_once_with(dataset, str(metadata_id), sqlite_session)
+def test_rename_and_delete_use_explicit_metadata_id(routes):
+    client, service = routes
+    dataset_id, metadata_id = str(uuid4()), str(uuid4())
+    path = f"/console/api/datasets/{dataset_id}/metadata/{metadata_id}"
+    service.update_metadata_name.return_value = {"id": metadata_id, "name": "writer", "type": "string"}
+    assert client.patch(path, json={"name": "writer"}).status_code == 200
+    service.update_metadata_name.assert_called_once_with(
+        DatasetRef("tenant-1", dataset_id), metadata_id, "writer", actor_id="account-1"
+    )
+    response = client.delete(path)
+    assert response.status_code == 204
+    assert response.data == b""
+    service.delete_metadata.assert_called_once_with(DatasetRef("tenant-1", dataset_id), metadata_id)
 
 
-class TestDatasetMetadataBuiltInFieldApi:
-    def test_get_built_in_fields(self, app: Flask):
-        api = DatasetMetadataBuiltInFieldApi()
-        method = unwrap(api.get)
-        with (
-            app.test_request_context("/"),
-            patch.object(
-                MetadataService,
-                "get_built_in_fields",
-                return_value=[{"name": "document_name", "type": "string"}, {"name": "source", "type": "string"}],
-            ),
-        ):
-            result, status = method(api)
-        assert status == 200
-        assert result["fields"] == [{"name": "document_name", "type": "string"}, {"name": "source", "type": "string"}]
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_builtin_toggle_is_dispatched(routes, action):
+    client, service = routes
+    dataset_id = str(uuid4())
+    response = client.post(f"/console/api/datasets/{dataset_id}/metadata/built-in/{action}")
+    assert response.status_code == 204
+    operation = service.enable_built_in_field if action == "enable" else service.disable_built_in_field
+    operation.assert_called_once_with(DatasetRef("tenant-1", dataset_id))
 
 
-class TestDatasetMetadataBuiltInFieldActionApi:
-    def test_enable_built_in_field(self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session):
-        api = DatasetMetadataBuiltInFieldActionApi()
-        method = unwrap(api.post)
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataService, "enable_built_in_field"),
-        ):
-            result, status = method(api, sqlite_session, current_user, dataset_id, "enable")
-        assert status == 204
-        assert result == ""
+def test_builtin_listing_uses_response_model(routes):
+    client, service = routes
+    service.get_built_in_fields.return_value = [{"name": "uploader", "type": "string"}]
+    response = client.get("/console/api/datasets/metadata/built-in")
+    assert response.status_code == 200
+    assert response.get_json() == {"fields": [{"name": "uploader", "type": "string"}]}
 
 
-class TestDocumentMetadataEditApi:
-    def test_update_document_metadata_success(
-        self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session
-    ):
-        api = DocumentMetadataEditApi()
-        method = unwrap(api.post)
-        payload = {"operation": "add", "metadata": {}}
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataService, "update_documents_metadata"),
-        ):
-            result, status = method(
-                api,
-                MetadataOperationData(
-                    operation_data=[{"document_id": "00000000-0000-0000-0000-000000000001", "metadata_list": []}]
-                ),
-                sqlite_session,
-                dataset.tenant_id,
-                current_user,
-                dataset_id,
-            )
-        assert status == 204
-        assert result == ""
+def test_document_metadata_missing_resource_is_not_found(routes):
+    client, service = routes
+    service.update_documents_metadata.side_effect = MetadataResourceNotFoundError("Document not found.")
+    response = client.post(f"/console/api/datasets/{uuid4()}/documents/metadata", json={"operation_data": []})
+    assert response.status_code == 404
 
-    def test_update_document_metadata_translates_missing_resource(
-        self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session
-    ):
-        api = DocumentMetadataEditApi()
-        method = unwrap(api.post)
-        request = MetadataOperationData(operation_data=[])
-        with (
-            app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(
-                MetadataService,
-                "update_documents_metadata",
-                side_effect=MetadataResourceNotFoundError("Metadata not found."),
-            ),
-            pytest.raises(NotFound) as exc_info,
-        ):
-            method(api, request, sqlite_session, dataset.tenant_id, current_user, dataset_id)
 
-        assert exc_info.value.description == "Metadata not found."
+def test_get_requires_dataset_readonly_permission():
+    [check] = rbac_checks(DatasetMetadataCreateApi.get)
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetId)

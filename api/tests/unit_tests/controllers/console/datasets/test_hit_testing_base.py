@@ -23,8 +23,8 @@ from core.errors.error import (
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
-from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
+from services.knowledge.dataset_service import DatasetService
 
 
 @pytest.fixture

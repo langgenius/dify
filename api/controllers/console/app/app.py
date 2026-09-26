@@ -79,7 +79,8 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.account import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -91,7 +92,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 

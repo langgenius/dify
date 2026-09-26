@@ -23,9 +23,9 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
-from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
+from services.knowledge.dataset_service import DatasetService
+from services.knowledge.entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 
 logger = logging.getLogger(__name__)
 

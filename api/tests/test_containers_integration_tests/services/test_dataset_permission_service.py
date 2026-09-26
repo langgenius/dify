@@ -19,8 +19,8 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
-from services.dataset_service import DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 
 
 class DatasetPermissionTestDataFactory:

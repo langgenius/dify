@@ -53,7 +53,7 @@ def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.batch_clean_document_task.clean_document_indexes", return_value=tenant_id) as index_cleanup,
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
     ):
         batch_clean_document_task(
@@ -63,7 +63,7 @@ def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple
             file_ids=[],
         )
 
-    processor_factory.return_value.init_index_processor.return_value.clean.assert_called_once()
+    index_cleanup.assert_called_once()
     schedule_refresh.assert_called_once_with(tenant_id)
 
 
@@ -72,12 +72,10 @@ def test_failed_vector_cleanup_does_not_schedule_billing_refresh(cleanup_rows: t
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.batch_clean_document_task.clean_document_indexes") as index_cleanup,
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
     ):
-        processor_factory.return_value.init_index_processor.return_value.clean.side_effect = RuntimeError(
-            "vector cleanup failed"
-        )
+        index_cleanup.side_effect = RuntimeError("vector cleanup failed")
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset_id,
@@ -119,7 +117,7 @@ def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, s
 
     with (
         patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.IndexProcessorFactory"),
+        patch("tasks.batch_clean_document_task.clean_document_indexes"),
         patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
         patch("tasks.batch_clean_document_task.storage.delete") as storage_delete,
     ):
