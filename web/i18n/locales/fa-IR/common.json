@@ -197,6 +197,7 @@
   "operation.openInNewTab": "باز کردن در برگه جدید",
   "operation.params": "پارامترها",
   "operation.pause": "مکث",
+  "operation.pdfLoadFailed": "بارگذاری PDF ناموفق بود. لطفاً دوباره تلاش کنید.",
   "operation.play": "پخش",
   "operation.refresh": "شروع مجدد",
   "operation.regenerate": "بازسازی",

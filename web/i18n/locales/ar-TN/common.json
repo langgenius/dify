@@ -197,6 +197,7 @@
   "operation.openInNewTab": "فتح في علامة تبويب جديدة",
   "operation.params": "معلمات",
   "operation.pause": "إيقاف مؤقت",
+  "operation.pdfLoadFailed": "فشل تحميل ملف PDF. يرجى المحاولة مرة أخرى.",
   "operation.play": "تشغيل",
   "operation.refresh": "إعادة تشغيل",
   "operation.regenerate": "إعادة إنشاء",

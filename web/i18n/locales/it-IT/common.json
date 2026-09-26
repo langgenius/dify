@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Apri in una nuova scheda",
   "operation.params": "Parametri",
   "operation.pause": "Pausa",
+  "operation.pdfLoadFailed": "Caricamento del PDF non riuscito. Riprova.",
   "operation.play": "Riproduci",
   "operation.refresh": "Riavvia",
   "operation.regenerate": "Rigenerare",

@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Yeni vərəqdə aç",
   "operation.params": "Parametrlər",
   "operation.pause": "Fasilə ver",
+  "operation.pdfLoadFailed": "PDF faylı yüklənmədi. Yenidən cəhd edin.",
   "operation.play": "Oynat",
   "operation.refresh": "Yenidən başlat",
   "operation.regenerate": "Yenidən yarat",

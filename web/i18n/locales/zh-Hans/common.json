@@ -197,6 +197,7 @@
   "operation.openInNewTab": "在新标签页打开",
   "operation.params": "参数设置",
   "operation.pause": "暂停",
+  "operation.pdfLoadFailed": "PDF 加载失败，请重试。",
   "operation.play": "播放",
   "operation.refresh": "重新开始",
   "operation.regenerate": "重新生成",

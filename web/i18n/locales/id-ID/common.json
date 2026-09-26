@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Buka di tab baru",
   "operation.params": "Parameter",
   "operation.pause": "Jeda",
+  "operation.pdfLoadFailed": "Gagal memuat PDF. Silakan coba lagi.",
   "operation.play": "Putar",
   "operation.refresh": "Segarkan",
   "operation.regenerate": "Regenerasi",

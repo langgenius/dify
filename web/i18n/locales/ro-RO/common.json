@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Deschide într-o filă nouă",
   "operation.params": "Parametri",
   "operation.pause": "Pauză",
+  "operation.pdfLoadFailed": "Încărcarea PDF-ului a eșuat. Încercați din nou.",
   "operation.play": "Redare",
   "operation.refresh": "Reîncarcă",
   "operation.regenerate": "Regenera",
