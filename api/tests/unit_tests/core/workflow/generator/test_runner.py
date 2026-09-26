@@ -4142,6 +4142,46 @@ class TestWorkflowGeneratorIdSanitization:
         assert new_id != "节点"
         assert edges[0]["source"] == new_id
 
+    def test_rewrites_selector_pairs_nested_in_lists(self):
+        # An aggregator's ``data.variables`` is a list OF ``[node_id, var]``
+        # selector pairs — one level deeper than the dict-value selectors,
+        # but still subject to the id remap.
+        nodes: list[dict[str, Any]] = [
+            {"id": "node-1", "data": {"type": "llm", "title": "A"}},
+            {"id": "node-2", "data": {"type": "llm", "title": "B"}},
+            {
+                "id": "join",
+                "data": {
+                    "type": "variable-aggregator",
+                    "variables": [["node-1", "text"], ["node-2", "text"]],
+                },
+            },
+        ]
+        edges = [
+            {"id": "e1", "source": "node-1", "target": "join"},
+            {"id": "e2", "source": "node-2", "target": "join"},
+        ]
+
+        WorkflowGenerator._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        assert nodes[2]["data"]["variables"] == [["node1", "text"], ["node2", "text"]]
+        # And validation no longer flags dangling references.
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_rewrites_placeholders_inside_string_lists(self):
+        nodes: list[dict[str, Any]] = [
+            {"id": "node-1", "data": {"type": "llm", "title": "A"}},
+            {
+                "id": "echo",
+                "data": {"type": "template-transform", "examples": ["{{#node-1.text#}}", "plain"]},
+            },
+        ]
+        edges = [{"id": "e", "source": "node-1", "target": "echo"}]
+
+        WorkflowGenerator._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        assert nodes[1]["data"]["examples"] == ["{{#node1.text#}}", "plain"]
+
 
 class TestWorkflowGeneratorLayeredLayout:
     """
