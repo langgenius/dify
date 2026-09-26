@@ -293,3 +293,100 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
                         except Exception:
                             pass
         inject.assert_not_called()
+
+
+def test_invoke_merges_oauth_token_when_custom_headers_present():
+    """Invoke must apply OAuth tokens even when custom headers are configured.
+
+    ``list_provider_tools`` always merges tokens via ``_prepare_auth_headers``.
+    The invoke path historically gated token injection behind ``if not headers``,
+    so any non-empty custom header (e.g. ``X-Tenant``) silently dropped OAuth
+    and sent unauthenticated requests while tool listing still succeeded.
+    """
+    from unittest.mock import MagicMock
+
+    from core.mcp.types import OAuthTokens
+
+    tool = _build_mcp_tool()
+    provider_entity = MagicMock()
+    provider_entity.decrypt_server_url.return_value = "https://mcp.example.com/mcp/"
+    provider_entity.decrypt_headers.return_value = {"X-Tenant": "abc"}
+    provider_entity.retrieve_tokens.return_value = OAuthTokens(
+        access_token="oauth-access-token",
+        token_type="bearer",
+        expires_in=3600,
+        refresh_token="",
+    )
+
+    with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
+        client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
+            content=[TextContent(type="text", text="ok")],
+            _meta=None,
+        )
+        from services.tools.mcp_tools_manage_service import MCPToolManageService as RealMCPToolManageService
+
+        mock_service = MagicMock()
+        mock_service.get_provider_entity.return_value = provider_entity
+        mock_service._prepare_auth_headers = lambda entity: RealMCPToolManageService._prepare_auth_headers(
+            mock_service, entity
+        )
+        with (
+            patch("extensions.ext_database.db") as mock_db,
+            patch("sqlalchemy.orm.Session") as session_cls,
+            patch(
+                "services.tools.mcp_tools_manage_service.MCPToolManageService",
+                return_value=mock_service,
+            ),
+        ):
+            mock_db.engine = object()
+            session_cls.return_value.__enter__.return_value = MagicMock()
+            tool.invoke_remote_mcp_tool({}, user_id="user-1")
+
+    headers_passed = client_cls.call_args.kwargs["headers"]
+    assert headers_passed["X-Tenant"] == "abc"
+    assert headers_passed["Authorization"] == "Bearer oauth-access-token"
+
+
+def test_invoke_applies_oauth_token_when_headers_empty():
+    """Empty custom headers still receive the OAuth Authorization header."""
+    from unittest.mock import MagicMock
+
+    from core.mcp.types import OAuthTokens
+
+    tool = _build_mcp_tool()
+    provider_entity = MagicMock()
+    provider_entity.decrypt_server_url.return_value = "https://mcp.example.com/mcp/"
+    provider_entity.decrypt_headers.return_value = {}
+    provider_entity.retrieve_tokens.return_value = OAuthTokens(
+        access_token="only-oauth",
+        token_type="bearer",
+        expires_in=3600,
+        refresh_token="",
+    )
+
+    with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
+        client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
+            content=[],
+            _meta=None,
+        )
+        from services.tools.mcp_tools_manage_service import MCPToolManageService as RealMCPToolManageService
+
+        mock_service = MagicMock()
+        mock_service.get_provider_entity.return_value = provider_entity
+        mock_service._prepare_auth_headers = lambda entity: RealMCPToolManageService._prepare_auth_headers(
+            mock_service, entity
+        )
+        with (
+            patch("extensions.ext_database.db") as mock_db,
+            patch("sqlalchemy.orm.Session") as session_cls,
+            patch(
+                "services.tools.mcp_tools_manage_service.MCPToolManageService",
+                return_value=mock_service,
+            ),
+        ):
+            mock_db.engine = object()
+            session_cls.return_value.__enter__.return_value = MagicMock()
+            tool.invoke_remote_mcp_tool({}, user_id="user-1")
+
+    headers_passed = client_cls.call_args.kwargs["headers"]
+    assert headers_passed["Authorization"] == "Bearer only-oauth"
