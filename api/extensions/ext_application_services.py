@@ -844,7 +844,6 @@ def build_application_services(
         installed_app_messages=InstalledAppMessageService(
             messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
             get_extra_contents=installed_app_message_runtime.get_extra_contents,
-            suggested_questions=installed_app_message_runtime.get_suggested_questions,
             emit_feedback=emit_installed_app_feedback,
         ),
         installed_apps=InstalledAppService(
