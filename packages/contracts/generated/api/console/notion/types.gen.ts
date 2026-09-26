@@ -9,8 +9,8 @@ export type TextContentResponse = {
 }
 
 export type NotionIntegrateInfoListResponse = {
-  notion_info: Array<NotionIntegrateWorkspaceResponse>
   next_cursor?: string | null
+  notion_info: Array<NotionIntegrateWorkspaceResponse>
 }
 
 export type NotionIntegrateWorkspaceResponse = {

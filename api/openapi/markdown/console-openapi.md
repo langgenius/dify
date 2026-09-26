@@ -7261,7 +7261,7 @@ Mark a notification as dismissed for the current user.
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID | Yes | string |
 | dataset_id | query | Dataset ID | No | string |
-| page_size | query | Notion search page size (1-100) | No | integer |
+| page_size | query | Notion search page size | No | integer |
 | start_cursor | query | Notion search pagination cursor | No | string |
 
 #### Responses
@@ -20435,8 +20435,8 @@ Coarse node-level status used by Inspector to pick a banner.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| next_cursor | string |  | No |
 | notion_info | [ [NotionIntegrateWorkspaceResponse](#notionintegrateworkspaceresponse) ] |  | Yes |
-| next_cursor | string | Notion search cursor for the next batch | No |
 
 #### NotionIntegratePageResponse
 
