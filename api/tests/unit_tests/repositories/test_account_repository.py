@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from services.account_email import normalize_email
 from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
@@ -100,6 +101,91 @@ def test_account_repository_updates_password(
     assert persisted is not None
     assert persisted.password == "new-hash"
     assert persisted.password_salt == "new-salt"
+
+
+@pytest.mark.parametrize(
+    ("stored_email", "email"),
+    [
+        ("account@example.com", "account@example.com"),
+        ("account@example.com", "Account@Example.com"),
+        ("Account@Example.com", "account@example.com"),
+        ("Account@Example.com", "ACCOUNT@EXAMPLE.COM"),
+        ("first.last@gmail.com", "firstlast+login@googlemail.com"),
+    ],
+)
+def test_account_repository_finds_authentication_snapshot_with_normalized_fallback(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    stored_email: str,
+    email: str,
+) -> None:
+    account = Account(name="Original", email=stored_email, normalized_email=normalize_email(stored_email))
+    account.id = "account-1"
+    account.password = "stored-hash"
+    account.password_salt = "stored-salt"
+    sqlite_session.add(account)
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.find_for_authentication(email)
+
+    assert result is not None
+    assert result.id == "account-1"
+    assert result.email == stored_email
+    assert result.status == "active"
+    assert result.password_hash == "stored-hash"
+    assert result.password_salt == "stored-salt"
+
+
+@pytest.mark.parametrize(
+    ("email", "expected_account_id"),
+    [
+        ("Account@example.com", "older"),
+        ("account@example.com", "newer"),
+        ("ACCOUNT@EXAMPLE.COM", "older"),
+    ],
+)
+def test_account_repository_prefers_exact_authentication_match_then_oldest_normalized_account(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    email: str,
+    expected_account_id: str,
+) -> None:
+    older = Account(name="Older", email="Account@example.com", normalized_email="account@example.com")
+    older.id = "older"
+    older.created_at = datetime(2026, 9, 1)
+    newer = Account(name="Newer", email="account@example.com", normalized_email="account@example.com")
+    newer.id = "newer"
+    newer.created_at = datetime(2026, 9, 2)
+    sqlite_session.add_all([newer, older])
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.find_for_authentication(email)
+
+    assert result is not None
+    assert result.id == expected_account_id
+
+
+def test_account_repository_rejects_duplicate_exact_authentication_emails(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    sqlite_session.add(Account(name="Duplicate", email="account@example.com"))
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    with pytest.raises(MultipleResultsFound):
+        repository.find_for_authentication("account@example.com")
+
+
+def test_account_repository_returns_none_for_missing_authentication_account(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    assert repository.find_for_authentication("missing@example.com") is None
 
 
 def test_account_repository_returns_exact_then_lowercase_login_candidates(

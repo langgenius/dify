@@ -10,15 +10,15 @@ from extensions.application_services.app import AppServices
 from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
     _batch_get_enterprise_webapp_user_permissions,
-    _get_enterprise_webapp_access_mode,
-    _is_enterprise_webapp_user_allowed,
 )
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app.console_service import ConsoleAppService
 from services.app.import_service import AppImportService
 from services.app.query_service import AppQueryService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.tag_application_service import TagApplicationService
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService
 
 
@@ -55,8 +55,7 @@ def app_query_services(
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
             webapp_auth_enabled=True,
-            access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
+            policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
             get_access_modes=_batch_get_enterprise_webapp_access_modes,
             get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
         ),

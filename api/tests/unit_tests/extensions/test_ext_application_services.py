@@ -85,6 +85,7 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.account_service import AccountService
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
@@ -99,11 +100,16 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
-from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_access_service import (
+    InstalledAppAccessDeniedError,
+    InstalledAppAccessService,
+    InstalledAppRef,
+)
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
@@ -117,6 +123,13 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.upload_file_delivery_service import UploadFileDeliveryService
+from services.web_authentication_adapters import (
+    AccountServiceWebAuthenticationSecurityGateway,
+    PassportWebAppSessionGateway,
+    TokenManagerWebAuthenticationGateway,
+)
+from services.web_authentication_service import WebAuthenticationService
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
@@ -431,6 +444,49 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_web_authentication_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.web_authentication, WebAuthenticationService)
+    assert services.web_authentication._accounts is services.accounts.profile._accounts
+    assert isinstance(services.web_authentication._tokens, TokenManagerWebAuthenticationGateway)
+    assert (
+        services.web_authentication._tokens._access_token_expire_minutes
+        == ext_application_services.dify_config.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    assert isinstance(services.web_authentication._security, AccountServiceWebAuthenticationSecurityGateway)
+    assert services.web_authentication._security._account_service is AccountService
+    assert isinstance(services.web_authentication._app_sessions, PassportWebAppSessionGateway)
+    assert services.web_authentication._app_sessions._sessions is services.webapp_access._access
+    assert isinstance(services.webapp_access._policy, EnterpriseWebAppAccessPolicyGateway)
+    assert services.webapp_access._policy._webapp_auth is EnterpriseService.WebAppAuth
+
+
+def test_build_application_services_reuses_installed_app_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.installed_app_access, InstalledAppAccessService)
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
+    assert isinstance(services.installed_app_access._installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_generation._usage is services.installed_app_access._installed_apps
+    assert isinstance(services.installed_app_generation._runtime, InstalledAppGenerateServiceRuntime)
+    assert services.installed_app_generation._runtime._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_app_tracing_config_boundary(
@@ -1217,6 +1273,7 @@ def test_build_application_services_wires_webapp_permission(
 
 def test_webapp_permission_adapter_maps_connection_failure() -> None:
     failure = httpx.ConnectError("connection failed")
+    adapter = EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth)
     with (
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -1224,7 +1281,7 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ),
         pytest.raises(WebAppAccessUnavailableError) as raised,
     ):
-        ext_application_services._is_enterprise_webapp_user_allowed("user-1", "app-1")
+        adapter.is_user_allowed(user_id="user-1", app_id="app-1")
 
     assert raised.value.__cause__ is failure
 

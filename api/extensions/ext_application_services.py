@@ -147,6 +147,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.account_service import AccountService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app_audio_adapters import AppAudioRuntime
@@ -242,15 +243,20 @@ from services.trial_app_generation_service import TrialAppGenerationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
+from services.web_authentication_adapters import (
+    AccountServiceWebAuthenticationSecurityGateway,
+    LoggingWebAuthenticationAuditGateway,
+    PassportWebAppSessionGateway,
+    TokenManagerWebAuthenticationGateway,
+)
+from services.web_authentication_service import WebAuthenticationService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
 )
 from services.web_passport_service import WebPassportService
-from services.webapp_access_query_service import (
-    WebAppAccessQueryService,
-    WebAppAccessUnavailableError,
-)
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -278,32 +284,14 @@ def _generate_installed_app_conversation_name(
 
 
 # TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
-# migrate its callers, then inject its methods directly and remove these adapters.
+# migrate its callers, then inject its batch methods directly and remove these wrappers.
 # Define SDK errors for timeouts, transport failures, upstream status and invalid
-# responses before adding finer HTTP mappings; these adapters report unavailability.
+# responses before adding finer HTTP mappings; these wrappers report unavailability.
 # Validate required fields and real booleans there, replacing legacy permission
 # truthiness conversion. Missing fields currently become False, {} or a default mode.
 # Replace response-shape ValueError/KeyError/AttributeError with typed SDK errors;
 # ordinary ValueError can still reach the global 400 invalid_param handler. The
 # lost field information cannot be recovered by translating exceptions here.
-def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
-    try:
-        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
-        raise WebAppAccessUnavailableError from e
-    try:
-        return WebAppAccessMode(settings.access_mode)
-    except ValueError as e:
-        raise WebAppAccessUnavailableError from e
-
-
-def _is_enterprise_webapp_user_allowed(user_id: str, app_id: str) -> bool:
-    try:
-        return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise WebAppAccessUnavailableError from e
-
-
 def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
     try:
         settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
@@ -375,6 +363,7 @@ class ApplicationServices:
     data_source_oauth: Mapping[str, DataSourceOAuthService]
     app_scoped_end_users: AppScopedEndUserServices
     webapp_access: WebAppAccessQueryService
+    web_authentication: WebAuthenticationService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
@@ -582,11 +571,11 @@ def build_application_services(
         ),
     )
     webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition)
+    webapp_access_repository = WebAppAccessQueryRepository(session_factory=database_client)
     webapp_access = WebAppAccessQueryService(
-        access=WebAppAccessQueryRepository(session_factory=database_client),
+        access=webapp_access_repository,
+        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
         webapp_auth_enabled=webapp_auth_enabled,
-        access_mode_for_app=_get_enterprise_webapp_access_mode,
-        is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
         get_access_modes=_batch_get_enterprise_webapp_access_modes,
         get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
     )
@@ -621,6 +610,10 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
+    web_authentication_tokens = TokenManagerWebAuthenticationGateway(
+        reset_password_rate_limiter=AccountService.reset_password_rate_limiter,
+        access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
@@ -831,6 +824,21 @@ def build_application_services(
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
         webapp_access=webapp_access,
+        web_authentication=WebAuthenticationService(
+            accounts=accounts,
+            passwords=passwords,
+            tokens=web_authentication_tokens,
+            security=AccountServiceWebAuthenticationSecurityGateway(
+                account_service=AccountService,
+            ),
+            app_access=webapp_access,
+            app_sessions=PassportWebAppSessionGateway(
+                sessions=webapp_access_repository,
+                app_access=webapp_access,
+            ),
+            audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
+            private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
+        ),
         installed_app_access=installed_app_access,
         installed_app_conversations=InstalledAppConversationService(
             conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
