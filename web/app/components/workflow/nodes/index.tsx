@@ -1,19 +1,21 @@
 import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
-import { memo, useMemo } from 'react'
+import { createElement, memo } from 'react'
 import { CUSTOM_NODE } from '../constants'
 import BasePanel from './_base/components/workflow-panel'
 import BaseNode from './_base/node'
 import { NodeComponentMap, PanelComponentMap } from './components'
 
+const NullComponent = () => null
+
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
-  const NodeComponent = useMemo(() => NodeComponentMap[nodeData.type], [nodeData.type])!
+  const NodeComponent = NodeComponentMap[nodeData.type] ?? NullComponent
 
   return (
     <>
       <BaseNode id={props.id} data={props.data}>
-        <NodeComponent />
+        {createElement(NodeComponent)}
       </BaseNode>
     </>
   )
@@ -28,15 +30,13 @@ type PanelProps = {
 export const Panel = memo((props: PanelProps) => {
   const nodeClass = props.type
   const nodeData = props.data
-  const PanelComponent = useMemo(() => {
-    if (nodeClass === CUSTOM_NODE) return PanelComponentMap[nodeData.type]
-    return () => null
-  }, [nodeClass, nodeData.type])!
+  const PanelComponent =
+    (nodeClass === CUSTOM_NODE ? PanelComponentMap[nodeData.type] : NullComponent) ?? NullComponent
 
   if (nodeClass === CUSTOM_NODE) {
     return (
       <BasePanel key={`${props.id}-${nodeData.type}`} id={props.id} data={props.data}>
-        <PanelComponent />
+        {createElement(PanelComponent)}
       </BasePanel>
     )
   }
