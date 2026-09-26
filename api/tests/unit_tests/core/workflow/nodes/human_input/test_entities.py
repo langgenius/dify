@@ -35,6 +35,7 @@ from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
 from core.workflow.nodes.human_input.entities import (
+    ApproverConfig,
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -309,6 +310,14 @@ class TestUserAction:
 
 class TestHumanInputNodeData:
     """Test HumanInputNodeData entity."""
+
+    def test_approvers_require_a_selection_and_normalize_emails(self):
+        assert HumanInputNodeData(title="Human Input").approvers is None
+        with pytest.raises(ValidationError):
+            HumanInputNodeData(title="Human Input", approvers={})
+
+        approvers = ApproverConfig(emails=[" Reviewer@Example.com ", "reviewer@example.com"])
+        assert approvers.emails == ["reviewer@example.com"]
 
     def test_valid_node_data_creation(self):
         """Test creating valid human input node data."""

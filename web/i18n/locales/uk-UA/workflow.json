@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "змінна виходу",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Змінна двійкового файлу",
+  "nodes.humanInput.errorMsg.approversRequired": "Виберіть принаймні одну особу для затвердження",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Обмежене затвердження не підтримує доставку через Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "Виявлено дублюючий ідентифікатор дії в діях користувача",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Будь ласка, завершіть налаштування методу доставки Email",
   "nodes.humanInput.errorMsg.emptyActionId": "Ідентифікатор дії не може бути порожнім",

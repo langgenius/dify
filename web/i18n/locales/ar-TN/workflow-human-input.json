@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "يمكن للأعضاء أو مستلمي البريد الإلكتروني أو أدوار مساحة العمل المحددة فقط الإرسال. التسليم العام عبر Web App غير متاح.",
+  "nodes.humanInput.approvers.role.admin": "المسؤول",
+  "nodes.humanInput.approvers.role.dataset_operator": "مشغّل مجموعة البيانات",
+  "nodes.humanInput.approvers.role.editor": "المحرر",
+  "nodes.humanInput.approvers.role.normal": "عضو",
+  "nodes.humanInput.approvers.role.owner": "المالك",
+  "nodes.humanInput.approvers.roles": "أدوار مساحة العمل",
+  "nodes.humanInput.approvers.title": "الموافقون",
   "nodes.humanInput.deliveryMethod.added": "تمت الإضافة",
   "nodes.humanInput.deliveryMethod.contactTip1": "هل تفتقد طريقة تسليم تحتاجها؟",
   "nodes.humanInput.deliveryMethod.contactTip2": "أخبرنا على <email>support@dify.ai</email>.",

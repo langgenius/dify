@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "variabel keluaran",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Variabel File Biner",
+  "nodes.humanInput.errorMsg.approversRequired": "Pilih setidaknya satu penyetuju",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Persetujuan terbatas tidak dapat menggunakan pengiriman Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "ID tindakan duplikat ditemukan dalam tindakan pengguna",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Silakan selesaikan konfigurasi metode pengiriman Email",
   "nodes.humanInput.errorMsg.emptyActionId": "ID tindakan tidak boleh kosong",

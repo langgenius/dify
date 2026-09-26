@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "出力変数",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "バイナリファイル変数",
+  "nodes.humanInput.errorMsg.approversRequired": "承認者を少なくとも1人選択してください",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "制限付き承認では Web App 配信を使用できません",
   "nodes.humanInput.errorMsg.duplicateActionId": "ユーザーアクションに重複するアクションIDが見つかりました",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Email 配信方法の設定を完了してください",
   "nodes.humanInput.errorMsg.emptyActionId": "アクションIDは空にできません",

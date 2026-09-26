@@ -1,4 +1,4 @@
-import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
+import type { ApproverConfig, DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
 import { produce } from 'immer'
 import { useState } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
@@ -20,6 +20,10 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
       ...inputs,
       delivery_methods: methods,
     })
+  }
+
+  const handleApproversChange = (approvers: ApproverConfig | null) => {
+    setInputs({ ...inputs, approvers })
   }
 
   const handleUserActionAdd = (newAction: UserAction) => {
@@ -69,6 +73,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     readOnly,
     inputs,
     handleDeliveryMethodChange,
+    handleApproversChange,
     handleUserActionAdd,
     handleUserActionChange,
     handleUserActionDelete,

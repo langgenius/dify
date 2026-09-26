@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Seuls les membres, destinataires d’e-mail ou rôles sélectionnés peuvent soumettre. La diffusion publique par Web App est indisponible.",
+  "nodes.humanInput.approvers.role.admin": "Administrateur",
+  "nodes.humanInput.approvers.role.dataset_operator": "Opérateur de jeux de données",
+  "nodes.humanInput.approvers.role.editor": "Éditeur",
+  "nodes.humanInput.approvers.role.normal": "Membre",
+  "nodes.humanInput.approvers.role.owner": "Propriétaire",
+  "nodes.humanInput.approvers.roles": "Rôles de l’espace de travail",
+  "nodes.humanInput.approvers.title": "Approbateurs",
   "nodes.humanInput.deliveryMethod.added": "Ajouté",
   "nodes.humanInput.deliveryMethod.contactTip1": "Vous manque-t-il une méthode de livraison dont vous avez besoin ?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Dites-le nous à <email>support@dify.ai</email>.",

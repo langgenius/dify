@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "variabile di output",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Variabile file binario",
+  "nodes.humanInput.errorMsg.approversRequired": "Seleziona almeno un approvatore",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "L’approvazione limitata non può usare la distribuzione Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "ID azione duplicato trovato nelle azioni utente",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Completa la configurazione del metodo di consegna Email",
   "nodes.humanInput.errorMsg.emptyActionId": "L'ID azione non può essere vuoto",

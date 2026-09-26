@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Yalnız seçilmiş üzvlər, e-poçt alıcıları və ya iş sahəsi rolları göndərə bilər. İctimai Web App çatdırılması əlçatan deyil.",
+  "nodes.humanInput.approvers.role.admin": "Administrator",
+  "nodes.humanInput.approvers.role.dataset_operator": "Məlumat dəsti operatoru",
+  "nodes.humanInput.approvers.role.editor": "Redaktor",
+  "nodes.humanInput.approvers.role.normal": "Üzv",
+  "nodes.humanInput.approvers.role.owner": "Sahib",
+  "nodes.humanInput.approvers.roles": "İş sahəsi rolları",
+  "nodes.humanInput.approvers.title": "Təsdiqləyənlər",
   "nodes.humanInput.deliveryMethod.added": "Əlavə edilib",
   "nodes.humanInput.deliveryMethod.contactTip1": "Sizə lazım olan çatdırılma üsulu yoxdur?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Bizə <email>support@dify.ai</email> ünvanına yazaraq bildirin.",

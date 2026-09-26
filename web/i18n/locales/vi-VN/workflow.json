@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "biến đầu ra",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Biến tệp nhị phân",
+  "nodes.humanInput.errorMsg.approversRequired": "Chọn ít nhất một người phê duyệt",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Phê duyệt hạn chế không thể dùng phương thức gửi Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "Tìm thấy ID hành động trùng lặp trong hành động người dùng",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Vui lòng hoàn tất cấu hình phương thức gửi Email",
   "nodes.humanInput.errorMsg.emptyActionId": "ID hành động không được để trống",

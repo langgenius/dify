@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "output variable",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Binary File Variable",
+  "nodes.humanInput.errorMsg.approversRequired": "Selecteer minstens één goedkeurder",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Beperkte goedkeuring kan geen Web App-bezorging gebruiken",
   "nodes.humanInput.errorMsg.duplicateActionId": "Duplicate action ID found in user actions",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Please complete the Email delivery method configuration",
   "nodes.humanInput.errorMsg.emptyActionId": "Action ID cannot be empty",

@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "출력 변수",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "바이너리 파일 변수",
+  "nodes.humanInput.errorMsg.approversRequired": "승인자를 한 명 이상 선택하세요",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "제한된 승인에는 Web App 전달을 사용할 수 없습니다",
   "nodes.humanInput.errorMsg.duplicateActionId": "사용자 작업에서 중복 작업 ID가 발견되었습니다",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Email 전송 방식 구성을 완료해 주세요",
   "nodes.humanInput.errorMsg.emptyActionId": "작업 ID는 비워 둘 수 없습니다",

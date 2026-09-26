@@ -1421,6 +1421,7 @@ export type PostFormHumanInputByFormTokenData = {
 
 export type PostFormHumanInputByFormTokenErrors = {
   400: unknown
+  403: unknown
   404: unknown
   412: unknown
   429: unknown

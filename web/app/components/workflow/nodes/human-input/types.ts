@@ -11,8 +11,17 @@ export type HumanInputNodeType = CommonNodeType & {
   form_content: string
   inputs: FormInputItem[]
   user_actions: UserAction[]
+  approvers?: ApproverConfig | null
   timeout: number
   timeout_unit: 'hour' | 'day'
+}
+
+export type ApproverRole = 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+
+export type ApproverConfig = {
+  member_ids: string[]
+  emails: string[]
+  roles: ApproverRole[]
 }
 
 export const DeliveryMethodType = {

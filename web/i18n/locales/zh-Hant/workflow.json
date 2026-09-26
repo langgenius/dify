@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "輸出變數",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "二進位檔變數",
+  "nodes.humanInput.errorMsg.approversRequired": "請至少選擇一位審批人",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "受限審批不能使用 Web App 投遞",
   "nodes.humanInput.errorMsg.duplicateActionId": "用戶操作中發現重複的操作 ID",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "請完成 Email 發送方式配置",
   "nodes.humanInput.errorMsg.emptyActionId": "操作 ID 不能為空",

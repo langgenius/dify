@@ -20,6 +20,7 @@ from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
+from models.account import TenantAccountRole
 
 from . import _exc as exc
 from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
@@ -27,6 +28,7 @@ from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 _OUTPUT_VARIABLE_PATTERN = re.compile(
     r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}",
 )
+_APPROVER_EMAIL_PATTERN = re.compile(r"^[\w.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$")
 
 
 class StringSource(BaseModel):
@@ -246,6 +248,36 @@ class UserActionConfig(BaseModel):
         return value
 
 
+class ApproverConfig(BaseModel):
+    """Who may submit this form. Omitted config preserves unrestricted legacy forms."""
+
+    member_ids: list[str] = Field(default_factory=list)
+    emails: list[str] = Field(default_factory=list)
+    roles: list[TenantAccountRole] = Field(default_factory=list)
+
+    @field_validator("member_ids")
+    @classmethod
+    def _validate_member_ids(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("approver member IDs must not be empty")
+        return list(dict.fromkeys(normalized))
+
+    @field_validator("emails")
+    @classmethod
+    def _validate_emails(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(_APPROVER_EMAIL_PATTERN.fullmatch(value) is None for value in normalized):
+            raise ValueError("approver emails must be valid")
+        return list(dict.fromkeys(normalized))
+
+    @model_validator(mode="after")
+    def _require_approver(self) -> Self:
+        if not (self.member_ids or self.emails or self.roles):
+            raise ValueError("at least one approver is required when approval is restricted")
+        return self
+
+
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
@@ -253,6 +285,7 @@ class HumanInputNodeData(BaseNodeData):
     form_content: str = ""
     inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
+    approvers: ApproverConfig | None = None
     timeout: int = 36
     timeout_unit: TimeoutUnit = TimeoutUnit.HOUR
 
@@ -351,6 +384,7 @@ class FormDefinition(BaseModel):
     form_content: str
     inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
+    approvers: ApproverConfig | None = None
     rendered_content: str
     expiration_time: datetime
 

@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Надсилати форму можуть лише вибрані учасники, одержувачі листів або ролі робочого простору. Публічна доставка через Web App недоступна.",
+  "nodes.humanInput.approvers.role.admin": "Адміністратор",
+  "nodes.humanInput.approvers.role.dataset_operator": "Оператор наборів даних",
+  "nodes.humanInput.approvers.role.editor": "Редактор",
+  "nodes.humanInput.approvers.role.normal": "Учасник",
+  "nodes.humanInput.approvers.role.owner": "Власник",
+  "nodes.humanInput.approvers.roles": "Ролі робочого простору",
+  "nodes.humanInput.approvers.title": "Особи, що затверджують",
   "nodes.humanInput.deliveryMethod.added": "Додано",
   "nodes.humanInput.deliveryMethod.contactTip1": "Бракує потрібного вам способу доставки?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Повідомте нам на <email>support@dify.ai</email>.",

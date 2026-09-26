@@ -76,6 +76,18 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     if (!errorMessages && hasIncompleteEnabledEmailConfig(payload.delivery_methods))
       errorMessages = t(($) => $[`${i18nPrefix}.emailConfigIncomplete`], { ns: 'workflow' })
 
+    if (!errorMessages && payload.approvers) {
+      const { member_ids, emails, roles } = payload.approvers
+      if (!member_ids.length && !emails.length && !roles.length)
+        errorMessages = t(($) => $[`${i18nPrefix}.approversRequired`], { ns: 'workflow' })
+      else if (
+        payload.delivery_methods.some(
+          (method) => method.enabled && method.type === DeliveryMethodType.WebApp,
+        )
+      )
+        errorMessages = t(($) => $[`${i18nPrefix}.approversWebAppUnsupported`], { ns: 'workflow' })
+    }
+
     if (!errorMessages && !payload.user_actions.length)
       errorMessages = t(($) => $[`${i18nPrefix}.noUserActions`], { ns: 'workflow' })
 
