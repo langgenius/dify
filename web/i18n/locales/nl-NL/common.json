@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Open in new tab",
   "operation.params": "Params",
   "operation.pause": "Pauzeren",
+  "operation.pdfLoadFailed": "Het laden van de PDF is mislukt. Probeer het opnieuw.",
   "operation.play": "Afspelen",
   "operation.refresh": "Restart",
   "operation.regenerate": "Regenerate",

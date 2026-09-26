@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Открыть в новой вкладке",
   "operation.params": "Параметры",
   "operation.pause": "Пауза",
+  "operation.pdfLoadFailed": "Не удалось загрузить PDF. Повторите попытку.",
   "operation.play": "Воспроизвести",
   "operation.refresh": "Перезапустить",
   "operation.regenerate": "Регенерировать",

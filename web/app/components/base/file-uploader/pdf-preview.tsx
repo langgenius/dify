@@ -9,6 +9,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { basePath } from '@/utils/var'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
+import PdfPreviewError from './pdf-preview-error'
 
 type PdfPreviewProps = {
   url: string
@@ -21,6 +22,8 @@ function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
+  // PdfLoader only reloads when `url` changes, so retrying means remounting it.
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const isMobile = media === MediaType.mobile
 
   const zoomIn = () => {
@@ -96,6 +99,10 @@ function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
           }}
         >
           <PdfLoader
+            key={loadAttempt}
+            errorMessage={
+              <PdfPreviewError onRetry={() => setLoadAttempt((attempt) => attempt + 1)} />
+            }
             workerSrc={`${basePath}/pdf.worker.min.mjs`}
             url={url}
             beforeLoad={<LoadingPlaceholder className="h-64" />}

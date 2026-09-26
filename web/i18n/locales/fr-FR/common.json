@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Ouvrir dans un nouvel onglet",
   "operation.params": "Paramètres",
   "operation.pause": "Pause",
+  "operation.pdfLoadFailed": "Échec du chargement du PDF. Veuillez réessayer.",
   "operation.play": "Lire",
   "operation.refresh": "Redémarrer",
   "operation.regenerate": "Régénérer",

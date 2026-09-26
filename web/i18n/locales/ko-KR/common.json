@@ -197,6 +197,7 @@
   "operation.openInNewTab": "새 탭에서 열기",
   "operation.params": "매개변수",
   "operation.pause": "일시 중지",
+  "operation.pdfLoadFailed": "PDF를 불러오지 못했습니다. 다시 시도해 주세요.",
   "operation.play": "재생",
   "operation.refresh": "새로 고침",
   "operation.regenerate": "재생성",
