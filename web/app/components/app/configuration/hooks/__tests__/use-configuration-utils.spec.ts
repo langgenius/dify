@@ -821,7 +821,7 @@ describe('useConfiguration utils', () => {
     expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
   })
 
-  it('reports an invalid chat prompt without publishing or replacing the saved configuration', async () => {
+  it('reports an invalid chat prompt without publishing', async () => {
     const backendModelConfig = createAppModelConfigFixture({
       model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
     })
@@ -832,7 +832,6 @@ describe('useConfiguration utils', () => {
       mode: AppModeEnum.CHAT,
       nextDataSets: [],
     })
-    const setPublishedConfig = vi.fn()
     const updateModelConfig = vi.fn()
     const onPublish = createPublishHandler({
       appId: 'app-1',
@@ -852,19 +851,16 @@ describe('useConfiguration utils', () => {
       promptMode: 'advanced',
       resolvedModelModeType: ModelModeType.chat,
       setCanReturnToSimpleMode: vi.fn(),
-      setPublishedConfig,
       t,
     })
 
     await expect(onPublish(updateModelConfig)).rejects.toThrow()
     expect(mockToastError).toHaveBeenCalledWith('api.actionFailed')
     expect(updateModelConfig).not.toHaveBeenCalled()
-    expect(setPublishedConfig).not.toHaveBeenCalled()
     expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
   it('should validate and publish configuration changes', async () => {
-    const setPublishedConfig = vi.fn()
     const setCanReturnToSimpleMode = vi.fn()
     const mockUpdateAppModelConfig = vi.fn().mockResolvedValue(undefined)
 
@@ -913,7 +909,6 @@ describe('useConfiguration utils', () => {
       promptMode: 'advanced' as any,
       resolvedModelModeType: ModelModeType.chat,
       setCanReturnToSimpleMode,
-      setPublishedConfig,
       t,
     })
 
@@ -955,22 +950,24 @@ describe('useConfiguration utils', () => {
         params: { app_id: 'app-1' },
       }),
     )
-    expect(setPublishedConfig).toHaveBeenCalledWith(
+    expect(mockUpdateAppModelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
-        completionParams: { temperature: 0.2 },
-        datasetConfigs: expect.objectContaining({ top_k: 7 }),
-        externalDataToolsConfig: [{ enabled: true, variable: 'external' }],
-        modelConfig: expect.objectContaining({
+        body: expect.objectContaining({
+          chat_prompt_config: { prompt: [{ role: 'system', text: 'hi' }] },
+          model: expect.objectContaining({
+            provider: 'published-provider',
+            name: 'published-model',
+            completion_params: { temperature: 0.2 },
+          }),
+          dataset_configs: expect.objectContaining({ top_k: 7 }),
+          external_data_tools: [{ enabled: true, variable: 'external' }],
           file_upload: expect.objectContaining({
             image: expect.objectContaining({ detail: 'low' }),
           }),
-          model_id: 'published-model',
           opening_statement: '',
-          provider: 'published-provider',
           sensitive_word_avoidance: { enabled: true },
+          prompt_type: 'advanced',
         }),
-        promptMode: 'advanced',
       }),
     )
     expect(mockToastSuccess).toHaveBeenCalledWith('api.success')
@@ -1015,7 +1012,6 @@ describe('useConfiguration utils', () => {
         promptMode: 'advanced' as any,
         resolvedModelModeType: ModelModeType.completion,
         setCanReturnToSimpleMode: vi.fn(),
-        setPublishedConfig: vi.fn(),
         t,
         ...overrides,
       })

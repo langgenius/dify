@@ -248,7 +248,7 @@ const createViewModel = (
     debugWithMultipleModel: false,
     multipleModelConfigs: [],
     onPublish: vi.fn(),
-    publishedConfig: {
+    loadPublishedConfig: async () => ({
       modelConfig: createContextValue().modelConfig,
       completionParams: {},
       promptMode: createContextValue().promptMode,
@@ -256,7 +256,7 @@ const createViewModel = (
       completionPromptConfig: createContextValue().completionPromptConfig,
       datasetConfigs: createContextValue().datasetConfigs,
       externalDataToolsConfig: createContextValue().externalDataToolsConfig,
-    },
+    }),
     resetAppConfig: vi.fn(),
   } as ComponentProps<typeof AppPublisher>,
   contextValue: createContextValue(),

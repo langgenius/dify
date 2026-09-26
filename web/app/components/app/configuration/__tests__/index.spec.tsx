@@ -1,9 +1,14 @@
 import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import { zAppModelConfigPayload } from '@dify/contracts/api/console/apps/zod.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CommonLayoutError from '@/app/(commonLayout)/error'
+import FeaturesWrappedAppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import ErrorBoundary from '@/app/components/base/error-boundary'
+import { FeaturesProvider } from '@/app/components/base/features/context'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { AppToastHost } from '@/app/notifications/host'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -62,6 +67,15 @@ vi.mock('../debug/hooks', () => ({
   }),
   useFormattingChangedDispatcher: () => vi.fn(),
 }))
+vi.mock('@/app/components/app/app-publisher', () => ({
+  AppPublisher: ({ onRestore }: AppPublisherProps) => (
+    <button onClick={() => onRestore?.()}>Restore</button>
+  ),
+}))
+function FeaturesProbe() {
+  const opening = useFeatures((state) => state.features.opening)
+  return <output aria-label="Opening">{opening?.opening_statement}</output>
+}
 vi.mock('../configuration-view', () => ({
   default: ({ contextValue, appPublisherProps, featuresData }: ConfigurationViewModel) => (
     <>
@@ -79,8 +93,8 @@ vi.mock('../configuration-view', () => ({
       </label>
       <output aria-label="App">{contextValue.appId}</output>
       <output aria-label="Published at">{appPublisherProps.publishedAt}</output>
-      <output aria-label="Published prompt">
-        {appPublisherProps.publishedConfig.modelConfig.configs.prompt_template}
+      <output aria-label="Datasets">
+        {contextValue.modelConfig.dataSets.map(({ id }) => id).join(',')}
       </output>
       <button
         onClick={() => {
@@ -89,7 +103,10 @@ vi.mock('../configuration-view', () => ({
       >
         Publish
       </button>
-      <button onClick={() => appPublisherProps.resetAppConfig?.()}>Restore</button>
+      <FeaturesProvider features={featuresData}>
+        <FeaturesWrappedAppPublisher {...appPublisherProps} />
+        <FeaturesProbe />
+      </FeaturesProvider>
     </>
   ),
 }))
@@ -134,7 +151,7 @@ function setup() {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const wrapper = createQueryClientWrapper(queryClient)
-  return { queryClient, ...render(<Configuration />, { wrapper }) }
+  return { user: userEvent.setup(), queryClient, ...render(<Configuration />, { wrapper }) }
 }
 
 beforeEach(() => {
@@ -205,14 +222,14 @@ describe('Configuration editing session', () => {
   })
 
   it('keeps typed input when background metadata refresh changes configured dataset IDs', async () => {
-    const { queryClient } = setup()
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Prompt' }), {
-      target: { value: 'My draft' },
-    })
+    const { queryClient, user } = setup()
+    await user.clear(await screen.findByRole('textbox', { name: 'Prompt' }))
+    await user.type(screen.getByRole('textbox', { name: 'Prompt' }), 'My draft')
     const refreshed = createDetail('app-1', 'Different server prompt')
     refreshed.model_config = createAppModelConfigFixture({
       ...refreshed.model_config,
       updated_at: 123,
+      opening_statement: 'Latest opening',
       dataset_configs: {
         retrieval_model: 'multiple',
         datasets: { datasets: [{ dataset: { id: 'new-dataset', enabled: true } }] },
@@ -228,12 +245,33 @@ describe('Configuration editing session', () => {
         }),
       })
     })
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('My draft')
+    expect(screen.getByLabelText('Prompt')).toHaveValue('My draft')
     await waitFor(() => expect(screen.getByLabelText('Published at')).toHaveTextContent('123000'))
     expect(mockDatasets).not.toHaveBeenCalled()
+    const datasets = deferred<{ data: { id: string; name: string }[] }>()
+    mockDatasets.mockReturnValueOnce(datasets.promise)
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+    await waitFor(() =>
+      expect(mockDatasets).toHaveBeenCalledWith({
+        url: '/datasets',
+        params: { page: 1, ids: ['new-dataset'] },
+      }),
+    )
+    expect(screen.getByLabelText('Prompt')).toHaveValue('My draft')
+    expect(screen.getByLabelText('Datasets')).toBeEmptyDOMElement()
+    expect(screen.getByLabelText('Opening')).toBeEmptyDOMElement()
+    await act(async () => datasets.resolve({ data: [{ id: 'new-dataset', name: 'New dataset' }] }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(
+        'Different server prompt',
+      ),
+    )
+    expect(screen.getByLabelText('Datasets')).toHaveTextContent('new-dataset')
+    expect(screen.getByLabelText('Opening')).toHaveTextContent('Latest opening')
   })
 
-  it('keeps edits made while publishing and restores only the submitted snapshot on request', async () => {
+  it('keeps edits made while publishing and explicitly restores the latest server snapshot', async () => {
     const published = deferred<Response>()
     let submitted: AppModelConfigPayload | undefined
     let latest = createDetail()
@@ -246,27 +284,26 @@ describe('Configuration editing session', () => {
         return Response.json(url.endsWith('/files/upload') ? uploadConfig : latest)
       },
     )
-    setup()
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Prompt' }), {
-      target: { value: 'Submitted prompt' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Publish' }))
+    const { user } = setup()
+    await user.clear(await screen.findByRole('textbox', { name: 'Prompt' }))
+    await user.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Submitted prompt')
+    await user.click(screen.getByRole('button', { name: 'Publish' }))
     await waitFor(() => expect(submitted?.pre_prompt).toBe('Submitted prompt'))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Prompt' }), {
-      target: { value: 'Continued editing' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'Prompt' }))
+    await user.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Continued editing')
     latest = createDetail('app-1', 'Submitted prompt')
     latest.model_config = createAppModelConfigFixture({ ...latest.model_config, updated_at: 456 })
     await act(async () => {
       published.resolve(Response.json({ result: 'success' }))
     })
-    await waitFor(() =>
-      expect(screen.getByLabelText('Published prompt')).toHaveTextContent('Submitted prompt'),
-    )
+    await waitFor(() => expect(screen.getByLabelText('Published at')).toHaveTextContent('456000'))
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Continued editing')
     expect(screen.getByLabelText('Published at')).toHaveTextContent('456000')
-    fireEvent.click(screen.getByRole('button', { name: 'Restore' }))
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Submitted prompt')
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Submitted prompt'),
+    )
   })
 
   it('creates a new draft when navigating to another app', async () => {
@@ -294,8 +331,30 @@ describe('Configuration editing session', () => {
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: ['tools', 'allToolProviders'] })
     })
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('My draft')
+    expect(screen.getByLabelText('Prompt')).toHaveValue('My draft')
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
+  it('rejects Restore when fresh tool loading fails despite cached tools and retries successfully', async () => {
+    const { user } = setup()
+    await user.clear(await screen.findByRole('textbox', { name: 'Prompt' }))
+    await user.type(screen.getByRole('textbox', { name: 'Prompt' }), 'My draft')
+    mockRequest.mockImplementation(async (url: string) =>
+      Response.json(
+        url.endsWith('/files/upload') ? uploadConfig : createDetail('app-1', 'Latest prompt'),
+      ),
+    )
+    mockGet.mockRejectedValue(new Error('Tools unavailable'))
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+    expect(await screen.findByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(screen.getByLabelText('Prompt')).toHaveValue('My draft')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    mockGet.mockResolvedValue([])
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Latest prompt'),
+    )
   })
 
   it('does not apply an earlier app publication to the newly opened app', async () => {
@@ -326,7 +385,7 @@ describe('Configuration editing session', () => {
     })
     await waitFor(() => expect(queryClient.isMutating()).toBe(0))
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('App B draft')
-    expect(screen.getByLabelText('Published prompt')).toHaveTextContent('App B saved prompt')
+    expect(screen.getByLabelText('App')).toHaveTextContent('app-2')
   })
 
   it('surfaces missing model configuration instead of leaving a loading screen', async () => {
