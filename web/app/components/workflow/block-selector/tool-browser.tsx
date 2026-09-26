@@ -11,8 +11,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -24,9 +26,13 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
 import { useToolTabs } from './hooks'
 import { RAGToolRecommendations } from './rag-tool-recommendations'
-import Tools from './tools'
 import { ToolType, ViewType } from './types'
 import ViewTypeSelect from './view-type-select'
+
+const Tools = dynamic(() => import('./tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 const marketplaceFooterClassName =
   'system-sm-medium flex h-8 flex-none items-center border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-1'

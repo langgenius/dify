@@ -3,6 +3,7 @@ import type { ViewType } from '@/app/components/workflow/block-selector/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -11,7 +12,11 @@ import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
-import List from './list'
+
+const List = dynamic(() => import('./list'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 type RAGToolRecommendationsProps = {
   viewType: ViewType

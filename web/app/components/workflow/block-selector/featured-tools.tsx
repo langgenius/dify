@@ -14,6 +14,7 @@ import {
   PreviewCard,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -31,8 +32,12 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BlockSelectorPreviewCardContent } from './preview-card'
-import Tools from './tools'
 import { ToolType, ViewType } from './types'
+
+const Tools = dynamic(() => import('./tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
