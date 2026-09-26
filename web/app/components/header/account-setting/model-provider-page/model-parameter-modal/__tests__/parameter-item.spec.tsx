@@ -223,6 +223,26 @@ describe('ParameterItem', () => {
     expect(onChange).toHaveBeenCalledWith(false)
   })
 
+  it('should propagate the first boolean selection for an unset optional parameter', () => {
+    const onChange = vi.fn()
+    render(
+      <ParameterItem
+        parameterRule={createRule({
+          type: 'boolean',
+          name: 'enable_thinking',
+          label: { en_US: 'Thinking Mode', zh_Hans: 'Thinking Mode' },
+          default: true,
+        })}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('False'))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith(false)
+  })
+
   it('should name the optional switch after its parameter and toggle it off', async () => {
     const user = userEvent.setup()
     const onSwitch = vi.fn()
