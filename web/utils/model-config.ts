@@ -1,5 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
+import { zAppExternalDataToolPayload } from '@dify/contracts/api/console/apps/zod.gen'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -31,16 +32,6 @@ const getStringArray = (value: unknown) => {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : []
-}
-
-const getStringRecord = (value: unknown) => {
-  if (!isRecord(value)) return undefined
-
-  const record: Record<string, string | undefined> = {}
-  Object.entries(value).forEach(([key, item]) => {
-    if (typeof item === 'string') record[key] = item
-  })
-  return record
 }
 
 const getRecord = (value: unknown) => {
@@ -241,7 +232,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             enabled: item.enabled,
             type: item.type,
-            config: getStringRecord(item.config),
+            config: item.config
+              ? (zAppExternalDataToolPayload.parse({ config: item.config }).config ?? undefined)
+              : undefined,
             required: item.required,
             icon: item.icon,
             icon_background: item.icon_background,

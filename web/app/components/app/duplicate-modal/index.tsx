@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconType } from '@/types/app'
+import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -19,17 +19,12 @@ import { consoleQuery } from '@/service/console'
 
 export type DuplicateAppModalProps = {
   appName: string
-  icon_type: AppIconType | null
-  icon: string
+  icon_type: AppDetailWithSite['icon_type']
+  icon: AppDetailWithSite['icon']
   icon_background?: string | null
   icon_url?: string | null
   show: boolean
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string | null
-  }) => Promise<void>
+  onConfirm: (info: CopyAppPayload) => Promise<void>
   onHide: () => void
 }
 
@@ -50,8 +45,8 @@ const DuplicateAppModal = ({
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState(
     icon_type === 'image'
-      ? { type: 'image' as const, url: icon_url ?? '', fileId: icon }
-      : { type: 'emoji' as const, icon, background: icon_background },
+      ? { type: 'image' as const, url: icon_url ?? '', fileId: icon ?? '' }
+      : { type: 'emoji' as const, icon: icon ?? '', background: icon_background },
   )
 
   const deploymentEdition = useAtomValue(deploymentEditionAtom)

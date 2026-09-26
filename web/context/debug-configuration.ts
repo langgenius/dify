@@ -232,13 +232,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     retriever_resource: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 0,
-      file_size_limit: 0,
-      image_file_size_limit: 0,
-      video_file_size_limit: 0,
-      workflow_file_upload_limit: 0,
-    },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },

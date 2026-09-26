@@ -435,7 +435,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 4
     }
   },
   "web/app/components/app/configuration/debug/types.ts": {
@@ -450,7 +450,7 @@
   },
   "web/app/components/app/configuration/hooks/__tests__/use-configuration-utils.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 52
+      "count": 48
     }
   },
   "web/app/components/app/configuration/hooks/__tests__/use-configuration.spec.tsx": {
@@ -4381,7 +4381,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/service/base.spec.ts": {

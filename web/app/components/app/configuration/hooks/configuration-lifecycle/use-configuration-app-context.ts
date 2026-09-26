@@ -7,7 +7,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
-import { updateAppModelConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -40,16 +39,16 @@ export function useConfigurationAppContext() {
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const { mutateAsync: updateModelConfig } = useMutation({
-    mutationFn: (params: Parameters<typeof updateAppModelConfig>[0]) =>
-      updateAppModelConfig(params),
-    onSuccess: (_data, _variables, _onMutateResult, context) =>
-      context.client.invalidateQueries({
-        queryKey: consoleQuery.apps.byAppId.get.queryKey({
-          input: { params: { app_id: appId } },
+  const { mutateAsync: updateModelConfig } = useMutation(
+    consoleQuery.apps.byAppId.modelConfig.post.mutationOptions({
+      onSuccess: (_data, variables, _onMutateResult, context) =>
+        context.client.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: variables.params.app_id } },
+          }),
         }),
-      }),
-  })
+    }),
+  )
 
   return {
     appACLCapabilities,
