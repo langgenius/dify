@@ -732,7 +732,8 @@ class TestMCPClientWithAuthRetry:
         mock_func.side_effect = [MCPAuthError("Auth failed"), "success"]
 
         auth_client._initialized = True
-        auth_client._exit_stack = MagicMock()
+        old_stack = MagicMock()
+        auth_client._exit_stack = old_stack
 
         result = auth_client._execute_with_retry(mock_func, "arg")
 
@@ -740,24 +741,56 @@ class TestMCPClientWithAuthRetry:
         assert mock_func.call_count == 2
         mock_handle_auth.assert_called_once()
         mock_initialize.assert_called_once()
-        auth_client._exit_stack.close.assert_called_once()
+        old_stack.close.assert_called_once()
+        assert isinstance(auth_client._exit_stack, ExitStack)
+        assert auth_client._exit_stack is not old_stack
         assert auth_client._has_retried is False
 
     @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
     @patch.object(MCPClientWithAuthRetry, "_initialize")
     def test_execute_with_retry_success_on_retry_not_initialized(self, mock_initialize, mock_handle_auth, auth_client):
-        """Test retry when client was NOT initialized (skips cleanup/re-init)."""
+        """Partial ExitStack IS torn down; _initialize still skipped because __enter__ re-inits."""
         mock_func = MagicMock()
         mock_func.side_effect = [MCPAuthError("Auth failed"), "result"]
 
         auth_client._initialized = False
+        old_stack = MagicMock()
+        auth_client._exit_stack = old_stack
+        auth_client._session = MagicMock()
 
         result = auth_client._execute_with_retry(mock_func, "arg")
 
+        old_stack.close.assert_called_once()
+        assert auth_client._session is None
+        mock_initialize.assert_not_called()
         assert result == "result"
+        assert isinstance(auth_client._exit_stack, ExitStack)
+        assert auth_client._exit_stack is not old_stack
         assert mock_func.call_count == 2
         mock_handle_auth.assert_called_once()
+        assert auth_client._has_retried is False
+
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
+    @patch.object(MCPClientWithAuthRetry, "_initialize")
+    def test_execute_with_retry_tears_down_partial_session_when_not_initialized(
+        self, mock_initialize, mock_handle_auth, auth_client
+    ):
+        """401 during initialize tears down the partial transport/session before retry."""
+        mock_func = MagicMock()
+        mock_func.side_effect = [MCPAuthError("Auth failed"), "ok"]
+
+        auth_client._initialized = False
+        old_stack = MagicMock()
+        auth_client._exit_stack = old_stack
+        auth_client._session = MagicMock()
+
+        result = auth_client._execute_with_retry(mock_func)
+
+        old_stack.close.assert_called_once()
+        assert auth_client._session is None
         mock_initialize.assert_not_called()
+        assert result == "ok"
+        mock_handle_auth.assert_called_once()
         assert auth_client._has_retried is False
 
     @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
