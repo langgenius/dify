@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconType } from '@/types/app'
+import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -19,17 +19,12 @@ import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
   appName: string
-  icon_type: AppIconType | null
-  icon: string
+  icon_type: AppDetailWithSite['icon_type']
+  icon: AppDetailWithSite['icon']
   icon_background?: string | null
   icon_url?: string | null
   show: boolean
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string | null
-  }) => Promise<void>
+  onConfirm: (info: CopyAppPayload) => Promise<void>
   onHide: () => void
 }
 
@@ -48,11 +43,12 @@ const DuplicateAppModal = ({
   const [name, setName] = React.useState(appName)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [appIcon, setAppIcon] = useState(
-    icon_type === 'image'
-      ? { type: 'image' as const, url: icon_url, fileId: icon }
-      : { type: 'emoji' as const, icon, background: icon_background },
-  )
+  const [appIcon, setAppIcon] = useState(() => ({
+    icon_type,
+    icon,
+    icon_background,
+    icon_url,
+  }))
 
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: appQuota } = useQuery(
@@ -78,9 +74,9 @@ const DuplicateAppModal = ({
     }
     onConfirm({
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      icon_type: appIcon.icon_type,
+      icon: appIcon.icon,
+      icon_background: appIcon.icon_background,
     })
     onHide()
   }
@@ -127,10 +123,10 @@ const DuplicateAppModal = ({
                   >
                     <AppIcon
                       size="large"
-                      iconType={appIcon.type}
-                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                      background={appIcon.type === 'image' ? undefined : appIcon.background}
-                      imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                      iconType={appIcon.icon_type === 'link' ? 'image' : appIcon.icon_type}
+                      icon={appIcon.icon ?? undefined}
+                      background={appIcon.icon_background}
+                      imageUrl={appIcon.icon_type === 'link' ? appIcon.icon : appIcon.icon_url}
                     />
                   </button>
                   <Input
@@ -164,13 +160,18 @@ const DuplicateAppModal = ({
         <AppIconPicker
           open={showAppIconPicker}
           initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
+            appIcon.icon_type === 'emoji' && appIcon.icon
+              ? { icon: appIcon.icon, background: appIcon.icon_background }
               : undefined
           }
           onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
-            setAppIcon(payload)
+            setAppIcon({
+              icon_type: payload.type,
+              icon: payload.type === 'image' ? payload.fileId : payload.icon,
+              icon_background: payload.type === 'emoji' ? payload.background : undefined,
+              icon_url: payload.type === 'image' ? payload.url : undefined,
+            })
           }}
         />
       )}

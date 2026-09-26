@@ -1,4 +1,5 @@
 import type { GeneratedGraph } from '../types'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import {
   applyToCurrentApp,
@@ -7,16 +8,21 @@ import {
   WorkflowApplyOrphanError,
 } from '../apply'
 
-// Stub the service calls so each test can assert what was POSTed without
-// touching real fetch / next router state.
 const mockCreateApp = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDeleteApp = vi.fn()
 
-vi.mock('@/service/apps', () => ({
-  createApp: (params: unknown) => mockCreateApp(params),
-  deleteApp: (appId: string) => mockDeleteApp(appId),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
+    if (request.method === 'DELETE') {
+      await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
+      return new Response(null, { status: 204 })
+    }
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  },
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -40,7 +46,9 @@ const makeGraph = (): GeneratedGraph => ({
 describe('applyToNewApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCreateApp.mockResolvedValue({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValue(
+      createAppDetailFixture({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW }),
+    )
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
 
@@ -64,13 +72,19 @@ describe('applyToNewApp', () => {
         conversation_variables: [],
       },
     })
-    expect(result).toEqual({ appId: 'new-app-1', appMode: AppModeEnum.WORKFLOW })
+    expect(result).toEqual({
+      appId: 'new-app-1',
+      appMode: AppModeEnum.WORKFLOW,
+      permissionKeys: [],
+    })
   })
 
   // Mode → AppModeEnum must round-trip for chatflow; the type-level guarantee
   // is verified at runtime so a regression here is caught before users hit it.
   it('should map advanced-chat mode to AppModeEnum.ADVANCED_CHAT', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT }),
+    )
 
     const result = await applyToNewApp({
       mode: 'advanced-chat',
@@ -152,7 +166,9 @@ describe('applyToNewApp', () => {
   // empty app in their /apps list. deleteApp is called with the new app id,
   // and the original sync error is re-thrown so the caller can toast it.
   it('should delete the new app when syncWorkflowDraft fails', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'doomed', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'doomed', mode: AppModeEnum.WORKFLOW }),
+    )
     const syncErr = new Error('sync exploded')
     mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
     mockDeleteApp.mockResolvedValueOnce(undefined)
@@ -173,7 +189,9 @@ describe('applyToNewApp', () => {
   // the orphan is at least discoverable for manual cleanup. The error
   // carries the orphan app id so the toast can name it.
   it('should throw WorkflowApplyOrphanError when both sync and rollback fail', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW }),
+    )
     mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('sync exploded'))
     mockDeleteApp.mockRejectedValueOnce(new Error('delete also exploded'))
 

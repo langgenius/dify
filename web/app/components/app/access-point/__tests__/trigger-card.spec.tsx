@@ -1,10 +1,10 @@
 import type { AppTrigger } from '@/service/use-tools'
-import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { TriggerAccessPointCard } from '../built-in-access-points/trigger-card'
@@ -69,10 +69,10 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => null,
 }))
 
-const appInfo = {
+const appInfo = createAppDetailFixture({
   id: 'app-1',
   mode: AppModeEnum.WORKFLOW,
-} as App
+})
 
 function createTrigger(id: string, status: AppTrigger['status']): AppTrigger {
   return {

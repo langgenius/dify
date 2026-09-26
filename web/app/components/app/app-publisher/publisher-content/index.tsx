@@ -141,7 +141,7 @@ export function PublisherContent({
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appURL = getPublisherAppUrl({
     appBaseUrl: appBaseURL,
-    accessToken,
+    accessToken: accessToken ?? '',
     mode: appDetail?.mode,
   })
   const shouldLoadUserCanAccessApp = Boolean(

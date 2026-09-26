@@ -1,57 +1,37 @@
-import type { App, AppIconType } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import LogAnnotation from '../index'
 
 vi.mock('@/app/components/app/annotation', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="Annotation log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/log', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="App log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/workflow-log', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="Workflow log">{appDetail.id}</section>
   ),
 }))
 
-const createMockApp = (overrides: Partial<App> = {}): App => ({
-  id: 'app-123',
-  name: 'Test App',
-  description: 'Test app description',
-  author_name: 'Test Author',
-  icon_type: 'emoji' as AppIconType,
-  icon: ':icon:',
-  icon_background: '#FFEAD5',
-  icon_url: null,
-  use_icon_as_answer_icon: false,
-  mode: AppModeEnum.CHAT,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
-  created_at: Date.now(),
-  updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
-  tags: [],
-  access_mode: 'public_access' as App['access_mode'],
-  ...overrides,
-})
+const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite =>
+  createAppDetailFixture({
+    id: 'app-123',
+    name: 'Test App',
+    mode: 'chat',
+    site: createAppSiteFixture({ access_token: 'token', app_base_url: 'https://example.com' }),
+    ...overrides,
+  })
 
 describe('LogAnnotation', () => {
   beforeEach(() => {

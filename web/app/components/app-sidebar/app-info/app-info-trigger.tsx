@@ -1,6 +1,6 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { Operation } from './app-operations'
 import type { AppInfoModalType } from './use-app-info-actions'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -15,7 +15,7 @@ import { getAppModeLabel } from './app-mode-labels'
 import AppOperations from './app-operations'
 
 type AppInfoTriggerProps = {
-  appDetail: App
+  appDetail: AppDetailWithSite
   expand: boolean
   openModal: (modal: Exclude<AppInfoModalType, null>) => void
   isExporting: boolean
@@ -125,7 +125,7 @@ const AppInfoTrigger = ({
           <AppIcon
             size="medium"
             iconType={appDetail.icon_type}
-            icon={appDetail.icon}
+            icon={appDetail.icon ?? undefined}
             background={appDetail.icon_background}
             imageUrl={appDetail.icon_url}
           />

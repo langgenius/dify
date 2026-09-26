@@ -1,10 +1,16 @@
 'use client'
+import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import {
+  zAppDatasetConfigPayload,
+  zAppFileUploadPayload,
+  zAppUserInputFormPayload,
+} from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -230,21 +236,25 @@ const Debug: FC<IDebug> = ({
     }))
     const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
 
-    const postModelConfig: BackendModelConfig = {
+    const fileUpload = { ...features.file }
+    delete fileUpload.fileUploadConfig
+    const postModelConfig: AppModelConfigPayload = {
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
       completion_prompt_config: isAdvancedMode
         ? completionPromptConfig
         : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
-      user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      user_input_form: zAppUserInputFormPayload
+        .array()
+        .parse(promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables)),
       dataset_query_variable: contextVar || '',
-      dataset_configs: {
+      dataset_configs: zAppDatasetConfigPayload.parse({
         ...datasetConfigs,
         datasets: {
-          datasets: [...postDatasets],
-        } as any,
-      },
+          datasets: postDatasets,
+        },
+      }),
       agent_mode: {
         enabled: false,
         tools: [],
@@ -253,17 +263,16 @@ const Debug: FC<IDebug> = ({
         provider: modelConfig.provider,
         name: modelConfig.model_id,
         mode: modelConfig.mode,
-        completion_params: completionParams as any,
+        completion_params: completionParams,
       },
-      more_like_this: features.moreLikeThis as any,
-      sensitive_word_avoidance: features.moderation as any,
-      text_to_speech: features.text2speech as any,
-      file_upload: features.file as any,
+      more_like_this: features.moreLikeThis,
+      sensitive_word_avoidance: features.moderation,
+      text_to_speech: features.text2speech,
+      file_upload: zAppFileUploadPayload.parse(fileUpload),
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
-      system_parameters: modelConfig.system_parameters,
       external_data_tools: externalDataToolsConfig,
     }
 
@@ -272,7 +281,7 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if ((features.file as any).enabled && completionFiles && completionFiles?.length > 0) {
+    if (features.file?.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {

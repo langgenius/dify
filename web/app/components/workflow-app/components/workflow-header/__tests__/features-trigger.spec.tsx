@@ -2,13 +2,13 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
-import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -53,7 +53,7 @@ const mockPublishWorkflow = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
-const mockFetchAppDetail = vi.fn()
+const mockAppResponse = vi.fn()
 const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
@@ -229,8 +229,9 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
-vi.mock('@/service/apps', () => ({
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string) => Response.json(await mockAppResponse(url)),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -277,8 +278,8 @@ describe('FeaturesTrigger', () => {
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
     // Set up app store state
-    useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
-    mockFetchAppDetail.mockResolvedValue({ id: 'app-id', name: 'Updated App' })
+    useAppStore.setState({ appDetail: createAppDetailFixture({ id: 'app-id' }) })
+    mockAppResponse.mockResolvedValue(createAppDetailFixture({ id: 'app-id', name: 'Updated App' }))
     mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
@@ -631,7 +632,7 @@ describe('FeaturesTrigger', () => {
           type: 'success',
           message: 'common.api.actionSuccess',
         })
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
+        expect(mockAppResponse).toHaveBeenCalledWith(expect.stringContaining('/apps/app-id'))
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',
@@ -801,7 +802,7 @@ describe('FeaturesTrigger', () => {
       // Arrange
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockFetchAppDetail.mockRejectedValueOnce(new Error('fetch failed'))
+      mockAppResponse.mockRejectedValueOnce(new Error('fetch failed'))
 
       renderWithToast(<FeaturesTrigger />)
 

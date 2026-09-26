@@ -82,7 +82,6 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
         datasets: [...postDatasets],
       } as any,
     },
-    system_parameters: modelConfig.system_parameters,
   }
   const { completion, handleSend, isResponding, messageId } = useTextGeneration()
 

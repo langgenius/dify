@@ -1,4 +1,6 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type {
@@ -15,7 +17,6 @@ import type {
   CompletionConversationsResponse,
   LogAnnotation,
 } from '@/models/log'
-import type { App } from '@/types/app'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -89,7 +90,7 @@ dayjs.extend(timezone)
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
-  appDetail: App
+  appDetail: AppDetailWithSite
   onRefresh: () => void
 }
 
@@ -158,7 +159,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 }
 
 type IDetailPanel = {
-  appDetail: App
+  appDetail: AppDetailWithSite
   detail: any
   onClose: () => void
   onFeedback: FeedbackFunc
@@ -645,7 +646,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 }
 
 type ConversationDetailProps = {
-  appDetail: App
+  appDetail: AppDetailWithSite
   conversationId?: string
   onClose: () => void
 }

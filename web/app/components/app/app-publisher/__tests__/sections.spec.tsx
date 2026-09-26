@@ -537,11 +537,6 @@ describe('app-publisher sections', () => {
         appDetail={{
           id: 'workflow-app',
           mode: AppModeEnum.WORKFLOW,
-          icon: '⚙️',
-          icon_type: 'emoji',
-          icon_background: '#fff',
-          name: 'Workflow App',
-          description: 'Workflow description',
         }}
         appURL="https://example.com/app"
         canViewAccessPoint
@@ -604,7 +599,6 @@ describe('app-publisher sections', () => {
         appDetail={{
           id: 'workflow-app',
           mode: AppModeEnum.WORKFLOW,
-          name: 'Workflow App',
         }}
         appURL="https://example.com/app"
         canViewAccessPoint

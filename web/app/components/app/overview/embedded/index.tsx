@@ -1,10 +1,10 @@
+import type { AppDetailSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { MutableRefObject } from 'react'
 import type {
   EmbeddedWebAppRoute,
   WorkflowHiddenStartVariable,
   WorkflowLaunchInputValue,
 } from '../app-card-utils'
-import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -29,7 +29,7 @@ import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
 type Props = Readonly<{
-  siteInfo?: SiteInfo
+  siteInfo?: Partial<Pick<AppDetailSiteResponse, 'chat_color_theme' | 'chat_color_theme_inverted'>>
   isShow: boolean
   onClose: () => void
   accessToken?: string

@@ -86,6 +86,30 @@ describe('DuplicateAppModal', () => {
     mockAppQuota.limit = 1
   })
 
+  it.each([
+    { icon_type: null, icon: null, icon_background: null },
+    { icon_type: 'link' as const, icon: 'https://example.com/icon.png', icon_background: null },
+  ])(
+    'preserves the source icon when duplicating without a new selection: %j',
+    async (iconProps) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn().mockResolvedValue(undefined)
+      render(
+        <DuplicateAppModal
+          appName="Copy"
+          {...iconProps}
+          show
+          onConfirm={onConfirm}
+          onHide={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
+
+      expect(onConfirm).toHaveBeenCalledWith({ name: 'Copy', ...iconProps })
+    },
+  )
+
   it('should render a named dialog', () => {
     render(
       <DuplicateAppModal
