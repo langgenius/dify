@@ -17,6 +17,7 @@ from core.workflow.generator.tool_catalogue import (
     format_tool_builder_context,
     format_tool_catalogue,
     installed_tool_keys,
+    select_legacy_fallback_selection,
     select_legacy_fallback_tools,
     select_tool_candidates,
 )
@@ -266,6 +267,45 @@ class TestSelectToolCandidates:
         assert selected[0]["tool_name"] == "tool_099"
         assert any(entry["tool_name"] == "tool_078" for entry in selected)
         assert all(entry["tool_name"] != "tool_079" for entry in selected)
+
+
+class TestLegacyFallbackSelection:
+    def test_returns_selected_and_omitted_tools(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        selection = select_legacy_fallback_selection(entries)
+
+        assert selection.entries == entries[:80]
+        assert selection.omitted_entries == entries[80:]
+        assert selection.pinned_count == 0
+        assert selection.limit == 80
+        assert selection.overflow_count == 0
+
+    def test_keeps_legacy_fallback_tools_compatible(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        assert select_legacy_fallback_tools(entries) == select_legacy_fallback_selection(entries).entries
+
+    def test_reports_pinned_overflow_without_fabricated_omissions(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(85)]
+        explicit_text = "Use " + ", ".join(f"provider/{entry['tool_name']}" for entry in entries) + " exactly."
+
+        selection = select_legacy_fallback_selection(entries, explicit_text=explicit_text)
+
+        assert selection.entries == entries
+        assert selection.omitted_entries == []
+        assert selection.pinned_count == 85
+        assert selection.limit == 80
+        assert selection.overflow_count == 5
+
+    def test_empty_catalogue_has_no_omissions_or_overflow(self):
+        selection = select_legacy_fallback_selection([])
+
+        assert selection.entries == []
+        assert selection.omitted_entries == []
+        assert selection.pinned_count == 0
+        assert selection.limit == 80
+        assert selection.overflow_count == 0
 
 
 class TestToolBuilderContext:

@@ -57,12 +57,13 @@ from core.workflow.generator.prompts.planner_prompts import (
 from core.workflow.generator.prompts.tool_router_prompts import TOOL_ROUTER_SYSTEM_PROMPT, TOOL_ROUTER_USER_PROMPT
 from core.workflow.generator.tool_catalogue import (
     DIRECT_TOOL_INJECTION_LIMIT,
+    LegacyToolFallbackSelection,
     ToolCapabilityQuery,
     ToolCatalogueEntry,
     find_tool_entry,
     format_tool_builder_context,
     format_tool_catalogue,
-    select_legacy_fallback_tools,
+    select_legacy_fallback_selection,
     select_tool_candidates,
     text_mentions_tool_identifier,
 )
@@ -120,6 +121,7 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 # keep the caller's budget so complex node configs are not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
 _TOOL_ROUTER_MAX_TOKENS = 256
+_MAX_OMITTED_TOOL_PREVIEW = 20
 
 
 # Per-node calls trade a larger request count for a shorter critical path.
@@ -339,6 +341,41 @@ def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEn
         if text_mentions_tool_identifier(purpose, entry["provider_name"], entry["tool_name"]):
             return entry
     return None
+
+
+def _format_omitted_tool_preview(entries: list[ToolCatalogueEntry]) -> str:
+    """Build a bounded identity preview for fallback diagnostics."""
+    identifiers = [f"{entry['provider_name']}/{entry['tool_name']}" for entry in entries]
+    preview = ",".join(identifiers[:_MAX_OMITTED_TOOL_PREVIEW])
+    if len(identifiers) > _MAX_OMITTED_TOOL_PREVIEW:
+        preview = f"{preview},...(+{len(identifiers) - _MAX_OMITTED_TOOL_PREVIEW})"
+    return preview
+
+
+def _log_tool_catalogue_fallback(
+    *,
+    reason: str,
+    total: int,
+    query_count: int,
+    selection: LegacyToolFallbackSelection,
+    started_at: float,
+) -> None:
+    """Record selected and omitted identities for legacy catalogue fallback."""
+    logger.warning(
+        "Workflow generator: tool catalogue selection mode=fallback reason=%s total=%s "
+        "query_count=%s candidates=%s omitted=%s pinned=%s limit=%s overflow=%s "
+        "omitted_tools=%s elapsed_ms=%.1f",
+        reason,
+        total,
+        query_count,
+        len(selection.entries),
+        len(selection.omitted_entries),
+        selection.pinned_count,
+        selection.limit,
+        selection.overflow_count,
+        _format_omitted_tool_preview(selection.omitted_entries),
+        (time.monotonic() - started_at) * 1000,
+    )
 
 
 def _stage_error_to_envelope_code(exc: Exception) -> str:
@@ -730,21 +767,19 @@ class WorkflowGenerator:
             )
             candidate_count = len(selection.entries)
             if selection.unmatched_queries:
-                fallback_entries = select_legacy_fallback_tools(
+                fallback_selection = select_legacy_fallback_selection(
                     tool_catalogue_entries,
                     explicit_text=explicit_text,
                     current_graph=current_graph,
                 )
-                logger.warning(
-                    "Workflow generator: tool catalogue selection mode=fallback reason=unmatched_query "
-                    "total=%s query_count=%s candidates=%s pinned=%s elapsed_ms=%.1f",
-                    tool_count,
-                    query_count,
-                    len(fallback_entries),
-                    selection.pinned_count,
-                    (time.monotonic() - started_at) * 1000,
+                _log_tool_catalogue_fallback(
+                    reason="unmatched_query",
+                    total=tool_count,
+                    query_count=query_count,
+                    selection=fallback_selection,
+                    started_at=started_at,
                 )
-                return format_tool_catalogue(fallback_entries, max_tools=None)
+                return format_tool_catalogue(fallback_selection.entries, max_tools=None)
 
             logger.info(
                 "Workflow generator: tool catalogue selection mode=routed total=%s needs_tools=%s "
@@ -758,21 +793,19 @@ class WorkflowGenerator:
             )
             return format_tool_catalogue(selection.entries, max_tools=None)
         except Exception as e:
-            fallback_entries = select_legacy_fallback_tools(
+            fallback_selection = select_legacy_fallback_selection(
                 tool_catalogue_entries,
                 explicit_text=explicit_text,
                 current_graph=current_graph,
             )
-            logger.warning(
-                "Workflow generator: tool catalogue selection mode=fallback reason=%s total=%s "
-                "query_count=%s candidates=%s elapsed_ms=%.1f",
-                type(e).__name__,
-                tool_count,
-                query_count,
-                len(fallback_entries),
-                (time.monotonic() - started_at) * 1000,
+            _log_tool_catalogue_fallback(
+                reason=type(e).__name__,
+                total=tool_count,
+                query_count=query_count,
+                selection=fallback_selection,
+                started_at=started_at,
             )
-            return format_tool_catalogue(fallback_entries, max_tools=None)
+            return format_tool_catalogue(fallback_selection.entries, max_tools=None)
 
     @classmethod
     def _run_tool_router(
