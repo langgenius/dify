@@ -38,6 +38,7 @@ describe('HomeSearch shortcut', () => {
     render(
       <>
         <input aria-label="Editor" onKeyDown={(event) => event.preventDefault()} />
+        <input aria-label="Description" />
         <HomeSearch>
           <input aria-label="Marketplace search" />
         </HomeSearch>
@@ -48,7 +49,13 @@ describe('HomeSearch shortcut', () => {
     fireEvent.keyDown(editor, { key: 'k', ...modifier })
     expect(editor).toHaveFocus()
     fireEvent.keyUp(editor, { key: 'k', ...modifier })
-    fireEvent.keyDown(editor, { key: 'k', ...modifier, isComposing: true })
-    expect(editor).toHaveFocus()
+
+    const description = screen.getByRole('textbox', { name: 'Description' })
+    await user.click(description)
+    expect(fireEvent.keyDown(description, { key: 'k', ...modifier, isComposing: true })).toBe(true)
+    expect(description).toHaveFocus()
+    fireEvent.keyUp(description, { key: 'k', ...modifier })
+    fireEvent.keyDown(description, { key: 'k', ...modifier })
+    expect(screen.getByRole('textbox', { name: 'Marketplace search' })).toHaveFocus()
   })
 })

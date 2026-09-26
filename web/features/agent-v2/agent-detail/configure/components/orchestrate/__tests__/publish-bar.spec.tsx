@@ -601,7 +601,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
     ).toBeDisabled()
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
 
     fireEvent.click(
@@ -842,7 +841,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
     ).not.toHaveAttribute('aria-busy')
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
   })
 
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {

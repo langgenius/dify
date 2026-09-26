@@ -10,19 +10,21 @@ import {
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ReactFlowProvider } from 'reactflow'
+import { Handle, Position, ReactFlowProvider, useStore as useReactFlowStore } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createStore, useStore } from 'zustand'
 import { WorkflowContext } from '../../context'
 import { EdgeContextmenu } from '../../edge-contextmenu'
+import { useNodeKeyboardInteractions } from '../../hooks/use-node-keyboard-interactions'
 import { NodeActionsDropdown } from '../../node-actions-menu'
 import { NodeActionsContextMenuContent } from '../../node-actions-menu/context-menu-content'
+import VarReferenceVars from '../../nodes/_base/components/variable/var-reference-vars'
 import { NoteEditor, NoteEditorContextProvider } from '../../note-node/note-editor'
 import NoteOperator from '../../note-node/note-editor/toolbar/operator'
 import { SelectionContextmenu } from '../../selection-contextmenu'
 import { createWorkflowStore } from '../../store/workflow'
-import { BlockEnum } from '../../types'
+import { BlockEnum, VarType } from '../../types'
 import { WorkflowCanvas } from '../workflow-canvas'
 import 'reactflow/dist/style.css'
 
@@ -509,4 +511,107 @@ it('keeps focus on an outside input when it dismisses a node dropdown', async ()
     .element(screen.getByRole('menuitem', { name: /workflow.common.copy/ }))
     .not.toBeInTheDocument()
   await expect.element(outsideInput).toHaveFocus()
+})
+
+function VariableConnectionNode({ id }: NodeProps) {
+  return (
+    <div style={{ width: 150, height: 80 }}>
+      {id}
+      <Handle type="source" position={Position.Right} data-testid={`source-${id}`} />
+      <Handle type="target" position={Position.Left} data-testid={`target-${id}`} />
+    </div>
+  )
+}
+const variableConnectionNodeTypes = { connection: VariableConnectionNode }
+const variableConnectionNodes: Node[] = [
+  {
+    id: 'source',
+    type: 'connection',
+    position: { x: 100, y: 150 },
+    data: { type: BlockEnum.Code, title: 'Source' },
+  },
+  {
+    id: 'assigner',
+    type: 'connection',
+    position: { x: 500, y: 150 },
+    data: { type: BlockEnum.VariableAssigner, title: 'Assigner' },
+  },
+]
+
+function VariableConnectionCanvas({ onSelect }: { onSelect: (value: string[]) => void }) {
+  const [showPicker, setShowPicker] = useState(false)
+  const canvas = useReactFlowStore((state) => state.domNode)
+  const handleNodeKeyDown = useNodeKeyboardInteractions(() => {})
+
+  return (
+    <div style={{ width: 800, height: 500 }}>
+      <WorkflowCanvas
+        nodes={variableConnectionNodes}
+        edges={[]}
+        nodeTypes={variableConnectionNodeTypes}
+        onKeyDownCapture={handleNodeKeyDown}
+        onConnectEnd={() => setShowPicker(true)}
+        deleteKeyCode={null}
+      >
+        {showPicker && (
+          <VarReferenceVars
+            hideSearch
+            keyboardTarget={canvas}
+            vars={[
+              {
+                nodeId: 'source',
+                title: 'Source',
+                vars: [
+                  { variable: 'first', type: VarType.string },
+                  { variable: 'second', type: VarType.string },
+                ],
+              },
+            ]}
+            onChange={onSelect}
+          />
+        )}
+      </WorkflowCanvas>
+    </div>
+  )
+}
+
+it('selects a connection variable before node movement handles the focused node keys', async () => {
+  // Real handle dragging preserves node focus; React capture must not move that node before the picker sees its keys.
+  await page.viewport(1000, 700)
+  const store = createWorkflowStore({})
+  const onSelect = vi.fn()
+  const screen = await render(
+    <WorkflowContext value={store}>
+      <ReactFlowProvider>
+        <VariableConnectionCanvas onSelect={onSelect} />
+        <textarea aria-label="Outside variable picker" />
+      </ReactFlowProvider>
+    </WorkflowContext>,
+  )
+
+  const source = screen.getByTestId('rf__node-source')
+  await source.click()
+  await userEvent.dragAndDrop(
+    screen.getByTestId('source-source'),
+    screen.getByTestId('target-assigner'),
+    { steps: 5 },
+  )
+  await expect.element(screen.getByText('first', { exact: true })).toBeVisible()
+  await expect.element(source).toHaveFocus()
+  const sourcePosition = source.element().getBoundingClientRect()
+
+  await userEvent.keyboard('{ArrowDown}{Enter}')
+
+  expect(onSelect).toHaveBeenCalledExactlyOnceWith(
+    ['source', 'second'],
+    expect.objectContaining({ variable: 'second' }),
+  )
+  expect(source.element().getBoundingClientRect().x).toBe(sourcePosition.x)
+  expect(source.element().getBoundingClientRect().y).toBe(sourcePosition.y)
+
+  const outside = screen.getByRole('textbox', { name: 'Outside variable picker' })
+  await outside.click()
+  await userEvent.keyboard('top{Enter}bottom{Home}{ArrowUp}x')
+  await expect.element(outside).toHaveValue('xtop\nbottom')
+  expect(onSelect).toHaveBeenCalledTimes(1)
 })

@@ -28,8 +28,13 @@ vi.mock('../manage-input-field', () => ({
 }))
 
 describe('VarReferenceVars', () => {
-  const keyboardTarget = document.createElement('input')
+  let keyboardTarget: HTMLInputElement
   const createVars = (vars: NodeOutPutVar[]) => vars
+
+  beforeEach(() => {
+    render(<input aria-label="Variable owner" />)
+    keyboardTarget = screen.getByRole('textbox', { name: 'Variable owner' })
+  })
 
   const baseVars = createVars([
     {

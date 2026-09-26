@@ -474,6 +474,8 @@ const VarReferenceVars: FC<Props> = ({
 
     const handleTargetKeyDown = (event: KeyboardEvent) => {
       if (
+        !(event.target instanceof Node) ||
+        !target.contains(event.target) ||
         event.defaultPrevented ||
         event.isComposing ||
         event.altKey ||
@@ -486,8 +488,10 @@ const VarReferenceVars: FC<Props> = ({
       handleKeyboardEvent(event)
     }
 
-    target.addEventListener('keydown', handleTargetKeyDown, true)
-    return () => target.removeEventListener('keydown', handleTargetKeyDown, true)
+    // Run before React's node-movement capture handler while claiming only the declared owner.
+    const ownerDocument = target.ownerDocument
+    ownerDocument.addEventListener('keydown', handleTargetKeyDown, true)
+    return () => ownerDocument.removeEventListener('keydown', handleTargetKeyDown, true)
   }, [handleKeyboardEvent, hideSearch, keyboardTarget])
 
   return (

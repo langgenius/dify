@@ -1,12 +1,11 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import type { ModelAndParameter } from '../../configuration/debug/types'
 import type { AppPublisherProps } from '../types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -36,6 +35,7 @@ type PublisherSummarySectionProps = Pick<
   environmentTabs?: ReactNode
   isChatApp: boolean
   isPublishing: boolean
+  keyboardTarget: RefObject<HTMLDivElement | null>
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   published: boolean
@@ -52,6 +52,7 @@ export function PublisherSummarySection({
   handleRestore,
   isChatApp,
   isPublishing,
+  keyboardTarget,
   isWorkflowApp = false,
   multipleModelConfigs = [],
   onEditVersion,
@@ -62,7 +63,6 @@ export function PublisherSummarySection({
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
-  const summaryRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['workflow', 'workflowHistory'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
@@ -83,14 +83,14 @@ export function PublisherSummarySection({
   }
 
   useHotkey(APP_PUBLISH_HOTKEY, () => void requestPublish(), {
-    target: summaryRef,
+    target: keyboardTarget,
     enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
     ignoreInputs: false,
     requireReset: true,
   })
 
   return (
-    <div ref={summaryRef} className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3 p-4">
       {environmentTabs}
       <div className="flex items-start gap-1 px-1 py-0.5">
         <PublisherTimelineMarker position="top" />

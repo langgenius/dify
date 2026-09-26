@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useRef } from 'react'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -52,12 +53,19 @@ const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHist
   ...overrides,
 })
 
-function PublisherPopup(props: Partial<ComponentProps<typeof PublisherSummarySection>>) {
+function PublisherPopup({
+  defaultOpen = false,
+  ...props
+}: Partial<Omit<ComponentProps<typeof PublisherSummarySection>, 'keyboardTarget'>> & {
+  defaultOpen?: boolean
+}) {
+  const popupRef = useRef<HTMLDivElement>(null)
   return (
-    <Popover>
+    <Popover defaultOpen={defaultOpen}>
       <PopoverTrigger>Open publisher</PopoverTrigger>
-      <PopoverContent>
+      <PopoverContent ref={popupRef}>
         <PublisherSummarySection
+          keyboardTarget={popupRef}
           formatTimeFromNow={() => 'just now'}
           handlePublish={vi.fn().mockResolvedValue(undefined)}
           handleRestore={vi.fn().mockResolvedValue(undefined)}
@@ -256,7 +264,8 @@ describe('app-publisher sections', () => {
     const handleRestore = vi.fn()
 
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '3 minutes ago'}
@@ -283,7 +292,8 @@ describe('app-publisher sections', () => {
     const handleRestore = vi.fn()
 
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '3 minutes ago'}
@@ -312,7 +322,8 @@ describe('app-publisher sections', () => {
 
   it('should render the initial publish action when the draft has not been published yet', () => {
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '1 minute ago'}
@@ -339,7 +350,8 @@ describe('app-publisher sections', () => {
     const onEditVersion = vi.fn()
 
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={1_710_000_000_000}
         formatTimeFromNow={() => '17 days ago'}
@@ -376,7 +388,8 @@ describe('app-publisher sections', () => {
     const onEditVersion = vi.fn()
 
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={1_710_000_200_000}
         formatTimeFromNow={() => '2 minutes ago'}
@@ -414,7 +427,8 @@ describe('app-publisher sections', () => {
 
   it('should keep non-workflow apps free of workflow version details and saved time', () => {
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={1_710_000_200_000}
         formatTimeFromNow={() => '2 minutes ago'}
@@ -443,7 +457,8 @@ describe('app-publisher sections', () => {
     const handlePublish = vi.fn()
 
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '1 minute ago'}
@@ -467,7 +482,8 @@ describe('app-publisher sections', () => {
 
   it('should disable multiple-model publishing when publishing is unavailable', () => {
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '1 minute ago'}
@@ -489,7 +505,8 @@ describe('app-publisher sections', () => {
 
   it('should render the upgrade hint when the start node limit is exceeded', () => {
     render(
-      <PublisherSummarySection
+      <PublisherPopup
+        defaultOpen
         debugWithMultipleModel={false}
         draftUpdatedAt={Date.now()}
         formatTimeFromNow={() => '1 minute ago'}
