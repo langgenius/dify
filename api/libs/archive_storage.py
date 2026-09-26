@@ -19,6 +19,7 @@ from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 from configs import dify_config
+from libs.stream import close_stream
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ class ArchiveStorage:
     def get_object(self, key: str) -> bytes:
         """
         Download an object from the archive storage.
+        The response body is closed after reading, including on read errors.
 
         Args:
             key: Object key (path) within the bucket
@@ -143,7 +145,11 @@ class ArchiveStorage:
         """
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            return response["Body"].read()
+            body = response["Body"]
+            try:
+                return body.read()
+            finally:
+                close_stream(body)
         except ClientError as e:
             if _is_object_not_found_error(e):
                 raise FileNotFoundError(f"Archive object not found: {key}") from e
@@ -154,6 +160,7 @@ class ArchiveStorage:
     def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
         """
         Stream an object from the archive storage.
+        The response body is closed when iteration ends or the generator is closed.
 
         Args:
             key: Object key (path) within the bucket
@@ -167,7 +174,11 @@ class ArchiveStorage:
         """
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            yield from response["Body"].iter_chunks()
+            body = response["Body"]
+            try:
+                yield from body.iter_chunks()
+            finally:
+                close_stream(body)
         except ClientError as e:
             if _is_object_not_found_error(e):
                 raise FileNotFoundError(f"Archive object not found: {key}") from e
