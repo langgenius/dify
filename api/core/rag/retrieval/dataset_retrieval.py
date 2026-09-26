@@ -1199,12 +1199,16 @@ class DatasetRetrieval:
                         all_documents.extend(documents)
                 else:
                     if top_k > 0:
+                        # top_k=0 is a legal explicit value (the SINGLE-retrieval
+                        # tool path reads the stored top_k as-is); only a missing
+                        # entry falls back to the default.
+                        dataset_top_k = retrieval_model.get("top_k")
                         # retrieval source
                         documents = RetrievalService.retrieve(
                             retrieval_method=retrieval_model["search_method"],
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=retrieval_model.get("top_k") or 4,
+                            top_k=dataset_top_k if dataset_top_k is not None else 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
                             if retrieval_model["score_threshold_enabled"]
                             else 0.0,
