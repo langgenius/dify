@@ -206,17 +206,23 @@ const InputField: React.FC<InputFieldProps> = ({
     })
   }, [])
 
+  // Let child React handlers commit their input before claiming the field shortcut.
   useHotkey(
     SAVE_HOTKEY,
     (event) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        !(event.target instanceof Node) ||
+        !rootRef.current?.contains(event.target)
+      )
+        return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
       handleSave()
     },
     {
-      target: rootRef,
       enabled: nameValid,
       ignoreInputs: false,
       preventDefault: false,
