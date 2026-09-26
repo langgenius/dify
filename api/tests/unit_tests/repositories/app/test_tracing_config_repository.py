@@ -1,12 +1,13 @@
 from collections.abc import Callable
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, AppMode, TraceAppConfig
-from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.app_tracing_config_service import AppTracingConfigAppNotFoundError, AppTracingConfigRecord
+from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -86,18 +87,21 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
         assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == _APP_ID)) is None
 
 
-@pytest.mark.parametrize("app_state", ["other-workspace", "non-normal"])
-def test_all_operations_reject_apps_outside_the_active_workspace_scope(
-    app_state: str,
+@pytest.mark.parametrize(
+    ("workspace_id", "make_unaddressable"),
+    [pytest.param(_OTHER_WORKSPACE_ID, None, id="other-workspace")]
+    + [pytest.param(_WORKSPACE_ID, *case.values, id=case.id) for case in UNADDRESSABLE_IN_WORKSPACE],
+)
+def test_all_operations_reject_apps_console_cannot_address(
+    workspace_id: str,
+    make_unaddressable: MakeUnaddressable | None,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_app(sqlite_session)
-    workspace_id = _OTHER_WORKSPACE_ID
-    if app_state == "non-normal":
-        sqlite_session.execute(text("UPDATE apps SET status = 'disabled' WHERE id = :app_id"), {"app_id": _APP_ID})
-        sqlite_session.commit()
-        workspace_id = _WORKSPACE_ID
+    if make_unaddressable is not None:
+        with sqlite_session_factory.begin() as session:
+            make_unaddressable(session, _APP_ID)
 
     repository = _repository(sqlite_session_factory)
     operations: tuple[Callable[[], object], ...] = (

@@ -43,12 +43,13 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.mcp_server_repository import AppMCPServerRepository
+from repositories.app.site_command_repository import AppSiteCommandRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
-from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -149,6 +150,7 @@ from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
+from services.app.mcp_server_service import AppMCPServerService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -364,6 +366,7 @@ class ApplicationServices:
     account_activation: AccountActivationService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
+    app_mcp_servers: AppMCPServerService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
@@ -791,6 +794,9 @@ def build_application_services(
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
+        app_mcp_servers=AppMCPServerService(
+            servers=AppMCPServerRepository(session_factory=database_client),
+        ),
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,

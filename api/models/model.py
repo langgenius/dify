@@ -34,7 +34,6 @@ from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import (
     ApiTokenType,
-    AppMCPServerStatus,
     AppStatus,
     BannerStatus,
     ConversationFromSource,
@@ -2130,9 +2129,8 @@ class AppMCPServer(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[AppMCPServerStatus] = mapped_column(
-        EnumText(AppMCPServerStatus, length=255), nullable=False, server_default=sa.text("'normal'")
-    )
+    # The repository maps the stored value to the application-owned publication status.
+    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
     parameters: Mapped[str] = mapped_column(LongText, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(

@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, Site
-from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app.site_command_repository import AppSiteCommandRepository
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
+from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -106,6 +107,28 @@ def test_update_scopes_app_to_workspace_and_distinguishes_missing_site(
             actor_id=_ACTOR_ID,
             changes=AppSiteChanges(title="Missing"),
         )
+
+
+@pytest.mark.parametrize("make_unaddressable", UNADDRESSABLE_IN_WORKSPACE)
+def test_commands_reject_apps_console_cannot_address(
+    make_unaddressable: MakeUnaddressable,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_app(sqlite_session)
+    with sqlite_session_factory.begin() as session:
+        make_unaddressable(session, _APP_ID)
+    repository = _repository(sqlite_session_factory)
+    scope: dict[str, str] = {"workspace_id": _WORKSPACE_ID, "app_id": _APP_ID, "actor_id": _ACTOR_ID}
+
+    with pytest.raises(AppSiteAppNotFoundError):
+        repository.update_site(**scope, changes=AppSiteChanges(title="Leaked"))
+    with pytest.raises(AppSiteAppNotFoundError):
+        repository.reset_access_token(**scope)
+    with sqlite_session_factory() as session:
+        site = session.scalar(select(Site).where(Site.app_id == _APP_ID))
+        assert site is not None
+        assert (site.title, site.code) == ("Original", "old-code")
 
 
 def test_update_rolls_back_when_a_site_field_rejects_the_value(

@@ -826,7 +826,9 @@ class TestMCPServerEndpoints:
         assert payload.parameters["url"] == "http://localhost:3000"
 
     def test_mcp_server_update_payload(self):
-        payload = MCPServerUpdatePayload(id="server-1", parameters={"timeout": 30}, status="active")
+        payload = MCPServerUpdatePayload(
+            id="abcdefab-1234-4567-89ab-abcdefabcdef", parameters={"timeout": 30}, status="active"
+        )
         assert payload.status == "active"
 
 

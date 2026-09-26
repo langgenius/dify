@@ -2891,6 +2891,7 @@ Create MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
+| 409 | MCP server already exists for this app |  |
 
 ### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
@@ -16160,11 +16161,11 @@ This class is used to store the schema information of an api based tool.
 
 #### AppMCPServerStatus
 
-AppMCPServer Status Enum
+Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+| AppMCPServerStatus | string | Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls. |  |
 
 #### AppMetadataConditionResponse
 
@@ -19833,9 +19834,9 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Server description | No |
-| id | string | Server ID | Yes |
+| id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
-| status | string | Server status | No |
+| status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
 
 #### Marketplace
 

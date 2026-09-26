@@ -362,16 +362,6 @@ export const zMcpServerCreatePayload = z.object({
 })
 
 /**
- * MCPServerUpdatePayload
- */
-export const zMcpServerUpdatePayload = z.object({
-  description: z.string().nullish(),
-  id: z.string(),
-  parameters: z.record(z.string(), z.unknown()),
-  status: z.string().nullish(),
-})
-
-/**
  * AppSiteUpdatePayload
  */
 export const zAppSiteUpdatePayload = z.object({
@@ -1174,7 +1164,7 @@ export const zMessageFile = z.object({
 /**
  * AppMCPServerStatus
  *
- * AppMCPServer Status Enum
+ * Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
  */
 export const zAppMcpServerStatus = z.enum(['active', 'inactive', 'normal'])
 
@@ -1190,6 +1180,16 @@ export const zAppMcpServerResponse = z.object({
   server_code: z.string(),
   status: zAppMcpServerStatus,
   updated_at: z.int().nullish(),
+})
+
+/**
+ * MCPServerUpdatePayload
+ */
+export const zMcpServerUpdatePayload = z.object({
+  description: z.string().nullish(),
+  id: z.uuid(),
+  parameters: z.record(z.string(), z.unknown()),
+  status: zAppMcpServerStatus.nullish(),
 })
 
 /**
