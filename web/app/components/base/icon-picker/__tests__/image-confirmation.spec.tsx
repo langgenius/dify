@@ -2,6 +2,7 @@ import type {
   PostFilesUploadData,
   PostFilesUploadResponse,
 } from '@dify/contracts/api/console/files/types.gen'
+import type { IconPickerDefaultValue } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -152,3 +153,33 @@ it.each([undefined, null])(
     client.clear()
   },
 )
+
+it('keeps open-session edits and reads the latest default when reopened', async () => {
+  const user = userEvent.setup()
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  const onConfirm = vi.fn()
+  const picker = (open: boolean, defaultValue: IconPickerDefaultValue) => (
+    <QueryClientProvider client={client}>
+      <IconPickerDialog
+        open={open}
+        defaultValue={defaultValue}
+        onConfirm={onConfirm}
+        onOpenChange={() => {}}
+      />
+    </QueryClientProvider>
+  )
+  const view = render(picker(true, { type: 'emoji', icon: '😀', background: '#FEF3F2' }))
+  await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+  const nextDefault = { type: 'image' as const, fileId: 'new-image', url: '/new-image.png' }
+  view.rerender(picker(true, nextDefault))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+  expect(onConfirm).toHaveBeenLastCalledWith({ type: 'emoji', icon: '😀', background: '#F3FEE7' })
+  view.rerender(picker(false, nextDefault))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  view.rerender(picker(true, nextDefault))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+  expect(onConfirm).toHaveBeenLastCalledWith(nextDefault)
+  expect(uploadImage).not.toHaveBeenCalled()
+  client.clear()
+})

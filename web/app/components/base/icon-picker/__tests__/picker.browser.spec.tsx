@@ -198,3 +198,19 @@ it.each(['light', 'dark'])(
     }
   },
 )
+
+it('discards the cancelled draft when reopened immediately from the keyboard', async () => {
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  await render(
+    <QueryClientProvider client={client}>
+      <Harness />
+    </QueryClientProvider>,
+  )
+  await page.getByRole('button', { name: 'Choose', exact: true }).click()
+  await page.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
+  await userEvent.keyboard('{Escape}{Enter}')
+  await expect.element(page.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'app.iconPicker.color.red' })).toBeChecked()
+  client.clear()
+})

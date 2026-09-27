@@ -39,7 +39,7 @@ export type IconPickerDefaultValue =
 export type IconPickerDialogProps = Pick<DialogContentProps, 'initialFocus' | 'finalFocus'> & {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Initial draft for each dialog session. */
+  /** Initial draft for each mounted dialog session; changes while open do not replace edits. */
   defaultValue?: IconPickerDefaultValue
   /** Receives the confirmed value after any image upload; does not await consumer persistence. */
   onConfirm: (value: IconPickerValue) => void
