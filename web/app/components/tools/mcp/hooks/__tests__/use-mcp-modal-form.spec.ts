@@ -199,6 +199,18 @@ describe('useMCPModalForm', () => {
         icon: 'https://example.com/files/abc123/file-preview/icon.png',
       } as unknown as ToolWithProvider
 
+      it('uses the default icon when the existing URL has no uploaded file id', () => {
+        const { result } = renderHook(() =>
+          useMCPModalForm({ ...mockDataWithImageIcon, icon: 'https://example.com/icon.png' }),
+        )
+
+        expect(result.current.state.appIcon).toEqual({
+          type: 'emoji',
+          icon: '🔗',
+          background: '#6366F1',
+        })
+      })
+
       it('should initialize image icon from string URL', () => {
         const { result } = renderHook(() => useMCPModalForm(mockDataWithImageIcon))
 
@@ -386,6 +398,28 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.isFetchingIcon).toBe(false)
     })
 
+    it('uses the uploaded file id independently of the preview URL format', async () => {
+      const { uploadRemoteFileInfo } = await import('@/service/common')
+      vi.mocked(uploadRemoteFileInfo).mockResolvedValueOnce({
+        id: 'uploaded-icon-id',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/icon.png',
+      })
+      const { result } = renderHook(() => useMCPModalForm())
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+      })
+
+      expect(result.current.state.appIcon).toEqual({
+        type: 'image',
+        fileId: 'uploaded-icon-id',
+        url: 'https://example.com/icon.png',
+      })
+    })
+
     it('should handle error when icon fetch fails with error code', async () => {
       const { uploadRemoteFileInfo } = await import('@/service/common')
       const mockError = {
@@ -556,19 +590,6 @@ describe('useMCPModalForm', () => {
       const { result } = renderHook(() => useMCPModalForm(mockData))
 
       expect(result.current.state.isDynamicRegistration).toBe(true)
-    })
-
-    it('should handle string icon URL', () => {
-      const mockData = {
-        id: 'test',
-        name: 'Test',
-        icon: 'https://example.com/icon.png',
-      } as unknown as ToolWithProvider
-
-      const { result } = renderHook(() => useMCPModalForm(mockData))
-
-      expect(result.current.state.appIcon.type).toBe('image')
-      expect((result.current.state.appIcon as ImageIcon).url).toBe('https://example.com/icon.png')
     })
   })
 

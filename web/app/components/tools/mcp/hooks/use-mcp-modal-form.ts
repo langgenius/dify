@@ -8,20 +8,22 @@ import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { uploadRemoteFileInfo } from '@/service/common'
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' } satisfies IconPickerValue
 const extractFileId = (url: string) => {
   const match = /files\/(.+?)\/file-preview/.exec(url)
   return match ? match[1] : null
 }
 const getIcon = (data?: ToolWithProvider): IconPickerValue => {
-  if (!data) return DEFAULT_ICON as IconPickerValue
-  if (typeof data.icon === 'string')
-    return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as IconPickerValue
+  if (!data) return DEFAULT_ICON
+  if (typeof data.icon === 'string') {
+    const fileId = extractFileId(data.icon)
+    return fileId ? { type: 'image', url: data.icon, fileId } : DEFAULT_ICON
+  }
   return {
-    ...data.icon,
-    icon: data.icon.content,
     type: 'emoji',
-  } as unknown as IconPickerValue
+    icon: data.icon.content,
+    background: data.icon.background,
+  }
 }
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
   return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({
@@ -133,7 +135,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
         if (isStale()) return
 
-        setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
+        setAppIcon({ type: 'image', url: res.url, fileId: res.id })
       } catch (e) {
         if (isStale()) return
 
