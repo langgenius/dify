@@ -1,6 +1,5 @@
 'use client'
 
-import type { Ref, RefObject } from 'react'
 import type { Emoji, EmojiGroup } from './emoji-data'
 import {
   Autocomplete,
@@ -18,27 +17,13 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
-import {
-  memo,
-  useCallback,
-  useDeferredValue,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { emojiCatalogOptions } from './emoji-data'
 import { recommendedEmojis } from './emoji-styles'
 import { useRecentEmojisValue } from './recent-emojis'
 
-export type EmojiPickerHandle = {
-  revealEmoji: (emoji: string) => void
-}
-
 export type EmojiPickerProps = {
-  ref?: Ref<EmojiPickerHandle>
   value?: string
   onValueChange: (emoji: string) => void
   className?: string
@@ -53,17 +38,13 @@ type IndexedGroup = EmojiGroup & { startIndex: number }
 const EmojiList = memo(
   ({
     groups,
-    recommendationNodesRef,
     value,
-    selectedGroupId,
-    onSelect,
+    onValueChange,
     label,
   }: {
-    recommendationNodesRef: RefObject<Map<string, HTMLDivElement>>
     groups: IndexedGroup[]
     value?: string
-    selectedGroupId?: string
-    onSelect: (emoji: string, groupId: string) => void
+    onValueChange: (emoji: string) => void
     label: string
   }) => {
     return (
@@ -78,26 +59,14 @@ const EmojiList = memo(
                 {group.items.slice(row * columns, (row + 1) * columns).map((item, column) => (
                   <AutocompleteItem
                     key={item.emoji}
-                    ref={
-                      group.id === 'recommended'
-                        ? (node) => {
-                            if (!node) return
-                            recommendationNodesRef.current.set(item.emoji, node)
-                            return () => {
-                              recommendationNodesRef.current.delete(item.emoji)
-                            }
-                          }
-                        : undefined
-                    }
                     index={group.startIndex + row * columns + column}
                     value={item}
                     aria-label={item.label}
-                    onClick={() => onSelect(item.emoji, group.id)}
+                    onClick={() => onValueChange(item.emoji)}
                     className={cn(
                       value === item.emoji &&
-                        group.id === selectedGroupId &&
                         'ring-[1.5px] ring-components-option-card-option-selected-border ring-inset',
-                      'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover-alt',
+                      'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover',
                     )}
                   >
                     <span aria-hidden="true">{item.emoji}</span>
@@ -113,33 +82,10 @@ const EmojiList = memo(
 )
 
 /** Search is transient; choosing a candidate changes the caller's value, never the query. */
-export function EmojiPicker({ ref, value, onValueChange, className }: EmojiPickerProps) {
+export function EmojiPicker({ value, onValueChange, className }: EmojiPickerProps) {
   const { t } = useTranslation(['app', 'common'])
   const [search, setSearch] = useState('')
-  const [selectedOccurrence, setSelectedOccurrence] = useState<{ emoji: string; groupId: string }>()
-  const handleSelect = useCallback(
-    (emoji: string, groupId: string) => {
-      setSelectedOccurrence({ emoji, groupId })
-      onValueChange(emoji)
-    },
-    [onValueChange],
-  )
   const deferredSearch = useDeferredValue(search)
-  // Clearing is a discrete action: restore the list in the same commit as the input.
-  const filterSearch = search === '' ? '' : deferredSearch
-  const recommendationNodesRef = useRef(new Map<string, HTMLDivElement>())
-  const revealTargetRef = useRef<string | null>(null)
-  useImperativeHandle(
-    ref,
-    () => ({
-      revealEmoji(emoji) {
-        setSelectedOccurrence({ emoji, groupId: 'recommended' })
-        setSearch('')
-        revealTargetRef.current = emoji
-      },
-    }),
-    [],
-  )
   const recent = useRecentEmojisValue()
   const catalog = useQuery(emojiCatalogOptions)
   const categories = catalog.data ?? emptyGroups
@@ -166,10 +112,6 @@ export function EmojiPicker({ ref, value, onValueChange, className }: EmojiPicke
       ...categories,
     ].filter((group) => group.items.length)
   }, [categories, recent, t])
-  const selectedGroupId =
-    selectedOccurrence?.emoji === value
-      ? selectedOccurrence?.groupId
-      : groups.find((group) => group.items.some((item) => item.emoji === value))?.id
   const searchIndex = useMemo(
     () =>
       new Map(
@@ -186,7 +128,7 @@ export function EmojiPicker({ ref, value, onValueChange, className }: EmojiPicke
     [categories],
   )
   const filteredGroups = useMemo(() => {
-    const query = filterSearch.trim().toLocaleLowerCase('en')
+    const query = deferredSearch.trim().toLocaleLowerCase('en')
     const filtered = query
       ? categories
           .map((group) => ({
@@ -201,17 +143,7 @@ export function EmojiPicker({ ref, value, onValueChange, className }: EmojiPicke
       startIndex += group.items.length
       return result
     })
-  }, [categories, filterSearch, groups, searchIndex])
-
-  // Wait for the committed list and style-panel layout before scrolling, ahead of paint.
-  useLayoutEffect(() => {
-    const revealTarget = revealTargetRef.current
-    if (!revealTarget || filterSearch) return
-    const target = recommendationNodesRef.current.get(revealTarget)
-    if (!target) return
-    target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-    revealTargetRef.current = null
-  }, [value, filterSearch, filteredGroups])
+  }, [categories, deferredSearch, groups, searchIndex])
 
   return (
     <Autocomplete
@@ -279,10 +211,8 @@ export function EmojiPicker({ ref, value, onValueChange, className }: EmojiPicke
         )}
         <EmojiList
           groups={filteredGroups}
-          recommendationNodesRef={recommendationNodesRef}
           value={value}
-          selectedGroupId={selectedGroupId}
-          onSelect={handleSelect}
+          onValueChange={onValueChange}
           label={t(($) => $['iconPicker.emoji'], { ns: 'app' })}
         />
       </div>
