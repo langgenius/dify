@@ -595,6 +595,7 @@ export default interface Resources {
     'gotoAnything.tryDifferentSearch': 'Try a different search term'
     'iconPicker.cancel': 'Cancel'
     'iconPicker.chooseStyle': 'Choose Style'
+    'iconPicker.clearSearch': 'Clear search'
     'iconPicker.color.blue': 'Blue'
     'iconPicker.color.gray': 'Gray'
     'iconPicker.color.green': 'Green'

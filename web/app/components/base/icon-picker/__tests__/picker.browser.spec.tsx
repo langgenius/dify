@@ -70,6 +70,9 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await page.getByRole('button', { name: 'Choose', exact: true }).click()
   const input = page.getByRole('combobox', { name: 'app.iconPicker.search' })
   await expect.element(input).toHaveFocus()
+  const clear = page.getByRole('button', { name: 'app.iconPicker.clearSearch' })
+  await expect.element(clear).not.toBeInTheDocument()
+  const unfilteredCount = page.getByRole('gridcell').all().length
   await input.fill('Face')
   await expect.poll(() => page.getByRole('gridcell').all().length).toBe(20)
   await userEvent.keyboard('{ArrowDown}{ArrowRight}')
@@ -97,6 +100,16 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   const chosen = keyboardCandidate.textContent!
   await userEvent.keyboard('{Enter}')
   await expect.element(input).toHaveValue('Face')
+  const green = page.getByRole('radio', { name: 'app.iconPicker.color.green' })
+  await green.click()
+  await input.fill('Face 0')
+  await expect.poll(() => page.getByRole('gridcell').all().length).toBe(1)
+  await clear.click()
+  await expect.element(input).toHaveValue('')
+  await expect.element(input).toHaveFocus()
+  await expect.element(clear).not.toBeInTheDocument()
+  await expect.poll(() => page.getByRole('gridcell').all().length).toBe(unfilteredCount)
+  await expect.element(green).toBeChecked()
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
   await expect.element(page.getByRole('status', { name: 'Saved icon' })).toHaveTextContent(chosen)
   const trigger = page.getByRole('button', { name: 'Choose', exact: true })
@@ -109,7 +122,9 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await expect.element(trigger).toHaveFocus()
   await expect.element(page.getByRole('status', { name: 'Saved icon' })).toHaveTextContent(chosen)
   await trigger.click()
-  await expect.element(page.getByRole('radio', { name: 'app.iconPicker.color.red' })).toBeChecked()
+  await expect
+    .element(page.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    .toBeChecked()
   client.clear()
 })
 

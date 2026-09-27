@@ -3,6 +3,7 @@
 import type { Emoji, EmojiGroup } from './emoji-data'
 import {
   Autocomplete,
+  AutocompleteClear,
   AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
@@ -172,6 +173,7 @@ export function EmojiPicker({ value, onValueChange, className }: EmojiPickerProp
               placeholder={t(($) => $['iconPicker.search'], { ns: 'app' })}
               className="ps-1.5"
             />
+            <AutocompleteClear aria-label={t(($) => $['iconPicker.clearSearch'], { ns: 'app' })} />
           </AutocompleteInputGroup>
         </div>
         <output className="sr-only">
