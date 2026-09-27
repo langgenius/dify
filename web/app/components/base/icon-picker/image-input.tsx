@@ -127,11 +127,11 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
               onZoomChange={setZoom}
               mediaProps={{ onError: handleImageError }}
               cropperProps={{
+                role: 'group',
                 'aria-label': t(($) => $['iconPicker.crop'], { ns: 'app' }),
-                'aria-describedby': undefined,
               }}
               classes={{
-                containerClassName:
+                cropAreaClassName:
                   'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid',
               }}
               onCropComplete={(_, area) =>

@@ -77,6 +77,9 @@ describe('ImageInput', () => {
 
       await loadCropperImage()
 
+      expect(screen.getByRole('group', { name: 'app.iconPicker.crop' })).toBeInTheDocument()
+      expect(screen.getByRole('slider', { name: 'app.iconPicker.zoom' })).toBeInTheDocument()
+
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith({
           type: 'crop',

@@ -68,6 +68,11 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
     </QueryClientProvider>,
   )
   await page.getByRole('button', { name: 'Choose', exact: true }).click()
+  await expect.element(page.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeVisible()
+  await expect.element(page.getByRole('tabpanel', { name: 'app.iconPicker.emoji' })).toBeVisible()
+  await expect
+    .element(page.getByRole('radiogroup', { name: 'app.iconPicker.chooseStyle' }))
+    .toBeVisible()
   const input = page.getByRole('combobox', { name: 'app.iconPicker.search' })
   await expect.element(input).toHaveFocus()
   const clear = page.getByRole('button', { name: 'app.iconPicker.clearSearch' })

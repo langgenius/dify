@@ -195,7 +195,7 @@ export function EmojiPicker({ value, onValueChange, className }: EmojiPickerProp
         </AutocompleteStatus>
         {catalog.isError && (
           <div className="p-3">
-            <p role="alert">{t(($) => $.error, { ns: 'common' })}</p>
+            <p>{t(($) => $.error, { ns: 'common' })}</p>
             <Button onClick={() => void catalog.refetch()}>
               {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
             </Button>
