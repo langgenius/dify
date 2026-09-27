@@ -35,6 +35,39 @@ const itemToString = (item: Emoji) => item.label
 
 type IndexedGroup = EmojiGroup & { startIndex: number }
 
+const EmojiGridRow = memo(
+  ({
+    items,
+    startIndex,
+    currentEmoji,
+    onValueChange,
+  }: {
+    items: Emoji[]
+    startIndex: number
+    currentEmoji?: string
+    onValueChange: (emoji: string) => void
+  }) => (
+    <AutocompleteRow className="grid grid-cols-9 gap-px px-3 pb-px">
+      {items.map((item, column) => (
+        <AutocompleteItem
+          key={item.emoji}
+          index={startIndex + column}
+          value={item}
+          aria-label={item.label}
+          onClick={() => onValueChange(item.emoji)}
+          className={cn(
+            currentEmoji === item.emoji &&
+              'ring-[1.5px] ring-components-option-card-option-selected-border ring-inset',
+            'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover-alt',
+          )}
+        >
+          <span aria-hidden="true">{item.emoji}</span>
+        </AutocompleteItem>
+      ))}
+    </AutocompleteRow>
+  ),
+)
+
 const EmojiList = memo(
   ({
     groups,
@@ -47,32 +80,32 @@ const EmojiList = memo(
     onValueChange: (emoji: string) => void
     label: string
   }) => {
+    const rowGroups = useMemo(
+      () =>
+        groups.map((group) => ({
+          ...group,
+          rows: Array.from({ length: Math.ceil(group.items.length / columns) }, (_, row) => ({
+            items: group.items.slice(row * columns, (row + 1) * columns),
+            startIndex: group.startIndex + row * columns,
+          })),
+        })),
+      [groups],
+    )
     return (
       <AutocompleteList aria-label={label} className="max-h-none min-h-0 flex-1 scroll-py-8 p-0">
-        {groups.map((group) => (
+        {rowGroups.map((group) => (
           <AutocompleteGroup key={group.id} items={group.items} className="mb-2 first:mt-2">
             <AutocompleteGroupLabel className="sticky top-0 z-1 mb-0.5 bg-components-panel-bg px-3.5 py-1 system-xs-medium-uppercase text-text-tertiary">
               {group.label}
             </AutocompleteGroupLabel>
-            {Array.from({ length: Math.ceil(group.items.length / columns) }, (_, row) => (
-              <AutocompleteRow key={row} className="grid grid-cols-9 gap-px px-3 pb-px">
-                {group.items.slice(row * columns, (row + 1) * columns).map((item, column) => (
-                  <AutocompleteItem
-                    key={item.emoji}
-                    index={group.startIndex + row * columns + column}
-                    value={item}
-                    aria-label={item.label}
-                    onClick={() => onValueChange(item.emoji)}
-                    className={cn(
-                      value === item.emoji &&
-                        'ring-[1.5px] ring-components-option-card-option-selected-border ring-inset',
-                      'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover-alt',
-                    )}
-                  >
-                    <span aria-hidden="true">{item.emoji}</span>
-                  </AutocompleteItem>
-                ))}
-              </AutocompleteRow>
+            {group.rows.map((row) => (
+              <EmojiGridRow
+                key={row.startIndex}
+                items={row.items}
+                startIndex={row.startIndex}
+                currentEmoji={row.items.some((item) => item.emoji === value) ? value : undefined}
+                onValueChange={onValueChange}
+              />
             ))}
           </AutocompleteGroup>
         ))}
@@ -82,7 +115,7 @@ const EmojiList = memo(
 )
 
 /** Search is transient; choosing a candidate changes the caller's value, never the query. */
-export function EmojiPicker({ value, onValueChange, className }: EmojiPickerProps) {
+export const EmojiPicker = memo(({ value, onValueChange, className }: EmojiPickerProps) => {
   const { t } = useTranslation(['app', 'common'])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -218,4 +251,4 @@ export function EmojiPicker({ value, onValueChange, className }: EmojiPickerProp
       </div>
     </Autocomplete>
   )
-}
+})

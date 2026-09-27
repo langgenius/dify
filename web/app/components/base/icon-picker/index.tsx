@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useMutation } from '@tanstack/react-query'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
@@ -112,6 +112,22 @@ function IconPickerSession({
         }
       : undefined,
   )
+  const handleEmojiChange = useCallback((icon: string) => {
+    setEmoji((current) =>
+      current?.icon === icon
+        ? current
+        : {
+            type: 'emoji',
+            icon,
+            background: current?.background ?? defaultEmojiBackground,
+          },
+    )
+  }, [])
+  const handleBackgroundChange = useCallback((background: string) => {
+    setEmoji((current) =>
+      !current || current.background === background ? current : { ...current, background },
+    )
+  }, [])
   const [imageDraft, setImageDraft] = useState<ImageIcon | ImageIconInputValue | null>(() =>
     defaultValue?.type === 'image' ? defaultValue : null,
   )
@@ -240,11 +256,19 @@ function IconPickerSession({
           tabIndex={-1}
           className="flex min-h-0 flex-1 flex-col data-hidden:hidden"
         >
-          <EmojiIconEditor value={emoji} onValueChange={setEmoji} />
+          <EmojiIconEditor
+            value={emoji}
+            onEmojiChange={handleEmojiChange}
+            onBackgroundChange={handleBackgroundChange}
+          />
         </TabsPanel>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pt-3">
-          <EmojiIconEditor value={emoji} onValueChange={setEmoji} />
+          <EmojiIconEditor
+            value={emoji}
+            onEmojiChange={handleEmojiChange}
+            onBackgroundChange={handleBackgroundChange}
+          />
         </div>
       )}
       {imageEnabled && (

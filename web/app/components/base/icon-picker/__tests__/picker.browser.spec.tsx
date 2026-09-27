@@ -106,9 +106,13 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await userEvent.keyboard('{Enter}')
   await expect.element(input).toHaveValue('Face')
   const green = page.getByRole('radio', { name: 'app.iconPicker.color.green' })
+  await expect.element(green).toHaveTextContent(chosen)
   await green.click()
   await input.fill('Face 0')
   await expect.poll(() => page.getByRole('gridcell').all().length).toBe(1)
+  await userEvent.keyboard('{Enter}')
+  const finalEmoji = '😀'
+  await expect.element(green).toBeChecked()
   await clear.click()
   await expect.element(input).toHaveValue('')
   await expect.element(input).toHaveFocus()
@@ -116,7 +120,9 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await expect.poll(() => page.getByRole('gridcell').all().length).toBe(unfilteredCount)
   await expect.element(green).toBeChecked()
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
-  await expect.element(page.getByRole('status', { name: 'Saved icon' })).toHaveTextContent(chosen)
+  await expect
+    .element(page.getByRole('status', { name: 'Saved icon' }))
+    .toHaveTextContent(finalEmoji)
   const trigger = page.getByRole('button', { name: 'Choose', exact: true })
   await expect.element(trigger).toHaveFocus()
   await trigger.click()
@@ -125,7 +131,9 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  await expect.element(page.getByRole('status', { name: 'Saved icon' })).toHaveTextContent(chosen)
+  await expect
+    .element(page.getByRole('status', { name: 'Saved icon' }))
+    .toHaveTextContent(finalEmoji)
   await trigger.click()
   await expect
     .element(page.getByRole('radio', { name: 'app.iconPicker.color.green' }))

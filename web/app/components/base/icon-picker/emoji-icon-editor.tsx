@@ -4,29 +4,22 @@ import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EmojiPicker } from './emoji-picker'
-import { defaultEmojiBackground, emojiStyles } from './emoji-styles'
+import { emojiStyles } from './emoji-styles'
 
 export function EmojiIconEditor({
   value,
-  onValueChange,
+  onEmojiChange,
+  onBackgroundChange,
 }: {
   value?: EmojiIcon
-  onValueChange: (value: EmojiIcon) => void
+  onEmojiChange: (icon: string) => void
+  onBackgroundChange: (background: string) => void
 }) {
   const { t } = useTranslation(['app'])
   const labelId = useId()
   return (
     <>
-      <EmojiPicker
-        value={value?.icon}
-        onValueChange={(icon) =>
-          onValueChange({
-            type: 'emoji',
-            icon,
-            background: value?.background ?? defaultEmojiBackground,
-          })
-        }
-      />
+      <EmojiPicker value={value?.icon} onValueChange={onEmojiChange} />
       {value && (
         <section className="shrink-0 border-t border-divider-subtle bg-components-panel-bg-blur px-3 pt-2 pb-3 backdrop-blur-sm">
           <h3 id={labelId} className="px-0.5 py-1 system-xs-semibold-uppercase text-text-primary">
@@ -35,7 +28,7 @@ export function EmojiIconEditor({
           <RadioGroup
             aria-labelledby={labelId}
             value={value.background.toUpperCase()}
-            onValueChange={(background) => onValueChange({ ...value, background })}
+            onValueChange={onBackgroundChange}
             className="grid grid-cols-6 justify-items-center gap-0.75 pt-0.5"
           >
             {emojiStyles.map((style) => (
