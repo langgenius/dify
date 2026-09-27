@@ -121,7 +121,7 @@ catalog:
   '@tanstack/form-core': 1.33.5
   '@tanstack/query-core': 5.103.1
   '@tanstack/react-form': 1.33.5
-  '@tanstack/react-hotkeys': 0.10.0
+  '@tanstack/react-hotkeys': 0.12.0
   '@tanstack/react-query': 5.103.1
   '@tanstack/react-virtual': 3.14.13
   '@testing-library/dom': 10.4.2

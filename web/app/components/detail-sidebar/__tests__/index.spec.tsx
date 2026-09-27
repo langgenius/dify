@@ -116,7 +116,7 @@ describe('DetailSidebarFrame', () => {
   describe.each(['mac', 'windows'] as const)('%s shortcut', (platform) => {
     const modifiers = platform === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
-    it('toggles detail content outside editing fields', () => {
+    it('toggles detail content once per press outside editing fields', () => {
       renderDetailSidebarFrame(null, platform)
 
       fireEvent.keyDown(document.body, { key: 'b', ...modifiers })
@@ -124,10 +124,26 @@ describe('DetailSidebarFrame', () => {
       expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
       expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
 
+      expect(fireEvent.keyDown(document.body, { key: 'b', repeat: true, ...modifiers })).toBe(false)
+
+      expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+
+      fireEvent.keyUp(document.body, { key: 'b', ...modifiers })
       fireEvent.keyDown(document.body, { key: 'b', ...modifiers })
 
       expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
       expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('expand')
+    })
+
+    it('leaves a consumed shortcut to its local owner', () => {
+      renderDetailSidebarFrame(null, platform)
+      const button = screen.getByRole('button', { name: 'Toggle' })
+      button.addEventListener('keydown', (event) => event.preventDefault(), { once: true })
+
+      fireEvent.keyDown(button, { key: 'b', ...modifiers })
+
+      expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
+      expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
     })
 
     it.each(['Note', 'Note text', 'Name', 'Description'])(
