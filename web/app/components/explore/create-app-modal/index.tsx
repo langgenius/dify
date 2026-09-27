@@ -77,7 +77,7 @@ const CreateAppModal = ({
   const [appIcon, setAppIcon] = useState(() =>
     appIconType === 'image'
       ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl ?? '' }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground ?? '#FEF3F2' },
+      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
   )
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
@@ -120,7 +120,7 @@ const CreateAppModal = ({
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_background: appIcon.type === 'emoji' ? (appIcon.background ?? undefined) : undefined,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }

@@ -137,7 +137,7 @@ const BasicInfoSection = ({
             ? {
                 type: 'emoji',
                 icon: iconInfo.icon,
-                background: iconInfo.icon_background ?? '#FEF3F2',
+                background: iconInfo.icon_background,
               }
             : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
         }

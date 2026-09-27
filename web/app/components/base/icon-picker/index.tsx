@@ -31,11 +31,15 @@ export type ImageIcon = {
 
 export type IconPickerValue = EmojiIcon | ImageIcon
 
+export type IconPickerDefaultValue =
+  | (Omit<EmojiIcon, 'background'> & { background?: EmojiIcon['background'] | null })
+  | ImageIcon
+
 export type IconPickerDialogProps = Pick<DialogContentProps, 'initialFocus' | 'finalFocus'> & {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Initial draft for each dialog session. */
-  defaultValue?: IconPickerValue
+  defaultValue?: IconPickerDefaultValue
   /** Receives the confirmed value after any image upload; does not await consumer persistence. */
   onConfirm: (value: IconPickerValue) => void
   enableImageUpload?: boolean

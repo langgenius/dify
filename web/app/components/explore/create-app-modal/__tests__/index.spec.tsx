@@ -307,6 +307,20 @@ describe('CreateAppModal', () => {
   })
 
   describe('App Icon Picker', () => {
+    it('does not fill a missing background when the picker is cancelled', async () => {
+      const { onConfirm } = await setup({ appIconBackground: undefined })
+      openAppIconPicker()
+      await userEvent.setup().keyboard('{Escape}')
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+        ).not.toBeInTheDocument(),
+      )
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+      expect(onConfirm.mock.calls[0]![0].icon_background).toBeUndefined()
+    })
+
     it('should open and close the picker when Escape is pressed', async () => {
       await setup({
         appIconType: 'image',

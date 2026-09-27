@@ -51,7 +51,7 @@ const DuplicateAppModal = ({
   const [appIcon, setAppIcon] = useState(
     icon_type === 'image'
       ? { type: 'image' as const, url: icon_url ?? '', fileId: icon }
-      : { type: 'emoji' as const, icon, background: icon_background ?? '#FEF3F2' },
+      : { type: 'emoji' as const, icon, background: icon_background },
   )
 
   const deploymentEdition = useAtomValue(deploymentEditionAtom)

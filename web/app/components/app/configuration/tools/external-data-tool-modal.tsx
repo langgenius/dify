@@ -225,7 +225,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
               ? {
                   type: 'emoji',
                   icon: localeData.icon,
-                  background: localeData.icon_background ?? '#FEF3F2',
+                  background: localeData.icon_background,
                 }
               : undefined
           }

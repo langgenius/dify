@@ -71,7 +71,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
       : {
           type: 'emoji' as const,
           icon: appDetail.icon ?? '',
-          background: appDetail.icon_background ?? '#FEF3F2',
+          background: appDetail.icon_background,
         },
   )
 

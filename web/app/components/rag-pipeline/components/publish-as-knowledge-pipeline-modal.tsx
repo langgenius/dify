@@ -153,7 +153,7 @@ const PublishAsKnowledgePipelineModal = ({
                 ? {
                     type: 'emoji',
                     icon: pipelineIcon.icon,
-                    background: pipelineIcon.icon_background ?? '#FEF3F2',
+                    background: pipelineIcon.icon_background,
                   }
                 : { type: 'image', fileId: pipelineIcon.icon, url: pipelineIcon.icon_url || '' }
             }
