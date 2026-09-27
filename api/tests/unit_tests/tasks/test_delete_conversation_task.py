@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.file import FileTransferMethod, FileType
@@ -33,6 +32,7 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    InvokeFrom,
     MessageChainType,
 )
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType

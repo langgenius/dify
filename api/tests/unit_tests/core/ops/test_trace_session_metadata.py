@@ -139,7 +139,7 @@ def test_message_trace_metadata_includes_trace_session_id(monkeypatch, sqlite_se
         mode=AppMode.CHAT,
         name="Trace Conversation",
         summary=None,
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         invoke_from=None,

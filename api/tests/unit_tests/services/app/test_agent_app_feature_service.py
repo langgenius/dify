@@ -15,6 +15,7 @@ from events.app_event import app_model_config_was_updated
 from extensions.application_services.agent import build_agent_app_services
 from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
+from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
@@ -85,7 +86,7 @@ def agent_app(sqlite_session: Session) -> App:
         tenant_id=TENANT_ID,
         name="Agent App",
         mode=AppMode.AGENT,
-        status="normal",
+        status=AppStatus.NORMAL,
         enable_site=False,
         enable_api=False,
         max_active_requests=0,

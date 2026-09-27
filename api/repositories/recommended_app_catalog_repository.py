@@ -144,7 +144,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
                         id=app.id,
                         name=app.name,
                         mode=app.mode.value,
-                        icon=cast(str | None, app.icon),
+                        icon=app.icon,
                         icon_type=app.icon_type.value if app.icon_type is not None else None,
                         icon_background=app.icon_background,
                     ),
@@ -182,7 +182,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
         return RecommendedAppDetailRecord(
             id=app.id,
             name=app.name,
-            icon=cast(str | None, app.icon),
+            icon=app.icon,
             icon_background=app.icon_background,
             mode=app.mode.value,
             export_data=AppDslService.export_dsl(app_model=app, session=session),

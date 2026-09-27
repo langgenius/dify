@@ -35,7 +35,7 @@ def runner(sqlite_session: Session):
         model_id=None,
         mode=AppMode.AGENT_CHAT,
         name="Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
@@ -49,7 +49,7 @@ def runner(sqlite_session: Session):
         id="msg",
         app_id=app.id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="q",
         message={},
         message_tokens=0,
@@ -67,8 +67,8 @@ def runner(sqlite_session: Session):
         from_end_user_id=None,
         from_account_id="user",
         app_mode=AppMode.AGENT_CHAT,
-        created_at=datetime(2025, 1, 1),
     )
+    message.created_at = datetime(2025, 1, 1)
     sqlite_session.add_all([app, conversation, message])
     sqlite_session.commit()
     return AgentChatAppRunner()

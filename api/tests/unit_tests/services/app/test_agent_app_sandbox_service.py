@@ -35,7 +35,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import AppStatus, ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.app.agent_app_repository import AgentAppRepository
@@ -113,7 +113,7 @@ def sandbox(
         tenant_id="tenant-1",
         name="Sandbox",
         mode=AppMode.ADVANCED_CHAT if kind == "advanced_chat" else AppMode.WORKFLOW if workflow else AppMode.AGENT,
-        status="normal",
+        status=AppStatus.NORMAL,
         enable_site=False,
         enable_api=False,
         max_active_requests=0,

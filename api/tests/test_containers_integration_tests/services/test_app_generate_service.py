@@ -490,7 +490,7 @@ class TestAppGenerateService:
             type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=fake.uuid4(),
         )
 
@@ -945,7 +945,7 @@ class TestAppGenerateService:
             type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=fake.uuid4(),
         )
 

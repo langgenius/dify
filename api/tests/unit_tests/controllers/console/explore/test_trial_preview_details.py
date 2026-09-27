@@ -244,9 +244,9 @@ def harness(
         enable_site=False,
         enable_api=False,
         max_active_requests=0,
-        created_at=_CREATED_AT,
-        updated_at=_UPDATED_AT,
     )
+    target.created_at = _CREATED_AT
+    target.updated_at = _UPDATED_AT
     config = AppModelConfig(
         app_id=target.id,
         opening_statement="",

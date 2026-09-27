@@ -29,7 +29,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.base import Base, TypeBase
-from models.model import App, AppModelConfig, InstalledApp, Site, UploadFile
+from models.model import App, AppMode, AppModelConfig, InstalledApp, Site, UploadFile
 from models.tools import ToolFile
 from services.agent.dsl_entities import (
     AgentPackage,
@@ -181,7 +181,7 @@ def _package(
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/example:1.0.0@digest"),
     )
     app = make_agent_app_dsl(
-        App(name=name, mode="agent"),
+        App(name=name, mode=AppMode.AGENT),
         package_ref="agent_1",
         packages={
             "agent_1": AgentPackage(

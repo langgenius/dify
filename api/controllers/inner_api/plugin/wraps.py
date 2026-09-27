@@ -77,7 +77,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 user_model = EndUser(
                     tenant_id=tenant_id,
                     type=EndUserType.SERVICE_API,
-                    is_anonymous=is_anonymous,
+                    _is_anonymous=is_anonymous,
                     session_id=user_id,
                 )
                 session.add(user_model)

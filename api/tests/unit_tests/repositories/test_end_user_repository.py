@@ -15,20 +15,19 @@ _APP_ID = "33333333-3333-3333-3333-333333333333"
 
 def _persist_end_user(session: Session) -> None:
     timestamp = datetime(2026, 1, 1)
-    session.add(
-        EndUser(
-            id=_END_USER_ID,
-            tenant_id=_TENANT_ID,
-            app_id=_APP_ID,
-            type=EndUserType.SERVICE_API,
-            external_user_id="external-1",
-            name="Alice",
-            is_anonymous=True,
-            session_id="session-1",
-            created_at=timestamp,
-            updated_at=timestamp,
-        )
+    end_user = EndUser(
+        id=_END_USER_ID,
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        type=EndUserType.SERVICE_API,
+        external_user_id="external-1",
+        name="Alice",
+        _is_anonymous=True,
+        session_id="session-1",
     )
+    end_user.created_at = timestamp
+    end_user.updated_at = timestamp
+    session.add(end_user)
     session.commit()
 
 

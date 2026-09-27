@@ -32,10 +32,10 @@ def _persisted_message(
         currency="USD",
         from_source=ConversationFromSource.API,
         parent_message_id=parent_message_id,
-        created_at=created_at,
-        updated_at=created_at,
     )
     message._inputs = {}
+    message.created_at = created_at
+    message.updated_at = created_at
     return message
 
 

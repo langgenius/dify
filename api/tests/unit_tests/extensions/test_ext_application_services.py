@@ -929,7 +929,14 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
     app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
         session.add(
-            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode=AppMode.COMPLETION,
+                enable_site=True,
+                enable_api=False,
+            )
         )
         account = Account(name="Account", email="trial@example.com")
         account.id = account_id
@@ -972,7 +979,7 @@ def test_app_audio_uses_the_configured_database_and_app_owner(
                 id=app_id,
                 tenant_id=tenant_id,
                 name="Trial",
-                mode="chat",
+                mode=AppMode.CHAT,
                 app_model_config_id=config.id,
                 enable_site=True,
                 enable_api=False,
@@ -1021,8 +1028,22 @@ def test_app_previews_use_the_configured_catalog_and_app_owner(
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
-                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
-                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
+                App(
+                    id=other_id,
+                    tenant_id=tenant_id,
+                    name="Private",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
             ]
         )
 
@@ -1049,7 +1070,14 @@ def test_app_preview_details_use_the_configured_database_without_request_globals
         session.add_all(
             [
                 account,
-                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=owner_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=True,
+                    enable_api=False,
+                ),
                 Site(
                     app_id=app_id,
                     title="Preview site",

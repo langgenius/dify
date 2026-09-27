@@ -85,9 +85,21 @@ class _Harness:
 @pytest.fixture
 def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
     target = App(
-        id=str(uuid4()), tenant_id=str(uuid4()), name="Preview", mode="chat", enable_site=True, enable_api=True
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Preview",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
     )
-    decoy = App(id=str(uuid4()), tenant_id=str(uuid4()), name="Decoy", mode="chat", enable_site=True, enable_api=True)
+    decoy = App(
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Decoy",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+    )
     account = Account(name="Viewer", email="preview@example.com")
     active_workspace = Tenant(name="Active workspace")
     config = AppModelConfig(app_id=target.id, opening_statement="Preview opening", pre_prompt="Visible prompt")

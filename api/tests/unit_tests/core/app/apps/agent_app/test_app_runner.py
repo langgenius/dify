@@ -694,7 +694,7 @@ def _message_record() -> Message:
     message = Message(
         app_id="app-1",
         conversation_id="conv-1",
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         message_tokens=0,
