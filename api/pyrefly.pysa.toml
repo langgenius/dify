@@ -1,0 +1,15 @@
+# Pysa scans production code. Keep this configuration separate from the main
+# Pyrefly configuration so regular type checks continue to cover tests and
+# development utilities. Third-party implementations are opaque; the local
+# stubs keep only security-relevant framework boundaries visible to Pysa.
+project-includes = ["."]
+project-excludes = ["**/.venv/**", "**/migrations/**", "**/tests/**", "**/dev/**"]
+search-path = ["."]
+site-package-path = ["security/pysa/stubs"]
+skip-interpreter-query = true
+ignore-missing-imports = ["*"]
+python-platform = "linux"
+python-version = "3.12.0"
+infer-with-first-use = true
+min-severity = "warn"
+errors = { missing-override-decorator = "error", unnecessary-type-conversion = "info" }
