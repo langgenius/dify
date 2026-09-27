@@ -85,7 +85,7 @@ export type CodeBasedExtensionForm = {
   variable: string
   required: boolean
   options: { label: I18nText; value: string }[]
-  default: string
+  default?: string
   placeholder: string
   max_length?: number
 }

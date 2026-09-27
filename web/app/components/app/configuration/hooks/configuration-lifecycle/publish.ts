@@ -198,6 +198,7 @@ export const createPublishHandler =
     }
 
     let body: ReturnType<typeof buildPublishBody>
+    let payload: ReturnType<typeof zAppModelConfigPayload.parse>
     try {
       body = buildPublishBody({
         chatPromptConfig,
@@ -218,6 +219,7 @@ export const createPublishHandler =
         promptVariables,
         resolvedModelModeType,
       })
+      payload = zAppModelConfigPayload.parse(body)
     } catch (error) {
       toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       throw error
@@ -225,7 +227,7 @@ export const createPublishHandler =
 
     await updateAppModelConfig({
       params: { app_id: appId },
-      body: zAppModelConfigPayload.parse(body),
+      body: payload,
     })
     const nextModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.provider = body.model.provider

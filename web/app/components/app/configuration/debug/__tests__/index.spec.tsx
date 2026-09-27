@@ -786,6 +786,32 @@ describe('Debug', () => {
       expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
     })
 
+    it('reports an invalid upload count and allows retry after correcting the configuration', async () => {
+      const user = userEvent.setup()
+      const file = { ...mockState.mockFeaturesState.file, enabled: true, number_limits: 1.5 }
+      mockState.mockFeaturesState.file = file
+      const { notify } = renderDebug({ contextValue: { mode: AppModeEnum.COMPLETION } })
+
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
+      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+
+      file.number_limits = 2
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(mockState.mockSendCompletionMessage).toHaveBeenCalledExactlyOnceWith(
+        'app-id',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            file_upload: expect.objectContaining({ number_limits: 2 }),
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
     it('should send completion request and render completion result', async () => {
       mockState.mockText2speechDefaultModel = { provider: 'openai' }
       mockState.mockFeaturesState = {

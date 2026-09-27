@@ -4286,7 +4286,7 @@
   },
   "web/models/debug.ts": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/models/log.ts": {

@@ -52,7 +52,7 @@ export const getProviderDefaultConfig = (type: string, providers: Provider[]) =>
     return undefined
 
   return currentProvider.form_schema.reduce<Record<string, string>>((prev, next) => {
-    prev[next.variable] = next.default
+    if (next.default !== undefined) prev[next.variable] = next.default
     return prev
   }, {})
 }

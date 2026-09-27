@@ -116,7 +116,7 @@ export type ModerationConfig = MoreLikeThisConfig & {
     api_based_extension_id?: string
     inputs_config?: ModerationContentConfig
     outputs_config?: ModerationContentConfig
-  } & Partial<Record<string, any>>
+  } & Partial<Record<string, unknown>>
 }
 
 type RetrieverResourceConfig = MoreLikeThisConfig

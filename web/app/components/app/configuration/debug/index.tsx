@@ -237,52 +237,53 @@ const Debug: FC<IDebug> = ({
     }))
     const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
 
-    const chatPrompt = zAppChatPromptPayload.safeParse(
-      isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
-    )
-    if (!chatPrompt.success) {
+    let postModelConfig: AppModelConfigPayload
+    try {
+      const chatPrompt = zAppChatPromptPayload.parse(
+        isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+      )
+      const fileUpload = { ...features.file }
+      delete fileUpload.fileUploadConfig
+      postModelConfig = {
+        pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+        prompt_type: promptMode,
+        chat_prompt_config: chatPrompt,
+        completion_prompt_config: isAdvancedMode
+          ? completionPromptConfig
+          : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
+        user_input_form: zAppUserInputFormPayload
+          .array()
+          .parse(promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables)),
+        dataset_query_variable: contextVar || '',
+        dataset_configs: zAppDatasetConfigPayload.parse({
+          ...datasetConfigs,
+          datasets: {
+            datasets: postDatasets,
+          },
+        }),
+        agent_mode: {
+          enabled: false,
+          tools: [],
+        },
+        model: {
+          provider: modelConfig.provider,
+          name: modelConfig.model_id,
+          mode: modelConfig.mode,
+          completion_params: completionParams,
+        },
+        more_like_this: features.moreLikeThis,
+        sensitive_word_avoidance: features.moderation,
+        text_to_speech: features.text2speech,
+        file_upload: zAppFileUploadPayload.parse(fileUpload),
+        opening_statement: introduction,
+        suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+        speech_to_text: speechToTextConfig,
+        retriever_resource: citationConfig,
+        external_data_tools: externalDataToolsConfig,
+      }
+    } catch {
       toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       return false
-    }
-
-    const fileUpload = { ...features.file }
-    delete fileUpload.fileUploadConfig
-    const postModelConfig: AppModelConfigPayload = {
-      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
-      prompt_type: promptMode,
-      chat_prompt_config: chatPrompt.data,
-      completion_prompt_config: isAdvancedMode
-        ? completionPromptConfig
-        : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
-      user_input_form: zAppUserInputFormPayload
-        .array()
-        .parse(promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables)),
-      dataset_query_variable: contextVar || '',
-      dataset_configs: zAppDatasetConfigPayload.parse({
-        ...datasetConfigs,
-        datasets: {
-          datasets: postDatasets,
-        },
-      }),
-      agent_mode: {
-        enabled: false,
-        tools: [],
-      },
-      model: {
-        provider: modelConfig.provider,
-        name: modelConfig.model_id,
-        mode: modelConfig.mode,
-        completion_params: completionParams,
-      },
-      more_like_this: features.moreLikeThis,
-      sensitive_word_avoidance: features.moderation,
-      text_to_speech: features.text2speech,
-      file_upload: zAppFileUploadPayload.parse(fileUpload),
-      opening_statement: introduction,
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      retriever_resource: citationConfig,
-      external_data_tools: externalDataToolsConfig,
     }
 
     const data: Record<string, any> = {
