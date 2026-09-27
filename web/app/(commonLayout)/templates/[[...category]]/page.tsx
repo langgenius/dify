@@ -2,7 +2,7 @@ import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/c
 import { EmbeddedTemplatesMarketplace } from '@/app/components/plugins/marketplace/templates'
 import { TemplateDetailRouteProvider } from '@/app/components/plugins/marketplace/templates/template-detail-route'
 import { parseTemplatesRoute } from '@/app/components/plugins/marketplace/templates/template-links'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/server'
 import { redirect } from '@/next/navigation'
 
 type TemplatesPageProps = {

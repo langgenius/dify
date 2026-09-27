@@ -13,6 +13,7 @@ from controllers.console.app import annotation as annotation_module
 from models.account import Account
 from models.model import App, AppAnnotationHitHistory, AppMode, IconType, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
+from tests.unit_tests.model_factories import make_account
 
 
 def _persist_app(session: Session) -> App:
@@ -33,9 +34,7 @@ def _persist_app(session: Session) -> App:
 
 
 def _account() -> Account:
-    account = Account(name="Owner", email="owner@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="Owner", email="owner@example.com")
 
 
 def _annotation_model(annotation_id: str = "ann-1") -> MessageAnnotation:
@@ -262,6 +261,57 @@ class TestConsoleAnnotationRefBoundaries:
         assert response["total"] == 1
         hit_history_mock.assert_called_once_with(
             AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 2, 5, sqlite_session
+        )
+
+    def test_hit_history_pager_ends_for_a_non_positive_limit(self, app: Flask, sqlite_session: Session):
+        """This route reads page and limit straight off the query string with no bounds.
+
+        `paginate_query` floors both at 1, so `limit=0` is served one row. Reporting
+        `has_more` from the requested 0 made `page * limit < total` true on every page,
+        including the pages past the end that return nothing, so a client walking until
+        `has_more` is false never stopped.
+        """
+        api = annotation_module.AnnotationHitHistoryListApi()
+        handler = unwrap(api.get)
+        hit_history_mock = Mock(return_value=([_annotation_hit_history()], 1))
+        _persist_app(sqlite_session)
+        with (
+            app.test_request_context("/hit-histories?page=1&limit=0", method="GET"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(_account(), "tenant-1"),
+            ),
+            patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
+        ):
+            response = handler(api, sqlite_session, "app-1", "ann-1")
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert response["has_more"] is False
+        hit_history_mock.assert_called_once_with(
+            AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 1, 1, sqlite_session
+        )
+
+    def test_hit_history_clamps_a_non_positive_page(self, app: Flask, sqlite_session: Session):
+        """A page below 1 is served as page 1, so the response has to say page 1."""
+        api = annotation_module.AnnotationHitHistoryListApi()
+        handler = unwrap(api.get)
+        hit_history_mock = Mock(return_value=([_annotation_hit_history()], 9))
+        _persist_app(sqlite_session)
+        with (
+            app.test_request_context("/hit-histories?page=0&limit=5", method="GET"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(_account(), "tenant-1"),
+            ),
+            patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
+        ):
+            response = handler(api, sqlite_session, "app-1", "ann-1")
+        assert response["page"] == 1
+        assert response["has_more"] is True
+        hit_history_mock.assert_called_once_with(
+            AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 1, 5, sqlite_session
         )
 
 

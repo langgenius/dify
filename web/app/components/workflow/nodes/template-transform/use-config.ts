@@ -87,7 +87,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
       VarType.boolean,
@@ -97,7 +97,9 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
       VarType.arrayString,
       VarType.arrayBoolean,
       VarType.arrayObject,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   return {

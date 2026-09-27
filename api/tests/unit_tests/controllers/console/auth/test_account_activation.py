@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
@@ -74,7 +75,7 @@ class TestActivateCheckApi:
                 return_value=_services(activation_service),
             ),
         ):
-            response = unwrap(ActivateCheckApi.get)(ActivateCheckApi())
+            response = ActivateCheckApi().get()
 
         assert response == {
             "is_valid": True,
@@ -104,9 +105,23 @@ class TestActivateCheckApi:
                 return_value=_services(activation_service),
             ),
         ):
-            response = unwrap(ActivateCheckApi.get)(ActivateCheckApi())
+            response = ActivateCheckApi().get()
 
         assert response == {"is_valid": False}
+
+    def test_rejects_request_without_token(self, app: Flask, activation_service: Mock) -> None:
+        """`token` is required, so a tokenless query must not reach the application service."""
+        with (
+            app.test_request_context("/activate/check?workspace_id=workspace-123"),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
+            ),
+            pytest.raises(UnprocessableEntity),
+        ):
+            ActivateCheckApi().get()
+
+        activation_service.check.assert_not_called()
 
 
 class TestActivateApi:

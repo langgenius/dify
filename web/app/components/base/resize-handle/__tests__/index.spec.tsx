@@ -6,7 +6,7 @@ import ResizeHandle from '..'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: common } = await import('@/i18n/en-US/common.json')
+  const { default: common } = await import('@/i18n/locales/en-US/common.json')
   return createReactI18nextMock(common)
 })
 

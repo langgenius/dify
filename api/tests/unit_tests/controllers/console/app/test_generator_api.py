@@ -20,7 +20,8 @@ from controllers.console.app.generator import (
 )
 from core.errors.error import ProviderTokenNotInitError
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
@@ -44,14 +45,7 @@ def _model_config_payload():
 
 
 def _workflow(graph_dict: dict[str, object]) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="t1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph_dict),
-    )
+    return make_workflow(workflow_id="workflow-1", tenant_id="t1", graph=graph_dict)
 
 
 def _install_workflow_service(monkeypatch: pytest.MonkeyPatch, workflow):

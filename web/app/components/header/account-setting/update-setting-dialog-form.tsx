@@ -88,7 +88,7 @@ const UpdateSettingDialogForm = ({
   onUpdateTimeChange,
   renderTimePickerTrigger,
 }: UpdateSettingDialogFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [previewStrategy, setPreviewStrategy] = useState<AUTO_UPDATE_STRATEGY>()
   const displayedStrategy = previewStrategy ?? autoUpgrade.strategy_setting
   const getStrategyDescription = (strategy: AUTO_UPDATE_STRATEGY) => {

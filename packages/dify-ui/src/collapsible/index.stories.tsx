@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { CollapsiblePanelProps } from '.'
-import { useState } from 'react'
+import * as React from 'react'
 import { expect, waitFor } from 'storybook/test'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '.'
 import { Button } from '../button'
@@ -156,7 +156,7 @@ export const IconButtonTrigger: Story = {
 }
 
 function ControlledDemo() {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = React.useState(true)
   return (
     <div className="flex flex-col items-start gap-3">
       <Button variant="secondary" onClick={() => setOpen(true)}>

@@ -5,11 +5,13 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { noop, useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
@@ -25,12 +27,10 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
-import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
@@ -53,7 +53,7 @@ const DSLConfirmModal = dynamic(
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'app'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -134,13 +134,13 @@ export function HomeContent() {
   }, [templatesData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
-    if (!keywords || !filteredList || filteredList.length === 0) return filteredList
-
-    const lowerCaseSearchKeywords = keywords.toLowerCase()
+    const searchKeywords = keywords.trim().toLowerCase()
+    if (!searchKeywords) return filteredList
 
     return filteredList.filter(
       (item) =>
-        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+        item.app?.name?.toLowerCase().includes(searchKeywords) ||
+        item.description?.toLowerCase().includes(searchKeywords),
     )
   }, [keywords, filteredList])
 
@@ -250,14 +250,26 @@ export function HomeContent() {
       hideTryAppPanel()
     }
   }, [currentTryApp, hideTryAppPanel, homeTryAppCreateGuideActive, isShowCreateModal])
-  const handleTryApp = useCallback((app: RecommendedAppResponse) => {
-    isCurrentTryAppFromLearnDifyRef.current = false
-    setCurrentTryApp(app)
-  }, [])
+  const handleTryApp = useCallback(
+    (app: RecommendedAppResponse, fromLearnDify = false) => {
+      // Start the workflow request while the preview dialog's code and app details load.
+      if (app.app?.mode === 'workflow' || app.app?.mode === 'advanced-chat') {
+        void queryClient
+          .query(
+            consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+              input: { params: { app_id: app.app_id } },
+            }),
+          )
+          .catch(noop)
+      }
+      isCurrentTryAppFromLearnDifyRef.current = fromLearnDify
+      setCurrentTryApp(app)
+    },
+    [queryClient],
+  )
   const handleTryAppFromLearnDify = useCallback(
     (app: RecommendedAppResponse) => {
-      isCurrentTryAppFromLearnDifyRef.current = true
-      setCurrentTryApp(app)
+      handleTryApp(app, true)
 
       if (
         activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
@@ -282,6 +294,7 @@ export function HomeContent() {
       canCreateApp,
       completedStepByStepTourTaskIds,
       completeHomeTourAfterOpenDetails,
+      handleTryApp,
     ],
   )
   const handleShowFromTryApp = useCallback(() => {
@@ -427,19 +440,36 @@ export function HomeContent() {
         />
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-          <section
-            aria-labelledby="home-templates-title"
-            className={cn('shrink-0 content-start gap-2.5 px-8', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
-          >
-            {searchFilteredList.map((app) => (
-              <TemplateCard
-                key={app.app_id}
-                app={app}
-                canCreate={canCreateApp}
-                onCreate={() => handleCreateFromTemplate(app)}
-                onTry={handleTryApp}
-              />
-            ))}
+          <section aria-labelledby="home-templates-title" className="shrink-0 px-8">
+            {searchFilteredList.length > 0 ? (
+              <ul
+                // Safari drops list semantics from grid lists after preflight removes markers.
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Restore Safari list semantics.
+                role="list"
+                className={cn('content-start gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
+              >
+                {searchFilteredList.map((app) => (
+                  <TemplateCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={canCreateApp}
+                    onCreate={() => handleCreateFromTemplate(app)}
+                    onTry={handleTryApp}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div role="status" className="rounded-lg bg-workflow-process-bg p-4">
+                <p className="title-md-semi-bold text-text-primary">
+                  {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}
+                </p>
+                {keywords.trim() && (
+                  <p className="mt-2 system-sm-regular text-text-tertiary">
+                    {t(($) => $['newApp.noTemplateFoundTip'], { ns: 'app' })}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>
@@ -475,9 +505,10 @@ export function HomeContent() {
       {currentTryApp && (
         <TryApp
           appId={currentTryApp.app_id}
-          app={currentTryApp}
+          canTrial={currentTryApp.can_trial}
+          categories={currentTryApp.categories}
+          templateName={currentTryApp.app?.name}
           canCreate={canCreateApp}
-          categories={currentTryApp.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

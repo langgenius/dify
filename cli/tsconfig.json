@@ -11,6 +11,6 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"], // tests must be included for typechecking
+  "include": ["*.ts", "bin/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models import Account
+from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
@@ -119,7 +120,7 @@ def current_user_mock():
     with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
         current_user.id = str(uuid4())
         current_user.current_tenant_id = str(uuid4())
-        current_user.current_role = None
+        current_user.current_role = TenantAccountRole.EDITOR
         yield current_user
 
 

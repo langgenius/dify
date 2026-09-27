@@ -1,4 +1,5 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
@@ -13,9 +14,9 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -29,7 +30,7 @@ type EventDetailDrawerProps = {
   onClose: () => void
 }
 
-const getType = (type: string, t: TFunction) => {
+const getType = (type: string, t: TFunction<['tools']>) => {
   if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
   if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
   if (type === 'checkbox') return 'boolean'
@@ -67,7 +68,7 @@ const convertSchemaToField = (schema: any): any => {
 export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
   const { eventInfo, providerInfo, onClose } = props
   const language = useLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'common', 'plugin', 'pluginTrigger'])
   const parametersSchemas = triggerEventParametersToFormSchemas(eventInfo.parameters)
 
   // Convert output_schema properties to array for direct rendering
@@ -162,7 +163,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     {t(($) => $['events.item.noParameters'], { ns: 'pluginTrigger' })}
                   </div>
                 )}
-                <Divider className="mt-1 mb-2 h-px" />
+                <Separator className="mt-1 mb-2" />
                 <div className="flex flex-col gap-2">
                   <div className="system-sm-semibold-uppercase text-text-secondary">
                     {t(($) => $['events.output'], { ns: 'pluginTrigger' })}

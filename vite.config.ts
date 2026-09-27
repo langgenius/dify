@@ -40,6 +40,8 @@ const generatedIgnores = [
   'web/public/embed.min.js',
   'web/public/pdf.worker.min.mjs',
   'web/public/vs/**',
+  // Vendored Emojibase JSON is served verbatim.
+  'web/public/emoji/emojibase-*/**',
 ]
 
 const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']

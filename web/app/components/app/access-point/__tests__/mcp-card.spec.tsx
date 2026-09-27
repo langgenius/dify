@@ -1,9 +1,10 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   updateServer: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -76,13 +77,13 @@ const appInfo = {
       },
     ],
   },
-} as AccessPointAppInfo
+} as App
 
 const workflowAppInfo = {
   ...appInfo,
   mode: AppModeEnum.WORKFLOW,
   model_config: null,
-} as unknown as AccessPointAppInfo
+} as unknown as App
 
 const publishedWorkflow = {
   graph: {
@@ -108,7 +109,7 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
-function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: PublishedWorkflow) {
+function renderCard(cardAppInfo: App = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
 
   return render(

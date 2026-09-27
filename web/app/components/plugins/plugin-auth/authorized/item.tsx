@@ -44,7 +44,7 @@ const Item = ({
   selectedCredentialId,
   disabled,
 }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
   const { canUseCredential, canManageCredential } = useCredentialPermissions()

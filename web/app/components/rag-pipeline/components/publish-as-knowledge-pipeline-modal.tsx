@@ -23,7 +23,7 @@ const PublishAsKnowledgePipelineModal = ({
   onCancel,
   onConfirm,
 }: PublishAsKnowledgePipelineModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline', 'workflow'])
   const workflowStore = useWorkflowStore()
   const [pipelineName, setPipelineName] = useState(() => workflowStore.getState().knowledgeName!)
   const [pipelineIcon, setPipelineIcon] = useState(() => workflowStore.getState().knowledgeIcon!)

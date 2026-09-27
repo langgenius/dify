@@ -5,42 +5,9 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
-
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: () => void, options?: { enabled?: boolean }) => {
-      hotkeyMocks.handlers.set(hotkey, { handler, options })
-    },
-  }
-})
-
-const triggerHotkey = (hotkey: string) => {
-  const registration = hotkeyMocks.handlers.get(hotkey)
-  if (registration?.options?.enabled === false) return
-  registration?.handler()
-}
-
-vi.mock('emoji-mart', () => ({
-  init: vi.fn(),
-  SearchIndex: { search: vi.fn().mockResolvedValue([]) },
-}))
-vi.mock('@emoji-mart/data', () => ({
-  default: {
-    categories: [{ id: 'people', emojis: ['😀'] }],
-  },
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({}),
-}))
 
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'team'
@@ -101,13 +68,20 @@ function render(ui: ReactElement) {
   })
 }
 
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
+
+function submitWithKeyboard() {
+  const target = screen.queryByPlaceholderText('app.newApp.appNamePlaceholder') ?? document.body
+  fireEvent.keyDown(target, { key: 'Enter', ctrlKey: true })
+  fireEvent.keyUp(target, { key: 'Enter', ctrlKey: true })
+}
+
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     deploymentEdition = 'COMMUNITY'
     mockPlanType = 'team'
     mockAppCount = 1
-    hotkeyMocks.handlers.clear()
   })
 
   describe('Rendering', () => {
@@ -242,7 +216,7 @@ describe('CreateAppModal', () => {
     it('should submit when Mod+Enter is pressed while visible', async () => {
       const { onConfirm, onHide } = await setup()
 
-      triggerHotkey('Mod+Enter')
+      submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -251,10 +225,34 @@ describe('CreateAppModal', () => {
       expect(onHide).toHaveBeenCalledTimes(1)
     })
 
+    it('does not submit while the visible confirmation action is disabled', async () => {
+      const { onConfirm, onHide } = await setup({ confirmDisabled: true })
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
+      submitWithKeyboard()
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(onConfirm).not.toHaveBeenCalled()
+      expect(onHide).not.toHaveBeenCalled()
+    })
+
+    it('ignores shortcuts outside the dialog and during composition', async () => {
+      const { onConfirm } = await setup()
+      fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(document.body, { key: 'Enter', ctrlKey: true })
+      const input = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+      fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
     it('should not submit when modal is hidden', async () => {
       const { onConfirm, onHide } = await setup({ show: false })
 
-      triggerHotkey('Mod+Enter')
+      submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -270,7 +268,7 @@ describe('CreateAppModal', () => {
 
       const { onConfirm, onHide } = await setup({ isEditModal: false })
 
-      triggerHotkey('Mod+Enter')
+      submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -286,7 +284,7 @@ describe('CreateAppModal', () => {
 
       const { onConfirm, onHide } = await setup({ isEditModal: true })
 
-      triggerHotkey('Mod+Enter')
+      submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -298,7 +296,7 @@ describe('CreateAppModal', () => {
     it('should not submit when name is empty', async () => {
       const { onConfirm, onHide } = await setup({ appName: '   ' })
 
-      triggerHotkey('Mod+Enter')
+      submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -309,7 +307,7 @@ describe('CreateAppModal', () => {
   })
 
   describe('App Icon Picker', () => {
-    it('should open and close the picker when cancel is clicked', async () => {
+    it('should open and close the picker when Escape is pressed', async () => {
       await setup({
         appIconType: 'image',
         appIcon: 'file-123',
@@ -319,48 +317,41 @@ describe('CreateAppModal', () => {
       const pickerDialog = openAppIconPicker()
 
       expect(
-        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }),
+        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.tryYourLuck' }),
       )!.toBeInTheDocument()
 
-      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))
+      await userEvent.setup().keyboard('{Escape}')
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: 'app.iconPicker.cancel' }),
+          screen.queryByRole('dialog', { name: 'app.iconPicker.emoji' }),
         ).not.toBeInTheDocument()
       })
     })
 
     it('should update icon payload when selecting emoji and confirming', async () => {
-      vi.useFakeTimers()
-      try {
-        const { onConfirm } = await setup({
-          appIconType: 'image',
-          appIcon: 'file-123',
-          appIconUrl: 'https://example.com/icon.png',
-        })
+      const { onConfirm } = await setup({
+        appIconType: 'image',
+        appIcon: 'file-123',
+        appIconUrl: 'https://example.com/icon.png',
+      })
 
-        const pickerDialog = openAppIconPicker()
+      const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '😀' }))
+      fireEvent.click(await within(pickerDialog).findByRole('gridcell', { name: 'Grinning face' }))
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
+      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
-        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
 
-        expect(onConfirm).toHaveBeenCalledTimes(1)
-        const payload = onConfirm.mock.calls[0]![0]
-        expect(payload).toMatchObject({
-          icon_type: 'emoji',
-          icon: '😀',
-          icon_background: '#FFEAD5',
-        })
-      } finally {
-        vi.useRealTimers()
-      }
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      const payload = onConfirm.mock.calls[0]![0]
+      expect(payload).toMatchObject({
+        icon_type: 'emoji',
+        icon: '😀',
+        icon_background: '#FEF3F2',
+      })
     })
 
     it('should allow changing only the background for the current emoji icon', async () => {
@@ -374,7 +365,7 @@ describe('CreateAppModal', () => {
 
         const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#F3FEE7' }))
         fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
@@ -387,7 +378,7 @@ describe('CreateAppModal', () => {
         expect(payload).toMatchObject({
           icon_type: 'emoji',
           icon: '🤖',
-          icon_background: '#E4FBCC',
+          icon_background: '#F3FEE7',
         })
       } finally {
         vi.useRealTimers()
@@ -558,3 +549,5 @@ it('edits an existing app without waiting for application quota data', async () 
   await userEvent.setup().click(save)
   await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
 })
+
+mockEmojiData()

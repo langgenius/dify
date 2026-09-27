@@ -188,7 +188,7 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.add(seg_waiting)
         db_session_with_containers.flush()
 
-        assert dataset.available_segment_count == 2
+        assert dataset.get_available_segment_count(session=db_session_with_containers) == 2
 
     def test_document_segment_count_property(self, db_session_with_containers: Session) -> None:
         """Test document can count its segments."""
@@ -228,7 +228,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.segment_count == 3
+        assert doc.get_segment_count(session=db_session_with_containers) == 3
 
     def test_document_hit_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test document can aggregate hit count from segments."""
@@ -269,7 +269,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.hit_count == 25
+        assert doc.get_hit_count(session=db_session_with_containers) == 25
 
 
 class TestDocumentSegmentNavigationProperties:

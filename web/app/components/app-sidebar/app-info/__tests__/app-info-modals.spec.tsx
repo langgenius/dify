@@ -1,11 +1,11 @@
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComp = React.lazy(loader)
     return function DynamicWrapper(props: Record<string, unknown>) {
@@ -72,8 +72,8 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
-  DSLExportConfirmContent: ({
+vi.mock('@/app/components/app/export-confirm-modal', () => ({
+  AppExportConfirmContent: ({
     onConfirm,
     onClose,
   }: {
@@ -107,7 +107,7 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
+const createAppDetail = (overrides: Partial<App> = {}): App =>
   ({
     id: 'app-1',
     name: 'Test App',
@@ -120,7 +120,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
     use_icon_as_answer_icon: false,
     max_active_requests: null,
     ...overrides,
-  }) as App & Partial<AppSSO>
+  }) as App
 
 const defaultProps = {
   appDetail: createAppDetail(),
@@ -129,7 +129,7 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
-  onExport: vi.fn(async () => {}),
+  onExport: vi.fn(async () => true),
   isExporting: false,
   exportCheck: vi.fn(),
   handleConfirmExport: vi.fn(async () => {}),
@@ -218,7 +218,7 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render DSLExportConfirmModal when secretEnvList is not empty', async () => {
+  it('should render AppExportConfirmModal when secretEnvList is not empty', async () => {
     await act(async () => {
       render(
         <AppInfoModals
@@ -241,7 +241,7 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should not render DSLExportConfirmModal when secretEnvList is empty', async () => {
+  it('should not render AppExportConfirmModal when secretEnvList is empty', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
@@ -337,7 +337,7 @@ describe('AppInfoModals', () => {
     expect(defaultProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('should call setSecretEnvList with empty array when closing DSLExportConfirmModal', async () => {
+  it('should call setSecretEnvList with empty array when closing AppExportConfirmModal', async () => {
     const user = userEvent.setup()
     await act(async () => {
       render(

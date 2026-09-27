@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 
 type Step = {
   label: string
@@ -14,12 +14,16 @@ type StepIndicatorProps = {
 
 const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
   return (
-    <div className="flex items-center gap-x-2 px-4 pb-2">
+    <ol className="flex items-center gap-x-2 px-4 pb-2">
       {steps.map((step, index) => {
         const isCurrentStep = index === currentStep - 1
         const isLastStep = index === steps.length - 1
         return (
-          <div key={index} className="flex items-center gap-x-2">
+          <li
+            key={step.value}
+            aria-current={isCurrentStep ? 'step' : undefined}
+            className="flex items-center gap-x-2"
+          >
             <div
               className={cn(
                 'flex items-center gap-x-1',
@@ -31,13 +35,17 @@ const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
             </div>
             {!isLastStep && (
               <div className="flex items-center">
-                <Divider type="horizontal" className="h-px w-3 bg-divider-deep" />
+                <Separator
+                  decorative
+                  orientation="horizontal"
+                  className="my-2 w-3 bg-divider-deep"
+                />
               </div>
             )}
-          </div>
+          </li>
         )
       })}
-    </div>
+    </ol>
   )
 }
 

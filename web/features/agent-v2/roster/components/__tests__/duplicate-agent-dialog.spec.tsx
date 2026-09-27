@@ -80,13 +80,13 @@ describe('DuplicateAgentDialog', () => {
 
     rerender(<DuplicateAgentDialog agent={updatedAgent} open onOpenChange={onOpenChange} />)
 
-    let dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    let dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Research Agent copy')
     await user.click(
       within(dialog).getByRole('button', {
-        name: /agentV2\.roster\.duplicateForm\.changeIcon.*Research Agent/,
+        name: /agentRoster\.roster\.duplicateForm\.changeIcon.*Research Agent/,
       }),
     )
     expect(screen.getByText('🧸:#F5F3FF')).toBeInTheDocument()
@@ -97,13 +97,13 @@ describe('DuplicateAgentDialog', () => {
     })
 
     rerender(<DuplicateAgentDialog agent={updatedAgent} open onOpenChange={onOpenChange} />)
-    dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Updated Agent copy')
     await user.click(
       within(dialog).getByRole('button', {
-        name: /agentV2\.roster\.duplicateForm\.changeIcon.*Updated Agent/,
+        name: /agentRoster\.roster\.duplicateForm\.changeIcon.*Updated Agent/,
       }),
     )
     expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
@@ -124,9 +124,9 @@ describe('DuplicateAgentDialog', () => {
 
     rerender(<DuplicateAgentDialog agent={secondAgent} open onOpenChange={onOpenChange} />)
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Second Agent copy')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
 

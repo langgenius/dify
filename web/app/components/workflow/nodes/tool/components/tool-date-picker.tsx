@@ -9,9 +9,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 
 const DATE_FMT = 'YYYY-MM-DD'
@@ -31,7 +31,7 @@ const ToolDatePicker: FC<Props> = ({
   placeholder,
   readOnly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const locale = useLocale()
   const displayFormat = t(($) => $['dateFormats.display'], { ns: 'time' })
   const resolvedPlaceholder = placeholder || t(($) => $['operation.pickDate'], { ns: 'time' })

@@ -3,7 +3,6 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -14,8 +13,9 @@ import {
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -25,7 +25,7 @@ import { useLogout } from '@/service/use-common'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -161,7 +161,7 @@ export default function OAuthAuthorize() {
   if (isProfileLoading || isOAuthLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -198,7 +198,7 @@ export default function OAuthAuthorize() {
           <div className="flex items-center gap-2.5">
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
-              <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
+              <div className="text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>

@@ -7,7 +7,7 @@ vi.mock('@/service/tools', () => ({
   importSchemaFromURL: vi.fn(),
 }))
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

@@ -48,7 +48,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
   const appId = useStore((s) => s.appId)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
@@ -64,8 +64,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
@@ -158,15 +158,10 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent
-                  placement="bottom"
-                  sideOffset={4}
-                  className="flex h-7 max-w-55 min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
-                >
-                  {renderDisplayName(
-                    user,
-                    'max-w-full system-xs-medium text-text-secondary',
-                    'text-text-quaternary',
+                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55">
+                  {displayName}
+                  {isCurrentUser && (
+                    <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>

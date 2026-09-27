@@ -9,7 +9,7 @@ type LogProps = {
   logItem: IChatItem
 }
 const Log: FC<LogProps> = ({ logItem }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const setCurrentLogItem = useAppStore((s) => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore((s) => s.setShowPromptLogModal)
   const setShowAgentLogModal = useAppStore((s) => s.setShowAgentLogModal)

@@ -5,8 +5,10 @@ import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
 import { initialWorkspaceSummary } from './app-context-defaults'
 import { getWorkspaceRoleFlags, normalizeCurrentWorkspaceSummary } from './app-context-normalizers'
+import { authSessionRevisionAtom } from './auth-session-state'
 
-const currentWorkspaceQueryAtom = atomWithQuery(() => {
+const currentWorkspaceQueryAtom = atomWithQuery((get) => {
+  get(authSessionRevisionAtom)
   return consoleQuery.workspaces.current.summary.get.queryOptions({
     select: normalizeCurrentWorkspaceSummary,
   })

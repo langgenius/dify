@@ -86,7 +86,7 @@ export function SubmitRequestDropdownMenu({
   dividerAfterFirst,
   docLink,
 }: SubmitRequestDropdownMenuProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const options = getOptions(docLink)
   const guideLabel = t(($) => $['marketplace.home.guide'], { ns: 'plugin' })

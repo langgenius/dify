@@ -43,7 +43,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   visionConfig,
   onVisionFilesChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const baseId = useId()
   const {
     readonly,

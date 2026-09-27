@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useCallback } from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { formatToLocalTime } from '@/utils/format'
 

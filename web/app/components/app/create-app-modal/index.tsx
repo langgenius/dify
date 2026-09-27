@@ -7,8 +7,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -16,8 +16,8 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -49,9 +49,10 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
 }
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const nameInputId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
   const [appIcon, setAppIcon] = useState<AppIconSelection>({
@@ -165,19 +166,30 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+  const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,
-    () => {
-      if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       handleCreateApp()
     },
     {
+      target: contentRef,
+      enabled: !createDisabled && !isCreating && !showAppIconPicker,
       ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
   return (
     <>
-      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
+      <div
+        ref={contentRef}
+        className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
+      >
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-34.75" />
@@ -297,7 +309,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   </div>
                 )}
               </div>
-              <Divider style={{ margin: 0 }} />
+              <Separator />
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
@@ -371,16 +383,16 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
-                  disabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull || !name}
+                  disabled={createDisabled}
                   loading={isCreating}
                   variant="primary"
                   onClick={handleCreateApp}
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
-                    {CREATE_APP_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>
@@ -433,7 +445,7 @@ const CreateAppModal = ({
   onCreateFromTemplate,
   defaultAppMode,
 }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
@@ -482,7 +494,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 }
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const previewInfo = (() => {
     switch (mode) {
       case AppModeEnum.CHAT:

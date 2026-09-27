@@ -241,6 +241,23 @@ def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_m
     inner_model.embed_documents.assert_called_once_with(["world"])
 
 
+def test_lazy_embeddings_query_cache_hit_skips_model_resolution(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+    """A cached query vector should not construct ModelManager or a model instance."""
+    proxy = vector_factory_module._LazyEmbeddings(_dataset())
+    cached_vector = [0.1, 0.2]
+    cache_lookup = MagicMock(return_value=cached_vector)
+    for_tenant = MagicMock(side_effect=AssertionError("model resolution must be skipped on cache hit"))
+    monkeypatch.setattr(vector_factory_module.CacheEmbedding, "get_cached_query_embedding", cache_lookup)
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant)
+
+    result = proxy.embed_query("hello")
+
+    assert result == cached_vector
+    cache_lookup.assert_called_once_with("openai", "text-embedding-3-small", "hello")
+    for_tenant.assert_not_called()
+    assert proxy._real is None
+
+
 def test_init_vector_prefers_dataset_index_struct(
     vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ):

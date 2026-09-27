@@ -772,12 +772,16 @@ class RagPipelineDslService:
         dependencies = []
         for node in graph.get("nodes", []):
             try:
-                typ = node.get("data", {}).get("type")
+                node_data = node.get("data", {})
+                typ = node_data.get("type")
+                if typ != BuiltinNodeTypes.DATASOURCE:
+                    dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
                 match typ:
                     case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
-                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                            node_data.get("plugin_id")
+                            or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
                         )
                     case BuiltinNodeTypes.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])

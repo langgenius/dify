@@ -67,7 +67,7 @@ const Debug: FC<IDebug> = ({
   multipleModelConfigs,
   onMultipleModelConfigsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'modelProvider'])
   const {
     canTestAndRun = false,
     appId,
@@ -422,9 +422,9 @@ const Debug: FC<IDebug> = ({
     <>
       <Collapsible open={expanded} onOpenChange={setExpanded} render={<div className="shrink-0" />}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="system-xl-semibold text-text-primary">
+          <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['inputs.title'], { ns: 'appDebug' })}
-          </div>
+          </h2>
           <div className="flex items-center">
             {debugWithMultipleModel ? (
               <>
@@ -439,7 +439,7 @@ const Debug: FC<IDebug> = ({
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
                   <span aria-hidden="true" className="i-ri-add-line size-3.5" />
-                  {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
+                  {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}(
                   {multipleModelConfigs.length}
                   /4)
                 </Button>

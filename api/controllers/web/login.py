@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 from flask import make_response, request
 from flask_restx import Resource
@@ -30,8 +31,9 @@ from controllers.console.wraps import (
     setup_required,
 )
 from controllers.web import web_ns
-from controllers.web.wraps import decode_jwt_token
+from controllers.web.wraps import decode_jwt_token, resolve_web_app_id
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
@@ -41,7 +43,6 @@ from libs.token import (
     extract_webapp_access_token,
 )
 from services.account_service import AccountService
-from services.app_service import AppService
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.auth_entities import LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
@@ -136,11 +137,11 @@ class LoginStatusApi(Resource):
     @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
     @web_ns.doc(
         responses={
-            200: "Login status",
-            401: "Login status",
+            HTTPStatus.OK: "Login status",
+            HTTPStatus.UNAUTHORIZED: "Login status",
         }
     )
-    @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Login status", web_ns.models[LoginStatusResponse.__name__])
     @model_validate(LoginStatusQuery)
     def get(self, query: LoginStatusQuery):
         app_code = query.app_code
@@ -148,10 +149,10 @@ class LoginStatusApi(Resource):
         token = extract_webapp_access_token(request)
         if not app_code:
             return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
-        app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+        app_id = resolve_web_app_id(app_code)
         is_public = (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE
-            or not WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session())
+            or not application_services().webapp_access.requires_permission_check(app_id)
         )
         user_logged_in = False
 

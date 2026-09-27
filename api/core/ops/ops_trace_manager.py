@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 import json
 import logging
 import os
@@ -39,6 +40,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
@@ -335,8 +337,10 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
 
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
-        except ImportError:
-            raise ImportError(f"Provider {key} is not installed.")
+        except ModuleNotFoundError as error:
+            if error.name is None or importlib.util.find_spec(error.name.partition(".")[0]) is not None:
+                raise
+            raise TraceProviderNotInstalledError(key, error.name) from error
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -577,48 +581,6 @@ class OpsTraceManager:
             app_model_config = conversation_data.override_model_configs
 
         return app_model_config
-
-    @classmethod
-    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
-        """
-        Update app tracing config
-        :param app_id: app id
-        :param enabled: enabled
-        :param tracing_provider: tracing provider (None when disabling)
-        :return:
-        """
-        # auth check
-        if tracing_provider is not None:
-            try:
-                provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-
-        app_config: App | None = db.session.get(App, app_id)
-        if not app_config:
-            raise ValueError("App not found")
-        app_config.tracing = json.dumps(
-            {
-                "enabled": enabled,
-                "tracing_provider": tracing_provider,
-            }
-        )
-        db.session.commit()
-
-    @classmethod
-    def get_app_tracing_config(cls, app_id: str, session: Session):
-        """
-        Get app tracing config
-        :param app_id: app id
-        :return:
-        """
-        app: App | None = session.get(App, app_id)
-        if not app:
-            raise ValueError("App not found")
-        if not app.tracing:
-            return {"enabled": False, "tracing_provider": None}
-        app_trace_config = _app_tracing_config_adapter.validate_json(app.tracing)
-        return app_trace_config
 
     @staticmethod
     def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
@@ -934,7 +896,7 @@ class TraceTask:
     def message_trace(self, message_id: str | None, **kwargs):
         if not message_id:
             return {}
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
@@ -996,7 +958,7 @@ class TraceTask:
         message_trace_info = MessageTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             conversation_model=conversation_mode,
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
@@ -1024,7 +986,7 @@ class TraceTask:
         if not moderation_result:
             return {}
         inputs = kwargs.get("inputs")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1048,7 +1010,7 @@ class TraceTask:
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             flagged=moderation_result.flagged,
             action=moderation_result.action,
             preset_response=moderation_result.preset_response,
@@ -1062,7 +1024,7 @@ class TraceTask:
 
     def suggested_question_trace(self, message_id, timer, **kwargs):
         suggested_question = kwargs.get("suggested_question", [])
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1090,7 +1052,7 @@ class TraceTask:
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             inputs=message_data.message,
             outputs=message_data.answer,
             start_time=timer.get("start"),
@@ -1113,7 +1075,7 @@ class TraceTask:
 
     def dataset_retrieval_trace(self, message_id, timer, **kwargs):
         documents = kwargs.get("documents")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
 
@@ -1188,12 +1150,12 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            inputs=message_data.query or message_data.inputs,
+            inputs=message_data.query or message_data.inputs_with_session(session=db.session()),
             documents=doc_list,
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             error=kwargs.get("error"),
         )
 
@@ -1203,7 +1165,7 @@ class TraceTask:
         tool_name = kwargs.get("tool_name", "")
         tool_inputs = kwargs.get("tool_inputs", {})
         tool_outputs = kwargs.get("tool_outputs", {})
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         tool_config = {}
@@ -1258,7 +1220,7 @@ class TraceTask:
         tool_trace_info = ToolTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             tool_name=tool_name,
             start_time=timer.get("start") if timer else created_time,
             end_time=timer.get("end") if timer else end_time,

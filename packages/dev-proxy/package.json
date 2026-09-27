@@ -35,8 +35,7 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": "^24.20.0"

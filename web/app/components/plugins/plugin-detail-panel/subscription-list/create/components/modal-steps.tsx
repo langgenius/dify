@@ -41,7 +41,7 @@ type MultiStepsProps = {
 }
 
 export const MultiSteps = ({ currentStep }: MultiStepsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
@@ -90,7 +90,7 @@ type SubscriptionFormProps = {
 }
 
 const SubscriptionForm = ({ subscriptionFormRef, endpoint }: SubscriptionFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
 
   const formSchemas = React.useMemo(
     () => [
@@ -216,7 +216,7 @@ const ManualPropertiesSection = ({
   logs,
   pluginName,
 }: ManualPropertiesSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
 
   const formSchemas = React.useMemo(
     () =>

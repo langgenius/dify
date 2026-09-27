@@ -28,7 +28,7 @@ const PermissionGroupList = ({
   className,
   readonly = false,
 }: PermissionGroupListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string> | null>(null)
 
   const selectedSet = useMemo(() => new Set(value), [value])

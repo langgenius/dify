@@ -28,6 +28,7 @@ from machinery.context import RequestContext
 from models import Account, AccountStatus, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services import account_errors
+from services.account_email import normalize_email
 from services.account_service import AccountService
 from services.entities.account_entities import AccountEducationActivation, ChangeEmailVerification
 from services.entities.auth_entities import (
@@ -69,7 +70,9 @@ def _stable_uuid(value: str) -> str:
 def _persist_account_with_tenant(session: Session, email: str, account_name: str = "account") -> tuple[Account, Tenant]:
     tenant = Tenant(name=f"{account_name} tenant")
     tenant.id = _stable_uuid(f"tenant:{account_name}")
-    account = Account(name=account_name, email=email, status=AccountStatus.ACTIVE)
+    account = Account(
+        name=account_name, email=email, normalized_email=normalize_email(email), status=AccountStatus.ACTIVE
+    )
     account.id = _stable_uuid(f"account:{account_name}")
     membership = TenantAccountJoin(
         tenant_id=tenant.id,

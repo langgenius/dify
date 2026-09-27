@@ -30,8 +30,6 @@ type PermissionTooltipWrapperProps = {
   show: boolean
 }
 
-const permissionTooltipClassName = 'w-[112px] text-left'
-
 function PermissionTooltipWrapper({
   children,
   className,
@@ -51,7 +49,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>
+      <TooltipContent placement={placement} sideOffset={8}>
         {content}
       </TooltipContent>
     </Tooltip>
@@ -67,7 +65,7 @@ export function IntegrationSidebarActions({
   installContextCategory?: PluginCategoryEnum
   onSwitchToMarketplace: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <IntegrationSidebarInstallActions
@@ -142,7 +140,7 @@ export function IntegrationSidebarUtilityActions({
   showPermissionQuickPanel: boolean
   onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const debugLabel = t(($) => $['debugInfo.title'], { ns: 'plugin' })
   const permissionsLabel = t(($) => $['privilege.permissions'], { ns: 'plugin' })
 

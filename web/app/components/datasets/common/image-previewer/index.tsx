@@ -1,10 +1,10 @@
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
 
 type CachedImage = {
@@ -28,8 +28,9 @@ type ImagePreviewerProps = {
   onClose: () => void
 }
 
-const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
-  const { t } = useTranslation()
+function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePreviewerProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
     return images.reduce(
@@ -142,20 +143,24 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
     [fetchImage],
   )
 
-  useHotkey('ArrowLeft', prevImage)
-  useHotkey('ArrowRight', nextImage)
+  useHotkey('ArrowLeft', prevImage, {
+    target: previewRef,
+    enabled: currentIndex > 0,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', nextImage, {
+    target: previewRef,
+    enabled: currentIndex < images.length - 1,
+    requireReset: true,
+  })
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-      disablePointerDismissal
-    >
-      <DialogContent
-        className="image-previewer inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-background-overlay-fullscreen p-5! pb-4! shadow-none! backdrop-blur-[6px]"
-        backdropProps={{ className: 'bg-transparent!' }}
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={currentImage!.name.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
+        className="image-previewer fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-background-overlay-fullscreen p-5! pb-4! shadow-none! backdrop-blur-[6px]"
       >
         <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
           <IconButton
@@ -168,7 +173,9 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
           </IconButton>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
-        {cachedImages[currentImage!.url]!.status === 'loading' && <Loading type="app" />}
+        {cachedImages[currentImage!.url]!.status === 'loading' && (
+          <LoadingPlaceholder className="h-full" />
+        )}
         {cachedImages[currentImage!.url]!.status === 'error' && (
           <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
             <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
@@ -219,7 +226,23 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
         >
           <span aria-hidden className="i-ri-arrow-right-line size-5" />
         </IconButton>
-      </DialogContent>
+      </DialogPopup>
+    </>
+  )
+}
+
+function ImagePreviewer(props: ImagePreviewerProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onClose()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <ImagePreviewerContent {...props} />
+      </DialogPortal>
     </Dialog>
   )
 }

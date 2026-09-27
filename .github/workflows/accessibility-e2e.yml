@@ -80,7 +80,7 @@ jobs:
           if [[ "$WCAG_PAGE" == "all" ]]; then
             vp run e2e:accessibility:${{ inputs.level }}
           else
-            pnpm exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
+            pnpm exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
           fi
 
       - name: Upload accessibility Cucumber report

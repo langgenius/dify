@@ -37,6 +37,7 @@ from fields.annotation_fields import (
 from fields.base import ResponseModel
 from libs.helper import dump_response, uuid_value
 from libs.login import current_account_with_tenant, login_required
+from libs.pagination import clamp_pagination
 from models.model import App
 from services.annotation_service import (
     AppAnnotationService,
@@ -301,18 +302,18 @@ class AnnotationApi(Resource):
         page = req_data.page
         limit = req_data.limit
         keyword = req_data.keyword
-        effective_limit = min(limit, 100)
+        effective_page, effective_limit = clamp_pagination(page, limit, 100)
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            str(app_id), page, effective_limit, keyword, session
+            str(app_id), effective_page, effective_limit, keyword, session
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
             data=annotation_models,
-            has_more=page * effective_limit < total,
+            has_more=effective_page * effective_limit < total,
             limit=effective_limit,
             total=total,
-            page=page,
+            page=effective_page,
         ).model_dump(mode="json"), 200
 
     @console_ns.doc("create_annotation")
@@ -556,12 +557,14 @@ class AnnotationHitHistoryListApi(Resource):
     def get(self, session: Session, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        effective_limit = min(limit, 100)
+        # This route takes both straight off the query string with no bounds, so
+        # clamp them the way the query itself will.
+        effective_page, effective_limit = clamp_pagination(page, limit, 100)
         app_ref = _get_app_ref(session, str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
             annotation_ref,
-            page,
+            effective_page,
             effective_limit,
             session,
         )
@@ -569,5 +572,9 @@ class AnnotationHitHistoryListApi(Resource):
             annotation_hit_history_list, from_attributes=True
         )
         return AnnotationHitHistoryList(
-            data=history_models, has_more=page * effective_limit < total, limit=effective_limit, total=total, page=page
+            data=history_models,
+            has_more=effective_page * effective_limit < total,
+            limit=effective_limit,
+            total=total,
+            page=effective_page,
         ).model_dump(mode="json")

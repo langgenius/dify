@@ -32,6 +32,12 @@ const mocks = vi.hoisted(() => {
         commandHandlers.set(command, handler)
         return vi.fn()
       }),
+      registerRootListener: vi.fn(
+        (listener: (root: HTMLElement | null, previousRoot: HTMLElement | null) => void) => {
+          listener(rootElement, null)
+          return () => listener(null, rootElement)
+        },
+      ),
       registerUpdateListener: vi.fn(() => vi.fn()),
       registerNodeTransform: vi.fn(() => vi.fn()),
       dispatchCommand: vi.fn(),
@@ -325,7 +331,7 @@ describe('PromptEditor', () => {
         <PromptEditor
           shortcutPopups={[
             {
-              hotkey: ['mod', '/'],
+              hotkey: 'Mod+/',
               Popup,
             },
           ]}
@@ -354,8 +360,8 @@ describe('PromptEditor', () => {
       render(
         <PromptEditor
           shortcutPopups={[
-            { hotkey: 'ctrl+a', Popup: PopupA },
-            { hotkey: 'ctrl+b', Popup: PopupB },
+            { hotkey: 'Control+A', Popup: PopupA },
+            { hotkey: 'Control+B', Popup: PopupB },
           ]}
         />,
       )

@@ -62,7 +62,7 @@ export function PublisherActionsSection({
   onConfigureWorkflowTool,
   onPublishToMarketplace,
 }: PublisherActionsSectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const appId = appDetail?.id
   const hasPublishedVersion = Boolean(publishedAt)

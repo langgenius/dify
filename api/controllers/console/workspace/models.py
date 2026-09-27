@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.entities.model_entities import DefaultModelSetting
 from core.entities.provider_entities import CredentialConfiguration
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -233,25 +234,16 @@ class DefaultModelApi(Resource):
     @model_validate(ParserPostDefault)
     def post(self, req_data: ParserPostDefault, tenant_id: str):
         model_provider_service = ModelProviderService()
-        model_settings = req_data.model_settings
-        for model_setting in model_settings:
-            if model_setting.provider is None:
-                continue
-
-            try:
-                model_provider_service.update_default_model_of_model_type(
-                    tenant_id=tenant_id,
-                    model_type=model_setting.model_type,
-                    provider=model_setting.provider,
-                    model=cast(str, model_setting.model),
-                )
-            except Exception as ex:
-                logger.exception(
-                    "Failed to update default model, model type: %s, model: %s",
-                    model_setting.model_type,
-                    model_setting.model,
-                )
-                raise ex
+        model_settings = [
+            DefaultModelSetting(
+                model_type=setting.model_type,
+                provider=setting.provider,
+                model=setting.model,
+            )
+            for setting in req_data.model_settings
+            if setting.provider is not None and setting.model is not None
+        ]
+        model_provider_service.update_default_models(tenant_id=tenant_id, model_settings=model_settings)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

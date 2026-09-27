@@ -1,4 +1,4 @@
-import type { SelectorTranslate } from '../../utils'
+import type { TFunction } from 'i18next'
 import type { ConfigurationPublishConfig } from './types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -12,7 +12,6 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { getStringSelectorTranslate } from '../../utils'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
 export function buildPublishBody({
@@ -123,7 +122,7 @@ export const createPublishHandler =
     resolvedModelModeType,
     setCanReturnToSimpleMode,
     setPublishedConfig,
-    t: rawTranslate,
+    t,
   }: {
     appId: string
     chatPromptConfig: BackendModelConfig['chat_prompt_config']
@@ -144,14 +143,13 @@ export const createPublishHandler =
     resolvedModelModeType: ModelModeType
     setCanReturnToSimpleMode: (value: boolean) => void
     setPublishedConfig: (config: ConfigurationPublishConfig) => void
-    t: SelectorTranslate<'appDebug' | 'common'>
+    t: TFunction<['appDebug', 'common']>
   }) =>
   async (
     updateAppModelConfig: (params: { url: string; body: BackendModelConfig }) => Promise<unknown>,
     modelAndParameter?: { model: string; provider: string; parameters: FormValue },
     features?: FeaturesData,
   ) => {
-    const t = getStringSelectorTranslate(rawTranslate)
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables

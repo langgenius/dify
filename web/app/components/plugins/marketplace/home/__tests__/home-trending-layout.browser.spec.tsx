@@ -227,20 +227,6 @@ describe('Marketplace home trending layout', () => {
     expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
   })
 
-  it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
-    const screen = await render(
-      <div className="w-[600px]">
-        <HomeBannerSlide banner={blogBanner} isMarketplacePlatform page="plugins" />
-      </div>,
-    )
-
-    const artwork = screen.getByRole('link').element().querySelector('img')
-
-    expect(artwork).not.toBeNull()
-    expect(getComputedStyle(artwork!).borderTopLeftRadius).toBe('16px')
-    expect(getComputedStyle(artwork!).borderBottomLeftRadius).toBe('16px')
-  })
-
   it('wraps from the last banner back to the first visible slide', async () => {
     const screen = await render(
       <HomeTrending banners={carouselBanners} isMarketplacePlatform page="plugins" />,

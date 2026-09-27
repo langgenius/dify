@@ -57,7 +57,7 @@ function UnauthorizedCredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const [isOpen, setIsOpen] = useState(false)
   const pluginPayload = useMemo(
     () => ({
@@ -131,7 +131,7 @@ function UninstalledPluginStatus({
   extraIdentifiers: string[]
   onInstall: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   if (installInfo) {
     return (
@@ -215,7 +215,7 @@ const ProviderToolActionItem = memo(
     onConfigureAction: (target: ToolSettingTarget) => void
     onRemoveAction: (actionId: string) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const handleConfigureAction = useCallback(() => {
       onConfigureAction({ actionId: action.id, toolId: tool.id })
@@ -286,7 +286,7 @@ export const AgentProviderToolItem = memo(
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const { theme } = useTheme()
     const shouldFetchPluginManifest =

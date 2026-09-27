@@ -22,7 +22,7 @@ function Divider() {
 
 export const BuiltInEnvironmentCard = memo(
   ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
-    const { t } = useTranslation('deployments')
+    const { t } = useTranslation(['deployments'])
     const { formatTime } = useTimestamp()
     const appDetail = useAppStore((state) => state.appDetail)
     const appId = appDetail?.id ?? ''

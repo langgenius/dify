@@ -28,7 +28,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -583,6 +583,26 @@ describe('FeaturesTrigger', () => {
         expect(mockHandleCheckBeforePublish).toHaveBeenCalled()
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
+    })
+
+    it('should show an advisory warning when publish reports a skipped branch reference', async () => {
+      const user = userEvent.setup()
+      mockPublishWorkflow.mockResolvedValueOnce({
+        created_at: '2024-01-01T00:00:00Z',
+        warning: '"Answer" ← "Producer"',
+      })
+      mockUseNodes.mockReturnValue([{ id: 'start', data: { type: BlockEnum.Start } }])
+      mockUseEdges.mockReturnValue([{ source: 'start' }])
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(toastMocks.call).toHaveBeenCalledWith({
+          type: 'warning',
+          message: '"Answer" ← "Producer"',
+        })
+      })
     })
 
     it('should publish workflow and update related stores when validation passes', async () => {

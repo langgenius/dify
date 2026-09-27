@@ -1,13 +1,11 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
-export type AccessPointAppInfo = AppDetailResponse & Partial<AppSSO>
 export type PublishedWorkflow = WorkflowResponse | null | undefined
 
 type AppRouteMode = Exclude<AppModeEnum, 'agent'>
@@ -28,10 +26,7 @@ export function getAppApiReferencePath(appMode: AppModeEnum) {
   return APP_API_REFERENCE_PATHS[appMode]
 }
 
-export function getPublishedWorkflowState(
-  appInfo: AccessPointAppInfo,
-  workflow: PublishedWorkflow,
-) {
+export function getPublishedWorkflowState(appInfo: App, workflow: PublishedWorkflow) {
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const nodes = getPublishedWorkflowNodes(workflow)
   const hasStartNode = nodes.some((node) => node.data.type === BlockEnum.Start)
@@ -51,7 +46,7 @@ export function getPublishedWorkflowNodes(workflow: PublishedWorkflow) {
     : EMPTY_WORKFLOW_NODES
 }
 
-export function getBuiltInAccessUrls(appInfo: AccessPointAppInfo) {
+export function getBuiltInAccessUrls(appInfo: App) {
   const appMode =
     appInfo.mode === AppModeEnum.COMPLETION || appInfo.mode === AppModeEnum.WORKFLOW
       ? appInfo.mode
@@ -75,6 +70,6 @@ export function getHiddenStartInputs(workflow: PublishedWorkflow) {
   )
 }
 
-export function isAdvancedApp(appInfo: AccessPointAppInfo) {
+export function isAdvancedApp(appInfo: App) {
   return appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
 }

@@ -75,7 +75,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
   ),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
     const LazyComp = React.lazy(loader)
     return function DynamicWrapper(props: Record<string, unknown>) {

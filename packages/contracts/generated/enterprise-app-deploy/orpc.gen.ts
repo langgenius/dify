@@ -45,7 +45,7 @@ import {
   zConsoleDeploymentServicePrecheckWorkflowDeploymentResponse,
   zConsoleDeploymentServiceUndeployWorkflowPath,
   zConsoleDeploymentServiceUndeployWorkflowResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const listAppEnvironments = oc
   .route({

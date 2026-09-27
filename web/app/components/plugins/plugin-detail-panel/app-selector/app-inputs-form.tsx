@@ -20,7 +20,7 @@ type Props = Readonly<{
   onFormChange: (value: Record<string, any>) => void
 }>
 const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const baseId = useId()
 
   const handleFormChange = useCallback(

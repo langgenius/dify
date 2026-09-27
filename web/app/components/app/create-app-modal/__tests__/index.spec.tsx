@@ -1,17 +1,16 @@
 import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
-const ahooksMocks = vi.hoisted(() => ({
-  keyPressHandlers: [] as Array<() => void>,
-}))
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
@@ -27,12 +26,6 @@ vi.mock('ahooks', () => ({
     return { run, cancel, flush }
   },
   useHover: () => false,
-}))
-vi.mock('@tanstack/react-hotkeys', () => ({
-  formatForDisplay: (key: string) => key,
-  useHotkey: (_hotkey: string, handler: () => void) => {
-    ahooksMocks.keyPressHandlers.push(handler)
-  },
 }))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
@@ -72,7 +65,7 @@ const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,
@@ -136,7 +129,6 @@ function render(ui: ReactElement) {
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
     mockConsoleStateReader.mockReturnValue({
@@ -265,12 +257,12 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByText('app.types.chatbot'))
     fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
       target: { value: 'Keyboard App' },
@@ -279,7 +271,9 @@ describe('CreateAppModal', () => {
       target: { value: 'Created from shortcut' },
     })
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -287,18 +281,21 @@ describe('CreateAppModal', () => {
         description: 'Created from shortcut',
         icon_type: 'emoji',
         icon: '🤖',
-        icon_background: '#E4FBCC',
+        icon_background: '#F3FEE7',
         mode: AppModeEnum.CHAT,
       })
     })
   })
 
-  it('shows validation feedback when the keyboard shortcut runs without a name', () => {
+  it('keeps creation unavailable from both the button and shortcut without a name', () => {
     renderModal()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
-    expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
+    expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
+    expect(mockToastError).not.toHaveBeenCalled()
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
@@ -309,16 +306,18 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await userEvent.setup().keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
@@ -379,3 +378,5 @@ describe('CreateAppModal', () => {
     })
   })
 })
+
+mockEmojiData()

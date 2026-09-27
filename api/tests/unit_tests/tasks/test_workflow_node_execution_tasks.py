@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -27,6 +28,14 @@ WORKFLOW_ID = "00000000-0000-0000-0000-000000000030"
 WORKFLOW_RUN_ID = "00000000-0000-0000-0000-000000000040"
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000050"
 EXECUTION_ID = "00000000-0000-0000-0000-000000000060"
+
+
+class _ExecutionTaskKwargs(TypedDict, closed=True):
+    tenant_id: str
+    app_id: str
+    triggered_from: str
+    creator_user_id: str
+    creator_user_role: str
 
 
 class _TaskWithRequestContext(Protocol):
@@ -313,7 +322,7 @@ def test_task_repeated_delivery_updates_one_row(
         outputs={"delivery": 2},
         finished_at=created_at + timedelta(seconds=5),
     )
-    task_kwargs = {
+    task_kwargs: _ExecutionTaskKwargs = {
         "tenant_id": TENANT_ID,
         "app_id": APP_ID,
         "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,

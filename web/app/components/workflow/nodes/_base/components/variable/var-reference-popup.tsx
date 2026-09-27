@@ -26,7 +26,7 @@ const VarReferencePopup: FC<Props> = ({
   isSupportFileVar = true,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const pipelineId = useStore((s) => s.pipelineId)
   const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)

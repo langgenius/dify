@@ -195,7 +195,7 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(mockToolForm).not.toHaveBeenCalled()
     })

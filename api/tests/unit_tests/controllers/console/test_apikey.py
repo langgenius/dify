@@ -1,338 +1,317 @@
-from __future__ import annotations
+"""API key admission, delegation, error and response contracts."""
 
-import inspect
 from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
 from flask import Flask
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from flask_restx import Api
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.agent.roster import AgentApiKeyListApi
-from controllers.console.apikey import (
-    AppApiKeyListResource,
-    BaseApiKeyListResource,
-    BaseApiKeyResource,
-    DatasetApiKeyListResource,
-)
-from controllers.console.datasets.datasets import DatasetApiKeyApi
-from core.rbac import RBACPermission, RBACResourceScope
+from controllers.console import apikey, flask_admission, wraps
+from controllers.console.agent import roster
+from controllers.console.datasets import datasets
+from core.rbac import RBACPermission
 from enums import DeploymentEdition
-from models import Account
-from models.account import AccountStatus, TenantAccountRole
-from models.enums import ApiTokenType
-from models.model import ApiToken, App, AppMode, IconType
-from services.agent.errors import AgentAccessNotReadyError
+from extensions.application_services.knowledge import build_dataset_api_key_service
+from extensions.ext_application_services import ApplicationServices
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Dataset
+from models.model import ApiToken
+from services.app.api_key_service import AppApiKeyNotReadyError
+from services.auth.api_key_contracts import (
+    ApiKeyLimitExceededError,
+    ApiKeyNotFoundError,
+    ApiKeyRecord,
+    ApiKeyResourceNotFoundError,
+)
+
+RESOURCE_ID = UUID("00000000-0000-0000-0000-000000000001")
+KEY_ID = UUID("00000000-0000-0000-0000-000000000002")
 
 
-def _make_list_resource() -> BaseApiKeyListResource:
-    resource = BaseApiKeyListResource()
-    resource.resource_type = ApiTokenType.APP
-    resource.resource_model = App
-    resource.resource_id_field = "app_id"
-    resource.token_prefix = "app-"
-    return resource
+@dataclass
+class RecordingKeys:
+    calls: list[tuple[str, RequestContext, str, str, str | None]] = field(default_factory=list)
+    error: Exception | None = None
 
-
-def _make_key_resource() -> BaseApiKeyResource:
-    resource = BaseApiKeyResource()
-    resource.resource_type = ApiTokenType.APP
-    resource.resource_model = App
-    resource.resource_id_field = "app_id"
-    return resource
-
-
-def _make_account(role: TenantAccountRole) -> Account:
-    account = Account(
-        name="Test User",
-        email=f"{role.value}@example.com",
-        status=AccountStatus.ACTIVE,
-    )
-    account.id = f"{role.value}-user"
-    account.role = role
-    return account
-
-
-def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT, app_id: str = "app-1") -> App:
-    app = App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="API key app",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="chat",
-        icon_background="#ffffff",
-        enable_site=False,
-        enable_api=True,
-    )
-    session.add(app)
-    session.flush()
-    return app
-
-
-def test_list_api_keys_uses_injected_session_and_tenant_id(sqlite_session: Session) -> None:
-    resource = _make_list_resource()
-    raw_get = cast(
-        Callable[[BaseApiKeyListResource, object, str, str], dict[str, object]],
-        inspect.unwrap(BaseApiKeyListResource.get),
-    )
-    session = sqlite_session
-    _persist_app(session)
-    api_key = ApiToken(
-        type=ApiTokenType.APP,
-        token="app-token",
-        app_id="app-1",
-        tenant_id="tenant-1",
-    )
-    api_key.id = "key-1"
-    session.add(api_key)
-    session.add(
-        ApiToken(
-            type=ApiTokenType.APP,
-            token="foreign-app-token",
-            app_id="app-1",
-            tenant_id="tenant-2",
+    def _record(
+        self,
+        operation: str,
+        context: RequestContext,
+        kind: str,
+        resource_id: str,
+        key_id: str | None = None,
+    ) -> ApiKeyRecord:
+        self.calls.append((operation, context, kind, resource_id, key_id))
+        if self.error:
+            raise self.error
+        return ApiKeyRecord(
+            id=str(KEY_ID),
+            type="dataset" if kind == "dataset" else "app",
+            token="app-secret-token",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            dataset_ids=(resource_id,) if kind == "dataset" else (),
         )
-    )
-    legacy_api_key = ApiToken(type=ApiTokenType.APP, token="legacy-app-token", app_id="app-1", tenant_id=None)
-    session.add(legacy_api_key)
-    session.commit()
 
-    result = raw_get(resource, session, "app-1", "tenant-1")
-    data = cast(list[dict[str, object]], result["data"])
+    def list_keys(self, context: RequestContext, app_id: str) -> tuple[ApiKeyRecord, ...]:
+        return (self._record("list", context, "app", app_id),)
 
-    assert {item["token"] for item in data} == {"app-token", "legacy-app-token"}
+    def create_key(self, context: RequestContext, app_id: str) -> ApiKeyRecord:
+        return self._record("create", context, "app", app_id)
 
+    def delete_key(self, context: RequestContext, app_id: str, key_id: str) -> None:
+        self._record("delete", context, "app", app_id, key_id)
 
-def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Session) -> None:
-    resource = _make_list_resource()
-    raw_post = cast(
-        Callable[[BaseApiKeyListResource, object, str, str], tuple[dict[str, object], int]],
-        inspect.unwrap(BaseApiKeyListResource.post),
-    )
-    session = sqlite_session
-    _persist_app(session)
-    session.add_all(
-        [
-            ApiToken(type=ApiTokenType.APP, token=f"foreign-token-{index}", app_id="app-1", tenant_id="tenant-2")
-            for index in range(resource.max_keys)
-        ]
-    )
-    session.commit()
-    commits: list[str] = []
-    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
+    def list_agent_keys(self, context: RequestContext, agent_id: str) -> tuple[ApiKeyRecord, ...]:
+        return (self._record("list", context, "agent", agent_id),)
 
-    with patch(
-        "controllers.console.apikey.ApiToken.generate_api_key", return_value="app-generated-token"
-    ) as generate_api_key:
-        result, status = raw_post(resource, session, "app-1", "tenant-1")
+    def create_agent_key(self, context: RequestContext, agent_id: str) -> ApiKeyRecord:
+        return self._record("create", context, "agent", agent_id)
 
-    assert status == 201
-    assert result["token"] == "app-generated-token"
-    api_token = session.scalar(select(ApiToken).where(ApiToken.token == "app-generated-token"))
-    assert api_token is not None
-    assert api_token.app_id == "app-1"
-    assert api_token.tenant_id == "tenant-1"
-    assert api_token.type == ApiTokenType.APP
-    generate_api_key.assert_called_once_with("app-", 24, session=session)
-    assert commits == ["commit"]
+    def delete_agent_key(self, context: RequestContext, agent_id: str, key_id: str) -> None:
+        self._record("delete", context, "agent", agent_id, key_id)
 
 
-def test_create_api_key_counts_legacy_tokens(sqlite_session: Session) -> None:
-    resource = _make_list_resource()
-    _persist_app(sqlite_session)
+@dataclass
+class RecordingDatasetKeys:
+    recorder: RecordingKeys
+
+    def list_keys(self, context: RequestContext, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
+        return (self.recorder._record("list", context, "dataset", dataset_id),)
+
+    def create_key(self, context: RequestContext, dataset_id: str) -> ApiKeyRecord:
+        return self.recorder._record("create", context, "dataset", dataset_id)
+
+    def delete_key(self, context: RequestContext, dataset_id: str, key_id: str) -> None:
+        self.recorder._record("delete", context, "dataset", dataset_id, key_id)
+
+    def list_workspace_keys(self, context: RequestContext) -> tuple[ApiKeyRecord, ...]:
+        return (self.recorder._record("list", context, "dataset", "workspace"),)
+
+    def create_workspace_key(self, context: RequestContext, _dataset_ids: tuple[str, ...]) -> ApiKeyRecord:
+        return self.recorder._record("create", context, "dataset", "workspace")
+
+    def delete_workspace_key(self, context: RequestContext, key_id: str) -> None:
+        self.recorder._record("delete", context, "dataset", "workspace", key_id)
+
+
+@dataclass
+class ApiKeyTestServices:
+    app_api_keys: RecordingKeys
+    dataset_api_keys: RecordingDatasetKeys
+
+
+type KeysApp = tuple[Flask, RecordingKeys, Account]
+
+
+@pytest.fixture
+def keys_app(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> KeysApp:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True, RBAC_ENABLED=False)
+    account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
+    account.id = "actor"
+    account.role = TenantAccountRole.OWNER
+
+    def current_account() -> AccountWithTenant:
+        return AccountWithTenant(account, "workspace")
+
+    monkeypatch.setattr(flask_admission, "current_account_with_tenant", current_account)
+    monkeypatch.setattr(wraps, "current_account_with_tenant", current_account)
+    monkeypatch.setattr(flask_admission, "get_request_id", lambda: "request-id")
+    monkeypatch.setattr(flask_admission, "get_trace_id", lambda: None)
+    keys = RecordingKeys()
+    services = cast(ApplicationServices, ApiKeyTestServices(keys, RecordingDatasetKeys(keys)))
+    monkeypatch.setattr(apikey, "application_services", lambda: services)
+    monkeypatch.setattr(roster, "application_services", lambda: services)
+    monkeypatch.setattr(datasets, "application_services", lambda: services)
+    app = Flask(__name__)
+    api = Api(app)
+    api.add_resource(apikey.AppApiKeyListResource, "/app/<uuid:resource_id>")
+    api.add_resource(apikey.AppApiKeyResource, "/app/<uuid:resource_id>/<uuid:api_key_id>")
+    api.add_resource(apikey.DatasetApiKeyListResource, "/dataset/<uuid:resource_id>")
+    api.add_resource(apikey.DatasetApiKeyResource, "/dataset/<uuid:resource_id>/<uuid:api_key_id>")
+    api.add_resource(roster.AgentApiKeyListApi, "/agent/<uuid:agent_id>")
+    api.add_resource(roster.AgentApiKeyApi, "/agent/<uuid:agent_id>/<uuid:api_key_id>")
+    api.add_resource(datasets.DatasetApiKeyApi, "/workspace-keys")
+    api.add_resource(datasets.DatasetApiDeleteApi, "/workspace-keys/<uuid:api_key_id>")
+    return app, keys, account
+
+
+@pytest.mark.parametrize("kind", ["app", "dataset", "agent"])
+def test_key_routes_forward_stable_context_and_serialize(keys_app: KeysApp, kind: str) -> None:
+    app, keys, _ = keys_app
+    client = app.test_client()
+    path = f"/{kind}/{RESOURCE_ID}"
+    headers = {"X-Trace-Id": "trace-id"}
+
+    listed = client.get(path, headers=headers)
+    created = client.post(path, headers=headers)
+    deleted = client.delete(f"{path}/{KEY_ID}", headers=headers)
+
+    assert listed.status_code == 200
+    assert listed.json is not None
+    assert listed.json["data"][0]["token"] == ("app-s...oken" if kind == "dataset" else "app-secret-token")
+    assert listed.json["data"][0]["dataset_ids"] == ([str(RESOURCE_ID)] if kind == "dataset" else [])
+    assert created.status_code == 201
+    assert created.json is not None
+    assert created.json["token"] == "app-secret-token"
+    assert created.json["created_at"] == 1767225600
+    assert deleted.status_code == 204
+    assert deleted.data == b""
+    context = RequestContext("request-id", "trace-id", "actor", "workspace")
+    assert keys.calls == [
+        ("list", context, kind, str(RESOURCE_ID), None),
+        ("create", context, kind, str(RESOURCE_ID), None),
+        ("delete", context, kind, str(RESOURCE_ID), str(KEY_ID)),
+    ]
+
+
+@pytest.mark.parametrize("kind", ["app", "dataset", "agent"])
+@pytest.mark.parametrize("role", list(TenantAccountRole))
+@pytest.mark.parametrize("method", ["GET", "POST", "DELETE"])
+def test_admission_preserves_role_policy(keys_app: KeysApp, kind: str, role: TenantAccountRole, method: str) -> None:
+    app, keys, account = keys_app
+    account.role = role
+    path = f"/{kind}/{RESOURCE_ID}" + (f"/{KEY_ID}" if method == "DELETE" else "")
+    response = app.test_client().open(path, method=method)
+    allowed = role in (apikey.API_KEY_DELETE_ROLES if method == "DELETE" else apikey.API_KEY_EDIT_ROLES)
+    assert response.status_code == ({"GET": 200, "POST": 201, "DELETE": 204}[method] if allowed else 403)
+    assert bool(keys.calls) is allowed
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "message"),
+    [
+        (ApiKeyResourceNotFoundError("App not found."), 404, "App not found."),
+        (ApiKeyNotFoundError(), 404, "API key not found"),
+        (ApiKeyLimitExceededError(10), 400, "Cannot create more than 10 API keys for this resource type."),
+        (AppApiKeyNotReadyError(), 409, "Publish the Agent before enabling Web App or API access."),
+    ],
+)
+def test_errors_keep_http_contract(keys_app: KeysApp, error: Exception, status: int, message: str) -> None:
+    app, keys, _ = keys_app
+    keys.error = error
+    response = app.test_client().post(f"/app/{RESOURCE_ID}")
+    assert response.status_code == status
+    assert response.json is not None
+    assert response.json["message"].startswith(message)
+    if isinstance(error, ApiKeyLimitExceededError):
+        assert response.json["custom"] == "max_keys_exceeded"
+
+
+@pytest.mark.parametrize(
+    ("kind", "permission"),
+    [
+        ("app", RBACPermission.APP_RELEASE_AND_VERSION),
+        ("dataset", RBACPermission.DATASET_API_KEY_MANAGE),
+        ("agent", RBACPermission.AGENT_ACCESS_POINT_VIEW),
+    ],
+)
+@pytest.mark.parametrize("allowed", [False, True])
+def test_rbac_admission_controls_service_access(
+    keys_app: KeysApp,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    permission: RBACPermission,
+    allowed: bool,
+) -> None:
+    from controllers.common.rbac import checks, locators
+
+    app, keys, account = keys_app
+    account.role = TenantAccountRole.NORMAL
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr(locators, "agent_binding", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(locators.PlainApp, "owner_id", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(locators.DatasetId, "owner_id", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(locators.AgentId, "owner_id", lambda *_args, **_kwargs: None)
+    check = Mock(return_value=allowed)
+    monkeypatch.setattr(checks.RBACService.CheckAccess, "check", check)
+
+    response = app.test_client().get(f"/{kind}/{RESOURCE_ID}")
+
+    assert response.status_code == (200 if allowed else 403)
+    assert check.call_args.kwargs["scene"] == permission
+    assert bool(keys.calls) is allowed
+
+
+def test_uninitialized_account_is_rejected(keys_app: KeysApp) -> None:
+    app, keys, account = keys_app
+    account.status = AccountStatus.UNINITIALIZED
+    assert app.test_client().post(f"/app/{RESOURCE_ID}").status_code == 400
+    assert keys.calls == []
+
+
+@pytest.mark.parametrize("role", list(TenantAccountRole))
+@pytest.mark.parametrize("method", ["GET", "POST", "DELETE"])
+def test_workspace_key_admission_preserves_admin_role_policy(
+    keys_app: KeysApp, role: TenantAccountRole, method: str
+) -> None:
+    app, keys, account = keys_app
+    account.role = role
+    path = "/workspace-keys" + (f"/{KEY_ID}" if method == "DELETE" else "")
+    response = app.test_client().open(path, method=method)
+    allowed = role in apikey.API_KEY_DELETE_ROLES
+    assert response.status_code == ({"GET": 200, "POST": 200, "DELETE": 204}[method] if allowed else 403)
+    assert bool(keys.calls) is allowed
+
+
+@pytest.fixture
+def persisted_keys_app(
+    keys_app: KeysApp,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> KeysApp:
+    app, keys, account = keys_app
+    assert account.role is not None
+    tenant = Tenant(name="Workspace")
+    tenant.id = "workspace"
     sqlite_session.add_all(
         [
-            ApiToken(type=ApiTokenType.APP, token=f"legacy-token-{index}", app_id="app-1", tenant_id=None)
-            for index in range(resource.max_keys)
+            tenant,
+            TenantAccountJoin(tenant_id="workspace", account_id=account.id, role=account.role),
+            Dataset(id=str(RESOURCE_ID), tenant_id="workspace", name="Private", created_by="other", maintainer="other"),
         ]
     )
     sqlite_session.commit()
-
-    with pytest.raises(BadRequest):
-        resource._create_api_key("app-1", "tenant-1", session=sqlite_session)
-
-
-def test_create_agent_api_key_requires_published_access(sqlite_session: Session) -> None:
-    resource = _make_list_resource()
-    session = sqlite_session
-    app = _persist_app(session, mode=AppMode.AGENT)
-
-    with patch(
-        "controllers.console.apikey.AppService.ensure_agent_app_access_ready",
-        side_effect=AgentAccessNotReadyError(),
-    ) as ensure_access_ready:
-        with pytest.raises(AgentAccessNotReadyError):
-            resource._create_api_key("app-1", "tenant-1", session=session)
-
-    ensure_access_ready.assert_called_once_with(app, session=session)
-    assert session.scalar(select(ApiToken)) is None
+    service = build_dataset_api_key_service(database_client=sqlite_session_factory)
+    services = Mock(dataset_api_keys=service)
+    monkeypatch.setattr(apikey, "application_services", lambda: services)
+    monkeypatch.setattr(datasets, "application_services", lambda: services)
+    return app, keys, account
 
 
-def test_delete_api_key_rejects_non_admin_account(sqlite_session: Session) -> None:
-    resource = _make_key_resource()
-    raw_delete = cast(
-        Callable[[BaseApiKeyResource, object, str, str, str, Account], tuple[str, int]],
-        inspect.unwrap(BaseApiKeyResource.delete),
-    )
-    session = sqlite_session
-    _persist_app(session)
-
-    with pytest.raises(Forbidden):
-        raw_delete(
-            resource,
-            session,
-            "app-1",
-            "key-1",
-            "tenant-1",
-            _make_account(TenantAccountRole.NORMAL),
-        )
+def test_private_dataset_rejects_editor_without_creating_token(
+    persisted_keys_app: KeysApp, sqlite_session: Session
+) -> None:
+    app, _, account = persisted_keys_app
+    account.role = TenantAccountRole.EDITOR
+    member = sqlite_session.scalar(select(TenantAccountJoin))
+    assert member is not None
+    member.role = account.role
+    sqlite_session.commit()
+    response = app.test_client().post(f"/dataset/{RESOURCE_ID}")
+    assert response.status_code == 403
+    assert sqlite_session.scalar(select(ApiToken)) is None
 
 
-def test_delete_api_key_uses_injected_session_user_and_tenant(sqlite_session: Session) -> None:
-    resource = _make_key_resource()
-    raw_delete = cast(
-        Callable[[BaseApiKeyResource, object, str, str, str, Account], tuple[str, int]],
-        inspect.unwrap(BaseApiKeyResource.delete),
-    )
-    session = sqlite_session
-    _persist_app(session)
-    api_key = ApiToken(type=ApiTokenType.APP, token="app-token", app_id="app-1", tenant_id=None)
-    api_key.id = "key-1"
-    session.add(api_key)
-    session.commit()
-    commits: list[str] = []
-    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
-
-    with patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache:
-        result, status = raw_delete(
-            resource,
-            session,
-            "app-1",
-            "key-1",
-            "tenant-1",
-            _make_account(TenantAccountRole.OWNER),
-        )
-
-    delete_cache.assert_called_once_with("app-token", ApiTokenType.APP)
-    assert session.get(ApiToken, "key-1") is None
-    assert commits == ["commit"]
-    assert result == ""
-    assert status == 204
-
-
-def test_delete_api_key_rejects_foreign_tenant_token(sqlite_session: Session) -> None:
-    resource = _make_key_resource()
-    session = sqlite_session
-    _persist_app(session)
-    api_key = ApiToken(type=ApiTokenType.APP, token="foreign-token", app_id="app-1", tenant_id="tenant-2")
-    api_key.id = "key-1"
-    session.add(api_key)
-    session.commit()
-
-    with patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache:
-        with pytest.raises(NotFound):
-            resource._delete_api_key(
-                "app-1",
-                "key-1",
-                "tenant-1",
-                _make_account(TenantAccountRole.OWNER),
-                session=session,
-            )
-
-    delete_cache.assert_not_called()
-    assert session.get(ApiToken, "key-1") is api_key
-
-
-def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callable[..., None]) -> None:
-    config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        LOGIN_DISABLED=True,
-        RBAC_ENABLED=True,
-    )
-    app = Flask(__name__)
-    account = _make_account(TenantAccountRole.OWNER)
-    api_id = UUID("00000000-0000-0000-0000-000000000001")
-    cases = [
-        (
-            lambda: AppApiKeyListResource().get(resource_id=api_id),
-            {
-                "scene": RBACPermission.APP_RELEASE_AND_VERSION,
-                "resource_type": RBACResourceScope.APP,
-                "resource_id": str(api_id),
-            },
-        ),
-        (
-            lambda: DatasetApiKeyApi().get(),
-            {"scene": RBACPermission.DATASET_API_KEY_MANAGE, "resource_type": None, "resource_id": None},
-        ),
-        (
-            lambda: DatasetApiKeyListResource().get(resource_id=api_id),
-            {
-                "scene": RBACPermission.DATASET_API_KEY_MANAGE,
-                "resource_type": RBACResourceScope.DATASET,
-                "resource_id": str(api_id),
-            },
-        ),
-    ]
-
-    with (
-        app.test_request_context("/"),
-        patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
-        patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
-        patch("controllers.common.rbac.locators.agent_binding", return_value=None),
-        patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
-        patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value=None),
-        patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
-    ):
-        for invoke, expected_kwargs in cases:
-            with patch(
-                "controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False
-            ) as check_access:
-                with pytest.raises(Forbidden):
-                    invoke()
-
-            check_access.assert_called_once_with(
-                "tenant-1",
-                account.id,
-                scene=expected_kwargs["scene"],
-                resource_type=expected_kwargs["resource_type"],
-                resource_id=expected_kwargs["resource_id"],
-            )
-
-    get_api_key_list.assert_not_called()
-
-
-def test_api_key_lists_reject_legacy_read_only_members(config_overrides: Callable[..., None]) -> None:
-    config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        LOGIN_DISABLED=True,
-        RBAC_ENABLED=False,
-    )
-    app = Flask(__name__)
-    account = _make_account(TenantAccountRole.NORMAL)
-    api_id = UUID("00000000-0000-0000-0000-000000000001")
-    current_user = MagicMock()
-    current_user._get_current_object.return_value = account
-    current_user.has_edit_permission = False
-
-    with (
-        app.test_request_context("/"),
-        patch("libs.login.current_user", current_user),
-        patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
-        patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
-    ):
-        for invoke in (
-            lambda: AppApiKeyListResource().get(resource_id=api_id),
-            lambda: AgentApiKeyListApi().get(agent_id=api_id),
-            lambda: DatasetApiKeyApi().get(),
-            lambda: DatasetApiKeyListResource().get(resource_id=api_id),
-        ):
-            with pytest.raises(Forbidden):
-                invoke()
-
-    get_api_key_list.assert_not_called()
+def test_both_http_routes_enforce_the_same_key_limit(persisted_keys_app: KeysApp, sqlite_session: Session) -> None:
+    app, _, _ = persisted_keys_app
+    client = app.test_client()
+    for _ in range(5):
+        assert client.post("/workspace-keys").status_code == 200
+        assert client.post(f"/dataset/{RESOURCE_ID}").status_code == 201
+    for path in ("/workspace-keys", f"/dataset/{RESOURCE_ID}"):
+        response = client.post(path)
+        assert response.status_code == 400
+        assert response.json is not None
+        assert response.json["custom"] == "max_keys_exceeded"
+    assert len(sqlite_session.scalars(select(ApiToken)).all()) == 10

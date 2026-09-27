@@ -130,8 +130,24 @@ describe('NewFeaturePanel', () => {
       renderPanel({ show: true })
 
       expect(screen.getByText(/common\.featuresDescription/)).toBeInTheDocument()
-      expect(screen.getAllByText(/common\.features/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
     })
+  })
+
+  it('names each configuration feature switch from its visible title', () => {
+    renderPanel({ isChatMode: true, inWorkflow: false, showFileUpload: false })
+
+    for (const feature of [
+      'conversationOpener',
+      'suggestedQuestionsAfterAnswer',
+      'citation',
+      'moderation',
+      'annotation',
+    ]) {
+      expect(
+        screen.getByRole('switch', { name: `appDebug.feature.${feature}.title` }),
+      ).toBeInTheDocument()
+    }
   })
 
   describe('Chat Mode Features', () => {

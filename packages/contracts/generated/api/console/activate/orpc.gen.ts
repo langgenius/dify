@@ -7,7 +7,7 @@ import {
   zGetActivateCheckResponse,
   zPostActivateBody,
   zPostActivateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Check if activation token is valid

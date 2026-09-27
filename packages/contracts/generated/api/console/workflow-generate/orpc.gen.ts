@@ -9,7 +9,7 @@ import {
   zPostWorkflowGenerateStreamResponse,
   zPostWorkflowGenerateSuggestionsBody,
   zPostWorkflowGenerateSuggestionsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Stream a Dify workflow graph (plan then result) via SSE
