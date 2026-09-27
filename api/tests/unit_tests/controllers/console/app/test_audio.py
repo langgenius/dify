@@ -590,7 +590,7 @@ def test_agent_text_to_speech_voices_rejects_missing_language(app: Flask, unboun
     api = AgentTextToSpeechVoicesApi()
     view = unwrap(api.get)
     # Stop at the innermost decorator so request validation runs without the auth and session layers.
-    handler = unwrap(api.get, stop=lambda f: getattr(f, "__wrapped__", None) is view)
+    handler = unwrap(api.get, stop=lambda f: f.__dict__.get("__wrapped__") is view)
     with (
         patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
         patch.object(audio_module, "enforce_rbac_checks") as check_access,
