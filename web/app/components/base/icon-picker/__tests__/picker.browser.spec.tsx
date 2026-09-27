@@ -156,3 +156,45 @@ it('focuses the visible image action when reopening an existing image icon', asy
   await expect.element(page.getByRole('button', { name: 'common.operation.change' })).toHaveFocus()
   client.clear()
 })
+
+it.each(['light', 'dark'])(
+  'distinguishes keyboard focus from the selected color in %s mode',
+  async (theme) => {
+    document.documentElement.dataset.theme = theme
+    const client = new QueryClient()
+    client.setQueryData(emojiCatalogOptions.queryKey, [])
+    try {
+      await render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      )
+      await page.getByRole('button', { name: 'Choose', exact: true }).click()
+      const red = page.getByRole('radio', { name: 'app.iconPicker.color.red' })
+      const rose = page.getByRole('radio', { name: 'app.iconPicker.color.rose' })
+      await expect.element(red).toBeChecked()
+      expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
+
+      await userEvent.tab()
+      await expect.element(red).toHaveFocus()
+      expect(getComputedStyle(red.element()).outlineStyle).toBe('solid')
+      expect(Number.parseFloat(getComputedStyle(red.element()).outlineWidth)).toBeGreaterThan(0)
+
+      await userEvent.keyboard('{ArrowRight}')
+      await expect.element(rose).toHaveFocus()
+      await expect.element(rose).toBeChecked()
+      expect(getComputedStyle(rose.element()).outlineStyle).toBe('solid')
+      expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
+
+      await userEvent.tab()
+      await expect
+        .element(page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }))
+        .toHaveFocus()
+      await expect.element(rose).toBeChecked()
+      expect(getComputedStyle(rose.element()).outlineStyle).toBe('none')
+    } finally {
+      document.documentElement.dataset.theme = 'light'
+      client.clear()
+    }
+  },
+)

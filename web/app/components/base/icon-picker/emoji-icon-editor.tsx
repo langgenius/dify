@@ -44,7 +44,7 @@ export function EmojiIconEditor({
                 value={style.background}
                 aria-label={t(($) => $[style.label], { ns: 'app' })}
                 className={cn(
-                  'flex aspect-square w-full max-w-11.5 items-center justify-center rounded-xl p-0.75 outline-none ring-inset hover:bg-state-base-hover focus-visible:bg-state-base-hover data-checked:ring-[1.5px]',
+                  'flex aspect-square w-full max-w-11.5 items-center justify-center rounded-xl p-0.75 outline-none ring-inset hover:bg-state-base-hover focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-state-accent-solid focus-visible:outline-solid data-checked:ring-[1.5px]',
                   style.selectedClassName,
                 )}
               >
