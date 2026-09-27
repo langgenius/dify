@@ -293,7 +293,7 @@ function IconPickerSession({
         >
           <ImageIconInput
             previewUrl={imageDraft?.type === 'image' ? imageDraft.url : undefined}
-            browseButtonRef={activeTab === 'image' ? initialFocusRef : undefined}
+            initialFocusRef={activeTab === 'image' ? initialFocusRef : undefined}
             disabled={uploading}
             onChange={handleImageChange}
           />

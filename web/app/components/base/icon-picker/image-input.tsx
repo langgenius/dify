@@ -25,7 +25,7 @@ export type ImageIconInputValue =
 
 export type ImageIconInputProps = {
   previewUrl?: string
-  browseButtonRef?: Ref<HTMLButtonElement>
+  initialFocusRef?: Ref<HTMLButtonElement>
   disabled?: boolean
   className?: string
   cropShape?: CropperProps['cropShape']
@@ -36,7 +36,7 @@ export function ImageIconInput({
   className,
   cropShape,
   onChange,
-  browseButtonRef,
+  initialFocusRef,
   previewUrl,
   disabled = false,
 }: ImageIconInputProps) {
@@ -132,7 +132,7 @@ export function ImageIconInput({
               className="size-16 rounded-2xl object-contain"
             />
             <Button
-              ref={browseButtonRef}
+              ref={initialFocusRef}
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
             >
@@ -185,7 +185,7 @@ export function ImageIconInput({
               {t(($) => $['imageInput.dropImageHere'], { ns: 'common' })}{' '}
               <button
                 type="button"
-                ref={browseButtonRef}
+                ref={initialFocusRef}
                 disabled={disabled}
                 className="rounded-sm text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
                 onClick={() => inputRef.current?.click()}
