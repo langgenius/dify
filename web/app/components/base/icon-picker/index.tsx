@@ -118,11 +118,11 @@ function IconPickerSession({
   const [preparing, setPreparing] = useState(false)
   const [, setRecentEmojis] = useRecentEmojis()
   const [preparationError, setPreparationError] = useState('')
-  const activeRef = useRef(open)
+  const isOpenRef = useRef(open)
   useLayoutEffect(() => {
-    activeRef.current = open
+    isOpenRef.current = open
     return () => {
-      activeRef.current = false
+      isOpenRef.current = false
     }
   }, [open])
 
@@ -158,7 +158,7 @@ function IconPickerSession({
           const blob = await getCroppedImg(imageDraft.url, imageDraft.area, imageDraft.fileName)
           file = new File([blob], imageDraft.fileName, { type: blob.type })
         }
-        if (!activeRef.current) return
+        if (!isOpenRef.current) return
         if (file.size > 3 * 1024 * 1024) {
           setPreparationError(
             t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 3 }),
@@ -166,24 +166,24 @@ function IconPickerSession({
           return
         }
         const url = await readImageDataURL(file)
-        if (!activeRef.current) return
+        if (!isOpenRef.current) return
         upload.mutate(
           { body: { file } },
           {
             onSuccess: (uploaded) => {
-              if (!activeRef.current) return
+              if (!isOpenRef.current) return
               onConfirm({ type: 'image', fileId: uploaded.id, url })
               onOpenChange(false)
             },
           },
         )
       } catch {
-        if (activeRef.current)
+        if (isOpenRef.current)
           setPreparationError(
             t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' }),
           )
       } finally {
-        if (activeRef.current) setPreparing(false)
+        if (isOpenRef.current) setPreparing(false)
       }
     }
   }
