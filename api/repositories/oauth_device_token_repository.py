@@ -59,7 +59,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             )
             session.add(record)
             session.flush()
-            token_id = str(record.id)
+            token_id = record.id
             session.commit()
 
         rotation = OAuthDeviceTokenRotation(
@@ -150,7 +150,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             total=total,
             items=tuple(
                 OAuthDeviceSession(
-                    id=str(record.id),
+                    id=record.id,
                     prefix=record.prefix,
                     client_id=record.client_id,
                     device_label=record.device_label,
