@@ -28,7 +28,7 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks())
 
-async function selectImage() {
+async function selectImage(defaultValue?: IconPickerDefaultValue) {
   const user = userEvent.setup()
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
@@ -36,10 +36,17 @@ async function selectImage() {
   const onOpenChange = vi.fn()
   const view = render(
     <QueryClientProvider client={client}>
-      <IconPickerDialog open onConfirm={onConfirm} onOpenChange={onOpenChange} />
+      <IconPickerDialog
+        open
+        defaultValue={defaultValue}
+        onConfirm={onConfirm}
+        onOpenChange={onOpenChange}
+      />
     </QueryClientProvider>,
   )
   await user.click(screen.getByRole('tab', { name: 'app.iconPicker.image' }))
+  if (defaultValue?.type === 'image')
+    await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
   const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
   await user.upload(screen.getByTestId('image-input'), file)
   const confirm = await screen.findByRole('button', { name: 'app.iconPicker.ok' })
@@ -89,8 +96,8 @@ it('does not confirm an upload that finishes after the picker is unmounted', asy
   client.clear()
 })
 
-it('confirms an existing image without uploading it again', async () => {
-  const user = userEvent.setup()
+it('opens the file input directly and preserves the existing image on cancellation or invalid selection', async () => {
+  const user = userEvent.setup({ applyAccept: false })
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   const onConfirm = vi.fn()
@@ -99,6 +106,23 @@ it('confirms an existing image without uploading it again', async () => {
     <QueryClientProvider client={client}>
       <IconPickerDialog open defaultValue={value} onConfirm={onConfirm} onOpenChange={() => {}} />
     </QueryClientProvider>,
+  )
+  const input = screen.getByTestId('image-input')
+  const openFilePicker = vi.spyOn(input, 'click')
+  await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
+  expect(openFilePicker).toHaveBeenCalledOnce()
+  fireEvent(input, new Event('cancel', { bubbles: true }))
+  expect(screen.getByRole('img', { name: 'app.iconPicker.image' })).toHaveAttribute(
+    'src',
+    value.url,
+  )
+  expect(screen.queryByRole('button', { name: 'common.imageInput.browse' })).not.toBeInTheDocument()
+  expect(onConfirm).not.toHaveBeenCalled()
+  await user.upload(input, new File(['text'], 'invalid.txt', { type: 'text/plain' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.imageInput.supportedFormats')
+  expect(screen.getByRole('img', { name: 'app.iconPicker.image' })).toHaveAttribute(
+    'src',
+    value.url,
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith(value)
@@ -245,5 +269,23 @@ it('blocks replacement by browsing or dropping while uploading and restores edit
   await user.click(confirm)
   await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
   expect(uploadImage.mock.calls[1]![0].body.file).toBe(file)
+  client.clear()
+})
+
+it('replaces an existing image only after selecting a file and confirms the new upload', async () => {
+  const previous = { type: 'image' as const, fileId: 'existing', url: '/existing.png' }
+  uploadImage.mockResolvedValueOnce({ id: 'replacement', name: 'icon.gif', size: 6 })
+  const { user, client, file, confirm, onConfirm } = await selectImage(previous)
+  expect(screen.getByRole('img', { name: 'app.iconPicker.image' })).not.toHaveAttribute(
+    'src',
+    previous.url,
+  )
+  expect(onConfirm).not.toHaveBeenCalled()
+  await user.click(confirm)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+  expect(uploadImage.mock.calls[0]![0].body.file).toBe(file)
+  expect(onConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'image', fileId: 'replacement' }),
+  )
   client.clear()
 })

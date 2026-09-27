@@ -291,27 +291,12 @@ function IconPickerSession({
           tabIndex={-1}
           className="min-h-0 overflow-y-auto data-hidden:hidden"
         >
-          {imageDraft?.type === 'image' ? (
-            <div className="flex h-52 flex-col items-center justify-center gap-3 p-3">
-              <img
-                src={imageDraft.url}
-                alt={t(($) => $['iconPicker.image'], { ns: 'app' })}
-                className="size-16 rounded-2xl object-contain"
-              />
-              <Button
-                ref={activeTab === 'image' ? initialFocusRef : undefined}
-                onClick={() => handleImageChange(null)}
-              >
-                {t(($) => $['operation.change'], { ns: 'common' })}
-              </Button>
-            </div>
-          ) : (
-            <ImageIconInput
-              browseButtonRef={activeTab === 'image' ? initialFocusRef : undefined}
-              disabled={uploading}
-              onChange={handleImageChange}
-            />
-          )}
+          <ImageIconInput
+            previewUrl={imageDraft?.type === 'image' ? imageDraft.url : undefined}
+            browseButtonRef={activeTab === 'image' ? initialFocusRef : undefined}
+            disabled={uploading}
+            onChange={handleImageChange}
+          />
         </TabsPanel>
       )}
       {uploadError && (

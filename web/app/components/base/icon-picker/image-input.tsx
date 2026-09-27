@@ -24,6 +24,7 @@ export type ImageIconInputValue =
   | { type: 'crop'; url: string; area: Area; fileName: string }
 
 export type ImageIconInputProps = {
+  previewUrl?: string
   browseButtonRef?: Ref<HTMLButtonElement>
   disabled?: boolean
   className?: string
@@ -36,6 +37,7 @@ export function ImageIconInput({
   cropShape,
   onChange,
   browseButtonRef,
+  previewUrl,
   disabled = false,
 }: ImageIconInputProps) {
   const { t } = useTranslation(['common', 'app'])
@@ -88,6 +90,7 @@ export function ImageIconInput({
       if (selection === selectionRef.current) setPending(false)
     }
   }
+  const showPreview = !inputImage && !!previewUrl
   const { isDragActive, ...dropHandlers } = useImageDrop((file) => void selectFile(file), disabled)
   const handleImageError = () => {
     setInputImage(undefined)
@@ -113,12 +116,30 @@ export function ImageIconInput({
       <div
         {...dropHandlers}
         className={cn(
-          'relative flex h-60 flex-col items-center justify-center gap-2 overflow-hidden rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-center text-text-secondary',
+          'relative flex flex-col items-center justify-center overflow-hidden text-center',
+          showPreview
+            ? 'h-46 gap-3'
+            : 'h-60 gap-2 rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-secondary',
           isDragActive &&
             'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >
-        {inputImage ? (
+        {showPreview ? (
+          <>
+            <img
+              src={previewUrl}
+              alt={t(($) => $['iconPicker.image'], { ns: 'app' })}
+              className="size-16 rounded-2xl object-contain"
+            />
+            <Button
+              ref={browseButtonRef}
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+            >
+              {t(($) => $['operation.change'], { ns: 'common' })}
+            </Button>
+          </>
+        ) : inputImage ? (
           inputImage.animated ? (
             <img
               src={inputImage.url}
