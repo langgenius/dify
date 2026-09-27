@@ -390,6 +390,7 @@ class TestAsyncWorkflowService:
         updated_log = sqlite_session.scalar(select(WorkflowTriggerLog))
         assert updated_log is not None
         assert updated_log.status == WorkflowTriggerStatus.FAILED
+        assert updated_log.error is not None
         assert "Failed to dispatch workflow task" in updated_log.error
         assert "broker unavailable" in updated_log.error
         assert (
