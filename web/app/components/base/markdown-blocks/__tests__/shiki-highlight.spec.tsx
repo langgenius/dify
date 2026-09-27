@@ -1,13 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import type { getSingletonHighlighter } from 'shiki/core'
 import * as shikiCore from 'shiki/core'
 import { highlightCode } from '../shiki-highlight'
+
+type SingletonAccessor = typeof getSingletonHighlighter
 
 // Mock the singleton accessor so tests can assert that the WASM engine is not
 // loaded for plain-text fences while still letting supported-language tests
 // observe a real `getSingletonHighlighter` invocation.
 const { mockGetSingletonHighlighter } = vi.hoisted(() => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockGetSingletonHighlighter: vi.fn() as any,
+  mockGetSingletonHighlighter: vi.fn(),
 }))
 
 vi.mock('shiki/core', async (importOriginal) => {
@@ -19,8 +21,7 @@ vi.mock('shiki/core', async (importOriginal) => {
       const real = realCreateSingletonShorthands(factory)
       // Wrap real `getSingletonHighlighter` so tests can observe invocations.
       const realGet = real.getSingletonHighlighter
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const wrapped: any = (...args: Parameters<typeof realGet>) => {
+      const wrapped: SingletonAccessor = (...args: Parameters<typeof realGet>) => {
         mockGetSingletonHighlighter(...args)
         return realGet(...args)
       }
