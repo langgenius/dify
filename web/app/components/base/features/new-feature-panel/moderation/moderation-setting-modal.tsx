@@ -308,6 +308,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
       <DialogContent className="mt-14! w-150! max-w-none! overflow-hidden border-[0.5px]! border-components-panel-border! p-0! text-left align-middle">
         <form
           onSubmit={(event) => {
+            // Portalled child forms still bubble submit events through the React tree.
+            if (event.target !== event.currentTarget) return
+
             event.preventDefault()
             handleSave()
           }}
