@@ -259,7 +259,7 @@ describe('CreateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()

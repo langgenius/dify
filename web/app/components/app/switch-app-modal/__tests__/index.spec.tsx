@@ -299,7 +299,7 @@ describe('SwitchAppModal', () => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()

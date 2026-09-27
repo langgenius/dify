@@ -2,7 +2,7 @@ import type {
   AgentAppCreatePayload,
   AgentAppPartial,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 
 type AgentFormField = 'description' | 'name' | 'role'
 
@@ -16,7 +16,7 @@ export type AgentFormSource = Pick<
 >
 
 export type AgentIconSelection =
-  | AppIconSelection
+  | IconPickerValue
   | {
       type: 'link'
       icon: string
@@ -27,7 +27,7 @@ export const defaultAgentIcon = {
   type: 'emoji',
   icon: '🧸',
   background: '#F5F3FF',
-} satisfies AppIconSelection
+} satisfies IconPickerValue
 
 type AgentIconSource = {
   icon?: string | null

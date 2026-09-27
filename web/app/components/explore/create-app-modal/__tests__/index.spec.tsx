@@ -55,7 +55,7 @@ const getAppIconTrigger = (): HTMLElement => {
 const openAppIconPicker = () => {
   fireEvent.click(getAppIconTrigger())
 
-  return screen.getByRole('dialog', { name: 'app.iconPicker.emoji' })
+  return screen.getByRole('dialog', { name: 'app.iconPicker.title' })
 }
 
 function render(ui: ReactElement) {
@@ -317,14 +317,14 @@ describe('CreateAppModal', () => {
       const pickerDialog = openAppIconPicker()
 
       expect(
-        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.tryYourLuck' }),
+        within(pickerDialog).getByRole('tabpanel', { name: 'app.iconPicker.image' }),
       )!.toBeInTheDocument()
 
       await userEvent.setup().keyboard('{Escape}')
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('dialog', { name: 'app.iconPicker.emoji' }),
+          screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
         ).not.toBeInTheDocument()
       })
     })
@@ -338,6 +338,7 @@ describe('CreateAppModal', () => {
 
       const pickerDialog = openAppIconPicker()
 
+      fireEvent.click(within(pickerDialog).getByRole('tab', { name: 'app.iconPicker.emoji' }))
       fireEvent.click(await within(pickerDialog).findByRole('gridcell', { name: 'Grinning face' }))
 
       fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
@@ -365,7 +366,9 @@ describe('CreateAppModal', () => {
 
         const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#F3FEE7' }))
+        fireEvent.click(
+          within(pickerDialog).getByRole('radio', { name: 'app.iconPicker.color.green' }),
+        )
         fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))

@@ -1,6 +1,6 @@
 'use client'
 import type { HeaderItem } from '../headers-input'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
@@ -13,15 +13,15 @@ const extractFileId = (url: string) => {
   const match = /files\/(.+?)\/file-preview/.exec(url)
   return match ? match[1] : null
 }
-const getIcon = (data?: ToolWithProvider): AppIconSelection => {
-  if (!data) return DEFAULT_ICON as AppIconSelection
+const getIcon = (data?: ToolWithProvider): IconPickerValue => {
+  if (!data) return DEFAULT_ICON as IconPickerValue
   if (typeof data.icon === 'string')
-    return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as AppIconSelection
+    return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as IconPickerValue
   return {
     ...data.icon,
     icon: data.icon.content,
     type: 'emoji',
-  } as unknown as AppIconSelection
+  } as unknown as IconPickerValue
 }
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
   return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({
@@ -44,8 +44,8 @@ export const isValidServerID = (str: string) => {
 type MCPModalFormState = {
   url: string
   name: string
-  appIcon: AppIconSelection
-  showAppIconPicker: boolean
+  appIcon: IconPickerValue
+  showIconPicker: boolean
   serverIdentifier: string
   timeout: number
   sseReadTimeout: number
@@ -60,8 +60,8 @@ type MCPModalFormState = {
 type MCPModalFormActions = {
   setUrl: (url: string) => void
   setName: (name: string) => void
-  setAppIcon: (icon: AppIconSelection) => void
-  setShowAppIconPicker: (show: boolean) => void
+  setAppIcon: (icon: IconPickerValue) => void
+  setShowIconPicker: (show: boolean) => void
   setServerIdentifier: (id: string) => void
   setTimeout: (timeout: number) => void
   setSseReadTimeout: (timeout: number) => void
@@ -90,8 +90,8 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   // Form state - initialized from data
   const [url, setUrl] = useState(() => data?.server_url || '')
   const [name, setName] = useState(() => data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState<IconPickerValue>(() => getIcon(data))
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = useState(() => data?.server_identifier || '')
   const [timeout, setMcpTimeout] = useState(() => data?.configuration?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = useState(
@@ -175,7 +175,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       url,
       name,
       appIcon,
-      showAppIconPicker,
+      showIconPicker,
       serverIdentifier,
       timeout,
       sseReadTimeout,
@@ -192,7 +192,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setUrl,
       setName,
       setAppIcon,
-      setShowAppIconPicker,
+      setShowIconPicker,
       setServerIdentifier,
       setTimeout: setMcpTimeout,
       setSseReadTimeout,

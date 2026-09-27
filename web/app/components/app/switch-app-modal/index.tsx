@@ -21,6 +21,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,7 +29,6 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -63,15 +63,15 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const appIconType = zIconType.safeParse(appDetail.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon ?? '' }
+      ? { type: 'image' as const, url: appDetail.icon_url ?? '', fileId: appDetail.icon ?? '' }
       : {
           type: 'emoji' as const,
           icon: appDetail.icon ?? '',
-          background: appDetail.icon_background,
+          background: appDetail.icon_background ?? '#FEF3F2',
         },
   )
 
@@ -172,7 +172,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               <AppIcon
                 size="large"
                 onClick={() => {
-                  setShowAppIconPicker(true)
+                  setShowIconPicker(true)
                 }}
                 className="cursor-pointer"
                 iconType={appIcon.type}
@@ -188,20 +188,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
                 className="h-10 grow"
               />
             </div>
-            {showAppIconPicker && (
-              <AppIconPicker
-                open={showAppIconPicker}
-                initialEmoji={
-                  appIcon.type === 'emoji'
-                    ? { icon: appIcon.icon, background: appIcon.background }
-                    : undefined
-                }
-                onOpenChange={setShowAppIconPicker}
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                }}
-              />
-            )}
+            <IconPickerDialog
+              open={showIconPicker}
+              defaultValue={appIcon}
+              onOpenChange={setShowIconPicker}
+              onConfirm={(payload) => {
+                setAppIcon(payload)
+              }}
+            />
           </div>
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">

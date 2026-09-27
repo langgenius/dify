@@ -16,12 +16,12 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import AppIconPicker from '../../base/app-icon-picker'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -76,10 +76,10 @@ const CreateAppModal = ({
   const [name, setName] = React.useState(appName)
   const [appIcon, setAppIcon] = useState(() =>
     appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
+      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl ?? '' }
+      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground ?? '#FEF3F2' },
   )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -156,7 +156,7 @@ const CreateAppModal = ({
             if (
               !show ||
               submitDisabled ||
-              showAppIconPicker ||
+              showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
               !(event.target instanceof Node) ||
@@ -206,7 +206,7 @@ const CreateAppModal = ({
                 <AppIcon
                   size="large"
                   onClick={() => {
-                    setShowAppIconPicker(true)
+                    setShowIconPicker(true)
                   }}
                   className="cursor-pointer"
                   iconType={appIcon.type}
@@ -311,20 +311,14 @@ const CreateAppModal = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={(payload) => {
+          setAppIcon(payload)
+        }}
+      />
     </>
   )
 }

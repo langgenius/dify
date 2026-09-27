@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
 import AppIcon from '@/app/components/base/app-icon'
-import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
@@ -218,15 +218,25 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
-        {showEmojiPicker && (
-          <EmojiPicker
-            open={showEmojiPicker}
-            onOpenChange={setShowEmojiPicker}
-            onSelect={(icon, icon_background) => {
-              handleValueChange({ icon, icon_background })
-            }}
-          />
-        )}
+        <IconPickerDialog
+          enableImageUpload={false}
+          defaultValue={
+            localeData.icon
+              ? {
+                  type: 'emoji',
+                  icon: localeData.icon,
+                  background: localeData.icon_background ?? '#FEF3F2',
+                }
+              : undefined
+          }
+          open={showEmojiPicker}
+          onOpenChange={setShowEmojiPicker}
+          onConfirm={(value) => {
+            if (value.type !== 'emoji') return
+            const { icon, background: icon_background } = value
+            handleValueChange({ icon, icon_background })
+          }}
+        />
       </DialogContent>
     </Dialog>
   )
