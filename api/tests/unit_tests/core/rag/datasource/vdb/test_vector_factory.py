@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import sys
 import types
 from datetime import UTC, datetime
@@ -356,6 +357,28 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector.create(texts=None)
     vector._embeddings.embed_documents.assert_not_called()
     vector._vector_processor.create.assert_not_called()
+
+
+def test_create_logs_batch_count_as_progress_denominator(vector_factory_module, caplog):
+    """Progress logs must report the batch count, not a text count with the raw remainder."""
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.side_effect = [
+        [[0.1] for _ in range(1000)],
+        [[0.2] for _ in range(500)],
+    ]
+    vector._vector_processor = MagicMock()
+
+    docs = [Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}"}) for i in range(1500)]
+
+    with caplog.at_level(logging.INFO):
+        vector.create(texts=docs)
+
+    progress = [record.getMessage() for record in caplog.records if "Processing batch" in record.getMessage()]
+    assert progress == [
+        "Processing batch 1/2 (1000 texts)",
+        "Processing batch 2/2 (500 texts)",
+    ]
 
 
 def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
