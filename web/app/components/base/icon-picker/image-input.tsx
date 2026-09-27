@@ -171,10 +171,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
         </p>
       )}
       {inputImage && (
-        <div className="mt-3 flex items-center gap-2">
-          <Button onClick={() => inputRef.current?.click()}>
-            {t(($) => $['operation.change'], { ns: 'common' })}
-          </Button>
+        <div className="mt-3 flex items-center justify-end gap-2">
           {!inputImage.animated && (
             <Slider
               min={1}
@@ -195,6 +192,9 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
               </SliderControl>
             </Slider>
           )}
+          <Button onClick={() => inputRef.current?.click()}>
+            {t(($) => $['operation.change'], { ns: 'common' })}
+          </Button>
         </div>
       )}
     </div>
