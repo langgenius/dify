@@ -1,5 +1,5 @@
-import { renderToStaticMarkup } from 'react-dom/server'
 import type { getSingletonHighlighter } from 'shiki/core'
+import { renderToStaticMarkup } from 'react-dom/server'
 import * as shikiCore from 'shiki/core'
 import { highlightCode } from '../shiki-highlight'
 
