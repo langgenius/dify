@@ -31,15 +31,15 @@ export type ImageIcon = {
 
 export type IconPickerValue = EmojiIcon | ImageIcon
 
-export type IconPickerDialogProps = {
+export type IconPickerDialogProps = Pick<DialogContentProps, 'initialFocus' | 'finalFocus'> & {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Initial draft for each dialog session. */
   defaultValue?: IconPickerValue
+  /** Receives the confirmed value after any image upload; does not await consumer persistence. */
   onConfirm: (value: IconPickerValue) => void
   enableImageUpload?: boolean
   className?: string
-  initialFocus?: DialogContentProps['initialFocus']
-  finalFocus?: DialogContentProps['finalFocus']
 }
 
 export function IconPickerDialog({
