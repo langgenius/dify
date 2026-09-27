@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { Area, CropperProps } from 'react-easy-crop'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,6 +24,7 @@ export type ImageIconInputValue =
   | { type: 'crop'; url: string; area: Area; fileName: string }
 
 export type ImageIconInputProps = {
+  browseButtonRef?: Ref<HTMLButtonElement>
   disabled?: boolean
   className?: string
   cropShape?: CropperProps['cropShape']
@@ -33,6 +35,7 @@ export function ImageIconInput({
   className,
   cropShape,
   onChange,
+  browseButtonRef,
   disabled = false,
 }: ImageIconInputProps) {
   const { t } = useTranslation(['common', 'app'])
@@ -161,7 +164,7 @@ export function ImageIconInput({
               {t(($) => $['imageInput.dropImageHere'], { ns: 'common' })}{' '}
               <button
                 type="button"
-                data-icon-picker-initial-focus
+                ref={browseButtonRef}
                 disabled={disabled}
                 className="rounded-sm text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
                 onClick={() => inputRef.current?.click()}

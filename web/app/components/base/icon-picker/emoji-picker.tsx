@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { Emoji, EmojiGroup } from './emoji-data'
 import {
   Autocomplete,
@@ -24,6 +25,7 @@ import { recommendedEmojis } from './emoji-styles'
 import { useRecentEmojisValue } from './recent-emojis'
 
 export type EmojiPickerProps = {
+  ref?: Ref<HTMLInputElement>
   value?: string
   onValueChange: (emoji: string) => void
   className?: string
@@ -115,7 +117,7 @@ const EmojiList = memo(
 )
 
 /** Search is transient; choosing a candidate changes the caller's value, never the query. */
-export const EmojiPicker = memo(({ value, onValueChange, className }: EmojiPickerProps) => {
+export const EmojiPicker = memo(({ value, onValueChange, className, ref }: EmojiPickerProps) => {
   const { t } = useTranslation(['app', 'common'])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -201,7 +203,7 @@ export const EmojiPicker = memo(({ value, onValueChange, className }: EmojiPicke
               aria-hidden="true"
             />
             <AutocompleteInput
-              data-icon-picker-initial-focus
+              ref={ref}
               aria-label={t(($) => $['iconPicker.search'], { ns: 'app' })}
               placeholder={t(($) => $['iconPicker.search'], { ns: 'app' })}
               className="ps-1.5"

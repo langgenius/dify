@@ -1,6 +1,7 @@
 'use client'
 
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
+import type { RefCallback } from 'react'
 import type { ImageIconInputValue } from './image-input'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -57,6 +58,10 @@ export function IconPickerDialog({
 }: IconPickerDialogProps) {
   const { t } = useTranslation(['app'])
   const popupRef = useRef<HTMLDivElement>(null)
+  const focusTargetRef = useRef<HTMLElement | null>(null)
+  const setFocusTarget = useCallback((element: HTMLElement | null) => {
+    focusTargetRef.current = element
+  }, [])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -65,13 +70,7 @@ export function IconPickerDialog({
         initialFocus={
           initialFocus ??
           ((interaction) =>
-            interaction === 'touch'
-              ? popupRef.current
-              : (Array.from(
-                  popupRef.current?.querySelectorAll<HTMLElement>(
-                    '[data-icon-picker-initial-focus]',
-                  ) ?? [],
-                ).find((element) => !element.closest('[hidden], [data-hidden]')) ?? true))
+            interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true))
         }
         finalFocus={finalFocus}
         className={cn(
@@ -82,7 +81,12 @@ export function IconPickerDialog({
         <DialogTitle className="sr-only">
           {t(($) => $['iconPicker.title'], { ns: 'app' })}
         </DialogTitle>
-        <IconPickerSession {...props} open={open} onOpenChange={onOpenChange} />
+        <IconPickerSession
+          {...props}
+          open={open}
+          onOpenChange={onOpenChange}
+          initialFocusRef={setFocusTarget}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -94,10 +98,11 @@ function IconPickerSession({
   onConfirm,
   onOpenChange,
   enableImageUpload = true,
+  initialFocusRef,
 }: Pick<
   IconPickerDialogProps,
   'open' | 'defaultValue' | 'onConfirm' | 'onOpenChange' | 'enableImageUpload'
->) {
+> & { initialFocusRef: RefCallback<HTMLElement> }) {
   const { t } = useTranslation(['app', 'common'])
   const imageEnabled = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
   const [activeTab, setActiveTab] = useState<IconPickerValue['type']>(
@@ -263,6 +268,7 @@ function IconPickerSession({
           className="flex min-h-0 flex-1 flex-col data-hidden:hidden"
         >
           <EmojiIconEditor
+            inputRef={activeTab === 'emoji' ? initialFocusRef : undefined}
             value={emoji}
             onEmojiChange={handleEmojiChange}
             onBackgroundChange={handleBackgroundChange}
@@ -271,6 +277,7 @@ function IconPickerSession({
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pt-3">
           <EmojiIconEditor
+            inputRef={activeTab === 'emoji' ? initialFocusRef : undefined}
             value={emoji}
             onEmojiChange={handleEmojiChange}
             onBackgroundChange={handleBackgroundChange}
@@ -291,12 +298,19 @@ function IconPickerSession({
                 alt={t(($) => $['iconPicker.image'], { ns: 'app' })}
                 className="size-16 rounded-2xl object-contain"
               />
-              <Button data-icon-picker-initial-focus onClick={() => handleImageChange(null)}>
+              <Button
+                ref={activeTab === 'image' ? initialFocusRef : undefined}
+                onClick={() => handleImageChange(null)}
+              >
                 {t(($) => $['operation.change'], { ns: 'common' })}
               </Button>
             </div>
           ) : (
-            <ImageIconInput disabled={uploading} onChange={handleImageChange} />
+            <ImageIconInput
+              browseButtonRef={activeTab === 'image' ? initialFocusRef : undefined}
+              disabled={uploading}
+              onChange={handleImageChange}
+            />
           )}
         </TabsPanel>
       )}
