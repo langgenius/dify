@@ -5,6 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { IconPickerDialog } from '..'
 import { emojiCatalogOptions } from '../emoji-data'
+import { recommendedEmojis } from '../emoji-styles'
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
@@ -213,4 +214,195 @@ it('discards the cancelled draft when reopened immediately from the keyboard', a
   await expect.element(page.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'app.iconPicker.color.red' })).toBeChecked()
   client.clear()
+})
+
+it('reveals random recommendations after scrolling or searching without moving button focus', async () => {
+  const client = new QueryClient()
+  client.setQueryData(
+    emojiCatalogOptions.queryKey,
+    Array.from({ length: 8 }, (_, group) => ({
+      id: `faces-${group}`,
+      label: `Faces ${group}`,
+      items: emojis.map((emoji, index) => ({ emoji, label: `Face ${index}`, version: 1 })),
+    })),
+  )
+  await render(
+    <QueryClientProvider client={client}>
+      <Harness />
+    </QueryClientProvider>,
+  )
+  await page.getByRole('button', { name: 'Choose', exact: true }).click()
+  const grid = page.getByRole('grid', { name: 'app.iconPicker.emoji' })
+  const input = page.getByRole('combobox', { name: 'app.iconPicker.search' })
+  const random = page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' })
+  const recommendation = page.getByRole('rowgroup', { name: 'app.iconPicker.recommend' })
+  const target = recommendation.getByRole('gridcell', { name: 'Face 1', exact: true })
+  const scroller = grid.element()
+  scroller.scrollTo({ top: scroller.scrollHeight })
+  await expect.poll(() => scroller.scrollTop).toBeGreaterThan(300)
+  const position = scroller.scrollTop
+  await page
+    .getByRole('rowgroup', { name: 'Faces 7' })
+    .getByRole('gridcell', { name: 'Face 19', exact: true })
+    .click()
+  expect(scroller.scrollTop).toBe(position)
+
+  const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+  try {
+    await random.click()
+    await expect.element(random).toHaveFocus()
+    await expect
+      .poll(() => target.element().getBoundingClientRect().top)
+      .toBeGreaterThanOrEqual(scroller.getBoundingClientRect().top + 24)
+    expect(target.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      scroller.getBoundingClientRect().bottom,
+    )
+    expect(scroller.scrollTop).toBeLessThan(position)
+
+    await input.fill('Face 19')
+    await expect.element(recommendation).not.toBeInTheDocument()
+    const clearedFrames: boolean[] = []
+    let frameId: number
+    const observeFrame = () => {
+      if ((input.element() as HTMLInputElement).value === '') {
+        const candidate = recommendation
+          .getByRole('gridcell', { name: 'Face 4', exact: true })
+          .all()[0]
+        const bounds = candidate?.element().getBoundingClientRect()
+        const viewport = scroller.getBoundingClientRect()
+        clearedFrames.push(
+          !!bounds && bounds.top >= viewport.top + 24 && bounds.bottom <= viewport.bottom,
+        )
+      }
+      frameId = requestAnimationFrame(observeFrame)
+    }
+    frameId = requestAnimationFrame(observeFrame)
+    try {
+      await random.click()
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    } finally {
+      cancelAnimationFrame(frameId)
+    }
+    expect(clearedFrames.length).toBeGreaterThan(0)
+    expect(clearedFrames.every(Boolean)).toBe(true)
+    await expect.element(input).toHaveValue('')
+    await expect.element(random).toHaveFocus()
+    await expect.element(recommendation).toBeInTheDocument()
+    const next = recommendation.getByRole('gridcell', { name: 'Face 4', exact: true })
+    await expect
+      .poll(() => next.element().getBoundingClientRect().top)
+      .toBeGreaterThanOrEqual(scroller.getBoundingClientRect().top + 24)
+    expect(next.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      scroller.getBoundingClientRect().bottom,
+    )
+    await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
+    await expect.element(page.getByRole('status', { name: 'Saved icon' })).toHaveTextContent('😆')
+  } finally {
+    randomSpy.mockRestore()
+    client.clear()
+  }
+})
+
+it('keeps the random result visible when the first selection reveals the style panel', async () => {
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [
+    {
+      id: 'faces',
+      label: 'Faces',
+      items: recommendedEmojis.map((emoji, index) => ({
+        emoji,
+        label: `Face ${index}`,
+        version: 1,
+      })),
+    },
+  ])
+  await render(
+    <QueryClientProvider client={client}>
+      <IconPickerDialog open onOpenChange={() => {}} onConfirm={() => {}} />
+    </QueryClientProvider>,
+  )
+  await expect.element(page.getByRole('radiogroup')).not.toBeInTheDocument()
+  const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+  try {
+    const random = page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' })
+    await random.click()
+    await expect.element(page.getByRole('radiogroup')).toBeVisible()
+    const target = page
+      .getByRole('rowgroup', { name: 'app.iconPicker.recommend' })
+      .getByRole('gridcell', { name: 'Face 24' })
+    const grid = page.getByRole('grid', { name: 'app.iconPicker.emoji' })
+    await expect
+      .poll(() => target.element().getBoundingClientRect().bottom)
+      .toBeLessThanOrEqual(grid.element().getBoundingClientRect().bottom)
+    await expect.element(random).toHaveFocus()
+  } finally {
+    randomSpy.mockRestore()
+    client.clear()
+  }
+})
+
+it('marks only the chosen occurrence across recent, recommended, and search results', async () => {
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [
+    {
+      id: 'faces',
+      label: 'Faces',
+      items: emojis.map((emoji, index) => ({ emoji, label: `Face ${index}`, version: 1 })),
+    },
+  ])
+  await render(
+    <QueryClientProvider client={client}>
+      <Harness />
+    </QueryClientProvider>,
+  )
+  const trigger = page.getByRole('button', { name: 'Choose', exact: true })
+  await trigger.click()
+  const recommended = page.getByRole('rowgroup', { name: 'app.iconPicker.recommend' })
+  const recommendedFace = recommended.getByRole('gridcell', { name: 'Face 1', exact: true })
+  const unselectedShadow = getComputedStyle(recommendedFace.element()).boxShadow
+  const markedCells = () =>
+    page
+      .getByRole('gridcell')
+      .all()
+      .map((cell) => cell.element())
+      .filter((cell) => getComputedStyle(cell).boxShadow !== unselectedShadow)
+
+  await recommendedFace.click()
+  expect(markedCells()).toEqual([recommendedFace.element()])
+  await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  await trigger.click()
+
+  const recentFace = page
+    .getByRole('rowgroup', { name: 'app.iconPicker.recent' })
+    .getByRole('gridcell', { name: 'Face 1', exact: true })
+  const categoryFace = page
+    .getByRole('rowgroup', { name: 'Faces' })
+    .getByRole('gridcell', { name: 'Face 1', exact: true })
+  expect(page.getByRole('gridcell', { name: 'Face 1', exact: true }).all()).toHaveLength(3)
+  expect(markedCells()).toEqual([recentFace.element()])
+  await recommendedFace.click()
+  expect(markedCells()).toEqual([recommendedFace.element()])
+  await recentFace.click()
+  expect(markedCells()).toEqual([recentFace.element()])
+
+  const input = page.getByRole('combobox', { name: 'app.iconPicker.search' })
+  await input.fill('Face 1')
+  await expect.element(recentFace).not.toBeInTheDocument()
+  expect(markedCells()).toEqual([])
+  await expect.element(input).toHaveAttribute('aria-activedescendant', categoryFace.element().id)
+  await userEvent.keyboard('{Enter}')
+  expect(markedCells()).toEqual([categoryFace.element()])
+  await page.getByRole('button', { name: 'app.iconPicker.clearSearch' }).click()
+  expect(markedCells()).toEqual([categoryFace.element()])
+
+  const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+  try {
+    await page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }).click()
+    const randomFace = recommended.getByRole('gridcell', { name: 'Face 4', exact: true })
+    expect(markedCells()).toEqual([randomFace.element()])
+  } finally {
+    randomSpy.mockRestore()
+    client.clear()
+  }
 })

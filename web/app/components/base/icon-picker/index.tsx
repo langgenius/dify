@@ -1,6 +1,7 @@
 'use client'
 
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
+import type { EmojiPickerHandle } from './emoji-picker'
 import type { ImageIconInputValue } from './image-input'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -115,6 +116,7 @@ function IconPickerSession({
   const [imageDraft, setImageDraft] = useState<ImageIcon | ImageIconInputValue | null>(() =>
     defaultValue?.type === 'image' ? defaultValue : null,
   )
+  const emojiPickerRef = useRef<EmojiPickerHandle>(null)
   const [preparing, setPreparing] = useState(false)
   const [, setRecentEmojis] = useRecentEmojis()
   const [preparationError, setPreparationError] = useState('')
@@ -240,11 +242,11 @@ function IconPickerSession({
           tabIndex={-1}
           className="flex min-h-0 flex-1 flex-col data-hidden:hidden"
         >
-          <EmojiIconEditor value={emoji} onValueChange={setEmoji} />
+          <EmojiIconEditor ref={emojiPickerRef} value={emoji} onValueChange={setEmoji} />
         </TabsPanel>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pt-3">
-          <EmojiIconEditor value={emoji} onValueChange={setEmoji} />
+          <EmojiIconEditor ref={emojiPickerRef} value={emoji} onValueChange={setEmoji} />
         </div>
       )}
       {imageEnabled && (
@@ -280,13 +282,15 @@ function IconPickerSession({
           {activeTab === 'emoji' ? (
             <Button
               className="min-w-0 flex-1"
-              onClick={() =>
+              onClick={() => {
+                const icon = getRandomEmoji(emoji?.icon)
                 setEmoji({
                   type: 'emoji',
-                  icon: getRandomEmoji(emoji?.icon),
+                  icon,
                   background: getRandomEmojiBackground(emoji?.background),
                 })
-              }
+                emojiPickerRef.current?.revealEmoji(icon)
+              }}
             >
               <span className="i-ri-dice-line size-4" aria-hidden="true" />
               {t(($) => $['iconPicker.tryYourLuck'], { ns: 'app' })}

@@ -1,4 +1,6 @@
+import type { Ref } from 'react'
 import type { EmojiIcon } from '.'
+import type { EmojiPickerHandle } from './emoji-picker'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
@@ -7,9 +9,11 @@ import { EmojiPicker } from './emoji-picker'
 import { defaultEmojiBackground, emojiStyles } from './emoji-styles'
 
 export function EmojiIconEditor({
+  ref,
   value,
   onValueChange,
 }: {
+  ref?: Ref<EmojiPickerHandle>
   value?: EmojiIcon
   onValueChange: (value: EmojiIcon) => void
 }) {
@@ -18,6 +22,7 @@ export function EmojiIconEditor({
   return (
     <>
       <EmojiPicker
+        ref={ref}
         value={value?.icon}
         onValueChange={(icon) =>
           onValueChange({
