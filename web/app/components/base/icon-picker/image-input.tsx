@@ -23,12 +23,18 @@ export type ImageIconInputValue =
   | { type: 'crop'; url: string; area: Area; fileName: string }
 
 export type ImageIconInputProps = {
+  disabled?: boolean
   className?: string
   cropShape?: CropperProps['cropShape']
   onChange?: (value: ImageIconInputValue | null) => void
 }
 
-export function ImageIconInput({ className, cropShape, onChange }: ImageIconInputProps) {
+export function ImageIconInput({
+  className,
+  cropShape,
+  onChange,
+  disabled = false,
+}: ImageIconInputProps) {
   const { t } = useTranslation(['common', 'app'])
   const [inputImage, setInputImage] = useState<{ file: File; url: string; animated: boolean }>()
   const [error, setError] = useState('')
@@ -51,6 +57,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
   )
 
   const selectFile = async (file: File) => {
+    if (disabled) return
     if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]!) || file.size > 3 * 1024 * 1024) {
       setError(
         file.size > 3 * 1024 * 1024
@@ -78,7 +85,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
       if (selection === selectionRef.current) setPending(false)
     }
   }
-  const { isDragActive, ...dropHandlers } = useImageDrop((file) => void selectFile(file))
+  const { isDragActive, ...dropHandlers } = useImageDrop((file) => void selectFile(file), disabled)
   const handleImageError = () => {
     setInputImage(undefined)
     onChange?.(null)
@@ -90,6 +97,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
       <input
         ref={inputRef}
         type="file"
+        disabled={disabled}
         className="hidden"
         accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
         onChange={(event) => {
@@ -117,32 +125,34 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
               onError={handleImageError}
             />
           ) : (
-            <Cropper
-              image={inputImage.url}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              cropShape={cropShape}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              mediaProps={{ onError: handleImageError }}
-              cropperProps={{
-                role: 'group',
-                'aria-label': t(($) => $['iconPicker.crop'], { ns: 'app' }),
-              }}
-              classes={{
-                cropAreaClassName:
-                  'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid',
-              }}
-              onCropComplete={(_, area) =>
-                onChange?.({
-                  type: 'crop',
-                  url: inputImage.url,
-                  area,
-                  fileName: inputImage.file.name,
-                })
-              }
-            />
+            <div inert={disabled}>
+              <Cropper
+                image={inputImage.url}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape={cropShape}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                mediaProps={{ onError: handleImageError }}
+                cropperProps={{
+                  role: 'group',
+                  'aria-label': t(($) => $['iconPicker.crop'], { ns: 'app' }),
+                }}
+                classes={{
+                  cropAreaClassName:
+                    'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid',
+                }}
+                onCropComplete={(_, area) =>
+                  onChange?.({
+                    type: 'crop',
+                    url: inputImage.url,
+                    area,
+                    fileName: inputImage.file.name,
+                  })
+                }
+              />
+            </div>
           )
         ) : (
           <>
@@ -152,6 +162,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
               <button
                 type="button"
                 data-icon-picker-initial-focus
+                disabled={disabled}
                 className="rounded-sm text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
                 onClick={() => inputRef.current?.click()}
               >
@@ -174,6 +185,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
         <div className="mt-3 flex items-center justify-end gap-2">
           {!inputImage.animated && (
             <Slider
+              disabled={disabled}
               min={1}
               max={3}
               step={0.1}
@@ -192,7 +204,7 @@ export function ImageIconInput({ className, cropShape, onChange }: ImageIconInpu
               </SliderControl>
             </Slider>
           )}
-          <Button onClick={() => inputRef.current?.click()}>
+          <Button disabled={disabled} onClick={() => inputRef.current?.click()}>
             {t(($) => $['operation.change'], { ns: 'common' })}
           </Button>
         </div>

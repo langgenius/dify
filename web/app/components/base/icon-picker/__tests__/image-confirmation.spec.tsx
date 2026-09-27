@@ -41,7 +41,7 @@ async function selectImage() {
   )
   await user.click(screen.getByRole('tab', { name: 'app.iconPicker.image' }))
   const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
-  fireEvent.change(screen.getByTestId('image-input'), { target: { files: [file] } })
+  await user.upload(screen.getByTestId('image-input'), file)
   const confirm = await screen.findByRole('button', { name: 'app.iconPicker.ok' })
   return { ...view, user, client, file, confirm, onConfirm, onOpenChange }
 }
@@ -181,5 +181,69 @@ it('keeps open-session edits and reads the latest default when reopened', async 
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
   expect(onConfirm).toHaveBeenLastCalledWith(nextDefault)
   expect(uploadImage).not.toHaveBeenCalled()
+  client.clear()
+})
+
+it.each(['upload', 'preview'])(
+  'clears a %s error when replacing the image and uploads the replacement',
+  async (failure) => {
+    const read = vi.spyOn(FileReader.prototype, 'readAsDataURL')
+    if (failure === 'upload') uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
+    else
+      read.mockImplementationOnce(function (this: FileReader) {
+        this.dispatchEvent(new Event('error'))
+      })
+    const { user, client, confirm, onConfirm } = await selectImage()
+    await user.click(confirm)
+    await screen.findByRole('alert')
+    read.mockRestore()
+    await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
+    const replacement = new File(['GIF89a-replacement'], 'replacement.gif', { type: 'image/gif' })
+    await user.upload(screen.getByTestId('image-input'), replacement)
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    uploadImage.mockResolvedValueOnce({
+      id: 'replacement',
+      name: 'replacement.gif',
+      size: replacement.size,
+    })
+    await user.click(await screen.findByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+    expect(uploadImage.mock.lastCall![0].body.file).toBe(replacement)
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ fileId: 'replacement' }))
+    client.clear()
+  },
+)
+
+it('blocks replacement by browsing or dropping while uploading and restores editing on failure', async () => {
+  let rejectUpload!: (reason: Error) => void
+  uploadImage.mockReturnValueOnce(
+    new Promise((_, reject) => {
+      rejectUpload = reject
+    }),
+  )
+  const { user, client, confirm, file, onConfirm } = await selectImage()
+  await user.click(confirm)
+  await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce())
+  const change = screen.getByRole('button', { name: 'common.operation.change' })
+  const input = screen.getByTestId('image-input')
+  expect(change).toBeDisabled()
+  expect(input).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'app.iconPicker.cancel' })).toBeEnabled()
+  const replacement = new File(['GIF89a-replacement'], 'replacement.gif', { type: 'image/gif' })
+  await user.click(change)
+  await user.upload(input, replacement)
+  fireEvent.drop(screen.getByRole('img', { name: 'app.iconPicker.image' }), {
+    dataTransfer: { types: ['Files'], files: [replacement] },
+  })
+  await act(async () => {
+    rejectUpload(new Error('Upload failed'))
+  })
+  await screen.findByRole('alert')
+  expect(change).toBeEnabled()
+  expect(input).toBeEnabled()
+  uploadImage.mockResolvedValueOnce({ id: 'original', name: file.name, size: file.size })
+  await user.click(confirm)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+  expect(uploadImage.mock.calls[1]![0].body.file).toBe(file)
   client.clear()
 })

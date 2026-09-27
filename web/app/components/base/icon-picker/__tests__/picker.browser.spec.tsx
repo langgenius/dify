@@ -1,3 +1,4 @@
+import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { EmojiIcon } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -5,6 +6,16 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { IconPickerDialog } from '..'
 import { emojiCatalogOptions } from '../emoji-data'
+
+const { uploadImage } = vi.hoisted(() => ({
+  uploadImage: vi.fn<() => Promise<PostFilesUploadResponse>>(),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
+  },
+}))
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
@@ -220,5 +231,57 @@ it('discards the cancelled draft when reopened immediately from the keyboard', a
   await userEvent.keyboard('{Escape}{Enter}')
   await expect.element(page.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'app.iconPicker.color.red' })).toBeChecked()
+  client.clear()
+})
+
+it('locks image editing during submission and restores it after failure', async () => {
+  let rejectUpload!: (reason: Error) => void
+  uploadImage.mockReturnValueOnce(
+    new Promise((_, reject) => {
+      rejectUpload = reject
+    }),
+  )
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  await render(
+    <QueryClientProvider client={client}>
+      <Harness />
+    </QueryClientProvider>,
+  )
+  await page.getByRole('button', { name: 'Choose', exact: true }).click()
+  await page.getByRole('tab', { name: 'app.iconPicker.image' }).click()
+  const canvas = document.createElement('canvas')
+  canvas.width = 100
+  canvas.height = 100
+  canvas.getContext('2d')!.fillRect(0, 0, 100, 100)
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((value) => resolve(value!), 'image/png'),
+  )
+  await page.getByTestId('image-input').upload(new File([blob], 'icon.png', { type: 'image/png' }))
+  const crop = page.getByRole('group', { name: 'app.iconPicker.crop' })
+  await expect.element(crop).toBeVisible()
+  const cropElement = crop.element() as HTMLElement
+  cropElement.focus()
+  await expect.element(crop).toHaveFocus()
+  const zoom = page.getByRole('slider', { name: 'app.iconPicker.zoom' })
+  const change = page.getByRole('button', { name: 'common.operation.change' })
+  await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
+  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
+  await expect.element(zoom).toBeDisabled()
+  await expect.element(change).toBeDisabled()
+  cropElement.focus()
+  expect(document.activeElement).not.toBe(cropElement)
+  const cancel = page.getByRole('button', { name: 'app.iconPicker.cancel' })
+  await expect.element(cancel).toBeEnabled()
+  rejectUpload(new Error('Upload failed'))
+  await expect.element(page.getByRole('alert')).toBeVisible()
+  await expect.element(zoom).toBeEnabled()
+  await expect.element(change).toBeEnabled()
+  cropElement.focus()
+  await expect.element(crop).toHaveFocus()
+  await userEvent.tab()
+  await expect.element(zoom).toHaveFocus()
+  await userEvent.keyboard('{ArrowRight}')
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
   client.clear()
 })

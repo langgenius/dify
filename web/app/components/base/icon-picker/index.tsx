@@ -151,6 +151,12 @@ function IconPickerSession({
     (upload.isError
       ? t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' })
       : '')
+  const handleImageChange = (value: ImageIconInputValue | null) => {
+    if (uploading) return
+    setImageDraft(value)
+    setPreparationError('')
+    upload.reset()
+  }
   const confirm = async () => {
     if (activeTab === 'emoji') {
       if (!emoji) return
@@ -285,12 +291,12 @@ function IconPickerSession({
                 alt={t(($) => $['iconPicker.image'], { ns: 'app' })}
                 className="size-16 rounded-2xl object-contain"
               />
-              <Button data-icon-picker-initial-focus onClick={() => setImageDraft(null)}>
+              <Button data-icon-picker-initial-focus onClick={() => handleImageChange(null)}>
                 {t(($) => $['operation.change'], { ns: 'common' })}
               </Button>
             </div>
           ) : (
-            <ImageIconInput onChange={setImageDraft} />
+            <ImageIconInput disabled={uploading} onChange={handleImageChange} />
           )}
         </TabsPanel>
       )}
