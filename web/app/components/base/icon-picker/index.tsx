@@ -6,11 +6,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
+import { consoleQuery } from '@/service/console'
 import { resolveEmoji } from '@/utils/emoji'
-import { useLocalFileUploader } from '../image-uploader/hooks'
 import { EmojiIconEditor } from './emoji-icon-editor'
 import { defaultEmojiBackground, getRandomEmoji, getRandomEmojiBackground } from './emoji-styles'
 import getCroppedImg from './image-crop'
@@ -99,7 +100,7 @@ function IconPickerSession({
 >) {
   const { t } = useTranslation(['app', 'common'])
   const imageEnabled = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
-  const [activeTab, setActiveTab] = useState(
+  const [activeTab, setActiveTab] = useState<IconPickerValue['type']>(
     defaultValue?.type === 'image' && imageEnabled ? 'image' : 'emoji',
   )
   const [emoji, setEmoji] = useState<EmojiIcon | undefined>(() =>
@@ -111,13 +112,12 @@ function IconPickerSession({
         }
       : undefined,
   )
-  const [image, setImage] = useState<ImageIcon | undefined>(() =>
-    defaultValue?.type === 'image' ? defaultValue : undefined,
+  const [imageDraft, setImageDraft] = useState<ImageIcon | ImageIconInputValue | null>(() =>
+    defaultValue?.type === 'image' ? defaultValue : null,
   )
-  const [imageInput, setImageInput] = useState<ImageIconInputValue | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const [preparing, setPreparing] = useState(false)
   const [, setRecentEmojis] = useRecentEmojis()
-  const [uploadError, setUploadError] = useState(false)
+  const [preparationError, setPreparationError] = useState('')
   const activeRef = useRef(open)
   useLayoutEffect(() => {
     activeRef.current = open
@@ -126,52 +126,74 @@ function IconPickerSession({
     }
   }, [open])
 
-  const { handleLocalFileUpload } = useLocalFileUploader({
-    limit: 3,
-    disabled: !imageEnabled,
-    onUpload: (file) => {
-      if (!activeRef.current) return
-      if (file.progress === -1) setUploading(false)
-      if (file.progress === 100 && file.fileId) {
-        setUploading(false)
-        onConfirm({ type: 'image', fileId: file.fileId, url: file.url })
-        onOpenChange(false)
-      }
-    },
-  })
+  const upload = useMutation(
+    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+  )
+  const uploading = preparing || upload.isPending
+  const uploadError =
+    preparationError ||
+    (upload.isError
+      ? t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' })
+      : '')
   const confirm = async () => {
     if (activeTab === 'emoji') {
       if (!emoji) return
       setRecentEmojis((recent) => addRecentEmoji(recent, emoji.icon))
       onConfirm(emoji)
       onOpenChange(false)
-    } else if (imageInput) {
-      setUploadError(false)
-      setUploading(true)
+    } else if (imageDraft) {
+      if (!imageEnabled || uploading) return
+      if (imageDraft.type === 'image') {
+        onConfirm(imageDraft)
+        onOpenChange(false)
+        return
+      }
+      setPreparationError('')
+      upload.reset()
+      setPreparing(true)
       try {
         let file: File
-        if (imageInput.type === 'file') file = imageInput.file
+        if (imageDraft.type === 'file') file = imageDraft.file
         else {
-          const blob = await getCroppedImg(imageInput.url, imageInput.area, imageInput.fileName)
-          file = new File([blob], imageInput.fileName, { type: blob.type })
+          const blob = await getCroppedImg(imageDraft.url, imageDraft.area, imageDraft.fileName)
+          file = new File([blob], imageDraft.fileName, { type: blob.type })
         }
-        if (activeRef.current) handleLocalFileUpload(file)
+        if (!activeRef.current) return
+        if (file.size > 3 * 1024 * 1024) {
+          setPreparationError(
+            t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 3 }),
+          )
+          return
+        }
+        const url = await readImageDataURL(file)
+        if (!activeRef.current) return
+        upload.mutate(
+          { body: { file } },
+          {
+            onSuccess: (uploaded) => {
+              if (!activeRef.current) return
+              onConfirm({ type: 'image', fileId: uploaded.id, url })
+              onOpenChange(false)
+            },
+          },
+        )
       } catch {
-        if (activeRef.current) {
-          setUploading(false)
-          setUploadError(true)
-        }
+        if (activeRef.current)
+          setPreparationError(
+            t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' }),
+          )
+      } finally {
+        if (activeRef.current) setPreparing(false)
       }
-    } else if (image) {
-      onConfirm(image)
-      onOpenChange(false)
     }
   }
 
   return (
     <Tabs
       value={activeTab}
-      onValueChange={(value) => setActiveTab(String(value))}
+      onValueChange={(value) => {
+        if (value === 'emoji' || value === 'image') setActiveTab(value)
+      }}
       className={cn(
         'flex min-h-0 flex-col',
         activeTab === 'emoji'
@@ -232,28 +254,28 @@ function IconPickerSession({
           tabIndex={-1}
           className="min-h-0 overflow-y-auto data-hidden:hidden"
         >
-          {image ? (
+          {imageDraft?.type === 'image' ? (
             <div className="flex h-52 flex-col items-center justify-center gap-3 p-3">
               <img
-                src={image.url}
+                src={imageDraft.url}
                 alt={t(($) => $['iconPicker.image'], { ns: 'app' })}
                 className="size-16 rounded-2xl object-contain"
               />
-              <Button data-icon-picker-initial-focus onClick={() => setImage(undefined)}>
+              <Button data-icon-picker-initial-focus onClick={() => setImageDraft(null)}>
                 {t(($) => $['operation.change'], { ns: 'common' })}
               </Button>
             </div>
           ) : (
-            <ImageIconInput onChange={setImageInput} />
+            <ImageIconInput onChange={setImageDraft} />
           )}
         </TabsPanel>
       )}
       {uploadError && (
         <p role="alert" className="px-3 text-text-destructive">
-          {t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' })}
+          {uploadError}
         </p>
       )}
-      {(activeTab === 'emoji' || imageInput || image) && (
+      {(activeTab === 'emoji' || imageDraft) && (
         <div className="flex shrink-0 gap-2 border-t border-divider-subtle bg-components-panel-bg-blur p-3 backdrop-blur-sm">
           {activeTab === 'emoji' ? (
             <Button
@@ -277,7 +299,7 @@ function IconPickerSession({
           <Button
             variant="primary"
             className="min-w-0 flex-1"
-            disabled={activeTab === 'emoji' ? !emoji : !imageInput && !image}
+            disabled={activeTab === 'emoji' ? !emoji : !imageDraft}
             loading={uploading}
             onClick={() => void confirm()}
           >
@@ -287,4 +309,17 @@ function IconPickerSession({
       )}
     </Tabs>
   )
+}
+
+function readImageDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result)
+      else reject(new Error('Invalid image preview'))
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.onabort = () => reject(new DOMException('Image read aborted', 'AbortError'))
+    reader.readAsDataURL(file)
+  })
 }

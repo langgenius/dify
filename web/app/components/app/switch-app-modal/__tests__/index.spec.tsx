@@ -23,18 +23,22 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
-const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
   return {
     ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 2
-      return {
-        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
-      }
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) => {
+      const key = JSON.stringify(options.mutationKey)
+      return actual.useMutation({
+        ...options,
+        ...(key.includes('convertToWorkflow')
+          ? { mutationFn: (input: unknown) => mockConvertToWorkflow(input) }
+          : key.includes('delete')
+            ? { mutationFn: (input: unknown) => mockDeleteOriginalApp(input) }
+            : {}),
+      })
     },
   }
 })
@@ -146,7 +150,6 @@ function render(ui: ReactElement) {
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockMutationState.hookIndex = 0
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
     // Spy on setAppDetail

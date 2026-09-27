@@ -1,19 +1,26 @@
+import type {
+  PostFilesUploadData,
+  PostFilesUploadResponse,
+} from '@dify/contracts/api/console/files/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IconPickerDialog } from '..'
-import { imageUpload } from '../../image-uploader/utils'
 import { emojiCatalogOptions } from '../emoji-data'
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
-vi.mock('../../image-uploader/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../image-uploader/utils')>()),
-  imageUpload: vi.fn(),
+const { uploadImage } = vi.hoisted(() => ({
+  uploadImage:
+    vi.fn<(input: Pick<PostFilesUploadData, 'body'>) => Promise<PostFilesUploadResponse>>(),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
+  },
 }))
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  uploadImage.mockReset()
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview')
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 })
@@ -39,17 +46,19 @@ async function selectImage() {
 }
 
 it('keeps the image draft after an upload failure and confirms the retried upload', async () => {
+  uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
+  uploadImage.mockResolvedValueOnce({ id: 'uploaded-image', name: 'icon.gif', size: 6 })
   const { user, client, file, confirm, onConfirm, onOpenChange } = await selectImage()
   await user.click(confirm)
-  await waitFor(() => expect(imageUpload).toHaveBeenCalledOnce())
-  expect(vi.mocked(imageUpload).mock.calls[0]![0].file).toBe(file)
+  await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce())
+  expect(uploadImage.mock.calls[0]![0].body.file).toBe(file)
   expect(onConfirm).not.toHaveBeenCalled()
-  await act(async () => vi.mocked(imageUpload).mock.calls[0]![0].onErrorCallback?.())
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'common.imageUploader.uploadFromComputerUploadError',
+  )
   await user.click(confirm)
-  await waitFor(() => expect(imageUpload).toHaveBeenCalledTimes(2))
-  await act(async () => {
-    vi.mocked(imageUpload).mock.calls[1]![0].onSuccessCallback?.({ id: 'uploaded-image' })
-  })
+  await waitFor(() => expect(uploadImage).toHaveBeenCalledTimes(2))
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith({
     type: 'image',
     fileId: 'uploaded-image',
@@ -60,12 +69,18 @@ it('keeps the image draft after an upload failure and confirms the retried uploa
 })
 
 it('does not confirm an upload that finishes after the picker is unmounted', async () => {
+  let finishUpload!: (response: PostFilesUploadResponse) => void
+  uploadImage.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finishUpload = resolve
+    }),
+  )
   const { user, client, confirm, onConfirm, onOpenChange, unmount } = await selectImage()
   await user.click(confirm)
-  await waitFor(() => expect(imageUpload).toHaveBeenCalledOnce())
+  await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce())
   unmount()
   await act(async () => {
-    vi.mocked(imageUpload).mock.calls[0]![0].onSuccessCallback?.({ id: 'late-image' })
+    finishUpload({ id: 'late-image', name: 'icon.gif', size: 6 })
   })
   expect(onConfirm).not.toHaveBeenCalled()
   expect(onOpenChange).not.toHaveBeenCalled()
@@ -86,6 +101,54 @@ it('confirms an existing image without uploading it again', async () => {
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith(value)
-  expect(imageUpload).not.toHaveBeenCalled()
+  expect(uploadImage).not.toHaveBeenCalled()
   client.clear()
 })
+
+it('allows retry after reading the image preview fails', async () => {
+  const { user, client, confirm, onConfirm } = await selectImage()
+  const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
+    this: FileReader,
+  ) {
+    this.dispatchEvent(new Event('error'))
+  })
+  await user.click(confirm)
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'common.imageUploader.uploadFromComputerReadError',
+  )
+  expect(confirm).toBeEnabled()
+  expect(uploadImage).not.toHaveBeenCalled()
+  read.mockRestore()
+  uploadImage.mockResolvedValueOnce({ id: 'retried-image', name: 'icon.gif', size: 6 })
+  await user.click(confirm)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+  client.clear()
+})
+
+it.each([undefined, null])(
+  'resolves a missing emoji background only when confirmed (%s)',
+  async (background) => {
+    const user = userEvent.setup()
+    const client = new QueryClient()
+    client.setQueryData(emojiCatalogOptions.queryKey, [])
+    const onConfirm = vi.fn()
+    render(
+      <QueryClientProvider client={client}>
+        <IconPickerDialog
+          open
+          defaultValue={{ type: 'emoji', icon: '😀', background }}
+          onConfirm={onConfirm}
+          onOpenChange={() => {}}
+        />
+      </QueryClientProvider>,
+    )
+    expect(onConfirm).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith({
+      type: 'emoji',
+      icon: '😀',
+      background: '#FEF3F2',
+    })
+    client.clear()
+  },
+)
