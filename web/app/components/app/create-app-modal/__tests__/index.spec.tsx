@@ -42,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: {
       ...actual.consoleQuery,
       features: actual.consoleQuery.features,
+      files: actual.consoleQuery.files,
       account: {
         profile: {
           get: {
