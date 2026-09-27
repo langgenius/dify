@@ -1,9 +1,13 @@
-import type { getSingletonHighlighter } from 'shiki/core'
+import type { createSingletonShorthands } from 'shiki/core'
+import type * as shikiCore from 'shiki/core'
 import { renderToStaticMarkup } from 'react-dom/server'
-import * as shikiCore from 'shiki/core'
 import { highlightCode } from '../shiki-highlight'
 
-type SingletonAccessor = typeof getSingletonHighlighter
+// `shiki/core` only exposes `getSingletonHighlighter` as a property of the
+// shorthand bundle returned by `createSingletonShorthands`, not as a top-level
+// symbol. Derive the accessor signature from the return type so wrapped calls
+// remain correctly typed without importing a non-exported name.
+type SingletonAccessor = ReturnType<typeof createSingletonShorthands>['getSingletonHighlighter']
 
 // Mock the singleton accessor so tests can assert that the WASM engine is not
 // loaded for plain-text fences while still letting supported-language tests

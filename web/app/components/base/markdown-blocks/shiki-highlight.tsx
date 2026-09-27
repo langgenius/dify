@@ -1,4 +1,3 @@
-import type { Root } from 'hast'
 import type { JSX } from 'react'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment } from 'react'
@@ -42,7 +41,10 @@ export const highlightCode = async ({
   // (see #42943). The shiki engine is still loaded on the first real highlight
   // call, so subsequent supported-language code blocks render normally.
   if (lang === 'text') {
-    const plainHast: Root = {
+    // Hand-built minimal HAST tree; typed via `toJsxRuntime`'s own parameter
+    // so we don't need a top-level `hast` import (the shipped `@types/hast`
+    // transitively pulls in `hast` module declarations that we cannot resolve).
+    const plainHast: Parameters<typeof toJsxRuntime>[0] = {
       type: 'root',
       children: [
         {
