@@ -66,7 +66,7 @@ const EmojiList = memo(
                     className={cn(
                       value === item.emoji &&
                         'ring-[1.5px] ring-components-option-card-option-selected-border ring-inset',
-                      'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover',
+                      'm-0 flex size-8 min-h-0 items-center justify-center rounded-lg p-0 text-2xl leading-none data-highlighted:bg-state-base-hover-alt',
                     )}
                   >
                     <span aria-hidden="true">{item.emoji}</span>
