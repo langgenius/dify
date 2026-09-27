@@ -2,6 +2,7 @@ import type {
   AgentAppCreatePayload,
   AgentAppPartial,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 
 type AgentFormField = 'description' | 'name' | 'role'
@@ -29,19 +30,16 @@ export const defaultAgentIcon = {
   background: '#F5F3FF',
 } satisfies IconPickerValue
 
-type AgentIconSource = {
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  icon_url?: string | null
-}
+type AgentIconSource =
+  | Pick<AgentAppPartial, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
+  | Pick<AgentComposerAgentResponse, 'icon' | 'icon_background' | 'icon_type'>
 
 export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelection => {
   if (agent.icon_type === 'image' && agent.icon) {
     return {
       type: 'image',
       fileId: agent.icon,
-      url: agent.icon_url ?? agent.icon,
+      url: ('icon_url' in agent ? agent.icon_url : undefined) ?? agent.icon,
     }
   }
 
