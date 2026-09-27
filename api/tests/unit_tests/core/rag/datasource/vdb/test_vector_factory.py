@@ -334,7 +334,7 @@ def test_init_vector_raises_when_vector_store_missing(
         vector._init_vector(session=unbound_session)
 
 
-def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
+def test_create_batches_texts_and_skips_empty_input(vector_factory_module, caplog):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
@@ -345,7 +345,14 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
         [[0.2]],
     ]
 
-    vector.create(texts=docs, trace_id="trace-1")
+    with caplog.at_level("INFO"):
+        vector.create(texts=docs, trace_id="trace-1")
+
+    processing_lines = [record.message for record in caplog.records if record.message.startswith("Processing batch")]
+    assert processing_lines == [
+        "Processing batch 1/2 (1000 texts)",
+        "Processing batch 2/2 (1 texts)",
+    ]
 
     assert vector._embeddings.embed_documents.call_count == 2
     assert vector._vector_processor.create.call_count == 2
