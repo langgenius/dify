@@ -127,6 +127,41 @@ describe('ImageInput', () => {
   })
 
   describe('Drag and Drop', () => {
+    it('accepts file drag gestures on nested content without consuming text drags', async () => {
+      const onDragEnter = vi.fn()
+      const onDragOver = vi.fn()
+      const onDragLeave = vi.fn()
+      render(
+        <div onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave}>
+          <ImageInput />
+        </div>,
+      )
+      const target = screen.getByRole('button', { name: /browse/i })
+      const fileTransfer = {
+        types: ['Files'],
+        files: [new File(['image'], 'photo.png', { type: 'image/png' })],
+        dropEffect: 'none',
+      }
+      for (const dataTransfer of [{ types: ['text/plain'], files: [] }, fileTransfer]) {
+        for (const createDragEvent of [
+          createEvent.dragEnter,
+          createEvent.dragOver,
+          createEvent.dragLeave,
+        ]) {
+          const event = createDragEvent(target, { dataTransfer })
+          fireEvent(target, event)
+          expect(event.defaultPrevented).toBe(dataTransfer === fileTransfer && event.cancelable)
+          if (event.type === 'dragover' && dataTransfer === fileTransfer)
+            expect((event as DragEvent).dataTransfer?.dropEffect).toBe('copy')
+        }
+      }
+      expect(onDragEnter).toHaveBeenCalledOnce()
+      expect(onDragOver).toHaveBeenCalledOnce()
+      expect(onDragLeave).toHaveBeenCalledOnce()
+      fireEvent.drop(target, { dataTransfer: fileTransfer })
+      await waitForCropperContainer()
+    })
+
     it('consumes file drops inside the picker but leaves text drops to the parent', async () => {
       const onDrop = vi.fn()
       render(
