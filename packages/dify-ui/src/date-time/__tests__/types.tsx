@@ -133,7 +133,15 @@ export function pickerTypeContracts(
   // @ts-expect-error The label ID belongs to the field's accessible-name relationship.
   const customLabelId = <DatePickerLabel id="unrelated" />
   // @ts-expect-error Clear button dimensions belong to the picker anatomy.
-  const clearSize = <DatePickerClear label="Clear date" size="sm" />
+  const clearSize = <DatePickerClear aria-label="Clear date" size="sm" />
+  const clearNamed = <DatePickerClear aria-label="Clear date" ref={triggerRef} />
+  const clearLabelledBy = <DatePickerClear aria-labelledby="clear-date-text" />
+  // @ts-expect-error Clear inherits IconButton's required accessible name.
+  const unnamedClear = <DatePickerClear />
+  // @ts-expect-error Use the inherited ARIA props instead of a custom label alias.
+  const legacyClearLabel = <DatePickerClear label="Clear date" />
+  // @ts-expect-error IconButton accepts one accessible-name source.
+  const conflictingClearNames = <DatePickerClear aria-label="Clear" aria-labelledby="clear-text" />
   // @ts-expect-error Content focus on entry belongs to the picker.
   const customInitialFocus = <DatePickerContent initialFocus={false} />
   const readonlyPredicate = (
@@ -199,6 +207,11 @@ export function pickerTypeContracts(
     customValueId,
     customLabelId,
     clearSize,
+    clearNamed,
+    clearLabelledBy,
+    unnamedClear,
+    legacyClearLabel,
+    conflictingClearNames,
     customInitialFocus,
     readonlyPredicate,
     date,

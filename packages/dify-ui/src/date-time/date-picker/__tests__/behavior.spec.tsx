@@ -16,7 +16,7 @@ function Parts() {
   return (
     <>
       <DatePickerTrigger />
-      <DatePickerClear label="Clear date" />
+      <DatePickerClear aria-label="Clear date" />
       <DatePickerContent />
     </>
   )
@@ -230,16 +230,36 @@ describe('DatePicker keyboard and form contract', () => {
     await expect.element(screen.getByRole('button', { name: 'Clear date' })).not.toBeInTheDocument()
   })
 
-  it('returns focus to the trigger after removing the clear button', async () => {
-    const screen = await render(
-      <DatePicker defaultValue="2025-01-15">
-        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <Parts />
-      </DatePicker>,
-    )
-    await screen.getByRole('button', { name: 'Clear date' }).click()
-    await expect.element(screen.getByRole('button', { name: 'Date', exact: true })).toHaveFocus()
-  })
+  it.each(['aria-label', 'aria-labelledby'] as const)(
+    'clears through a %s named button and restores trigger focus',
+    async (naming) => {
+      const changed = vi.fn()
+      const screen = await render(
+        <DatePicker defaultValue="2025-01-15" onValueChange={changed}>
+          <DatePickerLabel className="sr-only">Date</DatePickerLabel>
+          <div>
+            <DatePickerTrigger />
+            <span id="clear-date-text" className="sr-only">
+              Clear date
+            </span>
+            <DatePickerClear
+              {...(naming === 'aria-label'
+                ? { 'aria-label': 'Clear date' }
+                : { 'aria-labelledby': 'clear-date-text' })}
+            />
+          </div>
+          <DatePickerContent />
+        </DatePicker>,
+      )
+      await screen.getByRole('button', { name: 'Clear date' }).click()
+      expect(changed).toHaveBeenCalledExactlyOnceWith(null)
+      await expect.element(screen.getByRole('button', { name: 'Date', exact: true })).toHaveFocus()
+      await expect
+        .element(screen.getByRole('button', { name: 'Clear date' }))
+        .not.toBeInTheDocument()
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps read-only values in form data while preventing edits', async () => {
     const onChange = vi.fn()

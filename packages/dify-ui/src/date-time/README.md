@@ -33,7 +33,7 @@ import {
     <DatePickerLabel>Start date</DatePickerLabel>
     <div className="flex items-center gap-1">
       <DatePickerTrigger />
-      <DatePickerClear label="Clear start date" />
+      <DatePickerClear aria-label="Clear start date" />
     </div>
     <DatePickerContent />
   </DatePicker>
@@ -65,8 +65,10 @@ placeholder or selected text alone to identify the field.
 Trigger is a native button. Its default children contain Value and a decorative icon. If replacing
 those children, include exactly one Value; its render callback receives the formatted committed
 text (or the placeholder), not the raw value. Put meaningful annotations such as a time-zone suffix
-inside Value so they participate in the accessible name. Keep decorative icons `aria-hidden` and
-Clear beside Trigger, never nested inside it. Clear needs its own localized `label`.
+inside Value so they participate in the accessible name. Keep decorative icons `aria-hidden`.
+Clear inherits IconButton's `aria-label` / `aria-labelledby` naming contract. Trigger and Clear may
+share a visual field container; their placement is caller-owned. Do not nest Clear inside the
+native Trigger button.
 
 Content owns the portal, initial focus, calendar, columns and actions. Its props derive from the
 Dify Popover content contract, excluding replacement children, `render` and `initialFocus`.

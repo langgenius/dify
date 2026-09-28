@@ -28,8 +28,9 @@ import {
 Use the picker Label for clickable visible text. Do not point a native label or FieldLabel at
 the trigger: that can activate its button and open the popup. Existing external text can supply
 `aria-labelledby` on Trigger and Content; its owner is responsible for focus forwarding.
-Without a Label, provide an accessible name on each part; Root has no naming props. Keep help actions beside Label
-and Clear beside Trigger. Values and submission behavior follow the [Dify UI picker contract].
+Without a Label, provide an accessible name on each part; Root has no naming props. Keep help actions beside Label.
+Clear uses `aria-label` or `aria-labelledby` and may share a visual container with Trigger; do not nest
+it inside the trigger button. Values and submission behavior follow the [Dify UI picker contract].
 
 ## Business owners
 

@@ -309,20 +309,21 @@ function PickerValue({ children, ...props }: PickerValueProps) {
   )
 }
 
-type PickerClearProps = Omit<
+// Preserve IconButton's accessible-name union when removing picker-owned props.
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
+
+type PickerClearProps = DistributiveOmit<
   IconButtonProps,
-  'children' | 'aria-label' | 'aria-labelledby' | 'size' | 'render' | 'nativeButton' | 'ref'
+  'children' | 'size' | 'render' | 'nativeButton' | 'ref'
 > & {
   ref?: React.Ref<HTMLButtonElement>
-  label: string
 }
-function PickerClear({ label, onClick, disabled, ...props }: PickerClearProps) {
+function PickerClear({ onClick, disabled, ...props }: PickerClearProps) {
   const field = usePickerContext()
   if (!field.serializedValue || field.readOnly) return null
   return (
     <IconButton
       {...props}
-      aria-label={label}
       size="lg"
       disabled={field.disabled || disabled}
       onClick={(event) => {

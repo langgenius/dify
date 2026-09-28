@@ -322,7 +322,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 </DatePickerLabel>
                 <div className="flex">
                   <DatePickerTrigger id={controlId} />
-                  <DatePickerClear label={clearLabel} />
+                  <DatePickerClear aria-label={clearLabel} />
                 </div>
                 <DatePickerContent />
               </DatePicker>
@@ -344,7 +344,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 </DateTimePickerLabel>
                 <div className="flex">
                   <DateTimePickerTrigger id={controlId} />
-                  <DateTimePickerClear label={clearLabel} />
+                  <DateTimePickerClear aria-label={clearLabel} />
                 </div>
                 <DateTimePickerContent />
               </DateTimePicker>
@@ -365,7 +365,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 </TimePickerLabel>
                 <div className="flex">
                   <TimePickerTrigger id={controlId} />
-                  <TimePickerClear label={clearLabel} />
+                  <TimePickerClear aria-label={clearLabel} />
                 </div>
                 <TimePickerContent />
               </TimePicker>

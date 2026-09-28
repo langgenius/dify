@@ -58,7 +58,7 @@ function WrappedDatePicker({ className, label, value, readOnly, onChange }: Prop
         </DateTimePickerTrigger>
         <DateTimePickerClear
           className="size-4"
-          label={t(($) => $['operation.clear'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
         />
       </div>
       <DateTimePickerContent />

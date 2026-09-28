@@ -37,7 +37,7 @@ function DateTimePickerDemo({ timeZone = 'UTC' }: { timeZone?: string }) {
         <DateTimePickerLabel>Meeting time</DateTimePickerLabel>
         <div className="flex items-center gap-1">
           <DateTimePickerTrigger />
-          <DateTimePickerClear label="Clear meeting time" />
+          <DateTimePickerClear aria-label="Clear meeting time" />
         </div>
         <DateTimePickerContent />
       </DateTimePicker>

@@ -30,7 +30,7 @@ function ConditionDate({ value, disabled, onChange }: ConditionDateProps) {
       <DateTimePickerLabel className="sr-only">{label}</DateTimePickerLabel>
       <div className="flex items-center px-2">
         <DateTimePickerTrigger className="min-w-0 flex-1 bg-transparent px-1" />
-        <DateTimePickerClear label={t(($) => $['operation.clear'], { ns: 'common' })} />
+        <DateTimePickerClear aria-label={t(($) => $['operation.clear'], { ns: 'common' })} />
       </div>
       <DateTimePickerContent />
     </DateTimePicker>

@@ -34,7 +34,7 @@ function TimePickerDemo() {
         <TimePickerLabel>Start time</TimePickerLabel>
         <div className="flex items-center gap-1">
           <TimePickerTrigger />
-          <TimePickerClear label="Clear start time" />
+          <TimePickerClear aria-label="Clear start time" />
         </div>
         <TimePickerContent />
       </TimePicker>

@@ -52,7 +52,9 @@ export function ToolDatePicker({
           />
           <DatePickerValue className="min-w-0 flex-1 truncate" />
         </DatePickerTrigger>
-        <DatePickerClear label={clearLabel ?? t(($) => $['operation.clear'], { ns: 'common' })} />
+        <DatePickerClear
+          aria-label={clearLabel ?? t(($) => $['operation.clear'], { ns: 'common' })}
+        />
       </div>
       <DatePickerContent aria-labelledby={ariaLabelledBy} />
     </DatePicker>

@@ -42,7 +42,7 @@ function DatePickerDemo() {
         <DatePickerLabel>Start date</DatePickerLabel>
         <div className="flex items-center gap-1">
           <DatePickerTrigger />
-          <DatePickerClear label="Clear start date" />
+          <DatePickerClear aria-label="Clear start date" />
         </div>
         <DatePickerContent />
       </DatePicker>
@@ -197,7 +197,7 @@ export const Disabled: Story = {
     <DatePicker defaultValue="2025-01-15" disabled>
       <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
       <DatePickerTrigger />
-      <DatePickerClear label="Clear start date" />
+      <DatePickerClear aria-label="Clear start date" />
       <DatePickerContent />
     </DatePicker>
   ),
