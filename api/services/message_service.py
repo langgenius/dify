@@ -1,6 +1,6 @@
 import logging
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -67,7 +67,7 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
 class MessageService:
     @classmethod
-    def _get_agent_suggested_questions_config(
+    def _get_agent_app_features(
         cls,
         *,
         app_model: App,
@@ -75,7 +75,17 @@ class MessageService:
         conversation: Conversation,
         invoke_from: InvokeFrom,
         session: Session,
-    ) -> SuggestedQuestionsAfterAnswerConfig:
+    ) -> dict[str, Any]:
+        """Project the effective Agent App features for one conversation.
+
+        The bound Agent Soul is the source of truth for Agent-owned features.
+        ``merge_agent_app_features`` layers the Soul over the app's legacy
+        feature row: keys the Soul omits keep their legacy value, but
+        ``file_upload`` is always carried by the Soul and defaults to enabled,
+        so a legacy ``file_upload.enabled = false`` does not win. A
+        default-constructed Soul is used when no roster Agent is published, so
+        such apps resolve features instead of failing.
+        """
         from services.agent.runtime_config_service import AgentRuntimeConfigService
 
         agent_soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
@@ -88,11 +98,16 @@ class MessageService:
             session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
         )
         annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
-        features = merge_agent_app_features(
+        return merge_agent_app_features(
             agent_soul=agent_soul or AgentSoulConfig(),
             app_model_config=app_model_config,
             annotation_reply=annotation_reply,
         )
+
+    @staticmethod
+    def _require_agent_suggested_questions_config(
+        features: Mapping[str, Any],
+    ) -> SuggestedQuestionsAfterAnswerConfig:
         suggested_questions = features.get("suggested_questions_after_answer")
         if not isinstance(suggested_questions, dict) or not suggested_questions.get("enabled", False):
             raise SuggestedQuestionsAfterAnswerDisabledError()
@@ -356,6 +371,11 @@ class MessageService:
 
         model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
         suggested_questions_after_answer_config: SuggestedQuestionsAfterAnswerConfig = {"enabled": False}
+        # Agent Apps keep model and prompt in the bound Agent Soul, so their
+        # effective features are projected from it. Resolve the projection once
+        # so the suggested-questions config and the conversation memory below
+        # read the same view of the app.
+        agent_app_features: dict[str, Any] | None = None
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
@@ -381,13 +401,14 @@ class MessageService:
                     SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
                 )
         elif app_model.mode == AppMode.AGENT:
-            suggested_questions_after_answer_config = cls._get_agent_suggested_questions_config(
+            agent_app_features = cls._get_agent_app_features(
                 app_model=app_model,
                 user=user,
                 conversation=conversation,
                 invoke_from=invoke_from,
                 session=session,
             )
+            suggested_questions_after_answer_config = cls._require_agent_suggested_questions_config(agent_app_features)
         else:
             if not conversation.override_model_configs:
                 app_model_config = session.scalar(
@@ -421,7 +442,11 @@ class MessageService:
             return []
 
         # get memory of conversation (read-only)
-        memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+        memory = TokenBufferMemory(
+            conversation=conversation,
+            model_instance=model_instance,
+            app_features=agent_app_features,
+        )
 
         histories = memory.get_history_prompt_text(
             max_token_limit=3000,
