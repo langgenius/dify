@@ -199,7 +199,9 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             <div className="flex items-baseline gap-1">
               <span className="system-md-semibold text-text-secondary">—</span>
               <span className="system-sm-regular text-text-tertiary">
-                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], { ns: 'modelProvider' })}
+                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], {
+                  ns: 'modelProvider',
+                })}
               </span>
             </div>
           )}
