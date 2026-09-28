@@ -807,10 +807,6 @@ class AppModelConfig(TypeBase):
         return self._get_enabled_config(self.retriever_resource, default_enabled=True)
 
     @property
-    def annotation_reply_dict(self) -> AnnotationReplyConfig:
-        return load_annotation_reply_config(db.session(), self.app_id)
-
-    @property
     def more_like_this_dict(self) -> EnabledConfig:
         return self._get_enabled_config(self.more_like_this)
 
@@ -879,7 +875,7 @@ class AppModelConfig(TypeBase):
             },
         )
 
-    def to_dict(self, *, annotation_reply: AnnotationReplyConfig | None = None) -> AppModelConfigDict:
+    def to_dict(self, *, annotation_reply: AnnotationReplyConfig) -> AppModelConfigDict:
         return {
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
@@ -887,7 +883,7 @@ class AppModelConfig(TypeBase):
             "speech_to_text": self.speech_to_text_dict,
             "text_to_speech": self.text_to_speech_dict,
             "retriever_resource": self.retriever_resource_dict,
-            "annotation_reply": annotation_reply if annotation_reply is not None else self.annotation_reply_dict,
+            "annotation_reply": annotation_reply,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "external_data_tools": self.external_data_tools_list,

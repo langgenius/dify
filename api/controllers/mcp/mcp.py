@@ -195,8 +195,7 @@ class MCPAppApi(Resource):
             app_model_config = app.app_model_config_with_session(session=session)
             if not app_model_config:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app_model_config.to_dict()
-            raw_user_input_form = features_dict.get("user_input_form", [])
+            raw_user_input_form = app_model_config.user_input_form_list
 
         # Convert to VariableEntity objects
         try:
