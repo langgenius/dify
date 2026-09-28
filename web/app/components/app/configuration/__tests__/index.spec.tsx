@@ -235,7 +235,7 @@ describe('Configuration editing session', () => {
         datasets: { datasets: [{ dataset: { enabled: true, id: 'dataset-1' } }] },
       },
     })
-    queryClient.setQueryData(['tools', 'allToolProviders'], [])
+    queryClient.setQueryData(['tools', 'allToolProviders'], [], { updatedAt: 0 })
     queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), uploadConfig)
     queryClient.setQueryData(['configuration', 'datasets', ['dataset-1']], {
       data: [{ id: 'dataset-1', name: 'Cached dataset' }],
@@ -248,6 +248,7 @@ describe('Configuration editing session', () => {
 
     setup(queryClient)
     await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers'))
+    expect(mockGet).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockRequest).toHaveBeenCalledWith(
         expect.stringContaining('/files/upload'),

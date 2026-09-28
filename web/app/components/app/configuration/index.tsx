@@ -103,7 +103,7 @@ function ConfigurationEntry({ appId }: { appId: string }) {
       refetchOnMount: 'always',
     }),
   )
-  const collections = useAllToolProviders()
+  const collections = useAllToolProviders(false)
   const { refetch: refetchCollections } = collections
   useEffect(() => {
     void refetchCollections()
