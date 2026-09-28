@@ -38,6 +38,19 @@ const getRecord = (value: unknown) => {
   return isRecord(value) ? value : {}
 }
 
+const getFileInputConfig = (content: Record<string, unknown>, numberLimits?: number) => {
+  const config: Record<string, unknown> = {}
+  for (const key of [
+    'allowed_file_types',
+    'allowed_file_extensions',
+    'allowed_file_upload_methods',
+  ] as const) {
+    if (content[key] !== undefined) config[key] = content[key]
+  }
+  if (numberLimits !== undefined) config.number_limits = numberLimits
+  return config
+}
+
 const getInputFormContent = (item: Record<string, unknown>) => {
   if (isRecord(item.paragraph)) return { type: 'paragraph', content: item.paragraph }
 
@@ -119,12 +132,7 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: 1,
-        },
+        config: getFileInputConfig(content, 1),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
@@ -134,12 +142,7 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: getNumber(content.max_length),
-        },
+        config: getFileInputConfig(content, getNumber(content.max_length)),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
