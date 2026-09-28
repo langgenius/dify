@@ -59,6 +59,12 @@ def test_db_phase_failure_persists_nothing_and_publishes_nothing(
     collect.assert_not_called()
 
 
+def _must_get[RowT](session: Session, model: type[RowT], row_id: str) -> RowT:
+    row = session.get(model, row_id)
+    assert row is not None, f"expected {model.__name__} row {row_id} to exist"
+    return row
+
+
 def _workflow_only_agent(*, backing_app_id: str | None = None) -> Agent:
     return Agent(
         id="agent-1",
@@ -184,9 +190,9 @@ def _assert_aggregate_untouched(session: Session, seeded: SimpleNamespace) -> No
     assert agent.status is AgentStatus.ACTIVE
     assert agent.archived_by is None
     assert session.get(App, seeded.app_id) is not None
-    assert session.get(AgentWorkspace, seeded.workspace_id).status is AgentWorkingResourceStatus.ACTIVE
-    assert session.get(AgentWorkspaceBinding, seeded.binding_id).status is AgentWorkingResourceStatus.ACTIVE
-    assert session.get(AgentHomeSnapshot, seeded.home_id).status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(session, AgentWorkspace, seeded.workspace_id).status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(session, AgentWorkspaceBinding, seeded.binding_id).status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(session, AgentHomeSnapshot, seeded.home_id).status is AgentWorkingResourceStatus.ACTIVE
 
 
 @pytest.mark.parametrize(
@@ -392,7 +398,7 @@ def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
     enqueue_collection.assert_not_called()
     sqlite_session.expire_all()
     for seeded in (first, second):
-        assert sqlite_session.get(Agent, seeded.agent_id).status is AgentStatus.ARCHIVED
+        assert _must_get(sqlite_session, Agent, seeded.agent_id).status is AgentStatus.ARCHIVED
         assert sqlite_session.get(App, seeded.app_id) is None
 
 
@@ -530,7 +536,7 @@ def test_non_agent_mode_backing_app_is_never_deleted(
     )
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(Agent, seeded.agent_id).status is AgentStatus.ARCHIVED
+    assert _must_get(sqlite_session, Agent, seeded.agent_id).status is AgentStatus.ARCHIVED
     stored_app = sqlite_session.get(App, seeded.app_id)
     assert stored_app is not None
     assert stored_app.mode == AppMode.CHAT
@@ -585,10 +591,10 @@ def test_tenant_isolation_leaves_other_tenant_rows_untouched(
     )
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(Agent, target.agent_id).status is AgentStatus.ARCHIVED
-    assert sqlite_session.get(AgentWorkspace, "workspace-b").status is AgentWorkingResourceStatus.ACTIVE
-    assert sqlite_session.get(AgentWorkspaceBinding, "binding-b").status is AgentWorkingResourceStatus.ACTIVE
-    assert sqlite_session.get(AgentHomeSnapshot, "home-b").status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(sqlite_session, Agent, target.agent_id).status is AgentStatus.ARCHIVED
+    assert _must_get(sqlite_session, AgentWorkspace, "workspace-b").status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(sqlite_session, AgentWorkspaceBinding, "binding-b").status is AgentWorkingResourceStatus.ACTIVE
+    assert _must_get(sqlite_session, AgentHomeSnapshot, "home-b").status is AgentWorkingResourceStatus.ACTIVE
     cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=target.app_id)
     enqueue_collection.assert_called_once_with(
         tenant_id="tenant-1",
@@ -615,7 +621,7 @@ def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
         account_id="account-1",
     )
     sqlite_session.expire_all()
-    stored_agent = sqlite_session.get(Agent, seeded.agent_id)
+    stored_agent = _must_get(sqlite_session, Agent, seeded.agent_id)
     assert stored_agent.status is AgentStatus.ARCHIVED
     assert stored_agent.archived_by == "account-1"
     first_archived_at = stored_agent.archived_at
@@ -638,7 +644,7 @@ def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
         "purge_agent_ids": [seeded.agent_id],
     }
     sqlite_session.expire_all()
-    stored_agent = sqlite_session.get(Agent, seeded.agent_id)
+    stored_agent = _must_get(sqlite_session, Agent, seeded.agent_id)
     assert stored_agent.archived_by == "account-1"
     assert stored_agent.archived_at == first_archived_at
 
@@ -708,7 +714,7 @@ def test_non_candidate_same_tenant_aggregate_is_untouched(
     )
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(Agent, target.agent_id).status is AgentStatus.ARCHIVED
+    assert _must_get(sqlite_session, Agent, target.agent_id).status is AgentStatus.ARCHIVED
     _assert_aggregate_untouched(sqlite_session, bystander)
     cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=target.app_id)
     enqueue_collection.assert_called_once_with(
