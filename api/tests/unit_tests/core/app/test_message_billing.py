@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from collections.abc import Callable, Generator
+from dataclasses import dataclass
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -10,7 +15,12 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
 )
-from core.app.llm.message_billing import begin_message_billing, release_message_billing, require_message_billing
+from core.app.llm.message_billing import (
+    ClassicMessageBilling,
+    begin_message_billing,
+    release_message_billing,
+    require_message_billing,
+)
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from core.model_invocation_routing import (
     FrozenModelInvocation,
@@ -31,8 +41,10 @@ MESSAGE = "22222222-2222-4222-8222-222222222222"
 PROVIDER = "langgenius/openai/openai"
 
 
-def entity(agent=False, quota_type=ProviderQuotaType.PAID, tokener=False):
-    credentials = LegacyModelCredentials(
+def entity(
+    agent: bool = False, quota_type: ProviderQuotaType = ProviderQuotaType.PAID, tokener: bool = False
+) -> AgentChatAppGenerateEntity | ChatAppGenerateEntity:
+    credentials: dict[str, object] = LegacyModelCredentials(
         {"api_key": "TEST_LEGACY"}, LegacyModelBinding(TENANT, PROVIDER, "gpt-4o", ModelType.LLM, 0)
     )
     if tokener:
@@ -82,9 +94,24 @@ def entity(agent=False, quota_type=ProviderQuotaType.PAID, tokener=False):
     )
 
 
+@dataclass
+class BillingFixture:
+    state: dict[str, object]
+    reserve: Mock
+    per_call: Mock
+    capped_event: Mock
+    updates: Mock
+    profile: Mock
+
+
+def reservation_mock(owner: ClassicMessageBilling) -> Mock:
+    assert isinstance(owner.reservation, Mock)
+    return owner.reservation
+
+
 @pytest.fixture
-def billing(mocker, config_overrides):
-    state = {"phase": "prepared", "route_epoch": 0, "model_mapping_version": "fixture-v1"}
+def billing(mocker: MockerFixture, config_overrides: Callable[..., None]) -> BillingFixture:
+    state: dict[str, object] = {"phase": "prepared", "route_epoch": 0, "model_mapping_version": "fixture-v1"}
     mocker.patch("core.model_invocation_routing.migration_routing_state", side_effect=lambda _: state)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch.object(type(dify_config), "get_model_credits", return_value=9)
@@ -95,18 +122,20 @@ def billing(mocker, config_overrides):
     capped_event = mocker.patch.object(message_event, "_deduct_credit_pool_quota_capped")
     updates = mocker.patch.object(message_event, "_execute_provider_updates")
     profile = mocker.patch.object(message_event, "_legacy_message_credit_billing_allowed", return_value=False)
-    return SimpleNamespace(
+    return BillingFixture(
         state=state, reserve=reserve, per_call=per_call, capped_event=capped_event, updates=updates, profile=profile
     )
 
 
 @pytest.mark.parametrize(("agent", "llm_calls"), [(False, 1), (True, 4)])
-def test_classic_message_reserves_once_and_commits_original_receipt_after_cutover(billing, agent, llm_calls):
+def test_classic_message_reserves_once_and_commits_original_receipt_after_cutover(
+    billing: BillingFixture, agent: bool, llm_calls: int
+) -> None:
     app = entity(agent=agent)
     owner = begin_message_billing(app, MESSAGE)
     assert begin_message_billing(app, MESSAGE) is owner
     assert owner.backend == "legacy_reserved"
-    assert owner.reservation.amount == 1
+    assert reservation_mock(owner).amount == 1
     assert billing.reserve.call_args.kwargs["credits_required"] == 9
     assert billing.reserve.call_args.kwargs["request_id"] == MESSAGE
     assert billing.reserve.call_args.kwargs["pool_type"] == "paid"
@@ -127,6 +156,7 @@ def test_classic_message_reserves_once_and_commits_original_receipt_after_cutove
     billing.state.update(phase="active", route_epoch=1)
     for _ in range(llm_calls):
         instance.invoke_llm([], stream=False)
+    assert isinstance(instance.model_type_instance, Mock)
     assert instance.model_type_instance.invoke.call_count == llm_calls
     billing.per_call.assert_not_called()
     message = Message(message_tokens=1, answer_tokens=1)
@@ -134,13 +164,13 @@ def test_classic_message_reserves_once_and_commits_original_receipt_after_cutove
     for _ in range(2):
         message_event.handle(message, application_generate_entity=app)
     release_message_billing(app)
-    owner.reservation.commit.assert_called_once()
-    owner.reservation.release.assert_not_called()
+    reservation_mock(owner).commit.assert_called_once()
+    reservation_mock(owner).release.assert_not_called()
     billing.capped_event.assert_not_called()
     billing.profile.assert_not_called()
 
 
-def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_it(billing):
+def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_it(billing: BillingFixture) -> None:
     billing.state.update(phase="active", route_epoch=1)
     billing.profile.return_value = True
     app = entity(tokener=True)
@@ -157,7 +187,9 @@ def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_i
 
 
 @pytest.mark.parametrize("gateway_enabled", [False, True])
-def test_only_enabled_agent_app_gateway_bypasses_message_reservation(billing, gateway_enabled):
+def test_only_enabled_agent_app_gateway_bypasses_message_reservation(
+    billing: BillingFixture, gateway_enabled: bool
+) -> None:
     classic = entity()
     app = AgentAppGenerateEntity.model_construct(
         task_id=classic.task_id,
@@ -174,7 +206,9 @@ def test_only_enabled_agent_app_gateway_bypasses_message_reservation(billing, ga
     release_message_billing(app)
 
 
-def test_non_cloud_legacy_keeps_post_message_capped_accounting(billing, mocker, config_overrides):
+def test_non_cloud_legacy_keeps_post_message_capped_accounting(
+    billing: BillingFixture, mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     mocker.patch("core.model_invocation_routing.migration_routing_state", return_value=None)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     billing.profile.return_value = True
@@ -190,7 +224,9 @@ def test_non_cloud_legacy_keeps_post_message_capped_accounting(billing, mocker, 
     billing.capped_event.assert_called_once()
 
 
-def test_message_started_before_any_migration_row_commits_after_claim(billing, mocker):
+def test_message_started_before_any_migration_row_commits_after_claim(
+    billing: BillingFixture, mocker: MockerFixture
+) -> None:
     state = mocker.patch("core.model_invocation_routing.migration_routing_state", return_value=None)
     app = entity(agent=True)
     owner = begin_message_billing(app, MESSAGE)
@@ -200,12 +236,12 @@ def test_message_started_before_any_migration_row_commits_after_claim(billing, m
     message.id = MESSAGE
     message_event.handle(message, application_generate_entity=app)
     release_message_billing(app)
-    owner.reservation.commit.assert_called_once()
+    reservation_mock(owner).commit.assert_called_once()
     billing.profile.assert_not_called()
     billing.capped_event.assert_not_called()
 
 
-def test_independent_free_stays_message_scoped_after_profile_cutover(billing):
+def test_independent_free_stays_message_scoped_after_profile_cutover(billing: BillingFixture) -> None:
     app = entity(agent=True, quota_type=ProviderQuotaType.FREE)
     owner = begin_message_billing(app, MESSAGE)
     assert owner.backend == "provider_free"
@@ -221,40 +257,42 @@ def test_independent_free_stays_message_scoped_after_profile_cutover(billing):
 
 
 @pytest.mark.usefixtures("billing")
-def test_failed_or_abandoned_message_releases_receipt_once():
+def test_failed_or_abandoned_message_releases_receipt_once() -> None:
     app = entity()
     owner = begin_message_billing(app, MESSAGE)
     release_message_billing(app)
     release_message_billing(app)
-    owner.reservation.release.assert_called_once()
-    owner.reservation.commit.assert_not_called()
+    reservation_mock(owner).release.assert_called_once()
+    reservation_mock(owner).commit.assert_not_called()
 
 
 @pytest.mark.usefixtures("billing")
-def test_unknown_commit_result_does_not_trigger_competing_release():
+def test_unknown_commit_result_does_not_trigger_competing_release() -> None:
     app = entity()
     owner = begin_message_billing(app, MESSAGE)
-    owner.reservation.commit.side_effect = TimeoutError("fixture")
+    reservation_mock(owner).commit.side_effect = TimeoutError("fixture")
     with pytest.raises(TimeoutError):
         owner.commit_reserved()
     release_message_billing(app)
-    owner.reservation.release.assert_not_called()
+    reservation_mock(owner).release.assert_not_called()
 
 
 @pytest.mark.usefixtures("billing")
-def test_receipt_and_credentials_are_not_serialized_into_task_payload():
+def test_receipt_and_credentials_are_not_serialized_into_task_payload() -> None:
     app = entity()
     begin_message_billing(app, MESSAGE)
     assert "_classic_message_billing" not in app.model_dump()
     release_message_billing(app)
 
 
-def test_remote_receipt_renews_and_failed_renewal_blocks_agent_next_turn(billing, mocker):
+def test_remote_receipt_renews_and_failed_renewal_blocks_agent_next_turn(
+    billing: BillingFixture, mocker: MockerFixture
+) -> None:
     mocker.patch("core.app.llm.message_billing.MESSAGE_RESERVATION_HEARTBEAT_SECONDS", 0.01)
     billing.reserve.return_value.reservation_id = "remote-receipt"
     renewed = Event()
 
-    def fail_renew():
+    def fail_renew() -> None:
         renewed.set()
         raise TimeoutError("fixture")
 
@@ -272,14 +310,15 @@ def test_remote_receipt_renews_and_failed_renewal_blocks_agent_next_turn(billing
 
     with pytest.raises(ModelMigrationProcessing):
         instance.invoke_llm([], stream=False)
+    assert isinstance(instance.model_type_instance, Mock)
     instance.model_type_instance.invoke.assert_not_called()
     with pytest.raises(ModelMigrationProcessing):
         owner.commit_reserved()
     release_message_billing(app)
-    owner.reservation.release.assert_called_once()
+    reservation_mock(owner).release.assert_called_once()
 
 
-def test_lost_message_receipt_never_falls_back_to_per_llm_billing():
+def test_lost_message_receipt_never_falls_back_to_per_llm_billing() -> None:
     from core.model_invocation_routing import ModelRouteUnavailable
 
     with pytest.raises(ModelRouteUnavailable):
@@ -287,18 +326,18 @@ def test_lost_message_receipt_never_falls_back_to_per_llm_billing():
 
 
 @pytest.mark.usefixtures("billing")
-def test_delayed_heartbeat_is_renewed_before_another_model_call():
+def test_delayed_heartbeat_is_renewed_before_another_model_call() -> None:
     app = entity(agent=True)
     owner = begin_message_billing(app, MESSAGE)
-    owner.reservation.reservation_id = "remote-hold"
+    reservation_mock(owner).reservation_id = "remote-hold"
     owner._last_renewed_at = 0
     owner.check_active()
     owner.check_active()
-    owner.reservation.renew.assert_called_once()
+    reservation_mock(owner).renew.assert_called_once()
     release_message_billing(app)
 
 
-def test_zero_credit_model_does_not_create_an_invalid_zero_hold(billing, mocker):
+def test_zero_credit_model_does_not_create_an_invalid_zero_hold(billing: BillingFixture, mocker: MockerFixture) -> None:
     mocker.patch.object(type(dify_config), "get_model_credits", return_value=0)
     app = entity()
     owner = begin_message_billing(app, MESSAGE)
@@ -308,7 +347,9 @@ def test_zero_credit_model_does_not_create_an_invalid_zero_hold(billing, mocker)
 
 @pytest.mark.parametrize("quota_type", [ProviderQuotaType.PAID, ProviderQuotaType.TRIAL])
 @pytest.mark.parametrize(("quota_unit", "amount"), [(QuotaUnit.CREDITS, 9), (QuotaUnit.TIMES, 1)])
-def test_message_quota_adapter_preserves_bucket_and_charge(billing, quota_type, quota_unit, amount):
+def test_message_quota_adapter_preserves_bucket_and_charge(
+    billing: BillingFixture, quota_type: ProviderQuotaType, quota_unit: QuotaUnit, amount: int
+) -> None:
     app = entity(quota_type=quota_type)
     quota = app.model_conf.provider_model_bundle.configuration.system_configuration.quota_configurations[0]
     quota.quota_unit = quota_unit
@@ -324,8 +365,10 @@ def test_message_quota_adapter_preserves_bucket_and_charge(billing, quota_type, 
 @pytest.mark.parametrize("worker_fails", [False, True])
 @pytest.mark.parametrize("read_first", [False, True])
 @pytest.mark.parametrize("http_wrappers", [False, True])
-def test_http_detach_keeps_receipt_until_execution_terminal(billing, worker_fails, read_first, http_wrappers):
-    from flask import Flask, has_app_context
+def test_http_detach_keeps_receipt_until_execution_terminal(
+    billing: BillingFixture, worker_fails: bool, read_first: bool, http_wrappers: bool
+) -> None:
+    from flask import Flask, Response, has_app_context
 
     from core.app.entities.task_entities import PingStreamResponse
     from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
@@ -335,11 +378,11 @@ def test_http_detach_keeps_receipt_until_execution_terminal(billing, worker_fail
     owner = begin_message_billing(app, MESSAGE)
     worker_terminal = Event()
     completed = Event()
-    owner.reservation.release.side_effect = completed.set
+    reservation_mock(owner).release.side_effect = completed.set
     message = Message(message_tokens=2, answer_tokens=3)
     message.id = MESSAGE
 
-    def execution():
+    def execution() -> Generator[PingStreamResponse, None, None]:
         # Exceed the delivery buffer, including close-before-first-read, to
         # prove an abandoned HTTP generator cannot strand terminal processing.
         for _ in range(100):
@@ -369,7 +412,7 @@ def test_http_detach_keeps_receipt_until_execution_terminal(billing, worker_fail
         from libs.helper import compact_generate_response
 
         @flask_app.get("/stream")
-        def stream():
+        def stream() -> Response:
             frames = pipeline.process()
             converted = ChatAppGenerateResponseConverter.convert(frames, InvokeFrom.SERVICE_API)
             return compact_generate_response(BaseAppGenerator.convert_to_event_stream(converted))
@@ -382,22 +425,23 @@ def test_http_detach_keeps_receipt_until_execution_terminal(billing, worker_fail
     else:
         with flask_app.app_context():
             output = pipeline.process()
+            assert isinstance(output, Generator)
             if read_first:
                 assert next(output) is not None
             output.close()
     assert not owner.settled
     assert not owner._heartbeat_stop.is_set()
-    owner.reservation.release.assert_not_called()
-    owner.reservation.commit.assert_not_called()
+    reservation_mock(owner).release.assert_not_called()
+    reservation_mock(owner).commit.assert_not_called()
     pipeline.queue_manager.request_abort.assert_not_called()
     billing.state.update(phase="active", route_epoch=1)
     worker_terminal.set()
     assert completed.wait(2)
     if worker_fails:
-        owner.reservation.release.assert_called_once()
-        owner.reservation.commit.assert_not_called()
+        reservation_mock(owner).release.assert_called_once()
+        reservation_mock(owner).commit.assert_not_called()
         pipeline.queue_manager.request_abort.assert_called_once()
     else:
-        owner.reservation.commit.assert_called_once()
-        owner.reservation.release.assert_not_called()
+        reservation_mock(owner).commit.assert_called_once()
+        reservation_mock(owner).release.assert_not_called()
         pipeline.queue_manager.request_abort.assert_not_called()
