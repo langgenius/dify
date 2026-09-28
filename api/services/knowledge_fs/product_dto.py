@@ -3105,7 +3105,8 @@ class KnowledgeFSGoldenQuestionResponse(ResponseModel):
         default_factory=list, validation_alias=AliasChoices("expected_evidence_ids", "expectedEvidenceIds")
     )
     match_policy: Literal["all", "any"] = "all"
-    status: Literal["active", "draft", "stale"]
+    status: Literal["active", "draft", "stale", "paused"]
+    status_reason: Literal["source-deleted", "source-disabled"] | None = None
     tags: list[str]
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
@@ -3123,12 +3124,20 @@ class KnowledgeFSGoldenQuestionResponse(ResponseModel):
         expected_evidence_ids = value.get("expectedEvidenceIds", value.get("expected_evidence_ids", []))
         if status not in {"active", "draft", "stale"}:
             status = "active" if isinstance(expected_evidence_ids, list) and expected_evidence_ids else "draft"
+        status_reason = None
+        if isinstance(metadata, dict):
+            if status == "stale" and metadata.get("staleReason") == "source-deleted":
+                status_reason = "source-deleted"
+            elif status == "active" and metadata.get("sourceAvailability") == "disabled":
+                status = "paused"
+                status_reason = "source-disabled"
         return {
             **value,
             "annotation": annotation if isinstance(annotation, str) else "",
             "evidence_text": evidence_text if isinstance(evidence_text, str) else "",
             "match_policy": match_policy if match_policy in {"all", "any"} else "all",
             "status": status,
+            "status_reason": status_reason,
         }
 
 

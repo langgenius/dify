@@ -20,9 +20,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -54,19 +55,37 @@ type GoldenQuestionDialogState =
       value: GoldenQuestionDraft
     }
 
-function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
-  const { t } = useTranslation(['dataset', 'knowledgeQuality'])
+function GoldenStatus({
+  status,
+  reason,
+}: {
+  status: KnowledgeFsGoldenQuestionResponse['status']
+  reason: KnowledgeFsGoldenQuestionResponse['status_reason']
+}) {
+  const { t } = useTranslation(['knowledgeQuality'])
+  const labelId = useId()
   return (
-    <span
-      className={cn(
-        'inline-flex w-fit items-center rounded-md px-1.5 py-0.5 system-2xs-medium-uppercase',
-        status === 'active' && 'bg-state-success-hover text-text-success',
-        status === 'draft' && 'bg-state-warning-hover text-text-warning',
-        status === 'stale' && 'bg-state-destructive-hover text-text-destructive',
+    <div className="flex min-w-0 items-center gap-1">
+      <span
+        id={labelId}
+        className={cn(
+          'inline-flex w-fit items-center rounded-md px-1.5 py-0.5 system-2xs-medium-uppercase',
+          status === 'active' && 'bg-state-success-hover text-text-success',
+          (status === 'draft' || status === 'paused') && 'bg-state-warning-hover text-text-warning',
+          status === 'stale' && 'bg-state-destructive-hover text-text-destructive',
+        )}
+      >
+        {t(($) => $[`qualityPage.goldenStatus.${status}`], { ns: 'knowledgeQuality' })}
+      </span>
+      {reason && (
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} />
+          <InfotipContent aria-labelledby={labelId} className="max-w-72">
+            {t(($) => $[`qualityPage.goldenStatusReason.${reason}`], { ns: 'knowledgeQuality' })}
+          </InfotipContent>
+        </Infotip>
       )}
-    >
-      {t(($) => $[`qualityPage.goldenStatus.${status}`], { ns: 'knowledgeQuality' })}
-    </span>
+    </div>
   )
 }
 
@@ -349,6 +368,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                 {item.question ?? ''}
               </span>
               <GoldenStatus
+                reason={item.status_reason}
                 status={
                   item.status ??
                   ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')

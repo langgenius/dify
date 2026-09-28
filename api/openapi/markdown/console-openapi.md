@@ -22412,6 +22412,7 @@ Input field definition for snippet parameters.
 | progress_failed | integer |  | Yes |
 | progress_percent | integer |  | Yes |
 | progress_total | integer |  | Yes |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
 | source_id | string |  | No |
 | source_title | string |  | No |
 | state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
@@ -23119,7 +23120,8 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | id | string |  | Yes |
 | match_policy | string, <br>**Available values:** "all", "any", <br>**Default:** all | *Enum:* `"all"`, `"any"` | No |
 | question | string |  | Yes |
-| status | string, <br>**Available values:** "active", "draft", "stale" | *Enum:* `"active"`, `"draft"`, `"stale"` | Yes |
+| status | string, <br>**Available values:** "active", "draft", "paused", "stale" | *Enum:* `"active"`, `"draft"`, `"paused"`, `"stale"` | Yes |
+| status_reason | string, <br>**Available values:** "source-deleted", "source-disabled" |  | No |
 | tags | [ string ] |  | Yes |
 | updated_at | dateTime |  | Yes |
 
@@ -24153,6 +24155,20 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | enabled | boolean |  | Yes |
 | stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
 | value | number |  | No |
+
+#### KnowledgeFSSemanticEnrichmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| nodes_completed | integer |  | Yes |
+| nodes_total | integer |  | No |
+| provider_calls | integer |  | No |
+| provider_calls_maximum | integer |  | No |
+| state | string, <br>**Available values:** "disabled", "failed", "not_scheduled", "pending", "ready", "running" | *Enum:* `"disabled"`, `"failed"`, `"not_scheduled"`, `"pending"`, `"ready"`, `"running"` | Yes |
+| updated_at | string |  | No |
 
 #### KnowledgeFSSettingsPayload
 

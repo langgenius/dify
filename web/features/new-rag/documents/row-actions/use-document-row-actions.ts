@@ -70,10 +70,16 @@ function useDocumentInvalidation() {
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const invalidateDocuments = useCallback(() => {
-    void queryClient.invalidateQueries({
-      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-    })
+    void Promise.allSettled([
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
+      }),
+    ])
   }, [knowledgeSpaceId, queryClient])
   const invalidateDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([
@@ -84,6 +90,10 @@ function useDocumentInvalidation() {
       queryClient.invalidateQueries({
         predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
       }),
     ])
   }, [knowledgeSpaceId, queryClient])

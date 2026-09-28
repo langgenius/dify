@@ -620,6 +620,11 @@ vi.mock('@/service/console', () => ({
               },
             },
           },
+          goldenQuestions: {
+            get: {
+              key: () => ['knowledge-fs', 'golden-questions'],
+            },
+          },
           logicalDocuments: {
             get: {
               infiniteOptions: documentsInfiniteOptions,
@@ -1934,6 +1939,19 @@ describe('DocumentsPage', () => {
       body: { enabled: false, expectedRowVersion: 1 },
       params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
+    const questionInvalidation = queryClient.invalidateQueries.mock.calls.find(
+      ([options]) => options.queryKey[1] === 'golden-questions',
+    )?.[0]
+    for (const spaceId of ['space-1', 'space-2']) {
+      expect(
+        questionInvalidation?.predicate({
+          queryKey: [
+            ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdGoldenQuestions'],
+            { input: { params: { control_space_id: spaceId } }, type: 'query' },
+          ],
+        }),
+      ).toBe(spaceId === 'space-1')
+    }
   })
 
   it('re-enables a disabled document from the same row action', async () => {
@@ -1949,6 +1967,9 @@ describe('DocumentsPage', () => {
       body: { enabled: true, expectedRowVersion: 1 },
       params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['knowledge-fs', 'golden-questions'] }),
+    )
   })
 
   it('confirms permanent document removal from the row action', async () => {
@@ -3738,6 +3759,9 @@ describe('DocumentsPage', () => {
       },
       params: { control_space_id: 'space-1' },
     })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['knowledge-fs', 'golden-questions'] }),
+    )
     await waitFor(() =>
       expect(
         screen.queryByRole('group', { name: 'knowledgeDocuments.bulkDocumentActions' }),
@@ -3776,6 +3800,9 @@ describe('DocumentsPage', () => {
       },
       params: { control_space_id: 'space-1' },
     })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['knowledge-fs', 'golden-questions'] }),
+    )
   })
 
   it('does not submit availability updates for more than 100 selected documents', async () => {
@@ -5913,7 +5940,13 @@ describe('DocumentsPage', () => {
 
     expect(await screen.findByText('knowledgeErrors.taskFailure.temporary')).toBeInTheDocument()
     expect(toastMock.error).toHaveBeenCalledTimes(1)
-    expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
+    for (const collection of ['documents', 'golden-questions']) {
+      expect(
+        queryClient.invalidateQueries.mock.calls.filter(
+          ([options]) => options.queryKey[1] === collection,
+        ),
+      ).toHaveLength(1)
+    }
   })
 
   it('applies task events and clears the attention badge after completion', async () => {
@@ -6067,6 +6100,9 @@ describe('DocumentsPage', () => {
           queryKey: ['knowledge-fs', 'documents'],
         }),
       ),
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['knowledge-fs', 'golden-questions'] }),
     )
   })
 
