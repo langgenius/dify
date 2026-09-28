@@ -21,7 +21,14 @@ from typing import Protocol
 import httpx
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
-from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
+from dify_agent.protocol.schemas import (
+    AgentRunUsage,
+    CancelRunRequest,
+    CancelRunResponse,
+    CreateRunRequest,
+    RunFailureType,
+    RunStatus,
+)
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.event_coalescer import (
@@ -351,7 +358,7 @@ class RunScheduler:
                 self.store,
                 run_id=run_id,
                 error=message,
-                reason="shutdown",
+                error_type=RunFailureType.AGENT_SHUTDOWN,
                 session_snapshot=session_snapshot,
                 usage=usage,
             )
