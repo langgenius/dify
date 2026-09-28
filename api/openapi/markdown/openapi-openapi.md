@@ -195,6 +195,48 @@ Machine-readable catalog of every op on this surface
 | 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/draft/advanced-chat:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/workflow:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br>**multipart/form-data**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/dsl
 #### Parameters
 
@@ -209,6 +251,57 @@ Machine-readable catalog of every op on this surface
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Export successful | **application/json**: [AppDslExportResponse](#appdslexportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/env
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables | **application/json**: [EnvVariableListResponse](#envvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /apps/{app_id}/env/{env_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| env_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable removed | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/env/{env_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| env_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EnvVariableSetPayload](#envvariablesetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable set | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -276,6 +369,55 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/runs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query | Cursor: id of the last run on the previous page | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| status | query |  | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
+| triggered_from | query | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No | string, <br>**Available values:** "app-run", "debugging" |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run list | **application/json**: [RunListResponse](#runlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run detail | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/runs/{run_id}/nodes
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/tasks/{task_id}/events
 #### Parameters
 
@@ -309,6 +451,39 @@ Upload a file to use as an input variable when running the app
 | 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| named_only | query | Only versions that have a name | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Version list | **application/json**: [VersionListResponse](#versionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/versions/{version_id}:restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Restored into the draft | **application/json**: [RestoreResponse](#restoreresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
@@ -327,6 +502,27 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}:publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishPayload](#publishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -615,11 +811,11 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
@@ -670,6 +866,7 @@ Export DSL response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | string | DSL YAML string | Yes |
+| draft_hash | string | Hash of the draft's graph, features, environment variables and conversation variables; pass it to the import to refuse overwriting newer edits | No |
 
 #### AppDslImportPayload
 
@@ -679,6 +876,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | ---- | ---- | ----------- | -------- |
 | app_id | string | Existing app ID to overwrite (workflow/advanced-chat apps only) | No |
 | description | string | Override the app description from the DSL | No |
+| draft_hash | string | draft_hash from the export or restore this import is based on. The import fails if the draft's graph, features, environment variables or conversation variables changed since. Requires app_id | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -758,11 +956,11 @@ mode is a closed enum of listable app types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
 
@@ -776,9 +974,9 @@ mode is a closed enum of listable app types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
 | workspace_id | string | Workspace that owns the app | No |
 
@@ -854,6 +1052,15 @@ Enum representing the deployment edition of the platform.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### DraftWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### DslImportWarning
 
 Portable DSL reference that could not be restored in the target workspace.
@@ -864,6 +1071,43 @@ Portable DSL reference that could not be restored in the target workspace.
 | details | object |  | No |
 | message | string |  | Yes |
 | path | string |  | Yes |
+
+#### EnvVariableListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EnvVariableRow](#envvariablerow) ] |  | Yes |
+
+#### EnvVariableRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string | What set and delete take to address this variable | Yes |
+| name | string | What nodes use to refer to this variable | Yes |
+| value |  | The value; a secret with a value is masked, an empty one reads as empty | Yes |
+| value_type | string |  | Yes |
+
+#### EnvVariableSetPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | What the variable is for | No |
+| name | string | Variable name | Yes |
+| value |  | The value; sending the masked value of an existing secret keeps the stored one | Yes |
+| value_type | [EnvVariableValueType](#envvariablevaluetype) | string, number or secret | Yes |
+
+#### EnvVariableValueType
+
+Value types the draft environment-variable ``set`` op accepts.
+
+A curated subset of ``SegmentType``: what the console's environment-variable editor
+allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py).
+Members reference ``SegmentType.*.value`` so the subset relationship is type-checked.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EnvVariableValueType | string | Value types the draft environment-variable ``set`` op accepts.  A curated subset of ``SegmentType``: what the console's environment-variable editor allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py). Members reference ``SegmentType.*.value`` so the subset relationship is type-checked. |  |
 
 #### ErrorBody
 
@@ -1080,7 +1324,7 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
-| files | object | Local files keyed by the form's file input name, same convention as the run ops' `files` | No |
+| files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Package
@@ -1126,11 +1370,53 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | PluginDependencyType | string |  |  |
 
+#### PublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| marked_comment | string | Version note | No |
+| marked_name | string | Version name | No |
+
+#### PublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| version_id | string |  | Yes |
+| warning | string | Variable references that may read a skipped branch | No |
+
+#### RestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | Hash of the restored draft's graph, features, environment variables and conversation variables; pass it to a DSL import as draft_hash | Yes |
+| result | string |  | Yes |
+
 #### RevokeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | status | string |  | Yes |
+
+#### RunListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_id | string | Cursor: id of the last run on the previous page | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |  | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No |
+
+#### RunListResponse
+
+Cursor page of runs; `hints` carries the next page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowRunForListResponse](#workflowrunforlistresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
 
 #### ServerVersionResponse
 
@@ -1172,6 +1458,23 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | id | string |  | Yes |
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
+
+#### SimpleAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### SimpleEndUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| is_anonymous | boolean |  | Yes |
+| session_id | string |  | No |
+| type | string |  | Yes |
 
 #### SimpleResultResponse
 
@@ -1221,6 +1524,36 @@ types it as a required `'success'` rather than an optional field.
 | prompt_tokens | integer |  | No |
 | total_tokens | integer |  | No |
 
+#### VersionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| named_only | boolean | Only versions that have a name | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### VersionListResponse
+
+Page of published versions, newest first; there is no total, `hints` carries the next page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [VersionRow](#versionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### VersionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+
 #### WorkflowRunData
 
 | Name | Type | Description | Required |
@@ -1236,13 +1569,84 @@ types it as a required `'success'` rather than an optional field.
 | total_tokens | integer |  | No |
 | workflow_id | string |  | Yes |
 
+#### WorkflowRunDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
+| graph |  |  | Yes |
+| id | string |  | Yes |
+| inputs |  |  | Yes |
+| outputs |  |  | Yes |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### WorkflowRunForListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| elapsed_time | number |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### WorkflowRunNodeExecutionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) ] |  | Yes |
+
+#### WorkflowRunNodeExecutionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| execution_metadata |  |  | No |
+| extras |  |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| index | integer |  | No |
+| inputs |  |  | No |
+| inputs_truncated | boolean |  | No |
+| node_id | string |  | No |
+| node_type | string |  | No |
+| outputs |  |  | No |
+| outputs_truncated | boolean |  | No |
+| predecessor_node_id | string |  | No |
+| process_data |  |  | No |
+| process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| title | string |  | No |
+
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
 

@@ -61,6 +61,9 @@ from controllers.openapi._models import (
     DeviceMutateResponse,
     DevicePollRequest,
     DeviceTokenResponse,
+    DraftWorkflowRunPayload,
+    EnvVariableListResponse,
+    EnvVariableSetPayload,
     FileUploadPayload,
     FormSubmitResponse,
     HealthResponse,
@@ -77,13 +80,20 @@ from controllers.openapi._models import (
     OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
+    PublishPayload,
+    PublishResponse,
+    RestoreResponse,
     RevokeResponse,
+    RunListQuery,
+    RunListResponse,
     ServerVersionResponse,
     SessionListQuery,
     SessionListResponse,
     SessionRow,
     TaskStopResponse,
     UsageInfo,
+    VersionListQuery,
+    VersionListResponse,
     WorkflowRunData,
     WorkflowRunPayload,
     WorkspaceDetailResponse,
@@ -93,6 +103,7 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
+from fields.workflow_run_fields import WorkflowRunDetailResponse, WorkflowRunNodeExecutionListResponse
 from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 register_schema_models(
@@ -108,13 +119,18 @@ register_schema_models(
     DevicePollRequest,
     DeviceLookupQuery,
     DeviceMutateRequest,
+    DraftWorkflowRunPayload,
     FileUploadPayload,
     MemberInvitePayload,
     MemberListQuery,
     MemberRoleUpdatePayload,
     OpenApiFormSubmitPayload,
+    EnvVariableSetPayload,
     PermittedExternalAppsListQuery,
+    PublishPayload,
+    RunListQuery,
     SessionListQuery,
+    VersionListQuery,
     WorkflowRunPayload,
     WorkspaceListQuery,
 )
@@ -160,6 +176,13 @@ register_response_schema_models(
     FileResponse,
     ServerVersionResponse,
     HealthResponse,
+    RunListResponse,
+    PublishResponse,
+    VersionListResponse,
+    RestoreResponse,
+    EnvVariableListResponse,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionListResponse,
 )
 # Standalone definition for contract codegen; ErrorBody.code stays an open
 # string on the wire so old clients keep parsing future codes.
@@ -169,6 +192,7 @@ from . import (
     account,
     app_dsl,
     app_run,
+    app_workflow,
     apps,
     apps_permitted_external,
     files,
@@ -186,6 +210,7 @@ __all__ = [
     "account",
     "app_dsl",
     "app_run",
+    "app_workflow",
     "apps",
     "apps_permitted_external",
     "files",

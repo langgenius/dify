@@ -6,6 +6,7 @@ export type ServerErrorDetail = {
   readonly type: string
   readonly loc?: (string | number)[]
   readonly msg: string
+  readonly field?: string
 }
 
 export type ServerErrorBody = {

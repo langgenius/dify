@@ -26,7 +26,7 @@ export type AdvancedChatRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query: string
@@ -65,11 +65,13 @@ export type AppDslExportQuery = {
 
 export type AppDslExportResponse = {
   data: string
+  draft_hash?: string | null
 }
 
 export type AppDslImportPayload = {
   app_id?: string | null
   description?: string | null
+  draft_hash?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -143,7 +145,7 @@ export type ChatRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query: string
@@ -159,7 +161,7 @@ export type CompletionRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query?: string
@@ -216,6 +218,17 @@ export type DeviceTokenResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
+export type DraftWorkflowRunPayload = {
+  attachments?: Array<Blob | File> | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  workspace_id?: string | null
+}
+
 export type DslImportWarning = {
   code: string
   details?: {
@@ -224,6 +237,27 @@ export type DslImportWarning = {
   message: string
   path: string
 }
+
+export type EnvVariableListResponse = {
+  data: Array<EnvVariableRow>
+}
+
+export type EnvVariableRow = {
+  description?: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type EnvVariableSetPayload = {
+  description?: string
+  name: string
+  value: unknown
+  value_type: EnvVariableValueType
+}
+
+export type EnvVariableValueType = 'number' | 'secret' | 'string'
 
 export type ErrorBody = {
   code: string
@@ -385,6 +419,7 @@ export type OpenApiErrorCode =
   | 'completion_request_error'
   | 'conflict'
   | 'conversation_completed'
+  | 'draft_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
   | 'filename_not_exists'
@@ -404,6 +439,9 @@ export type OpenApiErrorCode =
   | 'rate_limit_error'
   | 'recipient_surface_mismatch'
   | 'request_entity_too_large'
+  | 'run_not_found'
+  | 'secret_mask_not_secret'
+  | 'secret_mask_unknown_id'
   | 'too_many_files'
   | 'too_many_requests'
   | 'trigger_workflow_service_mode_unavailable'
@@ -411,6 +449,8 @@ export type OpenApiErrorCode =
   | 'unknown'
   | 'unsupported_file_type'
   | 'unsupported_media_type'
+  | 'version_not_found'
+  | 'version_not_restorable'
 
 export type OpenApiFormSubmitPayload = {
   action: string
@@ -451,8 +491,38 @@ export type PluginDependency = {
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
+export type PublishPayload = {
+  marked_comment?: string
+  marked_name?: string
+}
+
+export type PublishResponse = {
+  created_at: number
+  version_id: string
+  warning?: string | null
+}
+
+export type RestoreResponse = {
+  draft_hash: string
+  result: 'success'
+}
+
 export type RevokeResponse = {
   status: string
+}
+
+export type RunListQuery = {
+  last_id?: string | null
+  limit?: number
+  status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded' | null
+  triggered_from?: 'app-run' | 'debugging' | null
+}
+
+export type RunListResponse = {
+  data: Array<WorkflowRunForListResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
 }
 
 export type ServerVersionResponse = {
@@ -484,6 +554,19 @@ export type SessionRow = {
   prefix: string
 }
 
+export type SimpleAccountResponse = {
+  email: string
+  id: string
+  name: string
+}
+
+export type SimpleEndUser = {
+  id: string
+  is_anonymous: boolean
+  session_id?: string | null
+  type: string
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -502,6 +585,28 @@ export type UsageInfo = {
   total_tokens?: number
 }
 
+export type VersionListQuery = {
+  limit?: number
+  named_only?: boolean
+  page?: number
+}
+
+export type VersionListResponse = {
+  data: Array<VersionRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+}
+
+export type VersionRow = {
+  created_at: number
+  created_by?: string | null
+  id: string
+  marked_comment: string
+  marked_name: string
+}
+
 export type WorkflowRunData = {
   created_at?: number | null
   elapsed_time?: number | null
@@ -517,12 +622,75 @@ export type WorkflowRunData = {
   workflow_id: string
 }
 
+export type WorkflowRunDetailResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  graph: unknown
+  id: string
+  inputs: unknown
+  outputs: unknown
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
+}
+
+export type WorkflowRunForListResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  elapsed_time?: number | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  id: string
+  retry_index?: number | null
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
+}
+
+export type WorkflowRunNodeExecutionListResponse = {
+  data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowRunNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+}
+
 export type WorkflowRunPayload = {
   attachments?: Array<Blob | File> | null
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   workflow_id?: string | null
@@ -851,6 +1019,54 @@ export type GetAppsByAppIdDependenciesCheckResponses = {
 export type GetAppsByAppIdDependenciesCheckResponse =
   GetAppsByAppIdDependenciesCheckResponses[keyof GetAppsByAppIdDependenciesCheckResponses]
 
+export type PostAppsByAppIdDraftAdvancedChatRunData = {
+  body: ChatRunPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/advanced-chat:run'
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunError =
+  PostAppsByAppIdDraftAdvancedChatRunErrors[keyof PostAppsByAppIdDraftAdvancedChatRunErrors]
+
+export type PostAppsByAppIdDraftAdvancedChatRunResponses = {
+  200: EventStreamResponse
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunResponse =
+  PostAppsByAppIdDraftAdvancedChatRunResponses[keyof PostAppsByAppIdDraftAdvancedChatRunResponses]
+
+export type PostAppsByAppIdDraftWorkflowRunData = {
+  body: DraftWorkflowRunPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/workflow:run'
+}
+
+export type PostAppsByAppIdDraftWorkflowRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftWorkflowRunError =
+  PostAppsByAppIdDraftWorkflowRunErrors[keyof PostAppsByAppIdDraftWorkflowRunErrors]
+
+export type PostAppsByAppIdDraftWorkflowRunResponses = {
+  200: EventStreamResponse
+}
+
+export type PostAppsByAppIdDraftWorkflowRunResponse =
+  PostAppsByAppIdDraftWorkflowRunResponses[keyof PostAppsByAppIdDraftWorkflowRunResponses]
+
 export type GetAppsByAppIdDslData = {
   body?: never
   path: {
@@ -875,6 +1091,76 @@ export type GetAppsByAppIdDslResponses = {
 }
 
 export type GetAppsByAppIdDslResponse = GetAppsByAppIdDslResponses[keyof GetAppsByAppIdDslResponses]
+
+export type GetAppsByAppIdEnvData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env'
+}
+
+export type GetAppsByAppIdEnvErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdEnvError = GetAppsByAppIdEnvErrors[keyof GetAppsByAppIdEnvErrors]
+
+export type GetAppsByAppIdEnvResponses = {
+  200: EnvVariableListResponse
+}
+
+export type GetAppsByAppIdEnvResponse = GetAppsByAppIdEnvResponses[keyof GetAppsByAppIdEnvResponses]
+
+export type DeleteAppsByAppIdEnvByEnvIdData = {
+  body?: never
+  path: {
+    app_id: string
+    env_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env/{env_id}'
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdError =
+  DeleteAppsByAppIdEnvByEnvIdErrors[keyof DeleteAppsByAppIdEnvByEnvIdErrors]
+
+export type DeleteAppsByAppIdEnvByEnvIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdResponse =
+  DeleteAppsByAppIdEnvByEnvIdResponses[keyof DeleteAppsByAppIdEnvByEnvIdResponses]
+
+export type PutAppsByAppIdEnvByEnvIdData = {
+  body: EnvVariableSetPayload
+  path: {
+    app_id: string
+    env_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env/{env_id}'
+}
+
+export type PutAppsByAppIdEnvByEnvIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutAppsByAppIdEnvByEnvIdError =
+  PutAppsByAppIdEnvByEnvIdErrors[keyof PutAppsByAppIdEnvByEnvIdErrors]
+
+export type PutAppsByAppIdEnvByEnvIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type PutAppsByAppIdEnvByEnvIdResponse =
+  PutAppsByAppIdEnvByEnvIdResponses[keyof PutAppsByAppIdEnvByEnvIdResponses]
 
 export type PostAppsByAppIdFilesData = {
   body: FileUploadPayload
@@ -952,6 +1238,82 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
 
+export type GetAppsByAppIdRunsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    last_id?: string
+    limit?: number
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    triggered_from?: 'app-run' | 'debugging'
+  }
+  url: '/apps/{app_id}/runs'
+}
+
+export type GetAppsByAppIdRunsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsError = GetAppsByAppIdRunsErrors[keyof GetAppsByAppIdRunsErrors]
+
+export type GetAppsByAppIdRunsResponses = {
+  200: RunListResponse
+}
+
+export type GetAppsByAppIdRunsResponse =
+  GetAppsByAppIdRunsResponses[keyof GetAppsByAppIdRunsResponses]
+
+export type GetAppsByAppIdRunsByRunIdData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/runs/{run_id}'
+}
+
+export type GetAppsByAppIdRunsByRunIdErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsByRunIdError =
+  GetAppsByAppIdRunsByRunIdErrors[keyof GetAppsByAppIdRunsByRunIdErrors]
+
+export type GetAppsByAppIdRunsByRunIdResponses = {
+  200: WorkflowRunDetailResponse
+}
+
+export type GetAppsByAppIdRunsByRunIdResponse =
+  GetAppsByAppIdRunsByRunIdResponses[keyof GetAppsByAppIdRunsByRunIdResponses]
+
+export type GetAppsByAppIdRunsByRunIdNodesData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/runs/{run_id}/nodes'
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesError =
+  GetAppsByAppIdRunsByRunIdNodesErrors[keyof GetAppsByAppIdRunsByRunIdNodesErrors]
+
+export type GetAppsByAppIdRunsByRunIdNodesResponses = {
+  200: WorkflowRunNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesResponse =
+  GetAppsByAppIdRunsByRunIdNodesResponses[keyof GetAppsByAppIdRunsByRunIdNodesResponses]
+
 export type GetAppsByAppIdTasksByTaskIdEventsData = {
   body?: never
   path: {
@@ -1004,6 +1366,58 @@ export type PostAppsByAppIdTasksByTaskIdStopResponses = {
 export type PostAppsByAppIdTasksByTaskIdStopResponse =
   PostAppsByAppIdTasksByTaskIdStopResponses[keyof PostAppsByAppIdTasksByTaskIdStopResponses]
 
+export type GetAppsByAppIdVersionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    limit?: number
+    named_only?: boolean
+    page?: number
+  }
+  url: '/apps/{app_id}/versions'
+}
+
+export type GetAppsByAppIdVersionsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdVersionsError =
+  GetAppsByAppIdVersionsErrors[keyof GetAppsByAppIdVersionsErrors]
+
+export type GetAppsByAppIdVersionsResponses = {
+  200: VersionListResponse
+}
+
+export type GetAppsByAppIdVersionsResponse =
+  GetAppsByAppIdVersionsResponses[keyof GetAppsByAppIdVersionsResponses]
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreData = {
+  body?: never
+  path: {
+    app_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/versions/{version_id}:restore'
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreError =
+  PostAppsByAppIdVersionsByVersionIdRestoreErrors[keyof PostAppsByAppIdVersionsByVersionIdRestoreErrors]
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreResponses = {
+  200: RestoreResponse
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreResponse =
+  PostAppsByAppIdVersionsByVersionIdRestoreResponses[keyof PostAppsByAppIdVersionsByVersionIdRestoreResponses]
+
 export type PostAppsByAppIdWorkflowRunData = {
   body: WorkflowRunPayload
   path: {
@@ -1027,6 +1441,30 @@ export type PostAppsByAppIdWorkflowRunResponses = {
 
 export type PostAppsByAppIdWorkflowRunResponse =
   PostAppsByAppIdWorkflowRunResponses[keyof PostAppsByAppIdWorkflowRunResponses]
+
+export type PostAppsByAppIdPublishData = {
+  body: PublishPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}:publish'
+}
+
+export type PostAppsByAppIdPublishErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdPublishError =
+  PostAppsByAppIdPublishErrors[keyof PostAppsByAppIdPublishErrors]
+
+export type PostAppsByAppIdPublishResponses = {
+  200: PublishResponse
+}
+
+export type PostAppsByAppIdPublishResponse =
+  PostAppsByAppIdPublishResponses[keyof PostAppsByAppIdPublishResponses]
 
 export type PostOauthDeviceApproveData = {
   body: DeviceMutateRequest

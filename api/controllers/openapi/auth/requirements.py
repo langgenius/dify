@@ -11,7 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from enum import IntEnum
-from typing import ClassVar, override
+from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
@@ -19,12 +19,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import RBACCheck, enforce_rbac_checks
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from models.account import TenantAccountRole
@@ -157,6 +157,9 @@ class CheckRBACPermission(Requirement):
         )
 
 
+EDITOR_ROLES: Final = frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+
+
 class CheckWorkspaceRole(Requirement):
     """The workspace-role gate that predates RBAC. Inert wherever RBAC is on;
     a route that needs a check there declares a `CheckRBACPermission` beside this.
@@ -222,3 +225,15 @@ class ResolveCaller(Requirement):
         if not subject.mounts_caller(ctx):
             return
         load_caller(ctx)
+
+
+def account_app_guards(permission: RBACPermission, *, scope: Scope, editor: bool) -> tuple[Requirement, ...]:
+    """Guards for an account-only op on one app; `editor` adds the pre-RBAC editor-role gate."""
+    guards: tuple[Requirement, ...] = (
+        CheckSubject(allowed=(AccountSubject,)),
+        CheckAppApiEnabled(),
+        CheckWorkspaceMember(),
+        CheckScope(scope),
+        CheckRBACPermission(RBACCheck(permission, PlainApp())),
+    )
+    return (*guards, CheckWorkspaceRole(EDITOR_ROLES)) if editor else guards

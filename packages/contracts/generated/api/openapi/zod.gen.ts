@@ -31,7 +31,7 @@ export const zAdvancedChatRunPayload = z.object({
       ]),
     )
     .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string(),
   workflow_id: z.string().nullish(),
   workspace_id: z.string().nullish(),
@@ -87,6 +87,7 @@ export const zAppDslExportQuery = z.object({
  */
 export const zAppDslExportResponse = z.object({
   data: z.string(),
+  draft_hash: z.string().nullish(),
 })
 
 /**
@@ -97,6 +98,7 @@ export const zAppDslExportResponse = z.object({
 export const zAppDslImportPayload = z.object({
   app_id: z.string().nullish(),
   description: z.string().nullish(),
+  draft_hash: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
@@ -161,7 +163,7 @@ export const zChatRunPayload = z.object({
       ]),
     )
     .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string(),
   workspace_id: z.string().nullish(),
 })
@@ -182,7 +184,7 @@ export const zCompletionRunPayload = z.object({
       ]),
     )
     .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
   workspace_id: z.string().nullish(),
 })
@@ -252,6 +254,26 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * DraftWorkflowRunPayload
+ */
+export const zDraftWorkflowRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * DslImportWarning
  *
  * Portable DSL reference that could not be restored in the target workspace.
@@ -261,6 +283,45 @@ export const zDslImportWarning = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
   message: z.string(),
   path: z.string(),
+})
+
+/**
+ * EnvVariableRow
+ */
+export const zEnvVariableRow = z.object({
+  description: z.string().optional().default(''),
+  id: z.string(),
+  name: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+})
+
+/**
+ * EnvVariableListResponse
+ */
+export const zEnvVariableListResponse = z.object({
+  data: z.array(zEnvVariableRow),
+})
+
+/**
+ * EnvVariableValueType
+ *
+ * Value types the draft environment-variable ``set`` op accepts.
+ *
+ * A curated subset of ``SegmentType``: what the console's environment-variable editor
+ * allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py).
+ * Members reference ``SegmentType.*.value`` so the subset relationship is type-checked.
+ */
+export const zEnvVariableValueType = z.enum(['number', 'secret', 'string'])
+
+/**
+ * EnvVariableSetPayload
+ */
+export const zEnvVariableSetPayload = z.object({
+  description: z.string().optional().default(''),
+  name: z.string(),
+  value: z.unknown(),
+  value_type: zEnvVariableValueType,
 })
 
 /**
@@ -514,6 +575,7 @@ export const zOpenApiErrorCode = z.enum([
   'completion_request_error',
   'conflict',
   'conversation_completed',
+  'draft_not_found',
   'file_extension_blocked',
   'file_too_large',
   'filename_not_exists',
@@ -533,6 +595,9 @@ export const zOpenApiErrorCode = z.enum([
   'rate_limit_error',
   'recipient_surface_mismatch',
   'request_entity_too_large',
+  'run_not_found',
+  'secret_mask_not_secret',
+  'secret_mask_unknown_id',
   'too_many_files',
   'too_many_requests',
   'trigger_workflow_service_mode_unavailable',
@@ -540,6 +605,8 @@ export const zOpenApiErrorCode = z.enum([
   'unknown',
   'unsupported_file_type',
   'unsupported_media_type',
+  'version_not_found',
+  'version_not_restorable',
 ])
 
 /**
@@ -603,10 +670,45 @@ export const zCheckDependenciesResult = z.object({
 })
 
 /**
+ * PublishPayload
+ */
+export const zPublishPayload = z.object({
+  marked_comment: z.string().max(100).optional().default(''),
+  marked_name: z.string().max(20).optional().default(''),
+})
+
+/**
+ * PublishResponse
+ */
+export const zPublishResponse = z.object({
+  created_at: z.int(),
+  version_id: z.string(),
+  warning: z.string().nullish(),
+})
+
+/**
+ * RestoreResponse
+ */
+export const zRestoreResponse = z.object({
+  draft_hash: z.string(),
+  result: z.literal('success'),
+})
+
+/**
  * RevokeResponse
  */
 export const zRevokeResponse = z.object({
   status: z.string(),
+})
+
+/**
+ * RunListQuery
+ */
+export const zRunListQuery = z.object({
+  last_id: z.uuid().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).nullish(),
+  triggered_from: z.enum(['app-run', 'debugging']).nullish(),
 })
 
 /**
@@ -652,6 +754,25 @@ export const zSessionListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * SimpleAccountResponse
+ */
+export const zSimpleAccountResponse = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * SimpleEndUser
+ */
+export const zSimpleEndUser = z.object({
+  id: z.string(),
+  is_anonymous: z.boolean(),
+  session_id: z.string().nullish(),
+  type: z.string(),
 })
 
 /**
@@ -743,6 +864,39 @@ export const zMessageMetadata = z.object({
 })
 
 /**
+ * VersionListQuery
+ */
+export const zVersionListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * VersionRow
+ */
+export const zVersionRow = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+})
+
+/**
+ * VersionListResponse
+ *
+ * Page of published versions, newest first; there is no total, `hints` carries the next page.
+ */
+export const zVersionListResponse = z.object({
+  data: z.array(zVersionRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * WorkflowRunData
  */
 export const zWorkflowRunData = z.object({
@@ -756,6 +910,93 @@ export const zWorkflowRunData = z.object({
   total_steps: z.int().nullish(),
   total_tokens: z.int().nullish(),
   workflow_id: z.string(),
+})
+
+/**
+ * WorkflowRunDetailResponse
+ */
+export const zWorkflowRunDetailResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
+  graph: z.unknown(),
+  id: z.string(),
+  inputs: z.unknown(),
+  outputs: z.unknown(),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * WorkflowRunForListResponse
+ */
+export const zWorkflowRunForListResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  elapsed_time: z.number().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * RunListResponse
+ *
+ * Cursor page of runs; `hints` carries the next page.
+ */
+export const zRunListResponse = z.object({
+  data: z.array(zWorkflowRunForListResponse),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+})
+
+/**
+ * WorkflowRunNodeExecutionResponse
+ */
+export const zWorkflowRunNodeExecutionResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  execution_metadata: z.unknown().optional(),
+  extras: z.unknown().optional(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  index: z.int().nullish(),
+  inputs: z.unknown().optional(),
+  inputs_truncated: z.boolean().nullish(),
+  node_id: z.string().nullish(),
+  node_type: z.string().nullish(),
+  outputs: z.unknown().optional(),
+  outputs_truncated: z.boolean().nullish(),
+  predecessor_node_id: z.string().nullish(),
+  process_data: z.unknown().optional(),
+  process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  title: z.string().nullish(),
+})
+
+/**
+ * WorkflowRunNodeExecutionListResponse
+ */
+export const zWorkflowRunNodeExecutionListResponse = z.object({
+  data: z.array(zWorkflowRunNodeExecutionResponse),
 })
 
 /**
@@ -774,7 +1015,7 @@ export const zWorkflowRunPayload = z.object({
       ]),
     )
     .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   workflow_id: z.string().nullish(),
   workspace_id: z.string().nullish(),
 })
@@ -972,6 +1213,28 @@ export const zGetAppsByAppIdDependenciesCheckPath = z.object({
  */
 export const zGetAppsByAppIdDependenciesCheckResponse = zCheckDependenciesResult
 
+export const zPostAppsByAppIdDraftAdvancedChatRunBody = zChatRunPayload
+
+export const zPostAppsByAppIdDraftAdvancedChatRunPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostAppsByAppIdDraftAdvancedChatRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdDraftWorkflowRunBody = zDraftWorkflowRunPayload
+
+export const zPostAppsByAppIdDraftWorkflowRunPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostAppsByAppIdDraftWorkflowRunResponse = zEventStreamResponse
+
 export const zGetAppsByAppIdDslPath = z.object({
   app_id: z.string(),
 })
@@ -985,6 +1248,37 @@ export const zGetAppsByAppIdDslQuery = z.object({
  * Export successful
  */
 export const zGetAppsByAppIdDslResponse = zAppDslExportResponse
+
+export const zGetAppsByAppIdEnvPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Environment variables
+ */
+export const zGetAppsByAppIdEnvResponse = zEnvVariableListResponse
+
+export const zDeleteAppsByAppIdEnvByEnvIdPath = z.object({
+  app_id: z.string(),
+  env_id: z.string(),
+})
+
+/**
+ * Variable removed
+ */
+export const zDeleteAppsByAppIdEnvByEnvIdResponse = zSimpleResultResponse
+
+export const zPutAppsByAppIdEnvByEnvIdBody = zEnvVariableSetPayload
+
+export const zPutAppsByAppIdEnvByEnvIdPath = z.object({
+  app_id: z.string(),
+  env_id: z.string(),
+})
+
+/**
+ * Variable set
+ */
+export const zPutAppsByAppIdEnvByEnvIdResponse = zSimpleResultResponse
 
 export const zPostAppsByAppIdFilesBody = zFileUploadPayload
 
@@ -1019,6 +1313,42 @@ export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
  */
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse = zFormSubmitResponse
 
+export const zGetAppsByAppIdRunsPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdRunsQuery = z.object({
+  last_id: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).optional(),
+  triggered_from: z.enum(['app-run', 'debugging']).optional(),
+})
+
+/**
+ * Run list
+ */
+export const zGetAppsByAppIdRunsResponse = zRunListResponse
+
+export const zGetAppsByAppIdRunsByRunIdPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Run detail
+ */
+export const zGetAppsByAppIdRunsByRunIdResponse = zWorkflowRunDetailResponse
+
+export const zGetAppsByAppIdRunsByRunIdNodesPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Node steps
+ */
+export const zGetAppsByAppIdRunsByRunIdNodesResponse = zWorkflowRunNodeExecutionListResponse
+
 export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
   app_id: z.string(),
   task_id: z.string(),
@@ -1044,6 +1374,31 @@ export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
  */
 export const zPostAppsByAppIdTasksByTaskIdStopResponse = zTaskStopResponse
 
+export const zGetAppsByAppIdVersionsPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdVersionsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Version list
+ */
+export const zGetAppsByAppIdVersionsResponse = zVersionListResponse
+
+export const zPostAppsByAppIdVersionsByVersionIdRestorePath = z.object({
+  app_id: z.string(),
+  version_id: z.string(),
+})
+
+/**
+ * Restored into the draft
+ */
+export const zPostAppsByAppIdVersionsByVersionIdRestoreResponse = zRestoreResponse
+
 export const zPostAppsByAppIdWorkflowRunBody = zWorkflowRunPayload
 
 export const zPostAppsByAppIdWorkflowRunPath = z.object({
@@ -1054,6 +1409,17 @@ export const zPostAppsByAppIdWorkflowRunPath = z.object({
  * Run result (SSE stream)
  */
 export const zPostAppsByAppIdWorkflowRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdPublishBody = zPublishPayload
+
+export const zPostAppsByAppIdPublishPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Published
+ */
+export const zPostAppsByAppIdPublishResponse = zPublishResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 
