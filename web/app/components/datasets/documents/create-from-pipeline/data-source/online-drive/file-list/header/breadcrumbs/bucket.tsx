@@ -1,15 +1,13 @@
+import { BreadcrumbItem, BreadcrumbSeparator } from '@langgenius/dify-ui/breadcrumb'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+import DirectoryItem from './item'
 
 type BucketProps = {
   bucketName: string
-  isActive?: boolean
-  disabled?: boolean
-  showSeparator?: boolean
+  current: boolean
   handleBackToBucketList: () => void
   handleClickBucketName: () => void
 }
@@ -18,44 +16,43 @@ const Bucket = ({
   bucketName,
   handleBackToBucketList,
   handleClickBucketName,
-  disabled = false,
-  isActive = false,
-  showSeparator = true,
+  current,
 }: BucketProps) => {
-  const { t } = useTranslation()
-  const handleClickItem = useCallback(() => {
-    if (!disabled)
-      handleClickBucketName()
-  }, [disabled, handleClickBucketName])
+  const { t } = useTranslation(['datasetPipeline'])
+  const allBucketsLabel = t(($) => $['onlineDrive.breadcrumbs.allBuckets'], {
+    ns: 'datasetPipeline',
+  })
 
   return (
     <>
-      <Tooltip
-        popupContent={t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
-      >
-        <button
-          type="button"
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-          onClick={handleBackToBucketList}
-        >
-          <BucketsGray />
-        </button>
-      </Tooltip>
-      <span className="system-xs-regular text-divider-deep">/</span>
-      <button
-        type="button"
-        className={cn(
-          'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
-          !disabled && 'hover:bg-state-base-hover',
-        )}
-        disabled={disabled}
-        onClick={handleClickItem}
+      <BreadcrumbItem className="shrink-0">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                type="button"
+                variant="ghost"
+                size="md"
+                aria-label={allBucketsLabel}
+                onClick={handleBackToBucketList}
+              >
+                <span
+                  aria-hidden
+                  className="i-custom-public-knowledge-online-drive-buckets-gray h-4.75 w-4.5"
+                />
+              </IconButton>
+            }
+          />
+          <TooltipContent>{allBucketsLabel}</TooltipContent>
+        </Tooltip>
+      </BreadcrumbItem>
+      <BreadcrumbSeparator className="system-xs-regular text-divider-deep" />
+      <DirectoryItem
+        name={bucketName}
         title={bucketName}
-      >
-        {bucketName}
-      </button>
-      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
+        current={current}
+        onClick={handleClickBucketName}
+      />
     </>
   )
 }

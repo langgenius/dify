@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-tidb-on-qdrant"
+version = "0.0.1"
+
+dependencies = [
+    "qdrant-client==1.9.0",
+]
+description = "Dify vector store backend (dify-vdb-tidb-on-qdrant)."
+
+[project.entry-points."dify.vector_backends"]
+tidb_on_qdrant = "dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector:TidbOnQdrantVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

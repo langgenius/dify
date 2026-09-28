@@ -1,13 +1,13 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
-import Toast from '@/app/components/base/toast'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useFileUploadConfig } from '@/service/use-common'
 import HiddenFields from './hidden-fields'
 import InitialFields from './initial-fields'
@@ -21,13 +21,9 @@ const InputFieldForm = ({
   onSubmit,
   isEditMode = true,
 }: InputFieldFormProps) => {
-  const { t } = useTranslation()
-
+  const { t } = useTranslation(['appDebug', 'common'])
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const {
-    maxFileUploadLimit,
-  } = useFileSizeLimit(fileUploadConfigResponse)
-
+  const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
   const inputFieldForm = useAppForm({
     defaultValues: initialData,
     validators: {
@@ -38,11 +34,8 @@ const InputFieldForm = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
-          Toast.notify({
-            type: 'error',
-            message: errorMessage,
-          })
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
+          toast.error(errorMessage)
           return errorMessage
         }
         return undefined
@@ -59,9 +52,7 @@ const InputFieldForm = ({
       onSubmit(value as FormData, moreInfo)
     },
   })
-
   const [showAllSettings, setShowAllSettings] = useState(false)
-
   const InitialFieldsComp = InitialFields({
     initialData,
     supportFile,
@@ -69,16 +60,13 @@ const InputFieldForm = ({
   const HiddenFieldsComp = HiddenFields({
     initialData,
   })
-
   const handleShowAllSettings = useCallback(() => {
     setShowAllSettings(true)
   }, [])
-
   const ShowAllSettingComp = ShowAllSettings({
     initialData,
     handleShowAllSettings,
   })
-
   return (
     <form
       className="w-full"
@@ -90,17 +78,13 @@ const InputFieldForm = ({
     >
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type="horizontal" />
-        {!showAllSettings && (
-          <ShowAllSettingComp form={inputFieldForm} />
-        )}
-        {showAllSettings && (
-          <HiddenFieldsComp form={inputFieldForm} />
-        )}
+        <Separator className="my-2 h-[0.5px]" orientation="horizontal" />
+        {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
+        {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>
       <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />
@@ -109,5 +93,4 @@ const InputFieldForm = ({
     </form>
   )
 }
-
 export default InputFieldForm

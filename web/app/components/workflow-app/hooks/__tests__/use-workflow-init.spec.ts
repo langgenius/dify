@@ -1,6 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
 const mockSetSyncWorkflowDraftHash = vi.fn()
@@ -11,10 +14,34 @@ const mockSetLastPublishedHasUserInput = vi.fn()
 const mockSetFileUploadConfig = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockWorkflowStoreGetState = vi.fn()
+const mockFetchNodesDefaultConfigs = vi.fn()
+const mockFetchPublishedWorkflow = vi.fn()
+const mockSyncWorkflowDraft = vi.fn()
+
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
+
+let appStoreState: {
+  appDetail: {
+    id: string
+    name: string
+    mode: string
+    permission_keys?: string[]
+    maintainer?: string
+  }
+}
+
+let workflowConfigState: {
+  data: Record<string, unknown> | null
+  isLoading: boolean
+}
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T>(selector: (state: { setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T): T =>
-    selector({ setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
+  useStore: <T>(
+    selector: (state: { setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T,
+  ): T => selector({ setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
   useWorkflowStore: () => ({
     setState: mockWorkflowStoreSetState,
     getState: mockWorkflowStoreGetState,
@@ -22,26 +49,47 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: { appDetail: { id: string, name: string, mode: string } }) => T): T =>
-    selector({ appDetail: { id: 'app-1', name: 'Test', mode: 'workflow' } }),
+  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
+
 vi.mock('../use-workflow-template', () => ({
-  useWorkflowTemplate: () => ({ nodes: [], edges: [] }),
+  useWorkflowTemplate: () => ({
+    nodes:
+      appStoreState.appDetail.mode === 'workflow'
+        ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
+        : [{ id: 'start', data: { type: BlockEnum.Start } }],
+    edges: [],
+  }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: () => ({ data: null, isLoading: false }),
+  useWorkflowConfig: (_url: string, onSuccess: (config: Record<string, unknown>) => void) => {
+    if (workflowConfigState.data) onSuccess(workflowConfigState.data)
+    return workflowConfigState
+  },
+}))
+
+vi.mock('@/service/workflow-queries', () => ({
+  appWorkflowQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'publish', appId],
+    queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
+  }),
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
-const mockSyncWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
   syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
-  fetchNodesDefaultConfigs: () => Promise.resolve([]),
-  fetchPublishedWorkflow: () => Promise.resolve({ created_at: 0, graph: { nodes: [], edges: [] } }),
+  fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
 const notExistError = () => ({
@@ -51,13 +99,17 @@ const notExistError = () => ({
 
 const draftResponse = {
   id: 'draft-id',
-  graph: { nodes: [], edges: [] },
+  graph: {
+    nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+    edges: [],
+  },
   hash: 'server-hash',
   created_at: 0,
   created_by: { id: '', name: '', email: '' },
   updated_at: 1,
   updated_by: { id: '', name: '', email: '' },
   tool_published: false,
+  features: { retriever_resource: { enabled: true } },
   environment_variables: [],
   conversation_variables: [],
   version: '1',
@@ -65,9 +117,18 @@ const draftResponse = {
   marked_comment: '',
 }
 
-describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
+describe('useWorkflowInit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        name: 'Test',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.Edit],
+      },
+    }
+    workflowConfigState = { data: null, isLoading: false }
     mockWorkflowStoreGetState.mockReturnValue({
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
       setToolPublished: mockSetToolPublished,
@@ -75,33 +136,287 @@ describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
       setLastPublishedHasUserInput: mockSetLastPublishedHasUserInput,
       setFileUploadConfig: mockSetFileUploadConfig,
     })
-    mockFetchWorkflowDraft
-      .mockRejectedValueOnce(notExistError())
-      .mockResolvedValueOnce(draftResponse)
-    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
+    mockFetchNodesDefaultConfigs.mockResolvedValue([])
+    mockFetchPublishedWorkflow.mockResolvedValue({ created_at: 0, graph: { nodes: [], edges: [] } })
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
+    mockSyncWorkflowDraft.mockReset()
   })
 
-  it('should call setSyncWorkflowDraftHash with hash returned by syncWorkflowDraft', async () => {
-    renderHook(() => useWorkflowInit())
-    await waitFor(() => expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash'))
-  })
+  it.each([undefined, { x: 120, y: -80, zoom: 0.75 }])(
+    'should preserve the initial draft viewport as %j',
+    async (viewport) => {
+      mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+        ...draftResponse,
+        graph: { ...draftResponse.graph, viewport },
+      })
 
-  it('should store hash BEFORE making the recursive fetchWorkflowDraft call', async () => {
-    const order: string[] = []
-    mockSetSyncWorkflowDraftHash.mockImplementation((h: string) => order.push(`hash:${h}`))
+      const { result } = renderHook(() => useWorkflowInit())
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(result.current.data?.graph.viewport).toEqual(viewport)
+    },
+  )
+
+  it('should create an empty backend draft and restore a local start placeholder when the workflow draft does not exist', async () => {
     mockFetchWorkflowDraft
       .mockReset()
       .mockRejectedValueOnce(notExistError())
-      .mockImplementationOnce(async () => {
-        order.push('fetch:2')
-        return draftResponse
+      .mockResolvedValueOnce({
+        ...draftResponse,
+        graph: { nodes: [], edges: [] },
+        hash: 'new-workflow-hash',
       })
+    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+      ])
+    })
+
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showOnboarding: false,
+        shouldAutoOpenStartNodeSelector: false,
+        hasSelectedStartNode: false,
+        hasShownOnboarding: true,
+      }),
+    )
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: {
+            nodes: [],
+            edges: [],
+          },
+        }),
+      }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
+  })
+
+  it('should keep creating the first backend draft for advanced chat apps', async () => {
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        name: 'Test',
+        mode: 'advanced-chat',
+        permission_keys: [AppACLPermission.Edit],
+      },
+    }
+    mockFetchWorkflowDraft
+      .mockReset()
+      .mockRejectedValueOnce(notExistError())
+      .mockResolvedValueOnce(draftResponse)
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
 
     renderHook(() => useWorkflowInit())
 
-    await waitFor(() => expect(order).toContain('fetch:2'))
-    expect(order).toContain('hash:new-hash')
-    expect(order.indexOf('hash:new-hash')).toBeLessThan(order.indexOf('fetch:2'))
+    await waitFor(() =>
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: {
+              nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+              edges: [],
+            },
+          }),
+        }),
+      ),
+    )
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showOnboarding: false,
+        shouldAutoOpenStartNodeSelector: false,
+        hasShownOnboarding: false,
+      }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+  })
+
+  it('should keep readonly users local when the first workflow draft does not exist', async () => {
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        name: 'Test',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.ViewLayout],
+      },
+    }
+    mockFetchWorkflowDraft.mockReset().mockRejectedValueOnce(notExistError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.data?.graph.nodes).toEqual([
+      { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+    ])
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envSecrets: {},
+        environmentVariables: [],
+        conversationVariables: [],
+        isWorkflowDataLoaded: true,
+      }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('')
+    expect(result.current.data?.graph.viewport).toBeUndefined()
+  })
+
+  it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+      ...draftResponse,
+      graph: { nodes: [], edges: [] },
+      hash: 'empty-draft-hash',
+    })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+      ])
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('empty-draft-hash')
+  })
+
+  it('should preserve existing draft nodes when restoring the local start placeholder', async () => {
+    const existingNode = { id: 'llm', data: { type: BlockEnum.LLM } }
+    const existingEdge = { source: 'llm', target: 'answer' }
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+      ...draftResponse,
+      graph: {
+        nodes: [existingNode],
+        edges: [existingEdge],
+      },
+    })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+        existingNode,
+      ])
+    })
+
+    expect(result.current.data?.graph.edges).toEqual([existingEdge])
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should hydrate draft state, preload defaults, and derive published workflow metadata on success', async () => {
+    workflowConfigState = {
+      data: { enabled: true, sizeLimit: 20 },
+      isLoading: false,
+    }
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+      ...draftResponse,
+      updated_at: 9,
+      tool_published: true,
+      environment_variables: [
+        { id: 'env-secret', value_type: 'secret', value: 'top-secret', name: 'SECRET' },
+        { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
+      ],
+      conversation_variables: [{ id: 'conversation-1' }],
+    })
+    mockFetchNodesDefaultConfigs.mockResolvedValue([
+      { type: 'start', config: { title: 'Start Config' } },
+      { type: 'start', config: { title: 'Ignored Duplicate' } },
+    ])
+    mockFetchPublishedWorkflow.mockResolvedValue({
+      created_at: 99,
+      graph: {
+        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+        edges: [{ source: 'start', target: 'end' }],
+      },
+    })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.hash).toBe('server-hash')
+    })
+
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appId: 'app-1', appName: 'Test' })
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envSecrets: { 'env-secret': 'top-secret' },
+        environmentVariables: [
+          { id: 'env-secret', value_type: 'secret', value: '[__HIDDEN__]', name: 'SECRET' },
+          { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
+        ],
+        conversationVariables: [{ id: 'conversation-1' }],
+        isWorkflowDataLoaded: true,
+      }),
+    )
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+      nodesDefaultConfigs: {
+        start: { title: 'Start Config' },
+      },
+    })
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(9)
+    expect(mockSetToolPublished).toHaveBeenCalledWith(true)
+    expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
+    expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
+    expect(mockSetFileUploadConfig).toHaveBeenCalledWith({ enabled: true, sizeLimit: 20 })
+    expect(result.current.fileUploadConfigResponse).toEqual({ enabled: true, sizeLimit: 20 })
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('should keep published metadata when loading node defaults fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    mockFetchNodesDefaultConfigs.mockRejectedValue(new Error('preload failed'))
+    mockFetchPublishedWorkflow.mockResolvedValue({
+      created_at: 99,
+      graph: {
+        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+        edges: [{ source: 'start', target: 'end' }],
+      },
+    })
+
+    renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
+      expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
+    })
+
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('should keep node defaults when loading published metadata fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    mockFetchNodesDefaultConfigs.mockResolvedValue([
+      { type: 'start', config: { title: 'Start Config' } },
+    ])
+    mockFetchPublishedWorkflow.mockRejectedValue(new Error('published workflow failed'))
+
+    renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+        nodesDefaultConfigs: {
+          start: { title: 'Start Config' },
+        },
+      })
+      expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(false)
+    })
+
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
   })
 })

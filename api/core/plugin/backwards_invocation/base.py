@@ -1,5 +1,4 @@
 from collections.abc import Generator, Mapping
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -19,9 +18,6 @@ class BaseBackwardsInvocation:
             yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode()
 
 
-T = TypeVar("T", bound=dict | Mapping | str | bool | int | BaseModel)
-
-
-class BaseBackwardsInvocationResponse(BaseModel, Generic[T]):
+class BaseBackwardsInvocationResponse[T: dict | Mapping | str | bool | int | BaseModel](BaseModel):
     data: T | None = None
     error: str = ""

@@ -1,13 +1,15 @@
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
-from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.datasets.website import (
     WebsiteCrawlApi,
+    WebsiteCrawlPayload,
     WebsiteCrawlStatusApi,
+    WebsiteCrawlStatusQuery,
 )
 from services.website_service import (
     WebsiteCrawlApiRequest,
@@ -31,7 +33,7 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-def bypass_auth_and_setup(mocker):
+def bypass_auth_and_setup(mocker: MockerFixture):
     """Bypass setup/login/account decorators."""
     mocker.patch(
         "controllers.console.datasets.website.login_required",
@@ -48,7 +50,7 @@ def bypass_auth_and_setup(mocker):
 
 
 class TestWebsiteCrawlApi:
-    def test_crawl_success(self, app, mocker):
+    def test_crawl_success(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -57,16 +59,9 @@ class TestWebsiteCrawlApi:
             "url": "https://example.com",
             "options": {"depth": 1},
         }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             mock_request = Mock(spec=WebsiteCrawlApiRequest)
             mocker.patch.object(
                 WebsiteCrawlApiRequest,
@@ -80,12 +75,12 @@ class TestWebsiteCrawlApi:
                 return_value={"job_id": "job-1"},
             )
 
-            result, status = method(api)
+            result, status = method(api, req_data)
 
         assert status == 200
         assert result["job_id"] == "job-1"
 
-    def test_crawl_invalid_payload(self, app, mocker):
+    def test_crawl_invalid_payload(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -94,16 +89,9 @@ class TestWebsiteCrawlApi:
             "url": "bad-url",
             "options": {},
         }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             mocker.patch.object(
                 WebsiteCrawlApiRequest,
                 "from_args",
@@ -111,9 +99,9 @@ class TestWebsiteCrawlApi:
             )
 
             with pytest.raises(WebsiteCrawlError, match="invalid payload"):
-                method(api)
+                method(api, req_data)
 
-    def test_crawl_service_error(self, app, mocker):
+    def test_crawl_service_error(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -122,16 +110,9 @@ class TestWebsiteCrawlApi:
             "url": "https://example.com",
             "options": {},
         }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             mock_request = Mock(spec=WebsiteCrawlApiRequest)
             mocker.patch.object(
                 WebsiteCrawlApiRequest,
@@ -146,23 +127,18 @@ class TestWebsiteCrawlApi:
             )
 
             with pytest.raises(WebsiteCrawlError, match="crawl failed"):
-                method(api)
+                method(api, req_data)
 
 
 class TestWebsiteCrawlStatusApi:
-    def test_get_status_success(self, app, mocker):
+    def test_get_status_success(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
         job_id = "job-123"
-        args = {"provider": "firecrawl"}
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
 
         with app.test_request_context("/?provider=firecrawl"):
-            mocker.patch(
-                "controllers.console.datasets.website.request.args.to_dict",
-                return_value=args,
-            )
-
             mock_request = Mock(spec=WebsiteCrawlStatusApiRequest)
             mocker.patch.object(
                 WebsiteCrawlStatusApiRequest,
@@ -176,24 +152,19 @@ class TestWebsiteCrawlStatusApi:
                 return_value={"status": "completed"},
             )
 
-            result, status = method(api, job_id)
+            result, status = method(api, req_data, job_id)
 
         assert status == 200
         assert result["status"] == "completed"
 
-    def test_get_status_invalid_provider(self, app, mocker):
+    def test_get_status_invalid_provider(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
         job_id = "job-123"
-        args = {"provider": "firecrawl"}
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
 
         with app.test_request_context("/?provider=firecrawl"):
-            mocker.patch(
-                "controllers.console.datasets.website.request.args.to_dict",
-                return_value=args,
-            )
-
             mocker.patch.object(
                 WebsiteCrawlStatusApiRequest,
                 "from_args",
@@ -201,21 +172,16 @@ class TestWebsiteCrawlStatusApi:
             )
 
             with pytest.raises(WebsiteCrawlError, match="invalid provider"):
-                method(api, job_id)
+                method(api, req_data, job_id)
 
-    def test_get_status_service_error(self, app, mocker):
+    def test_get_status_service_error(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
         job_id = "job-123"
-        args = {"provider": "firecrawl"}
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
 
         with app.test_request_context("/?provider=firecrawl"):
-            mocker.patch(
-                "controllers.console.datasets.website.request.args.to_dict",
-                return_value=args,
-            )
-
             mock_request = Mock(spec=WebsiteCrawlStatusApiRequest)
             mocker.patch.object(
                 WebsiteCrawlStatusApiRequest,
@@ -230,4 +196,4 @@ class TestWebsiteCrawlStatusApi:
             )
 
             with pytest.raises(WebsiteCrawlError, match="status lookup failed"):
-                method(api, job_id)
+                method(api, req_data, job_id)

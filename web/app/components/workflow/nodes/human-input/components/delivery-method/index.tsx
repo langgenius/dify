@@ -1,20 +1,17 @@
 import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '../../types'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
-import UpgradeModal from './upgrade-modal'
+import { UpgradeModal } from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   value: DeliveryMethod[]
   nodesOutputVars?: NodeOutPutVar[]
@@ -23,7 +20,7 @@ type Props = {
   formInputs?: FormInputItem[]
   onChange: (value: DeliveryMethod[]) => void
   readonly?: boolean
-}
+}>
 
 const DeliveryMethodForm: React.FC<Props> = ({
   nodeId,
@@ -35,14 +32,15 @@ const DeliveryMethodForm: React.FC<Props> = ({
   onChange,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const deliveryLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowHumanInput'])
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleMethodChange = (target: DeliveryMethod) => {
     const newMethods = produce(value, (draft) => {
-      const index = draft.findIndex(method => method.type === target.type)
-      if (index !== -1)
-        draft[index] = target
+      const index = draft.findIndex((method) => method.type === target.type)
+      if (index !== -1) draft[index] = target
     })
     onChange(newMethods)
     handleSyncWorkflowDraft(true, true)
@@ -54,7 +52,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   }
 
   const handleMethodDelete = (type: DeliveryMethodType) => {
-    const newMethods = value.filter(method => method.type !== type)
+    const newMethods = value.filter((method) => method.type !== type)
     onChange(newMethods)
   }
 
@@ -62,18 +60,20 @@ const DeliveryMethodForm: React.FC<Props> = ({
   const handleShowUpgradeModal = () => {
     setShowUpgradeModal(true)
   }
-  const handleCloseUpgradeModal = () => {
-    setShowUpgradeModal(false)
-  }
 
   return (
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
-          <Tooltip
-            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
-          />
+          <div id={deliveryLabelId} className="system-sm-semibold-uppercase text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflowHumanInput' })}
+          </div>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={deliveryLabelId} />
+            <InfotipContent aria-labelledby={deliveryLabelId}>
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflowHumanInput' })}
+            </InfotipContent>
+          </Infotip>
         </div>
         {!readonly && (
           <div className="flex items-center px-1">
@@ -86,11 +86,13 @@ const DeliveryMethodForm: React.FC<Props> = ({
         )}
       </div>
       {!value.length && (
-        <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
+        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflowHumanInput' })}
+        </div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">
-          {value.map(method => (
+          {value.map((method) => (
             <MethodItem
               nodeId={nodeId}
               method={method}
@@ -106,12 +108,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
           ))}
         </div>
       )}
-      {showUpgradeModal && (
-        <UpgradeModal
-          isShow={showUpgradeModal}
-          onClose={handleCloseUpgradeModal}
-        />
-      )}
+      <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
     </div>
   )
 }

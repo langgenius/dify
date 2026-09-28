@@ -1,16 +1,9 @@
 import type { Viewport } from 'reactflow'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
+import type { Metadata, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
-export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
-
-export type CompletionParamType = typeof CompletionParams[number]
-
-export type CompletionParamsType = {
+type CompletionParamsType = {
   max_tokens: number
   temperature: number
   top_p: number
@@ -19,13 +12,13 @@ export type CompletionParamsType = {
   frequency_penalty: number
 }
 
-export type LogModelConfig = {
+type LogModelConfig = {
   name: string
   provider: string
   completion_params: CompletionParamsType
 }
 
-export type ModelConfigDetail = {
+type ModelConfigDetail = {
   introduction: string
   prompt_template: string
   prompt_variables: Array<{
@@ -57,12 +50,12 @@ export type Annotation = {
   created_at?: number
 }
 
-export type MessageContent = {
+type MessageContent = {
   id: string
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  message: { role: string, text: string, files?: VisionFile[] }[]
+  message: { role: string; text: string; files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string
@@ -86,7 +79,7 @@ export type MessageContent = {
   }>
   message_files: VisionFile[]
   metadata: Metadata
-  agent_thoughts: any[] // TODO
+  agent_thoughts: ThoughtItem[]
   workflow_run_id: string
   parent_message_id: string | null
 }
@@ -151,7 +144,10 @@ export type CompletionConversationsRequest = {
   limit: number // The default value is 20 and the range is 1-100
 }
 
-export type ChatConversationGeneralDetail = Omit<CompletionConversationGeneralDetail, 'message' | 'annotation'> & {
+export type ChatConversationGeneralDetail = Omit<
+  CompletionConversationGeneralDetail,
+  'message' | 'annotation'
+> & {
   summary: string
   message_count: number
   annotated: boolean
@@ -167,7 +163,10 @@ export type ChatConversationsResponse = {
 
 export type ChatConversationsRequest = CompletionConversationsRequest & { message_count: number }
 
-export type ChatConversationFullDetailResponse = Omit<CompletionConversationGeneralDetail, 'message' | 'model_config'> & {
+export type ChatConversationFullDetailResponse = Omit<
+  CompletionConversationGeneralDetail,
+  'message' | 'model_config'
+> & {
   message_count: number
   model_config: {
     provider: string
@@ -190,8 +189,7 @@ export type ChatMessagesResponse = {
   limit: number
 }
 
-export const MessageRatings = ['like', 'dislike', null] as const
-export type MessageRating = typeof MessageRatings[number]
+export type MessageRating = 'like' | 'dislike' | null
 
 export type LogMessageFeedbacksRequest = {
   message_id: string
@@ -207,19 +205,18 @@ export type LogMessageAnnotationsRequest = Omit<LogMessageFeedbacksRequest, 'rat
 
 export type LogMessageAnnotationsResponse = LogMessageFeedbacksResponse
 
-export type AnnotationsCountResponse = {
-  count: number
-}
+export const WorkflowRunTriggeredFrom = {
+  DEBUGGING: 'debugging',
+  APP_RUN: 'app-run',
+  RAG_PIPELINE_RUN: 'rag-pipeline-run',
+  RAG_PIPELINE_DEBUGGING: 'rag-pipeline-debugging',
+  WEBHOOK: 'webhook',
+  SCHEDULE: 'schedule',
+  PLUGIN: 'plugin',
+} as const
 
-export enum WorkflowRunTriggeredFrom {
-  DEBUGGING = 'debugging',
-  APP_RUN = 'app-run',
-  RAG_PIPELINE_RUN = 'rag-pipeline-run',
-  RAG_PIPELINE_DEBUGGING = 'rag-pipeline-debugging',
-  WEBHOOK = 'webhook',
-  SCHEDULE = 'schedule',
-  PLUGIN = 'plugin',
-}
+export type WorkflowRunTriggeredFrom =
+  (typeof WorkflowRunTriggeredFrom)[keyof typeof WorkflowRunTriggeredFrom]
 
 export type TriggerMetadata = {
   type?: string
@@ -233,14 +230,21 @@ export type TriggerMetadata = {
   icon_dark?: string | null
 }
 
-export type WorkflowLogDetails = {
+type WorkflowLogDetails = {
   trigger_metadata?: TriggerMetadata
 }
 
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status:
+    | 'scheduled'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'stopped'
+    | 'partial-succeeded'
+    | 'paused'
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -250,12 +254,12 @@ export type WorkflowRunDetail = {
   total_steps: number
   finished_at: number
 }
-export type AccountInfo = {
+type AccountInfo = {
   id: string
   name: string
   email: string
 }
-export type EndUserInfo = {
+type EndUserInfo = {
   id: string
   type: 'browser' | 'service_api'
   is_anonymous: boolean
@@ -279,13 +283,6 @@ export type WorkflowLogsResponse = {
   total: number
   page: number
 }
-export type WorkflowLogsRequest = {
-  keyword: string
-  status: string
-  page: number
-  limit: number // The default value is 20 and the range is 1-100
-}
-
 export type WorkflowRunDetailResponse = {
   id: string
   version: string
@@ -296,7 +293,14 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status:
+    | 'scheduled'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'stopped'
+    | 'partial-succeeded'
+    | 'paused'
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {
@@ -314,7 +318,7 @@ export type WorkflowRunDetailResponse = {
   exceptions_count?: number
 }
 
-export type AgentLogMeta = {
+type AgentLogMeta = {
   status: string
   executor: string
   start_time: string
@@ -349,7 +353,7 @@ export type AgentIteration = {
   }
 }
 
-export type AgentLogFile = {
+type AgentLogFile = {
   id: string
   type: string
   url: string
@@ -368,15 +372,17 @@ export type AgentLogDetailResponse = {
   files: AgentLogFile[]
 }
 
-export type PauseType = {
-  type: 'human_input'
-  form_id: string
-  backstage_input_url: string
-} | {
-  type: 'breakpoint'
-}
+type PauseType =
+  | {
+      type: 'human_input'
+      form_id: string
+      backstage_input_url: string
+    }
+  | {
+      type: 'breakpoint'
+    }
 
-export type PauseDetail = {
+type PauseDetail = {
   node_id: string
   node_title: string
   pause_type: PauseType

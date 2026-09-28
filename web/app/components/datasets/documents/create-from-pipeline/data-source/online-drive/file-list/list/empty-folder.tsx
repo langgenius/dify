@@ -2,11 +2,13 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const EmptyFolder = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex size-full items-center justify-center rounded-[10px] bg-background-section px-1 py-1.5">
-      <span className="system-xs-regular text-text-tertiary">{t('onlineDrive.emptyFolder', { ns: 'datasetPipeline' })}</span>
+      <span className="system-xs-regular text-text-tertiary">
+        {t(($) => $['onlineDrive.emptyFolder'], { ns: 'datasetPipeline' })}
+      </span>
     </div>
   )
 }

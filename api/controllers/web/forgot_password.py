@@ -3,10 +3,9 @@ import secrets
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -16,38 +15,31 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    email_password_login_enabled,
+    model_validate,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from extensions.ext_database import db
-from libs.helper import EmailStr, extract_remote_ip
-from libs.password import hash_password, valid_password
+from libs.helper import extract_remote_ip
+from libs.password import hash_password
 from models.account import Account
 from services.account_service import AccountService
-
-
-class ForgotPasswordSendPayload(BaseModel):
-    email: EmailStr
-    language: str | None = None
-
-
-class ForgotPasswordCheckPayload(BaseModel):
-    email: EmailStr
-    code: str
-    token: str = Field(min_length=1)
-
-
-class ForgotPasswordResetPayload(BaseModel):
-    token: str = Field(min_length=1)
-    new_password: str
-    password_confirm: str
-
-    @field_validator("new_password", "password_confirm")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return valid_password(value)
-
+from services.entities.auth_entities import (
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordSendPayload,
+)
 
 register_schema_models(web_ns, ForgotPasswordSendPayload, ForgotPasswordCheckPayload, ForgotPasswordResetPayload)
+register_response_schema_models(
+    web_ns,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
 
 
 @web_ns.route("/forgot-password")
@@ -66,9 +58,9 @@ class ForgotPasswordSendEmailApi(Resource):
             429: "Too many requests - rate limit exceeded",
         }
     )
-    def post(self):
-        payload = ForgotPasswordSendPayload.model_validate(web_ns.payload or {})
-
+    @web_ns.response(200, "Password reset email sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
+    @model_validate(ForgotPasswordSendPayload)
+    def post(self, payload: ForgotPasswordSendPayload):
         request_email = payload.email
         normalized_email = request_email.lower()
 
@@ -81,9 +73,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(request_email, session=session)
-        token = None
+        account = AccountService.get_account_by_email_with_case_fallback(request_email, session=db.session())
         if account is None:
             raise AuthenticationFailedError()
         else:
@@ -103,9 +93,9 @@ class ForgotPasswordCheckApi(Resource):
     @web_ns.doc(
         responses={200: "Token is valid", 400: "Bad request - invalid token format", 401: "Invalid or expired token"}
     )
-    def post(self):
-        payload = ForgotPasswordCheckPayload.model_validate(web_ns.payload or {})
-
+    @web_ns.response(200, "Token is valid", web_ns.models[VerificationTokenResponse.__name__])
+    @model_validate(ForgotPasswordCheckPayload)
+    def post(self, payload: ForgotPasswordCheckPayload):
         user_email = payload.email.lower()
 
         is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(user_email)
@@ -156,9 +146,9 @@ class ForgotPasswordResetApi(Resource):
             404: "Account not found",
         }
     )
-    def post(self):
-        payload = ForgotPasswordResetPayload.model_validate(web_ns.payload or {})
-
+    @web_ns.response(200, "Password reset successfully", web_ns.models[SimpleResultResponse.__name__])
+    @model_validate(ForgotPasswordResetPayload)
+    def post(self, payload: ForgotPasswordResetPayload):
         # Validate passwords match
         if payload.new_password != payload.password_confirm:
             raise PasswordMismatchError()
@@ -180,18 +170,18 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
-            if account:
-                self._update_existing_account(account, password_hashed, salt, session)
-            else:
-                raise AuthenticationFailedError()
+        if account:
+            account = db.session.merge(account)
+            self._update_existing_account(account, password_hashed, salt)
+            db.session.commit()
+        else:
+            raise AuthenticationFailedError()
 
         return {"result": "success"}
 
-    def _update_existing_account(self, account: Account, password_hashed, salt, session):
+    def _update_existing_account(self, account: Account, password_hashed, salt):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
-        session.commit()

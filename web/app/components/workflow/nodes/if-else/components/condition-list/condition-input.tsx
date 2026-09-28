@@ -1,7 +1,4 @@
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
@@ -21,17 +18,17 @@ const ConditionInput = ({
   nodesOutputVars,
   availableNodes,
 }: ConditionInputProps) => {
-  const { t } = useTranslation()
-  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
-  const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
+  const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
+  const pipelineId = useStore((s) => s.pipelineId)
+  const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
     <PromptEditor
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
+      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
       workflowVariableBlock={{
         show: true,
         variables: nodesOutputVars || [],
@@ -45,7 +42,7 @@ const ConditionInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('blocks.start', { ns: 'workflow' }),
+              title: t(($) => $['blocks.start'], { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

@@ -1,0 +1,518 @@
+'use client'
+
+import type {
+  AgentConfigSnapshotSummaryResponse,
+  AgentReferencingWorkflowResponse,
+  AgentReferencingWorkflowsResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { AgentConfigurePublishResult } from '../../../use-agent-configure-sync'
+import { Button } from '@langgenius/dify-ui/button'
+import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import {
+  agentComposerDraftAtom,
+  isAgentComposerDirtyAtom,
+} from '@/features/agent-v2/agent-composer/store'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
+import { AgentVersionRestore } from '../../version-restore'
+import { AgentPublishImpactDetails } from './publish-impact-details'
+import { AgentPublishSuccess } from './publish-success'
+
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
+
+type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
+
+type PublishBarMode =
+  | { status: 'compact' }
+  | ({ status: 'success' } & AgentConfigurePublishResult)
+  | { status: 'confirmingImpact'; references: AgentReferencingWorkflowResponse[] }
+
+type AgentConfigurePublishBarProps = {
+  agentId: string
+  agentName?: string | null
+  isPublishing?: boolean
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  onPublish?: () => Promise<AgentConfigurePublishResult | false>
+  onExitVersions?: () => void
+  onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
+}
+
+function getPublishState({
+  activeConfigIsPublished,
+  activeConfigSnapshot,
+  hasLocalChanges,
+  isPublishing,
+}: {
+  activeConfigIsPublished?: boolean
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  hasLocalChanges: boolean
+  isPublishing: boolean
+}): AgentConfigurePublishState {
+  if (isPublishing) return 'publishing'
+
+  if (hasLocalChanges) return 'unpublished'
+
+  if (activeConfigIsPublished) return 'published'
+
+  if (!activeConfigSnapshot) return 'draft'
+
+  return 'unpublished'
+}
+
+function PublishShortcut() {
+  return (
+    <KbdGroup aria-hidden>
+      {formatForDisplay(PUBLISH_AGENT_HOTKEY, { parts: true }).map((key) => (
+        <Kbd key={key} color="white">
+          {key}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  )
+}
+
+export function AgentConfigurePublishBar({
+  agentId,
+  agentName,
+  isPublishing = false,
+  selectedVersionSnapshot,
+  onPublish,
+  onExitVersions,
+  onOpenVersions,
+  onVersionRestored,
+}: AgentConfigurePublishBarProps) {
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  const queryClient = useQueryClient()
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const barRef = useRef<HTMLDivElement>(null)
+  const publishRequestPendingRef = useRef(false)
+  const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
+  const composerQuery = useQuery(
+    consoleQuery.agent.byAgentId.composer.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+    }),
+  )
+  const activeConfigIsPublished = composerQuery.data?.active_config_is_published
+  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot
+  const draftSavedAt = composerQuery.data?.draft?.updated_at
+    ? composerQuery.data.draft.updated_at * 1000
+    : undefined
+  const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
+  const publishableState = getPublishState({
+    activeConfigIsPublished,
+    activeConfigSnapshot,
+    hasLocalChanges,
+    isPublishing: false,
+  })
+  const publishState = getPublishState({
+    activeConfigIsPublished,
+    activeConfigSnapshot,
+    hasLocalChanges,
+    isPublishing,
+  })
+  const publishIsAvailable =
+    composerQuery.isSuccess && (publishableState === 'draft' || publishableState === 'unpublished')
+  const workflowReferencesQueryOptions =
+    consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+      context: {
+        silent: true,
+      },
+      enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
+    })
+  useQuery(workflowReferencesQueryOptions)
+  const canPublish = publishIsAvailable && !isPublishing
+
+  const preserveBarFocus = () => {
+    const bar = barRef.current
+    if (bar?.contains(bar.ownerDocument.activeElement)) bar.focus({ preventScroll: true })
+  }
+
+  const handlePublish = async () => {
+    if (!canPublish) return
+
+    const published = await onPublish?.()
+    if (!published) return
+    preserveBarFocus()
+    setPublishBarMode({ status: 'success', ...published })
+  }
+
+  const handlePublishRequest = async () => {
+    if (!canPublish) return
+
+    if (publishBarMode.status === 'confirmingImpact') {
+      await handlePublish()
+      return
+    }
+
+    let referencesResponse: AgentReferencingWorkflowsResponse | undefined
+    try {
+      referencesResponse = await queryClient.query({
+        ...workflowReferencesQueryOptions,
+        staleTime: 0,
+      })
+    } catch {
+      toast.error(tCommon(($) => $['api.actionFailed']))
+      return
+    }
+    const references = referencesResponse?.data ?? []
+
+    if (references.length > 0) {
+      setPublishBarMode({ status: 'confirmingImpact', references })
+      return
+    }
+
+    await handlePublish()
+  }
+
+  const requestPublish = () => {
+    if (publishRequestPendingRef.current) return
+    publishRequestPendingRef.current = true
+    void handlePublishRequest()
+      .catch(() => undefined)
+      .finally(() => {
+        publishRequestPendingRef.current = false
+      })
+  }
+
+  useHotkey(
+    PUBLISH_AGENT_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      requestPublish()
+    },
+    {
+      enabled: canPublish && !selectedVersionSnapshot,
+      preventDefault: false,
+      stopPropagation: false,
+      ignoreInputs: false,
+    },
+  )
+
+  // Consume the notice instead of just hiding it, so undoing edits cannot bring it back.
+  if (
+    publishBarMode.status === 'success' &&
+    (selectedVersionSnapshot || publishBarMode.draft !== draft)
+  ) {
+    setPublishBarMode({ status: 'compact' })
+  }
+
+  const dismissSuccess = () => {
+    preserveBarFocus()
+    setPublishBarMode({ status: 'compact' })
+  }
+
+  if (selectedVersionSnapshot) {
+    return (
+      <AgentVersionRestore
+        agentId={agentId}
+        onRestored={async () => {
+          await onVersionRestored?.()
+          onExitVersions?.()
+        }}
+      >
+        {(restore) => (
+          <AgentVersionRestoreBar
+            version={selectedVersionSnapshot}
+            isRestoring={restore.isPending}
+            restoreDisabled={restore.disabled}
+            onExitVersions={onExitVersions}
+            onRestoreVersion={
+              restore.canRestore ? () => restore.requestRestore(selectedVersionSnapshot) : undefined
+            }
+          />
+        )}
+      </AgentVersionRestore>
+    )
+  }
+
+  const publishedMeta = activeConfigSnapshot?.created_at
+    ? t(($) => $['agentDetail.configure.publishBar.publishedAt'], {
+        time: formatTimeFromNow(activeConfigSnapshot.created_at * 1000),
+      })
+    : t(($) => $['agentDetail.configure.publishBar.published'])
+  const savedMeta = draftSavedAt
+    ? t(($) => $['agentDetail.configure.publishBar.savedAt'], {
+        time: formatTimeFromNow(draftSavedAt),
+      })
+    : t(($) => $['agentDetail.configure.publishBar.saved'])
+  const stateMeta = {
+    draft: {
+      actionIcon: null,
+      actionLabel: t(($) => $['agentDetail.publish']),
+      dotStatus: 'disabled',
+      metaLabel: savedMeta,
+      showShortcut: true,
+      statusLabel: t(($) => $['agentDetail.configure.publishBar.draft']),
+    },
+    publishing: {
+      actionIcon: null,
+      actionLabel: t(($) => $['agentDetail.configure.publishBar.publishing']),
+      dotStatus: 'disabled',
+      metaLabel: savedMeta,
+      showShortcut: false,
+      statusLabel: t(($) => $['agentDetail.configure.publishBar.draft']),
+    },
+    published: {
+      actionIcon: 'i-ri-check-line',
+      actionLabel: t(($) => $['agentDetail.configure.publishBar.published']),
+      dotStatus: 'success',
+      metaLabel: publishedMeta,
+      showShortcut: false,
+      statusLabel: t(($) => $['agentDetail.configure.publishBar.upToDate']),
+    },
+    unpublished: {
+      actionIcon: null,
+      actionLabel: t(($) => $['agentDetail.configure.publishBar.publishUpdate']),
+      dotStatus: 'warning',
+      metaLabel: savedMeta,
+      showShortcut: true,
+      statusLabel: t(($) => $['agentDetail.configure.publishBar.unpublishedChanges']),
+    },
+  } satisfies Record<
+    AgentConfigurePublishState,
+    {
+      actionIcon: string | null
+      actionLabel: string
+      dotStatus: 'disabled' | 'success' | 'warning'
+      metaLabel: string
+      showShortcut: boolean
+      statusLabel: string
+    }
+  >
+  const currentStateMeta = stateMeta[publishState]
+  const isConfirmingImpact =
+    publishBarMode.status === 'confirmingImpact' && (canPublish || isPublishing)
+  const impactReferences =
+    publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
+
+  return (
+    <Collapsible
+      ref={barRef}
+      tabIndex={-1}
+      open={isConfirmingImpact}
+      className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+    >
+      {/* Mount the live region before its message so assistive technology observes the update. */}
+      <span role="status" aria-atomic="true" className="sr-only">
+        {publishBarMode.status === 'success'
+          ? publishBarMode.kind === 'first'
+            ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])
+            : t(($) => $['agentDetail.configure.publishSuccess.updateTitle'])
+          : null}
+      </span>
+      {publishBarMode.status === 'success' ? (
+        <AgentPublishSuccess
+          agentId={agentId}
+          kind={publishBarMode.kind}
+          onDismiss={dismissSuccess}
+          onAccessMethods={() => setPublishBarMode({ status: 'compact' })}
+        />
+      ) : (
+        <>
+          <CollapsiblePanel className="system-sm-regular text-text-secondary">
+            <AgentPublishImpactDetails
+              publishActionLabel={currentStateMeta.actionLabel}
+              agentName={agentName}
+              references={impactReferences}
+            />
+          </CollapsiblePanel>
+          <PublishBarActions
+            actionIcon={currentStateMeta.actionIcon}
+            actionLabel={currentStateMeta.actionLabel}
+            dotStatus={currentStateMeta.dotStatus}
+            isPublishing={isPublishing}
+            metaLabel={currentStateMeta.metaLabel}
+            showShortcut={currentStateMeta.showShortcut}
+            statusLabel={currentStateMeta.statusLabel}
+            publishIsAvailable={publishIsAvailable}
+            onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
+            onOpenVersions={() => onOpenVersions?.()}
+            onPublishRequest={requestPublish}
+          />
+        </>
+      )}
+    </Collapsible>
+  )
+}
+
+function PublishBarActions({
+  actionIcon,
+  actionLabel,
+  dotStatus,
+  isPublishing,
+  metaLabel,
+  showShortcut,
+  statusLabel,
+  publishIsAvailable,
+  onCancelImpact,
+  onOpenVersions,
+  onPublishRequest,
+}: {
+  actionIcon: string | null
+  actionLabel: string
+  dotStatus: 'disabled' | 'success' | 'warning'
+  isPublishing: boolean
+  metaLabel: string
+  showShortcut: boolean
+  statusLabel: string
+  publishIsAvailable: boolean
+  onCancelImpact: () => void
+  onOpenVersions: () => void
+  onPublishRequest: () => void
+}) {
+  const { t } = useTranslation(['agentV2'])
+  const publishButtonLabelId = useId()
+
+  return (
+    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
+      <div
+        role="status"
+        aria-label={`${statusLabel}. ${metaLabel}`}
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+      >
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <StatusDot size="small" status={dotStatus} />
+        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span className="min-w-0 truncate">
+                <span>{statusLabel}</span>
+                <span aria-hidden> · </span>
+                <span>{metaLabel}</span>
+              </span>
+            }
+          />
+          <TooltipContent>
+            <span>{statusLabel}</span>
+            <span aria-hidden> · </span>
+            <span>{metaLabel}</span>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <button
+        type="button"
+        aria-label={t(($) => $['agentDetail.configure.publishBar.versionHistory'])}
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary group-data-open/publish-bar:hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        onClick={onOpenVersions}
+      >
+        <span aria-hidden className="i-ri-history-line size-4" />
+      </button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="hidden h-8 min-w-18 rounded-lg px-3 group-data-open/publish-bar:inline-flex"
+        onClick={onCancelImpact}
+      >
+        {t(($) => $['agentDetail.configure.publishImpact.cancel'])}
+      </Button>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={!publishIsAvailable}
+        loading={isPublishing}
+        aria-labelledby={publishButtonLabelId}
+        className="h-8 gap-1 rounded-lg px-3"
+        onClick={onPublishRequest}
+      >
+        {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
+        <span id={publishButtonLabelId} className="shrink-0">
+          {actionLabel}
+        </span>
+        {showShortcut && <PublishShortcut />}
+      </Button>
+    </div>
+  )
+}
+
+function AgentVersionRestoreBar({
+  version,
+  isRestoring = false,
+  restoreDisabled,
+  onExitVersions,
+  onRestoreVersion,
+}: {
+  version: AgentConfigSnapshotSummaryResponse
+  isRestoring?: boolean
+  restoreDisabled?: boolean
+  onExitVersions?: () => void
+  onRestoreVersion?: (versionId: string) => void
+}) {
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
+  const { formatTime } = useTimestamp()
+  const versionLabel =
+    version.version_note ||
+    t(($) => $['agentDetail.versionHistory.versionName'], { version: version.version })
+  const createdAt =
+    version.created_at == null
+      ? null
+      : formatTime(
+          version.created_at,
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
+        )
+
+  return (
+    <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+      <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <p className="min-w-0 truncate system-sm-semibold text-text-primary">{versionLabel}</p>
+          <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+            {t(($) => $['agentDetail.versionHistory.viewOnly'])}
+          </span>
+        </div>
+        {(createdAt || version.created_by) && (
+          <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
+            {createdAt}
+            {createdAt && version.created_by && ' · '}
+            {version.created_by}
+          </p>
+        )}
+      </div>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={!onRestoreVersion || restoreDisabled}
+        loading={isRestoring}
+        className="shrink-0"
+        onClick={() => onRestoreVersion?.(version.id)}
+      >
+        {t(($) => $['agentDetail.versionHistory.restore'])}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-8 shrink-0 rounded-lg px-3 text-text-accent"
+        onClick={onExitVersions}
+      >
+        <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />
+        <span className="shrink-0">{t(($) => $['agentDetail.versionHistory.exitVersions'])}</span>
+      </Button>
+    </div>
+  )
+}

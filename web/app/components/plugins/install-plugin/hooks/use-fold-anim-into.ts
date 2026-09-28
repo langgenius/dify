@@ -21,7 +21,9 @@ const useFoldAnimInto = (onClose: () => void) => {
   const foldIntoAnim = async () => {
     clearCountDown()
     const modalElem = document.querySelector(`.${modalClassName}`) as HTMLElement
-    const pluginTaskTriggerElem = document.getElementById('plugin-task-trigger') || document.querySelector('.plugins-nav-button')
+    const pluginTaskTriggerElem =
+      document.getElementById('plugin-task-trigger') ||
+      document.querySelector('.plugins-nav-button')
 
     if (!modalElem || !pluginTaskTriggerElem) {
       onClose()

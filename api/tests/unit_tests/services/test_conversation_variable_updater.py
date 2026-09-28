@@ -1,75 +1,34 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.variables import StringVariable
-from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
+from graphon.variables import StringVariable
+from models import ConversationVariable
+from services.conversation_variable_updater import ConversationVariableUpdater
 
 
-class TestConversationVariableUpdater:
-    def test_should_update_conversation_variable_data_and_commit(self):
-        """Test update persists serialized variable data when the row exists."""
-        conversation_id = "conv-123"
-        variable = StringVariable(
-            id="var-123",
-            name="topic",
-            value="new value",
+@pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+@pytest.mark.parametrize("variable_id", ["imported-topic", "33333333-3333-3333-3333-333333333333"])
+def test_runtime_update_preserves_authored_id_and_other_conversations(
+    sqlite_session: Session, variable_id: str
+) -> None:
+    variable = StringVariable(id=variable_id, name="topic", value="original", selector=["conversation", "topic"])
+    conversation_id = "22222222-2222-2222-2222-222222222222"
+    other_conversation_id = "22222222-2222-2222-2222-222222222223"
+    rows = [
+        ConversationVariable.from_variable(
+            app_id="11111111-1111-1111-1111-111111111111",
+            conversation_id=owner,
+            variable=variable,
         )
-        expected_json = variable.model_dump_json()
+        for owner in (conversation_id, other_conversation_id)
+    ]
+    sqlite_session.add_all(rows)
+    sqlite_session.commit()
+    updater = ConversationVariableUpdater(sessionmaker(bind=sqlite_session.get_bind()))
 
-        row = SimpleNamespace(data="old value")
-        session = MagicMock()
-        session.scalar.return_value = row
+    updater.update(conversation_id, variable.model_copy(update={"value": "updated"}))
 
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
-
-        session_maker = MagicMock(return_value=session_context)
-        updater = ConversationVariableUpdater(session_maker)
-
-        updater.update(conversation_id=conversation_id, variable=variable)
-
-        session_maker.assert_called_once_with()
-        session.scalar.assert_called_once()
-        stmt = session.scalar.call_args.args[0]
-        compiled_params = stmt.compile().params
-        assert variable.id in compiled_params.values()
-        assert conversation_id in compiled_params.values()
-        assert row.data == expected_json
-        session.commit.assert_called_once()
-
-    def test_should_raise_not_found_error_when_conversation_variable_missing(self):
-        """Test update raises ConversationVariableNotFoundError when no matching row exists."""
-        conversation_id = "conv-404"
-        variable = StringVariable(
-            id="var-404",
-            name="topic",
-            value="value",
-        )
-
-        session = MagicMock()
-        session.scalar.return_value = None
-
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
-
-        session_maker = MagicMock(return_value=session_context)
-        updater = ConversationVariableUpdater(session_maker)
-
-        with pytest.raises(ConversationVariableNotFoundError, match="conversation variable not found in the database"):
-            updater.update(conversation_id=conversation_id, variable=variable)
-
-        session.commit.assert_not_called()
-
-    def test_should_do_nothing_when_flush_is_called(self):
-        """Test flush currently behaves as a no-op and returns None."""
-        session_maker = MagicMock()
-        updater = ConversationVariableUpdater(session_maker)
-
-        result = updater.flush()
-
-        assert result is None
-        session_maker.assert_not_called()
+    sqlite_session.expire_all()
+    assert rows[0].to_variable().id == variable_id
+    assert rows[0].to_variable().value == "updated"
+    assert rows[1].to_variable().value == "original"

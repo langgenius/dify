@@ -1,31 +1,29 @@
 import type { FC } from 'react'
-import type {
-  DefaultModel,
-  DefaultModelResponse,
-} from '../declarations'
-import { RiEqualizer2Line, RiLoader2Line } from '@remixicon/react'
-import { useState } from 'react'
+import type { DefaultModel, DefaultModelResponse } from '../declarations'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
-import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
-import { updateDefaultModel } from '@/service/common'
+import { toast } from '@/app/notifications'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
-  useModelList,
+  useInvalidateDefaultModel,
   useSystemDefaultModelAndModelList,
   useUpdateModelList,
 } from '../hooks'
-import ModelSelector from '../model-selector'
+import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
+  className?: string
   textGenerationDefaultModel: DefaultModelResponse | undefined
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
@@ -33,8 +31,28 @@ type SystemModelSelectorProps = {
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
   isLoading?: boolean
+  hideProviderSettingsFooter?: boolean
+  onOpenMarketplace?: () => void
 }
+
+type SystemModelLabelKey =
+  | 'modelProvider.systemReasoningModel.key'
+  | 'modelProvider.embeddingModel.key'
+  | 'modelProvider.rerankModel.key'
+  | 'modelProvider.speechToTextModel.key'
+  | 'modelProvider.ttsModel.key'
+
+type SystemModelTipKey =
+  | 'modelProvider.systemReasoningModel.tip'
+  | 'modelProvider.embeddingModel.tip'
+  | 'modelProvider.rerankModel.tip'
+  | 'modelProvider.speechToTextModel.tip'
+  | 'modelProvider.ttsModel.tip'
+
+const systemModelDialogQueryParser = parseAsStringLiteral(['system-models'] as const)
+
 const SystemModel: FC<SystemModelSelectorProps> = ({
+  className,
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
@@ -42,228 +60,362 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   ttsDefaultModel,
   notConfigured,
   isLoading,
+  hideProviderSettingsFooter,
+  onOpenMarketplace,
 }) => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
-  const { isCurrentWorkspaceManager } = useAppContext()
-  const { textGenerationModelList } = useProviderContext()
+  const modelLabelId = useId()
+
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
-  const { data: speech2textModelList } = useModelList(ModelTypeEnum.speech2text)
-  const { data: ttsModelList } = useModelList(ModelTypeEnum.tts)
+  const invalidateDefaultModel = useInvalidateDefaultModel()
+  const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
+  const [manuallyOpen, setManuallyOpen] = useState(false)
+  const open = manuallyOpen || activeDialog === 'system-models'
+  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
   const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
-  const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
-  const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
-  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
-  const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
-  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel] = useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
-  const [open, setOpen] = useState(false)
+  const [
+    currentTextGenerationDefaultModel,
+    changeCurrentTextGenerationDefaultModel,
+    resetTextGenerationDefaultModel,
+  ] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
+  const [
+    currentEmbeddingsDefaultModel,
+    changeCurrentEmbeddingsDefaultModel,
+    resetEmbeddingsDefaultModel,
+  ] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
+  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel, resetRerankDefaultModel] =
+    useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
+  const [
+    currentSpeech2textDefaultModel,
+    changeCurrentSpeech2textDefaultModel,
+    resetSpeech2textDefaultModel,
+  ] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
+  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel, resetTTSDefaultModel] =
+    useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetTextGenerationDefaultModel()
+      resetEmbeddingsDefaultModel()
+      resetRerankDefaultModel()
+      resetSpeech2textDefaultModel()
+      resetTTSDefaultModel()
+      setChangedModelTypes([])
+    }
+    setManuallyOpen(nextOpen)
+    if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
+  }
+  const isSystemModelListLoading =
+    open &&
+    (isEmbeddingModelListLoading ||
+      isRerankModelListLoading ||
+      isSpeech2textModelListLoading ||
+      isTTSModelListLoading)
 
   const getCurrentDefaultModelByModelType = (modelType: ModelTypeEnum) => {
-    if (modelType === ModelTypeEnum.textGeneration)
-      return currentTextGenerationDefaultModel
-    else if (modelType === ModelTypeEnum.textEmbedding)
-      return currentEmbeddingsDefaultModel
-    else if (modelType === ModelTypeEnum.rerank)
-      return currentRerankDefaultModel
-    else if (modelType === ModelTypeEnum.speech2text)
-      return currentSpeech2textDefaultModel
-    else if (modelType === ModelTypeEnum.tts)
-      return currentTTSDefaultModel
+    if (modelType === ModelTypeEnum.textGeneration) return currentTextGenerationDefaultModel
+    else if (modelType === ModelTypeEnum.textEmbedding) return currentEmbeddingsDefaultModel
+    else if (modelType === ModelTypeEnum.rerank) return currentRerankDefaultModel
+    else if (modelType === ModelTypeEnum.speech2text) return currentSpeech2textDefaultModel
+    else if (modelType === ModelTypeEnum.tts) return currentTTSDefaultModel
 
     return undefined
   }
-  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel) => {
-    if (modelType === ModelTypeEnum.textGeneration)
-      changeCurrentTextGenerationDefaultModel(model)
-    else if (modelType === ModelTypeEnum.textEmbedding)
-      changeCurrentEmbeddingsDefaultModel(model)
-    else if (modelType === ModelTypeEnum.rerank)
-      changeCurrentRerankDefaultModel(model)
-    else if (modelType === ModelTypeEnum.speech2text)
-      changeCurrentSpeech2textDefaultModel(model)
-    else if (modelType === ModelTypeEnum.tts)
-      changeCurrentTTSDefaultModel(model)
+  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel | undefined) => {
+    if (modelType === ModelTypeEnum.textGeneration) changeCurrentTextGenerationDefaultModel(model)
+    else if (modelType === ModelTypeEnum.textEmbedding) changeCurrentEmbeddingsDefaultModel(model)
+    else if (modelType === ModelTypeEnum.rerank) changeCurrentRerankDefaultModel(model)
+    else if (modelType === ModelTypeEnum.speech2text) changeCurrentSpeech2textDefaultModel(model)
+    else if (modelType === ModelTypeEnum.tts) changeCurrentTTSDefaultModel(model)
 
     if (!changedModelTypes.includes(modelType))
       setChangedModelTypes([...changedModelTypes, modelType])
   }
   const handleSave = async () => {
-    const res = await updateDefaultModel({
-      url: '/workspaces/current/default-model',
+    if (!canManageSystemDefaultModel || isSystemModelListLoading) return
+
+    const res = await consoleClient.workspaces.current.defaultModel.post({
       body: {
-        model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts].map((modelType) => {
+        model_settings: [
+          ModelTypeEnum.textGeneration,
+          ModelTypeEnum.textEmbedding,
+          ModelTypeEnum.rerank,
+          ModelTypeEnum.speech2text,
+          ModelTypeEnum.tts,
+        ].map((modelType) => {
           return {
             model_type: modelType,
-            provider: getCurrentDefaultModelByModelType(modelType)?.provider,
-            model: getCurrentDefaultModelByModelType(modelType)?.model,
+            provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
+            model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
           }
         }),
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-      setOpen(false)
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      setManuallyOpen(false)
+      if (activeDialog === 'system-models') void setActiveDialog(null)
+      setChangedModelTypes([])
 
-      changedModelTypes.forEach((modelType) => {
-        if (modelType === ModelTypeEnum.textGeneration)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.textEmbedding)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.rerank)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.speech2text)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.tts)
-          updateModelList(modelType)
-      })
+      const allModelTypes = [
+        ModelTypeEnum.textGeneration,
+        ModelTypeEnum.textEmbedding,
+        ModelTypeEnum.rerank,
+        ModelTypeEnum.speech2text,
+        ModelTypeEnum.tts,
+      ]
+      allModelTypes.forEach((type) => invalidateDefaultModel(type))
+      changedModelTypes.forEach((type) => updateModelList(type))
     }
   }
 
+  const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+    onClear: canManageSystemDefaultModel
+      ? () => handleChangeDefaultModel(modelType, undefined)
+      : undefined,
+    clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'modelProvider' })}`,
+  })
+
+  const renderModelLabel = (labelKey: SystemModelLabelKey, tipKey: SystemModelTipKey) => {
+    const tipText = t(($) => $[tipKey], { ns: 'modelProvider' })
+
+    return (
+      <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
+        <span id={`${modelLabelId}-${labelKey}`}>
+          {t(($) => $[labelKey], { ns: 'modelProvider' })}
+        </span>
+        <Infotip>
+          <InfotipTrigger
+            aria-labelledby={`${modelLabelId}-${labelKey}`}
+            className="ml-0.5 text-text-tertiary"
+          />
+          <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
+            {tipText}
+          </InfotipContent>
+        </Infotip>
+      </div>
+    )
+  }
+
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 8,
-      }}
-    >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
-        <Button
-          className="relative"
-          variant={notConfigured ? 'primary' : 'secondary'}
-          size="small"
-          disabled={isLoading}
+    <>
+      <Button
+        className={cn('relative', className)}
+        variant={notConfigured ? 'primary' : 'secondary'}
+        size="small"
+        disabled={isLoading}
+        onClick={() => setManuallyOpen(true)}
+      >
+        {isLoading ? (
+          <span className="i-ri-loader-2-line size-3.5 animate-spin" />
+        ) : (
+          <span className="i-ri-brain-2-line size-3.5" />
+        )}
+        {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
+      </Button>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          render={
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleSave()
+              }}
+            />
+          }
+          backdropProps={{ forceRender: true }}
+          className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
         >
-          {isLoading
-            ? <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
-            : <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />}
-          {t('modelProvider.systemModelSettings', { ns: 'common' })}
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[60]">
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-4 shadow-xl">
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.systemReasoningModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentTextGenerationDefaultModel}
-                modelList={textGenerationModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
-              />
-            </div>
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute top-5 right-5"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
+          <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
+            </DialogTitle>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
+            </p>
           </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.embeddingModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.embeddingModel.tip', { ns: 'common' })}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            {isSystemModelListLoading ? (
+              <div
+                role="status"
+                aria-label={t(($) => $.loading, { ns: 'common' })}
+                className="flex h-full min-h-48 items-center justify-center"
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-loader-2-line size-5 animate-spin text-text-tertiary"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  {renderModelLabel(
+                    'modelProvider.systemReasoningModel.key',
+                    'modelProvider.systemReasoningModel.tip',
+                  )}
+                  <div>
+                    <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.textGeneration,
+                        'modelProvider.systemReasoningModel.key',
+                      )}
+                      value={currentTextGenerationDefaultModel}
+                      models={textGenerationModelList}
+                      hideProviderSettingsFooter={hideProviderSettingsFooter}
+                      onOpenMarketplace={onOpenMarketplace}
+                      onConfigureEmptyState={() => handleOpenChange(false)}
+                      showModelMeta={false}
+                      onValueChange={(model) =>
+                        handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
+                      }
+                    />
                   </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentEmbeddingsDefaultModel}
-                modelList={embeddingModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.rerankModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {renderModelLabel(
+                    'modelProvider.embeddingModel.key',
+                    'modelProvider.embeddingModel.tip',
+                  )}
+                  <div>
+                    <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.textEmbedding,
+                        'modelProvider.embeddingModel.key',
+                      )}
+                      value={currentEmbeddingsDefaultModel}
+                      models={embeddingModelList}
+                      hideProviderSettingsFooter={hideProviderSettingsFooter}
+                      onOpenMarketplace={onOpenMarketplace}
+                      onConfigureEmptyState={() => handleOpenChange(false)}
+                      showModelMeta={false}
+                      onValueChange={(model) =>
+                        handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)
+                      }
+                    />
                   </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentRerankDefaultModel}
-                modelList={rerankModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.speechToTextModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.speechToTextModel.tip', { ns: 'common' })}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {renderModelLabel(
+                    'modelProvider.rerankModel.key',
+                    'modelProvider.rerankModel.tip',
+                  )}
+                  <div>
+                    <ModelSelector
+                      {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
+                      value={currentRerankDefaultModel}
+                      models={rerankModelList}
+                      hideProviderSettingsFooter={hideProviderSettingsFooter}
+                      onOpenMarketplace={onOpenMarketplace}
+                      onConfigureEmptyState={() => handleOpenChange(false)}
+                      showModelMeta={false}
+                      onValueChange={(model) =>
+                        handleChangeDefaultModel(ModelTypeEnum.rerank, model)
+                      }
+                    />
                   </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentSpeech2textDefaultModel}
-                modelList={speech2textModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.ttsModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.ttsModel.tip', { ns: 'common' })}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {renderModelLabel(
+                    'modelProvider.speechToTextModel.key',
+                    'modelProvider.speechToTextModel.tip',
+                  )}
+                  <div>
+                    <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.speech2text,
+                        'modelProvider.speechToTextModel.key',
+                      )}
+                      value={currentSpeech2textDefaultModel}
+                      models={speech2textModelList}
+                      hideProviderSettingsFooter={hideProviderSettingsFooter}
+                      onOpenMarketplace={onOpenMarketplace}
+                      onConfigureEmptyState={() => handleOpenChange(false)}
+                      showModelMeta={false}
+                      onValueChange={(model) =>
+                        handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
+                      }
+                    />
                   </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentTTSDefaultModel}
-                modelList={ttsModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-              />
-            </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
+                  <div>
+                    <ModelSelector
+                      {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
+                      value={currentTTSDefaultModel}
+                      models={ttsModelList}
+                      hideProviderSettingsFooter={hideProviderSettingsFooter}
+                      onOpenMarketplace={onOpenMarketplace}
+                      onConfigureEmptyState={() => handleOpenChange(false)}
+                      showModelMeta={false}
+                      onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center justify-end px-6 py-4">
-            <Button
-              onClick={() => setOpen(false)}
-            >
-              {t('operation.cancel', { ns: 'common' })}
+          <div className="flex h-19 shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
+            <Button className="min-w-18" onClick={() => handleOpenChange(false)}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
-              className="ml-2"
+              className="min-w-18"
               variant="primary"
-              onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
+              type="submit"
+              disabled={!canManageSystemDefaultModel || isSystemModelListLoading}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

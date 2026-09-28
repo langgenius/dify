@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Link from '../link'
 
 // ---- mocks ----
@@ -23,9 +23,9 @@ describe('Link component', () => {
   })
 
   // --------------------------
-  // ABBR LINK
+  // ABBR ACTION
   // --------------------------
-  it('renders abbr link and calls onSend when clicked', () => {
+  it('renders abbr action as a button and calls onSend when clicked', () => {
     const node = {
       properties: {
         href: 'abbr:hello%20world',
@@ -35,15 +35,15 @@ describe('Link component', () => {
 
     render(<Link node={node} />)
 
-    const abbr = screen.getByText('Tooltip text')
-    expect(abbr.tagName).toBe('ABBR')
+    const button = screen.getByRole('button', { name: 'Tooltip text' })
+    expect(button.tagName).toBe('BUTTON')
 
-    fireEvent.click(abbr)
+    fireEvent.click(button)
 
     expect(mockOnSend).toHaveBeenCalledWith('hello world')
   })
 
-  it('renders abbr with empty fallback title/value when child value is missing', () => {
+  it('renders abbr action with empty fallback title/value when child value is missing', () => {
     const node = {
       properties: {
         href: 'abbr:hi',
@@ -53,10 +53,10 @@ describe('Link component', () => {
 
     const { container } = render(<Link node={node} />)
 
-    const abbr = container.querySelector('abbr')
-    expect(abbr).toBeTruthy()
-    expect(abbr?.tagName).toBe('ABBR')
-    fireEvent.click(abbr as HTMLElement)
+    const button = container.querySelector('button')
+    expect(button).toBeTruthy()
+    expect(button?.tagName).toBe('BUTTON')
+    fireEvent.click(button as HTMLElement)
     expect(mockOnSend).toHaveBeenCalledWith('hi')
   })
 
@@ -168,6 +168,57 @@ describe('Link component', () => {
     expect(link).toHaveAttribute('href', 'https://example.com')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('adds attachment mode to file-preview links by default', () => {
+    mockIsValidUrl.mockReturnValue(true)
+
+    const node = {
+      properties: {
+        href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3',
+      },
+    }
+
+    render(<Link node={node}>doc.pdf</Link>)
+
+    expect(screen.getByText('doc.pdf')).toHaveAttribute(
+      'href',
+      'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
+    )
+  })
+
+  it('does not duplicate attachment mode for file-preview links', () => {
+    mockIsValidUrl.mockReturnValue(true)
+
+    const node = {
+      properties: {
+        href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
+      },
+    }
+
+    render(<Link node={node}>doc.pdf</Link>)
+
+    expect(screen.getByText('doc.pdf')).toHaveAttribute(
+      'href',
+      'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
+    )
+  })
+
+  it('keeps protocol-relative file-preview links protocol-relative', () => {
+    mockIsValidUrl.mockReturnValue(true)
+
+    const node = {
+      properties: {
+        href: '//localhost:5001/files/123/file-preview?timestamp=1#page',
+      },
+    }
+
+    render(<Link node={node}>doc.pdf</Link>)
+
+    expect(screen.getByText('doc.pdf')).toHaveAttribute(
+      'href',
+      '//localhost:5001/files/123/file-preview?timestamp=1&as_attachment=true#page',
+    )
   })
 
   // --------------------------

@@ -1,11 +1,52 @@
+"""Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
+
+import json
+import uuid
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest import mock
 
 import httpx
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from models.base import TypeBase
+from models.dataset import Document as DocumentModel
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture
+def persisted_document(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
+    """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    document = DocumentModel(
+        id=str(uuid.uuid4()),
+        tenant_id=str(uuid.uuid4()),
+        dataset_id=str(uuid.uuid4()),
+        position=1,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        data_source_info=json.dumps({"source": "notion", "last_edited_time": "2025-01-01T00:00:00.000Z"}),
+        batch="batch",
+        name="Notion page",
+        created_from=DocumentCreatedFrom.API,
+        created_by=str(uuid.uuid4()),
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    with session_maker() as sqlite_session:
+        sqlite_session.add(document)
+        sqlite_session.commit()
+        monkeypatch.setattr(notion_extractor, "db", SimpleNamespace(session=sqlite_session))
+        yield session_maker, document
 
 
 def _mock_response(data, status_code: int = 200, text: str = ""):
@@ -28,13 +69,13 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "token"
 
-    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch):
+    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
             classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
         )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", "env-token", raising=False)
+        apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN="env-token")
 
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
@@ -46,13 +87,13 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "env-token"
 
-    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch):
+    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
             classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
         )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", None, raising=False)
+        apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN=None)
 
         with pytest.raises(ValueError, match="Must specify `integration_token`"):
             notion_extractor.NotionExtractor(
@@ -63,7 +104,7 @@ class TestNotionExtractorInitAndPublicMethods:
                 credential_id="cred",
             )
 
-    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch):
+    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -83,7 +124,7 @@ class TestNotionExtractorInitAndPublicMethods:
         load_mock.assert_called_once_with("obj", "page")
         assert len(docs) == 1
 
-    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch):
+    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch: pytest.MonkeyPatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -155,6 +196,49 @@ class TestNotionDatabase:
         assert "Row Page URL:https://notion.so/page-1" in content
         assert mock_post.call_count == 2
 
+    def test_get_notion_database_data_joins_all_rich_text_segments(self, mocker: MockerFixture):
+        """Formatted text arrives as multiple segments; all of them must be kept."""
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "properties": {
+                        "title_prop": {
+                            "type": "title",
+                            "title": [{"plain_text": "Hello "}, {"plain_text": "world"}],
+                        },
+                        "rich": {
+                            "type": "rich_text",
+                            "rich_text": [
+                                {"plain_text": "first "},
+                                {"plain_text": "second"},
+                                {"plain_text": " third"},
+                            ],
+                        },
+                    },
+                    "url": "https://notion.so/page-1",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.post", return_value=_mock_response(page))
+
+        docs = extractor._get_notion_database_data("db-1")
+
+        assert len(docs) == 1
+        content = docs[0].page_content
+        assert "rich:first second third" in content
+        assert "title_prop:Hello world" in content
+
     def test_get_notion_database_data_handles_missing_results_and_empty_content(self, mocker: MockerFixture):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
@@ -166,6 +250,26 @@ class TestNotionDatabase:
 
         mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
         assert extractor._get_notion_database_data("db-1") == []
+
+    def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
+        """All outbound Notion API calls must carry a bounded timeout so a hanging endpoint cannot block extraction."""
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        mock_post = mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
+        extractor._get_notion_database_data("db-1")
+        assert mock_post.call_args.kwargs["timeout"] == notion_extractor._REQUEST_TIMEOUT
+
+        mock_request = mocker.patch(
+            "httpx.request", return_value=_mock_response({"last_edited_time": "2024-01-01T00:00:00.000Z"})
+        )
+        extractor.get_notion_last_edited_time()
+        assert mock_request.call_args.kwargs["timeout"] == notion_extractor._REQUEST_TIMEOUT
 
     def test_get_notion_database_data_requires_access_token(self):
         extractor = notion_extractor.NotionExtractor(
@@ -381,6 +485,89 @@ class TestNotionBlocks:
         assert "| H1 |  |" in markdown
         assert "| R2C1 | R2C2 |" in markdown
 
+    def test_read_table_rows_joins_rich_text_segments_within_cell(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        # A cell with mixed formatting arrives as multiple rich text segments.
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "Name"}}],
+                            [{"text": {"content": "Desc"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "item1"}}],
+                            [{"text": {"content": "plain "}}, {"text": {"content": "bold"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        assert "| item1 | plain bold |" in markdown
+        # Every row must keep the same column count as the header.
+        for line in markdown.splitlines():
+            if line.startswith("|"):
+                assert line.count("|") == 3
+
+    def test_read_table_rows_preserves_empty_data_cells_as_columns(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "A"}}],
+                            [{"text": {"content": "B"}}],
+                            [{"text": {"content": "C"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "a1"}}],
+                            [],
+                            [{"text": {"content": "c1"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        # The empty middle cell must remain an empty column instead of
+        # collapsing and shifting the following cell left.
+        assert "| a1 |  | c1 |" in markdown
+
 
 class TestNotionMetadataAndCredentialMethods:
     def test_update_last_edited_time_no_document_model(self):
@@ -394,7 +581,11 @@ class TestNotionMetadataAndCredentialMethods:
 
         assert extractor.update_last_edited_time(None) is None
 
-    def test_update_last_edited_time_updates_document_and_commits(self, monkeypatch):
+    def test_update_last_edited_time_updates_document_and_commits(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        persisted_document: tuple[sessionmaker[Session], DocumentModel],
+    ):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -402,39 +593,20 @@ class TestNotionMetadataAndCredentialMethods:
             tenant_id="tenant",
             notion_access_token="token",
         )
-
-        class FakeDocumentModel:
-            data_source_info = "data_source_info"
-
-        update_calls = []
-
-        class FakeQuery:
-            def filter_by(self, **kwargs):
-                return self
-
-            def update(self, payload):
-                update_calls.append(payload)
-
-        class FakeSession:
-            committed = False
-
-            def query(self, model):
-                assert model is FakeDocumentModel
-                return FakeQuery()
-
-            def commit(self):
-                self.committed = True
-
-        fake_db = SimpleNamespace(session=FakeSession())
-        monkeypatch.setattr(notion_extractor, "DocumentModel", FakeDocumentModel)
-        monkeypatch.setattr(notion_extractor, "db", fake_db)
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+        session_maker, document = persisted_document
 
-        doc_model = SimpleNamespace(id="doc-1", data_source_info_dict={"source": "notion"})
-        extractor.update_last_edited_time(doc_model)
+        extractor.update_last_edited_time(document)
 
-        assert update_calls
-        assert fake_db.session.committed is True
+        # Closing the writer session rolls back an uncommitted update before the independent read below.
+        notion_extractor.db.session.close()
+        with session_maker() as verification_session:
+            stored_document = verification_session.get(DocumentModel, document.id)
+            assert stored_document is not None
+            assert stored_document.data_source_info_dict == {
+                "source": "notion",
+                "last_edited_time": "2026-01-01T00:00:00.000Z",
+            }
 
     def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):
         extractor_page = notion_extractor.NotionExtractor(
@@ -478,7 +650,7 @@ class TestNotionMetadataAndCredentialMethods:
         with pytest.raises(AssertionError, match="Notion access token is required"):
             extractor.get_notion_last_edited_time()
 
-    def test_get_access_token_success_and_errors(self, monkeypatch):
+    def test_get_access_token_success_and_errors(self, monkeypatch: pytest.MonkeyPatch):
         with pytest.raises(Exception, match="No credential id found"):
             notion_extractor.NotionExtractor._get_access_token("tenant", None)
 
@@ -497,3 +669,18 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
 
         assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+
+
+def test_get_cell_text_uses_plain_text_for_mention_and_equation_segments():
+    # Notion rich text segments of type mention or equation carry plain_text
+    # but no "text" object; they must not be dropped from the cell content.
+    cell = [
+        {"type": "text", "text": {"content": "see "}, "plain_text": "see "},
+        {"type": "mention", "mention": {"type": "user", "user": {}}, "plain_text": "@alice"},
+        {"type": "equation", "equation": {"expression": "e=mc^2"}, "plain_text": "e=mc^2"},
+    ]
+    assert notion_extractor.NotionExtractor._get_cell_text(cell) == "see @alicee=mc^2"
+    # Empty cell stays an empty column.
+    assert notion_extractor.NotionExtractor._get_cell_text([]) == ""
+    # Fall back to text.content when plain_text is absent.
+    assert notion_extractor.NotionExtractor._get_cell_text([{"text": {"content": "x"}}]) == "x"

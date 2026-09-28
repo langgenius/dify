@@ -8,16 +8,24 @@ upload-file documents, and rejects unsupported or missing file cases.
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from collections import UserDict
+from datetime import UTC, datetime
+from inspect import unwrap
 from io import BytesIO
-from types import SimpleNamespace
-from typing import Any
 from zipfile import ZipFile
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
+
+from extensions.storage.storage_type import StorageType
+from models.account import Account, TenantAccountRole
+from models.dataset import Dataset, Document
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 @pytest.fixture
@@ -66,38 +74,63 @@ def datasets_document_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.import_module(module_name)
 
 
-def _mock_user(*, is_dataset_editor: bool = True) -> SimpleNamespace:
-    """Build a minimal user object compatible with dataset permission checks."""
-    return SimpleNamespace(is_dataset_editor=is_dataset_editor, id="user-123")
+def _account(*, is_dataset_editor: bool = True) -> Account:
+    """Build a real account with the role used by dataset permission checks."""
+    account = Account(name="Dataset User", email="dataset-user@example.com")
+    account.id = "user-123"
+    account.role = TenantAccountRole.EDITOR if is_dataset_editor else TenantAccountRole.NORMAL
+    return account
 
 
-def _mock_document(
+def _document(
     *,
     document_id: str,
     tenant_id: str,
     data_source_type: str,
     upload_file_id: str | None,
-) -> SimpleNamespace:
-    """Build a minimal document object used by the controller."""
-    data_source_info_dict: dict[str, Any] | None = None
-    if upload_file_id is not None:
-        data_source_info_dict = {"upload_file_id": upload_file_id}
-    else:
-        data_source_info_dict = {}
-
-    return SimpleNamespace(
+) -> Document:
+    """Build a real document entity used by the controller."""
+    document = Document(
         id=document_id,
         tenant_id=tenant_id,
+        dataset_id="ds-1",
+        position=1,
         data_source_type=data_source_type,
-        data_source_info_dict=data_source_info_dict,
+        data_source_info=json.dumps({"upload_file_id": upload_file_id}) if upload_file_id is not None else "{}",
+        batch="batch-1",
+        name="document.txt",
+        created_from="web",
+        created_by="user-123",
     )
+    return document
+
+
+def _dataset() -> Dataset:
+    return Dataset(id="ds-1", tenant_id="tenant-123", name="Dataset", created_by="user-123")
+
+
+def _upload_file(*, file_id: str, name: str = "document.txt", key: str = "key") -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-123",
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name=name,
+        size=1,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-123",
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
 
 
 def _wire_common_success_mocks(
     *,
     module,
     monkeypatch: pytest.MonkeyPatch,
-    current_tenant_id: str,
     document_tenant_id: str,
     data_source_type: str,
     upload_file_id: str | None,
@@ -107,26 +140,31 @@ def _wire_common_success_mocks(
     """Patch controller dependencies to create a deterministic test environment."""
     import services.dataset_service as dataset_service_module
 
-    # Make `current_account_with_tenant()` return a known user + tenant id.
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (_mock_user(), current_tenant_id))
-
     # Return a dataset object and allow permission checks to pass.
-    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1"))
+    monkeypatch.setattr(
+        module.DatasetService,
+        "get_dataset_for_tenant",
+        lambda *_args, **_kwargs: _dataset(),
+    )
     monkeypatch.setattr(module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None)
 
     # Return a document that will be validated inside DocumentResource.get_document.
-    document = _mock_document(
+    document = _document(
         document_id="doc-1",
         tenant_id=document_tenant_id,
         data_source_type=data_source_type,
         upload_file_id=upload_file_id,
     )
-    monkeypatch.setattr(module.DocumentService, "get_document", lambda *_args, **_kwargs: document)
+    monkeypatch.setattr(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        lambda *_args, **_kwargs: document if document.tenant_id == "tenant-123" else None,
+    )
 
     # Mock UploadFile lookup via FileService batch helper.
-    upload_files_by_id: dict[str, Any] = {}
+    upload_files_by_id: dict[str, object] = {}
     if upload_file_exists and upload_file_id is not None:
-        upload_files_by_id[str(upload_file_id)] = SimpleNamespace(id=str(upload_file_id))
+        upload_files_by_id[upload_file_id] = _upload_file(file_id=upload_file_id)
     monkeypatch.setattr(module.FileService, "get_upload_files_by_ids", lambda *_args, **_kwargs: upload_files_by_id)
 
     # Mock signing helper so the returned URL is deterministic.
@@ -149,27 +187,23 @@ def _mock_send_file(obj, **kwargs):  # type: ignore[no-untyped-def]
 
 
 def test_batch_download_zip_returns_send_file(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure batch ZIP download returns a zip attachment via `send_file`."""
 
-    # Arrange common permission mocks.
-    monkeypatch.setattr(datasets_document_module, "current_account_with_tenant", lambda: (_mock_user(), "tenant-123"))
-    monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
-    )
+    monkeypatch.setattr(datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: _dataset())
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
     )
 
     # Two upload-file documents, each referencing an UploadFile.
-    doc1 = _mock_document(
+    doc1 = _document(
         document_id="11111111-1111-1111-1111-111111111111",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-1",
     )
-    doc2 = _mock_document(
+    doc2 = _document(
         document_id="22222222-2222-2222-2222-222222222222",
         tenant_id="tenant-123",
         data_source_type="upload_file",
@@ -184,8 +218,8 @@ def test_batch_download_zip_returns_send_file(
         datasets_document_module.FileService,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
-            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
-            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+            "file-1": _upload_file(file_id="file-1", name="a.txt", key="k1"),
+            "file-2": _upload_file(file_id="file-2", name="b.txt", key="k2"),
         },
     )
 
@@ -204,7 +238,8 @@ def test_batch_download_zip_returns_send_file(
         json={"document_ids": ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
-        result = api.post(dataset_id="ds-1")
+        method = unwrap(api.post)
+        result = method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1")
 
     # Assert: we returned via send_file with correct mime type and attachment.
     assert result["_send_file_kwargs"]["mimetype"] == "application/zip"
@@ -217,26 +252,23 @@ def test_batch_download_zip_returns_send_file(
 
 
 def test_batch_download_zip_response_is_openable_zip(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure the real Flask `send_file` response body is a valid ZIP that can be opened."""
 
     # Arrange: same controller mocks as the lightweight send_file test, but we keep the real `send_file`.
-    monkeypatch.setattr(datasets_document_module, "current_account_with_tenant", lambda: (_mock_user(), "tenant-123"))
-    monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
-    )
+    monkeypatch.setattr(datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: _dataset())
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
     )
 
-    doc1 = _mock_document(
+    doc1 = _document(
         document_id="33333333-3333-3333-3333-333333333333",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-1",
     )
-    doc2 = _mock_document(
+    doc2 = _document(
         document_id="44444444-4444-4444-4444-444444444444",
         tenant_id="tenant-123",
         data_source_type="upload_file",
@@ -251,8 +283,8 @@ def test_batch_download_zip_response_is_openable_zip(
         datasets_document_module.FileService,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
-            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
-            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+            "file-1": _upload_file(file_id="file-1", name="a.txt", key="k1"),
+            "file-2": _upload_file(file_id="file-2", name="b.txt", key="k2"),
         },
     )
 
@@ -270,7 +302,8 @@ def test_batch_download_zip_response_is_openable_zip(
         json={"document_ids": ["33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
-        response = api.post(dataset_id="ds-1")
+        method = unwrap(api.post)
+        response = method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1")
 
     # Assert: response body is a valid ZIP and contains the expected entries.
     response.direct_passthrough = False
@@ -284,19 +317,16 @@ def test_batch_download_zip_response_is_openable_zip(
 
 
 def test_batch_download_zip_rejects_non_upload_file_document(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure batch ZIP download rejects non upload-file documents."""
 
-    monkeypatch.setattr(datasets_document_module, "current_account_with_tenant", lambda: (_mock_user(), "tenant-123"))
-    monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
-    )
+    monkeypatch.setattr(datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: _dataset())
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
     )
 
-    doc = _mock_document(
+    doc = _document(
         document_id="55555555-5555-5555-5555-555555555555",
         tenant_id="tenant-123",
         data_source_type="website_crawl",
@@ -314,19 +344,19 @@ def test_batch_download_zip_rejects_non_upload_file_document(
         json={"document_ids": ["55555555-5555-5555-5555-555555555555"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
+        method = unwrap(api.post)
         with pytest.raises(NotFound):
-            api.post(dataset_id="ds-1")
+            method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1")
 
 
 def test_document_download_returns_url_for_upload_file_document(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure upload-file documents return a `{url}` JSON payload."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
         monkeypatch=monkeypatch,
-        current_tenant_id="tenant-123",
         document_tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-123",
@@ -337,20 +367,20 @@ def test_document_download_returns_url_for_upload_file_document(
     # Build a request context then call the resource method directly.
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        result = api.get(dataset_id="ds-1", document_id="doc-1")
+        method = unwrap(api.get)
+        result = method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1", document_id="doc-1")
 
     assert result == {"url": "https://example.com/signed"}
 
 
 def test_document_download_rejects_non_upload_file_document(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure non-upload documents raise 404 (no file to download)."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
         monkeypatch=monkeypatch,
-        current_tenant_id="tenant-123",
         document_tenant_id="tenant-123",
         data_source_type="website_crawl",
         upload_file_id="file-123",
@@ -360,19 +390,19 @@ def test_document_download_rejects_non_upload_file_document(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            api.get(dataset_id="ds-1", document_id="doc-1")
+            method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1", document_id="doc-1")
 
 
 def test_document_download_rejects_missing_upload_file_id(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure missing `upload_file_id` raises 404."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
         monkeypatch=monkeypatch,
-        current_tenant_id="tenant-123",
         document_tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id=None,
@@ -382,19 +412,19 @@ def test_document_download_rejects_missing_upload_file_id(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            api.get(dataset_id="ds-1", document_id="doc-1")
+            method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1", document_id="doc-1")
 
 
 def test_document_download_rejects_when_upload_file_record_missing(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """Ensure missing UploadFile row raises 404."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
         monkeypatch=monkeypatch,
-        current_tenant_id="tenant-123",
         document_tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-123",
@@ -404,19 +434,19 @@ def test_document_download_rejects_when_upload_file_record_missing(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            api.get(dataset_id="ds-1", document_id="doc-1")
+            method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1", document_id="doc-1")
 
 
-def test_document_download_rejects_tenant_mismatch(
-    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+def test_document_download_rejects_document_owner_mismatch(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    """Ensure tenant mismatch is rejected by the shared `get_document()` permission check."""
+    """Ensure an owner mismatch is rejected by the shared document resolver."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
         monkeypatch=monkeypatch,
-        current_tenant_id="tenant-123",
         document_tenant_id="tenant-999",
         data_source_type="upload_file",
         upload_file_id="file-123",
@@ -426,5 +456,6 @@ def test_document_download_rejects_tenant_mismatch(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        with pytest.raises(Forbidden):
-            api.get(dataset_id="ds-1", document_id="doc-1")
+        method = unwrap(api.get)
+        with pytest.raises(NotFound):
+            method(api, sqlite_session, "tenant-123", _account(), dataset_id="ds-1", document_id="doc-1")

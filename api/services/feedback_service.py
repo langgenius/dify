@@ -1,12 +1,13 @@
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Response
-from sqlalchemy import or_
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
+from models.enums import FeedbackRating
 from models.model import Account, App, Conversation, Message, MessageFeedback
 
 
@@ -14,6 +15,8 @@ class FeedbackService:
     @staticmethod
     def export_feedbacks(
         app_id: str,
+        *,
+        session: Session,
         from_source: str | None = None,
         rating: str | None = None,
         has_comment: bool | None = None,
@@ -26,6 +29,7 @@ class FeedbackService:
 
         Args:
             app_id: Application ID
+            session: Database session used to run the export query
             from_source: Filter by feedback source ('user' or 'admin')
             rating: Filter by rating ('like' or 'dislike')
             has_comment: Only include feedback with comments
@@ -40,8 +44,8 @@ class FeedbackService:
             raise ValueError(f"Unsupported format: {format_type}")
 
         # Build base query
-        query = (
-            db.session.query(MessageFeedback, Message, Conversation, App, Account)
+        stmt = (
+            select(MessageFeedback, Message, Conversation, App, Account)
             .join(Message, MessageFeedback.message_id == Message.id)
             .join(Conversation, MessageFeedback.conversation_id == Conversation.id)
             .join(App, MessageFeedback.app_id == App.id)
@@ -51,42 +55,42 @@ class FeedbackService:
 
         # Apply filters
         if from_source:
-            query = query.filter(MessageFeedback.from_source == from_source)
+            stmt = stmt.where(MessageFeedback.from_source == from_source)
 
         if rating:
-            query = query.filter(MessageFeedback.rating == rating)
+            stmt = stmt.where(MessageFeedback.rating == rating)
 
         if has_comment is not None:
             if has_comment:
-                query = query.filter(MessageFeedback.content.isnot(None), MessageFeedback.content != "")
+                stmt = stmt.where(MessageFeedback.content.isnot(None), MessageFeedback.content != "")
             else:
-                query = query.filter(or_(MessageFeedback.content.is_(None), MessageFeedback.content == ""))
+                stmt = stmt.where(or_(MessageFeedback.content.is_(None), MessageFeedback.content == ""))
 
         if start_date:
             try:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                query = query.filter(MessageFeedback.created_at >= start_dt)
+                stmt = stmt.where(MessageFeedback.created_at >= start_dt)
             except ValueError:
                 raise ValueError(f"Invalid start_date format: {start_date}. Use YYYY-MM-DD")
 
         if end_date:
             try:
-                end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-                query = query.filter(MessageFeedback.created_at <= end_dt)
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                stmt = stmt.where(MessageFeedback.created_at < end_dt)
             except ValueError:
                 raise ValueError(f"Invalid end_date format: {end_date}. Use YYYY-MM-DD")
 
         # Order by creation date (newest first)
-        query = query.order_by(MessageFeedback.created_at.desc())
+        stmt = stmt.order_by(MessageFeedback.created_at.desc())
 
         # Execute query
-        results = query.all()
+        results = session.execute(stmt).all()
 
         # Prepare data for export
         export_data = []
         for feedback, message, conversation, app, account in results:
             # Get the user query from the message
-            user_query = message.query or (message.inputs.get("query", "") if message.inputs else "")
+            user_query = message.query or message.inputs_with_session(session=session).get("query", "")
 
             # Format the feedback data
             feedback_record = {
@@ -100,7 +104,7 @@ class FeedbackService:
                 "ai_response": message.answer[:500] + "..."
                 if len(message.answer) > 500
                 else message.answer,  # Truncate long responses
-                "feedback_rating": "👍" if feedback.rating == "like" else "👎",
+                "feedback_rating": "👍" if feedback.rating == FeedbackRating.LIKE else "👎",
                 "feedback_rating_raw": feedback.rating,
                 "feedback_comment": feedback.content or "",
                 "feedback_source": feedback.from_source,

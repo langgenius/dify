@@ -1,0 +1,236 @@
+"""GET /openapi/v1/apps and per-app reads."""
+
+from __future__ import annotations
+
+import uuid as _uuid
+from http import HTTPStatus
+from typing import Any
+
+from flask_restx import Resource
+from sqlalchemy.orm import Session
+
+from configs import dify_config
+from constants.oauth_bearer import Scope
+from controllers.common.fields import Parameters
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.openapi import openapi_ns
+from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
+from controllers.openapi._models import (
+    SUPPORTED_APP_TYPES,
+    AppDescribeInfo,
+    AppDescribeQuery,
+    AppDescribeResponse,
+    AppListQuery,
+    AppListResponse,
+    AppListRow,
+)
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+)
+from controllers.openapi.auth.subjects import AccountSubject
+from controllers.service_api.app.error import AppUnavailableError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from extensions.ext_application_services import application_services
+from models import App
+from models.enums import AppStatus
+from models.model import AppMode
+from services.account_service import TenantService
+from services.app.access import AppAccessFilter, resolve_app_access_filter
+from services.entities.app_entities import AppListParams, AppSummary
+
+
+def _is_listable(app: AppSummary) -> bool:
+    """Whether the openapi app face exposes this app (curated, listable types only)."""
+    return app.mode in SUPPORTED_APP_TYPES
+
+
+_EMPTY_PARAMETERS: dict[str, Any] = {
+    "opening_statement": None,
+    "suggested_questions": [],
+    "user_input_form": [],
+    "file_upload": None,
+    "system_parameters": {},
+}
+
+
+def parameters_payload(app: App, *, session: Session) -> dict:
+    """Mirrors service_api/app/app.py::AppParameterApi response body."""
+    features_dict, user_input_form = resolve_app_config(app, session=session)
+    parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+    return Parameters.model_validate(parameters).model_dump(mode="json")
+
+
+def build_app_describe_response(app: App, fields: set[str] | None, *, session: Session) -> AppDescribeResponse:
+    """Public projection of an app (name / params / input schema) — never internal config."""
+    want_info = fields is None or "info" in fields
+    want_params = fields is None or "parameters" in fields
+    want_schema = fields is None or "input_schema" in fields
+
+    info = (
+        AppDescribeInfo(
+            id=str(app.id),
+            name=app.name,
+            mode=app.mode,
+            description=app.description,
+            updated_at=app.updated_at.isoformat() if app.updated_at else None,
+            service_api_enabled=bool(app.enable_api),
+            is_agent=app.mode in (AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT),
+        )
+        if want_info
+        else None
+    )
+
+    parameters: dict[str, Any] | None = None
+    input_schema: dict[str, Any] | None = None
+    if want_params:
+        try:
+            parameters = parameters_payload(app, session=session)
+        except AppUnavailableError:
+            parameters = dict(_EMPTY_PARAMETERS)
+    if want_schema:
+        try:
+            input_schema = build_input_schema(app, session=session)
+        except AppUnavailableError:
+            input_schema = dict(EMPTY_INPUT_SCHEMA)
+
+    return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
+
+
+@openapi_ns.route("/apps/<string:app_id>")
+class AppDescribeApi(Resource):
+    @endpoint(
+        op="console_app.describe",
+        kind=Kind.OBJECT,
+        summary="App detail, parameters and runtime input_schema",
+        examples=(
+            Example(title="Describe an app: info, parameters and input_schema", input={"app_id": "<app_id>"}),
+            Example(
+                title="Only the runtime input_schema of an app",
+                input={"app_id": "<app_id>", "fields": "input_schema"},
+            ),
+        ),
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())),
+        ),
+        query=AppDescribeQuery,
+        returns=(200, AppDescribeResponse, "App description"),
+    )
+    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
+        # The pipeline has already loaded the app; project it.
+        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)
+
+
+@openapi_ns.route("/apps")
+class AppListApi(Resource):
+    @endpoint(
+        op="console_app.list",
+        kind=Kind.LIST,
+        summary="List apps in a workspace",
+        examples=(
+            Example(title="List apps in the pinned workspace, first page", input={"page": 1, "limit": 20}),
+            Example(
+                title="Find workflow apps whose name contains a word",
+                input={"mode": "workflow", "name": "summary"},
+            ),
+        ),
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.APPS_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=AppListQuery,
+        returns=(HTTPStatus.OK, AppListResponse, "App list"),
+    )
+    def get(self, ctx: Context, *, query: AppListQuery):
+        workspace_id = query.workspace_id
+        account_id = str(ctx.subject.account_id)
+
+        empty = AppListResponse.build(page=query.page, limit=query.limit, total=0, items=[])
+
+        if query.name:
+            try:
+                parsed_uuid = _uuid.UUID(query.name)
+            except ValueError:
+                parsed_uuid = None
+        else:
+            parsed_uuid = None
+
+        access_filter = (
+            resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
+            if dify_config.RBAC_ENABLED
+            else AppAccessFilter.unrestricted()
+        )
+
+        tenant_name: str | None = None
+        if parsed_uuid is not None:
+            app = application_services().apps.queries.get_visible_app_by_id(str(parsed_uuid), workspace_id)
+            if app is None or str(app.tenant_id) != workspace_id:
+                return empty
+            if not _is_listable(app):
+                return empty
+            # Apply RBAC visibility to the UUID fast-path the same way the service
+            # layer does for paginated queries (id in accessible set OR own app).
+            if not access_filter.is_app_accessible(
+                str(app.id), str(app.maintainer) if app.maintainer else None, account_id
+            ):
+                return empty
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            item = AppListRow(
+                id=str(app.id),
+                name=app.name,
+                description=app.description,
+                mode=app.mode,
+                updated_at=app.updated_at.isoformat() if app.updated_at else None,
+                workspace_id=str(workspace_id),
+                workspace_name=tenant_name,
+            )
+            env = AppListResponse.build(page=1, limit=1, total=1, items=[item])
+            return env
+
+        params = AppListParams(
+            page=query.page,
+            limit=query.limit,
+            mode=query.mode.value if query.mode else "all",  # type:ignore
+            name=query.name,
+            status=AppStatus.NORMAL,
+            # Visibility gate pushed into the query — pagination.total stays
+            # consistent across pages because invisible rows never count.
+            openapi_visible=True,
+        )
+
+        access_filter.apply_to_params(params)
+
+        pagination = application_services().apps.queries.get_paginate_apps(account_id, workspace_id, params)
+        if pagination is None:
+            return empty
+
+        tenant_name = None
+        if pagination.items:
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+
+        items = [
+            AppListRow(
+                id=str(r.id),
+                name=r.name,
+                description=r.description,
+                mode=r.mode,
+                updated_at=r.updated_at.isoformat() if r.updated_at else None,
+                workspace_id=str(workspace_id),
+                workspace_name=tenant_name,
+            )
+            for r in pagination.items
+            if _is_listable(r)
+        ]
+
+        env = AppListResponse.build(page=query.page, limit=query.limit, total=pagination.total, items=items)
+        return env

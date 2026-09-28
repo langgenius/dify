@@ -1,7 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -12,7 +11,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
   }),
@@ -35,6 +34,7 @@ describe('usePipelineRefreshDraft', () => {
   const mockSetIsSyncingWorkflowDraft = vi.fn()
   const mockSetEnvironmentVariables = vi.fn()
   const mockSetEnvSecrets = vi.fn()
+  const mockSetRagPipelineVariables = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,6 +45,7 @@ describe('usePipelineRefreshDraft', () => {
       setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
+      setRagPipelineVariables: mockSetRagPipelineVariables,
     })
 
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -55,6 +56,7 @@ describe('usePipelineRefreshDraft', () => {
       },
       hash: 'new-hash',
       environment_variables: [],
+      rag_pipeline_variables: [],
     })
   })
 
@@ -89,7 +91,9 @@ describe('usePipelineRefreshDraft', () => {
         result.current.handleRefreshWorkflowDraft()
       })
 
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+        '/rag/pipelines/test-pipeline-id/workflows/draft',
+      )
     })
 
     it('should update workflow canvas with response data', async () => {
@@ -113,6 +117,31 @@ describe('usePipelineRefreshDraft', () => {
 
       await waitFor(() => {
         expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+      })
+    })
+
+    it('should update rag pipeline variables after fetch', async () => {
+      mockFetchWorkflowDraft.mockResolvedValue({
+        graph: {
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        hash: 'new-hash',
+        environment_variables: [],
+        rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
+      })
+
+      const { result } = renderHook(() => usePipelineRefreshDraft())
+
+      act(() => {
+        result.current.handleRefreshWorkflowDraft()
+      })
+
+      await waitFor(() => {
+        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
+          { variable: 'query', type: 'text-input' },
+        ])
       })
     })
 

@@ -1,55 +1,95 @@
-import axios from "axios";
 import type {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
-} from "axios";
-import type { Readable } from "node:stream";
-import {
-  DEFAULT_BASE_URL,
-  DEFAULT_MAX_RETRIES,
-  DEFAULT_RETRY_DELAY_SECONDS,
-  DEFAULT_TIMEOUT_SECONDS,
-} from "../types/common";
-import type {
+  BinaryStream,
   DifyClientConfig,
   DifyResponse,
+  DifyStream,
   Headers,
+  JsonValue,
   QueryParams,
   RequestMethod,
-} from "../types/common";
-import type { DifyError } from "../errors/dify-error";
+} from '../types/common'
+import type { SdkFormData } from './form-data'
+import { Readable } from 'node:stream'
+import { validateParams } from '../client/validation'
 import {
   APIError,
   AuthenticationError,
+  DifyError,
   FileUploadError,
   NetworkError,
   RateLimitError,
   TimeoutError,
   ValidationError,
-} from "../errors/dify-error";
-import { getFormDataHeaders, isFormData } from "./form-data";
-import { createBinaryStream, createSseStream } from "./sse";
-import { getRetryDelayMs, shouldRetry, sleep } from "./retry";
-import { validateParams } from "../client/validation";
+} from '../errors/dify-error'
+import { hasStringProperty, isRecord } from '../internal/type-guards'
+import {
+  DEFAULT_BASE_URL,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_RETRY_DELAY_SECONDS,
+  DEFAULT_TIMEOUT_SECONDS,
+} from '../types/common'
+import { getFormDataHeaders, isFormData } from './form-data'
+import { getRetryDelayMs, shouldRetry, sleep } from './retry'
+import { createBinaryStream, createSseStream } from './sse'
 
-const DEFAULT_USER_AGENT = "dify-client-node";
+const DEFAULT_USER_AGENT = 'dify-client-node'
 
-export type RequestOptions = {
-  method: RequestMethod;
-  path: string;
-  query?: QueryParams;
-  data?: unknown;
-  headers?: Headers;
-  responseType?: AxiosRequestConfig["responseType"];
-};
+export type HttpResponseType = 'json' | 'bytes' | 'stream' | 'arraybuffer'
 
-export type HttpClientSettings = Required<
-  Omit<DifyClientConfig, "apiKey">
-> & {
-  apiKey: string;
-};
+export type HttpRequestBody =
+  | JsonValue
+  | Readable
+  | SdkFormData
+  | URLSearchParams
+  | ArrayBuffer
+  | ArrayBufferView
+  | Blob
+  | string
+  | null
+
+export type ResponseDataFor<TResponseType extends HttpResponseType> = TResponseType extends 'stream'
+  ? Readable
+  : TResponseType extends 'bytes' | 'arraybuffer'
+    ? Buffer
+    : JsonValue | string | null
+
+export type RawHttpResponse<TData = unknown> = {
+  data: TData
+  status: number
+  headers: Headers
+  requestId?: string
+  url: string
+}
+
+export type RequestOptions<TResponseType extends HttpResponseType = 'json'> = {
+  method: RequestMethod
+  path: string
+  query?: QueryParams
+  data?: HttpRequestBody
+  headers?: Headers
+  responseType?: TResponseType
+}
+
+export type HttpClientSettings = Required<Omit<DifyClientConfig, 'apiKey'>> & {
+  apiKey: string
+}
+
+type FetchRequestInit = RequestInit & {
+  duplex?: 'half'
+}
+
+type PreparedRequestBody = {
+  body?: BodyInit | null
+  headers: Headers
+  duplex?: 'half'
+  replayable: boolean
+}
+
+type TimeoutContext = {
+  cleanup: () => void
+  reason: Error
+  signal: AbortSignal
+}
 
 const normalizeSettings = (config: DifyClientConfig): HttpClientSettings => ({
   apiKey: config.apiKey,
@@ -58,310 +98,478 @@ const normalizeSettings = (config: DifyClientConfig): HttpClientSettings => ({
   maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
   retryDelay: config.retryDelay ?? DEFAULT_RETRY_DELAY_SECONDS,
   enableLogging: config.enableLogging ?? false,
-});
+})
 
-const normalizeHeaders = (headers: AxiosResponse["headers"]): Headers => {
-  const result: Headers = {};
-  if (!headers) {
-    return result;
-  }
-  Object.entries(headers).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      result[key.toLowerCase()] = value.join(", ");
-    } else if (typeof value === "string") {
-      result[key.toLowerCase()] = value;
-    } else if (typeof value === "number") {
-      result[key.toLowerCase()] = value.toString();
-    }
-  });
-  return result;
-};
+const normalizeHeaders = (headers: globalThis.Headers): Headers => {
+  const result: Headers = {}
+  headers.forEach((value, key) => {
+    result[key.toLowerCase()] = value
+  })
+  return result
+}
 
 const resolveRequestId = (headers: Headers): string | undefined =>
-  headers["x-request-id"] ?? headers["x-requestid"];
+  headers['x-request-id'] ?? headers['x-requestid']
 
-const buildRequestUrl = (baseUrl: string, path: string): string => {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return `${trimmed}${path}`;
-};
+const buildRequestUrl = (baseUrl: string, path: string, query?: QueryParams): string => {
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  const url = new URL(`${trimmed}${path}`)
+  const queryString = buildQueryString(query)
+  if (queryString) {
+    url.search = queryString
+  }
+  return url.toString()
+}
 
 const buildQueryString = (params?: QueryParams): string => {
   if (!params) {
-    return "";
+    return ''
   }
-  const searchParams = new URLSearchParams();
+  const searchParams = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null) {
-      return;
+      return
     }
     if (Array.isArray(value)) {
       value.forEach((item) => {
-        searchParams.append(key, String(item));
-      });
-      return;
+        searchParams.append(key, String(item))
+      })
+      return
     }
-    searchParams.append(key, String(value));
-  });
-  return searchParams.toString();
-};
+    searchParams.append(key, String(value))
+  })
+  return searchParams.toString()
+}
 
 const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   if (!headerValue) {
-    return undefined;
+    return undefined
   }
-  const asNumber = Number.parseInt(headerValue, 10);
+  const asNumber = Number.parseInt(headerValue, 10)
   if (!Number.isNaN(asNumber)) {
-    return asNumber;
+    return asNumber
   }
-  const asDate = Date.parse(headerValue);
+  const asDate = Date.parse(headerValue)
   if (!Number.isNaN(asDate)) {
-    const diff = asDate - Date.now();
-    return diff > 0 ? Math.ceil(diff / 1000) : 0;
+    const diff = asDate - Date.now()
+    return diff > 0 ? Math.ceil(diff / 1000) : 0
   }
-  return undefined;
-};
+  return undefined
+}
 
-const isReadableStream = (value: unknown): value is Readable => {
-  if (!value || typeof value !== "object") {
-    return false;
+const isPipeableStream = (value: unknown): value is { pipe: (destination: unknown) => unknown } => {
+  if (!value || typeof value !== 'object') {
+    return false
   }
-  return typeof (value as { pipe?: unknown }).pipe === "function";
-};
+  return typeof (value as { pipe?: unknown }).pipe === 'function'
+}
 
-const isUploadLikeRequest = (config?: AxiosRequestConfig): boolean => {
-  const url = (config?.url ?? "").toLowerCase();
-  if (!url) {
-    return false;
+const toNodeReadable = (value: unknown): Readable | null => {
+  if (value instanceof Readable) {
+    return value
   }
+  if (!isPipeableStream(value)) {
+    return null
+  }
+  const readable = new Readable({
+    read() {},
+  })
+  return readable.wrap(value as NodeJS.ReadableStream)
+}
+
+const isBinaryBody = (value: unknown): value is ArrayBuffer | ArrayBufferView | Blob => {
+  if (value instanceof Blob) {
+    return true
+  }
+  if (value instanceof ArrayBuffer) {
+    return true
+  }
+  return ArrayBuffer.isView(value)
+}
+
+const isJsonBody = (value: unknown): value is Exclude<JsonValue, string> =>
+  value === null ||
+  typeof value === 'boolean' ||
+  typeof value === 'number' ||
+  Array.isArray(value) ||
+  isRecord(value)
+
+const isUploadLikeRequest = (path: string): boolean => {
+  const normalizedPath = path.toLowerCase()
   return (
-    url.includes("upload") ||
-    url.includes("/files/") ||
-    url.includes("audio-to-text") ||
-    url.includes("create_by_file") ||
-    url.includes("update_by_file")
-  );
-};
+    normalizedPath.includes('upload') ||
+    normalizedPath.includes('/files/') ||
+    normalizedPath.includes('audio-to-text') ||
+    normalizedPath.includes('create_by_file') ||
+    normalizedPath.includes('update_by_file')
+  )
+}
 
 const resolveErrorMessage = (status: number, responseBody: unknown): string => {
-  if (typeof responseBody === "string" && responseBody.trim().length > 0) {
-    return responseBody;
+  if (typeof responseBody === 'string' && responseBody.trim().length > 0) {
+    return responseBody
   }
-  if (
-    responseBody &&
-    typeof responseBody === "object" &&
-    "message" in responseBody
-  ) {
-    const message = (responseBody as Record<string, unknown>).message;
-    if (typeof message === "string" && message.trim().length > 0) {
-      return message;
+  if (hasStringProperty(responseBody, 'message')) {
+    const message = responseBody.message.trim()
+    if (message.length > 0) {
+      return message
     }
   }
-  return `Request failed with status code ${status}`;
-};
+  return `Request failed with status code ${status}`
+}
 
-const mapAxiosError = (error: unknown): DifyError => {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError;
-    if (axiosError.response) {
-      const status = axiosError.response.status;
-      const headers = normalizeHeaders(axiosError.response.headers);
-      const requestId = resolveRequestId(headers);
-      const responseBody = axiosError.response.data;
-      const message = resolveErrorMessage(status, responseBody);
-
-      if (status === 401) {
-        return new AuthenticationError(message, {
-          statusCode: status,
-          responseBody,
-          requestId,
-        });
-      }
-      if (status === 429) {
-        const retryAfter = parseRetryAfterSeconds(headers["retry-after"]);
-        return new RateLimitError(message, {
-          statusCode: status,
-          responseBody,
-          requestId,
-          retryAfter,
-        });
-      }
-      if (status === 422) {
-        return new ValidationError(message, {
-          statusCode: status,
-          responseBody,
-          requestId,
-        });
-      }
-      if (status === 400) {
-        if (isUploadLikeRequest(axiosError.config)) {
-          return new FileUploadError(message, {
-            statusCode: status,
-            responseBody,
-            requestId,
-          });
-        }
-      }
-      return new APIError(message, {
-        statusCode: status,
-        responseBody,
-        requestId,
-      });
-    }
-    if (axiosError.code === "ECONNABORTED") {
-      return new TimeoutError("Request timed out", { cause: axiosError });
-    }
-    return new NetworkError(axiosError.message, { cause: axiosError });
+const parseJsonLikeText = (
+  value: string,
+  contentType?: string | null,
+): JsonValue | string | null => {
+  if (value.length === 0) {
+    return null
   }
+  const shouldParseJson =
+    contentType?.includes('application/json') === true || contentType?.includes('+json') === true
+  if (!shouldParseJson) {
+    try {
+      return JSON.parse(value) as JsonValue
+    } catch {
+      return value
+    }
+  }
+  return JSON.parse(value) as JsonValue
+}
+
+const prepareRequestBody = (
+  method: RequestMethod,
+  data: HttpRequestBody | undefined,
+): PreparedRequestBody => {
+  if (method === 'GET' || data === undefined) {
+    return {
+      body: undefined,
+      headers: {},
+      replayable: true,
+    }
+  }
+
+  if (isFormData(data)) {
+    if ('getHeaders' in data && typeof data.getHeaders === 'function') {
+      const readable = toNodeReadable(data)
+      if (!readable) {
+        throw new FileUploadError('Legacy FormData must be a readable stream when used with fetch')
+      }
+      return {
+        body: Readable.toWeb(readable) as BodyInit,
+        headers: getFormDataHeaders(data),
+        duplex: 'half',
+        replayable: false,
+      }
+    }
+    return {
+      body: data as BodyInit,
+      headers: getFormDataHeaders(data),
+      replayable: true,
+    }
+  }
+
+  if (typeof data === 'string') {
+    return {
+      body: data,
+      headers: {},
+      replayable: true,
+    }
+  }
+
+  const readable = toNodeReadable(data)
+  if (readable) {
+    return {
+      body: Readable.toWeb(readable) as BodyInit,
+      headers: {},
+      duplex: 'half',
+      replayable: false,
+    }
+  }
+
+  if (data instanceof URLSearchParams || isBinaryBody(data)) {
+    const body =
+      ArrayBuffer.isView(data) && !(data instanceof Uint8Array)
+        ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        : data
+    return {
+      body: body as BodyInit,
+      headers: {},
+      replayable: true,
+    }
+  }
+
+  if (isJsonBody(data)) {
+    return {
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      replayable: true,
+    }
+  }
+
+  throw new ValidationError('Unsupported request body type')
+}
+
+const createTimeoutContext = (timeoutMs: number): TimeoutContext => {
+  const controller = new AbortController()
+  const reason = new Error('Request timed out')
+  const timer = setTimeout(() => {
+    controller.abort(reason)
+  }, timeoutMs)
+  return {
+    signal: controller.signal,
+    reason,
+    cleanup: () => {
+      clearTimeout(timer)
+    },
+  }
+}
+
+const parseResponseBody = async <TResponseType extends HttpResponseType>(
+  response: Response,
+  responseType: TResponseType,
+): Promise<ResponseDataFor<TResponseType>> => {
+  if (responseType === 'stream') {
+    if (!response.body) {
+      throw new NetworkError('Response body is empty')
+    }
+    return Readable.fromWeb(
+      response.body as unknown as Parameters<typeof Readable.fromWeb>[0],
+    ) as ResponseDataFor<TResponseType>
+  }
+
+  if (responseType === 'bytes' || responseType === 'arraybuffer') {
+    const bytes = Buffer.from(await response.arrayBuffer())
+    return bytes as ResponseDataFor<TResponseType>
+  }
+
+  if (response.status === 204 || response.status === 205 || response.status === 304) {
+    return null as ResponseDataFor<TResponseType>
+  }
+
+  const text = await response.text()
+  try {
+    return parseJsonLikeText(
+      text,
+      response.headers.get('content-type'),
+    ) as ResponseDataFor<TResponseType>
+  } catch (error) {
+    if (!response.ok && error instanceof SyntaxError) {
+      return text as ResponseDataFor<TResponseType>
+    }
+    throw error
+  }
+}
+
+const mapHttpError = (response: RawHttpResponse, path: string): DifyError => {
+  const status = response.status
+  const responseBody = response.data
+  const message = resolveErrorMessage(status, responseBody)
+
+  if (status === 401) {
+    return new AuthenticationError(message, {
+      statusCode: status,
+      responseBody,
+      requestId: response.requestId,
+    })
+  }
+
+  if (status === 429) {
+    const retryAfter = parseRetryAfterSeconds(response.headers['retry-after'])
+    return new RateLimitError(message, {
+      statusCode: status,
+      responseBody,
+      requestId: response.requestId,
+      retryAfter,
+    })
+  }
+
+  if (status === 422) {
+    return new ValidationError(message, {
+      statusCode: status,
+      responseBody,
+      requestId: response.requestId,
+    })
+  }
+
+  if (status === 400 && isUploadLikeRequest(path)) {
+    return new FileUploadError(message, {
+      statusCode: status,
+      responseBody,
+      requestId: response.requestId,
+    })
+  }
+
+  return new APIError(message, {
+    statusCode: status,
+    responseBody,
+    requestId: response.requestId,
+  })
+}
+
+const mapTransportError = (error: unknown, timeoutContext: TimeoutContext): DifyError => {
+  if (error instanceof DifyError) {
+    return error
+  }
+
+  if (timeoutContext.signal.aborted && timeoutContext.signal.reason === timeoutContext.reason) {
+    return new TimeoutError('Request timed out', { cause: error })
+  }
+
   if (error instanceof Error) {
-    return new NetworkError(error.message, { cause: error });
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      return new TimeoutError('Request timed out', { cause: error })
+    }
+    return new NetworkError(error.message, { cause: error })
   }
-  return new NetworkError("Unexpected network error", { cause: error });
-};
+
+  return new NetworkError('Unexpected network error', { cause: error })
+}
 
 export class HttpClient {
-  private axios: AxiosInstance;
-  private settings: HttpClientSettings;
+  private settings: HttpClientSettings
 
   constructor(config: DifyClientConfig) {
-    this.settings = normalizeSettings(config);
-    this.axios = axios.create({
-      baseURL: this.settings.baseUrl,
-      timeout: this.settings.timeout * 1000,
-    });
+    this.settings = normalizeSettings(config)
   }
 
   updateApiKey(apiKey: string): void {
-    this.settings.apiKey = apiKey;
+    this.settings.apiKey = apiKey
   }
 
   getSettings(): HttpClientSettings {
-    return { ...this.settings };
+    return { ...this.settings }
   }
 
-  async request<T>(options: RequestOptions): Promise<DifyResponse<T>> {
-    const response = await this.requestRaw(options);
-    const headers = normalizeHeaders(response.headers);
+  async request<T, TResponseType extends HttpResponseType = 'json'>(
+    options: RequestOptions<TResponseType>,
+  ): Promise<DifyResponse<T>> {
+    const response = await this.requestRaw(options)
     return {
       data: response.data as T,
       status: response.status,
-      headers,
-      requestId: resolveRequestId(headers),
-    };
+      headers: response.headers,
+      requestId: response.requestId,
+    }
   }
 
-  async requestStream<T>(options: RequestOptions) {
+  async requestStream<T>(options: RequestOptions): Promise<DifyStream<T>> {
     const response = await this.requestRaw({
       ...options,
-      responseType: "stream",
-    });
-    const headers = normalizeHeaders(response.headers);
-    return createSseStream<T>(response.data as Readable, {
+      responseType: 'stream',
+    })
+    return createSseStream<T>(response.data, {
       status: response.status,
-      headers,
-      requestId: resolveRequestId(headers),
-    });
+      headers: response.headers,
+      requestId: response.requestId,
+    })
   }
 
-  async requestBinaryStream(options: RequestOptions) {
+  async requestBinaryStream(options: RequestOptions): Promise<BinaryStream> {
     const response = await this.requestRaw({
       ...options,
-      responseType: "stream",
-    });
-    const headers = normalizeHeaders(response.headers);
-    return createBinaryStream(response.data as Readable, {
+      responseType: 'stream',
+    })
+    return createBinaryStream(response.data, {
       status: response.status,
-      headers,
-      requestId: resolveRequestId(headers),
-    });
+      headers: response.headers,
+      requestId: response.requestId,
+    })
   }
 
-  async requestRaw(options: RequestOptions): Promise<AxiosResponse> {
-    const { method, path, query, data, headers, responseType } = options;
-    const { apiKey, enableLogging, maxRetries, retryDelay, timeout } =
-      this.settings;
+  async requestRaw<TResponseType extends HttpResponseType = 'json'>(
+    options: RequestOptions<TResponseType>,
+  ): Promise<RawHttpResponse<ResponseDataFor<TResponseType>>> {
+    const responseType = options.responseType ?? 'json'
+    const { method, path, query, data, headers } = options
+    const { apiKey, enableLogging, maxRetries, retryDelay, timeout } = this.settings
 
     if (query) {
-      validateParams(query as Record<string, unknown>);
-    }
-    if (
-      data &&
-      typeof data === "object" &&
-      !Array.isArray(data) &&
-      !isFormData(data) &&
-      !isReadableStream(data)
-    ) {
-      validateParams(data as Record<string, unknown>);
+      validateParams(query)
     }
 
-    const requestHeaders: Headers = {
-      Authorization: `Bearer ${apiKey}`,
-      ...headers,
-    };
-    if (
-      typeof process !== "undefined" &&
-      !!process.versions?.node &&
-      !requestHeaders["User-Agent"] &&
-      !requestHeaders["user-agent"]
-    ) {
-      requestHeaders["User-Agent"] = DEFAULT_USER_AGENT;
+    if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {
+      validateParams(data)
     }
 
-    if (isFormData(data)) {
-      Object.assign(requestHeaders, getFormDataHeaders(data));
-    } else if (data && method !== "GET") {
-      requestHeaders["Content-Type"] = "application/json";
-    }
-
-    const url = buildRequestUrl(this.settings.baseUrl, path);
+    const url = buildRequestUrl(this.settings.baseUrl, path, query)
 
     if (enableLogging) {
-      console.info(`dify-client-node request ${method} ${url}`);
+      console.info(`dify-client-node request ${method} ${url}`)
     }
 
-    const axiosConfig: AxiosRequestConfig = {
-      method,
-      url: path,
-      params: query,
-      paramsSerializer: {
-        serialize: (params) => buildQueryString(params as QueryParams),
-      },
-      headers: requestHeaders,
-      responseType: responseType ?? "json",
-      timeout: timeout * 1000,
-    };
-
-    if (method !== "GET" && data !== undefined) {
-      axiosConfig.data = data;
-    }
-
-    let attempt = 0;
-    // `attempt` is a zero-based retry counter
-    // Total attempts = 1 (initial) + maxRetries
-    // e.g., maxRetries=3 means: attempt 0 (initial), then retries at 1, 2, 3
+    let attempt = 0
     while (true) {
+      const preparedBody = prepareRequestBody(method, data)
+      const requestHeaders: Headers = {
+        Authorization: `Bearer ${apiKey}`,
+        ...preparedBody.headers,
+        ...headers,
+      }
+
+      if (
+        typeof process !== 'undefined' &&
+        !!process.versions?.node &&
+        !requestHeaders['User-Agent'] &&
+        !requestHeaders['user-agent']
+      ) {
+        requestHeaders['User-Agent'] = DEFAULT_USER_AGENT
+      }
+
+      const timeoutContext = createTimeoutContext(timeout * 1000)
+      const requestInit: FetchRequestInit = {
+        method,
+        headers: requestHeaders,
+        body: preparedBody.body,
+        signal: timeoutContext.signal,
+      }
+
+      if (preparedBody.duplex) {
+        requestInit.duplex = preparedBody.duplex
+      }
+
       try {
-        const response = await this.axios.request(axiosConfig);
-        if (enableLogging) {
-          console.info(
-            `dify-client-node response ${response.status} ${method} ${url}`
-          );
+        const fetchResponse = await fetch(url, requestInit)
+        const responseHeaders = normalizeHeaders(fetchResponse.headers)
+        const parsedBody = (await parseResponseBody(
+          fetchResponse,
+          responseType,
+        )) as ResponseDataFor<TResponseType>
+        const response: RawHttpResponse<ResponseDataFor<TResponseType>> = {
+          data: parsedBody,
+          status: fetchResponse.status,
+          headers: responseHeaders,
+          requestId: resolveRequestId(responseHeaders),
+          url,
         }
-        return response;
+
+        if (!fetchResponse.ok) {
+          throw mapHttpError(response, path)
+        }
+
+        if (enableLogging) {
+          console.info(`dify-client-node response ${response.status} ${method} ${url}`)
+        }
+
+        return response
       } catch (error) {
-        const mapped = mapAxiosError(error);
-        if (!shouldRetry(mapped, attempt, maxRetries)) {
-          throw mapped;
+        const mapped = mapTransportError(error, timeoutContext)
+        const shouldRetryRequest =
+          preparedBody.replayable && shouldRetry(mapped, attempt, maxRetries)
+        if (!shouldRetryRequest) {
+          throw mapped
         }
-        const retryAfterSeconds =
-          mapped instanceof RateLimitError ? mapped.retryAfter : undefined;
-        const delay = getRetryDelayMs(attempt + 1, retryDelay, retryAfterSeconds);
+        const retryAfterSeconds = mapped instanceof RateLimitError ? mapped.retryAfter : undefined
+        const delay = getRetryDelayMs(attempt + 1, retryDelay, retryAfterSeconds)
         if (enableLogging) {
-          console.info(
-            `dify-client-node retry ${attempt + 1} in ${delay}ms for ${method} ${url}`
-          );
+          console.info(`dify-client-node retry ${attempt + 1} in ${delay}ms for ${method} ${url}`)
         }
-        attempt += 1;
-        await sleep(delay);
+        attempt += 1
+        await sleep(delay)
+      } finally {
+        timeoutContext.cleanup()
       }
     }
   }

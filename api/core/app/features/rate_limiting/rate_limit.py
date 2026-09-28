@@ -19,6 +19,7 @@ class RateLimit:
     _REQUEST_MAX_ALIVE_TIME = 10 * 60  # 10 minutes
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
     _instance_dict: dict[str, "RateLimit"] = {}
+    max_active_requests: int
 
     def __new__(cls, client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
@@ -27,7 +28,13 @@ class RateLimit:
         return cls._instance_dict[client_id]
 
     def __init__(self, client_id: str, max_active_requests: int):
+        flush_cache = hasattr(self, "max_active_requests") and self.max_active_requests != max_active_requests
         self.max_active_requests = max_active_requests
+        # Only flush here if this instance has already been fully initialized,
+        # i.e. the Redis key attributes exist. Otherwise, rely on the flush at
+        # the end of initialization below.
+        if flush_cache and hasattr(self, "active_requests_key") and hasattr(self, "max_active_requests_key"):
+            self.flush_cache(use_local_value=True)
         # must be called after max_active_requests is set
         if self.disabled():
             return
@@ -41,8 +48,6 @@ class RateLimit:
         self.flush_cache(use_local_value=True)
 
     def flush_cache(self, use_local_value=False):
-        if self.disabled():
-            return
         self.last_recalculate_time = time.time()
         # flush max active requests
         if use_local_value or not redis_client.exists(self.max_active_requests_key):
@@ -50,7 +55,8 @@ class RateLimit:
         else:
             self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode("utf-8"))
             redis_client.expire(self.max_active_requests_key, timedelta(days=1))
-
+        if self.disabled():
+            return
         # flush max active requests (in-transit request list)
         if not redis_client.exists(self.active_requests_key):
             return

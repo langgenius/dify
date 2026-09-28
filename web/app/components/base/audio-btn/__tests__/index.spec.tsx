@@ -1,14 +1,14 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
-import { useParams, usePathname } from 'next/navigation'
-import AudioBtn from '../index'
+import { useParams, usePathname } from '@/next/navigation'
+import { AudioBtn } from '../index'
 
 const mockPlayAudio = vi.fn()
 const mockPauseAudio = vi.fn()
 const mockGetAudioPlayer = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
   usePathname: vi.fn(),
 }))
@@ -32,7 +32,7 @@ describe('AudioBtn', () => {
 
   const hoverAndCheckTooltip = async (expectedText: string) => {
     await userEvent.hover(getButton())
-    expect(await screen.findByText(expectedText)).toBeInTheDocument()
+    expect(await screen.findByText(expectedText))!.toBeInTheDocument()
   }
 
   const getLatestAudioCallback = () => {
@@ -64,20 +64,13 @@ describe('AudioBtn', () => {
     it('should render button with play tooltip by default', async () => {
       render(<AudioBtn value="hello" />)
 
-      expect(getButton()).toBeInTheDocument()
+      expect(getButton())!.toBeInTheDocument()
       expect(getButton()).not.toBeDisabled()
       await hoverAndCheckTooltip('play')
     })
-
-    it('should apply className in initial state', () => {
-      const { container } = render(<AudioBtn value="hello" className="custom-wrapper" />)
-      const wrapper = container.firstElementChild
-
-      expect(wrapper).toHaveClass('custom-wrapper')
-    })
   })
 
-  // URL path resolution for app/public audio endpoints.
+  // URL path resolution for app, agent, and public audio endpoints.
   describe('URL routing', () => {
     it('should call public text-to-audio endpoint when token exists', async () => {
       mockUseParams({ token: 'public-token' })
@@ -87,8 +80,8 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/text-to-audio')
-      expect(call[1]).toBe(true)
+      expect(call![0]).toBe('/text-to-audio')
+      expect(call![1]).toBe(true)
     })
 
     it('should call app endpoint when appId exists', async () => {
@@ -100,21 +93,40 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/apps/123/text-to-audio')
-      expect(call[1]).toBe(false)
+      expect(call![0]).toBe('/apps/123/text-to-audio')
+      expect(call![1]).toBe(false)
     })
 
-    it('should call installed app endpoint for explore installed routes', async () => {
+    it('should call installed app endpoint for installed app routes', async () => {
       mockUseParams({ appId: '456' })
-      mockUsePathname('/explore/installed/app/456')
+      mockUsePathname('/installed/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/installed-apps/456/text-to-audio')
-      expect(call[1]).toBe(false)
+      expect(call![0]).toBe('/installed-apps/456/text-to-audio')
+      expect(call![1]).toBe(false)
+    })
+
+    it('should play the selected voice preview through the agent endpoint', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ agentId: 'agent-123' })
+      mockUsePathname('/agents/agent-123/configure')
+
+      render(<AudioBtn isAudition value="This is a voice preview." voice="alloy" />)
+      await user.click(screen.getByRole('button', { name: 'play' }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-123/text-to-audio',
+        false,
+        undefined,
+        'This is a voice preview.',
+        'alloy',
+        expect.any(Function),
+      )
+      expect(mockPlayAudio).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -126,9 +138,9 @@ describe('AudioBtn', () => {
 
       await waitFor(() => {
         expect(mockPlayAudio).toHaveBeenCalledTimes(1)
-        expect(getButton()).toBeDisabled()
+        expect(getButton())!.toBeDisabled()
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(getButton()).toHaveAccessibleName('loading')
       await hoverAndCheckTooltip('loading')
     })
 
@@ -159,20 +171,23 @@ describe('AudioBtn', () => {
       })
 
       await hoverAndCheckTooltip('loading')
-      expect(getButton()).toBeDisabled()
+      expect(getButton())!.toBeDisabled()
     })
 
-    it.each(['ended', 'paused', 'error'])('should return to play tooltip when %s event is received', async (event) => {
-      render(<AudioBtn value="test" />)
-      await userEvent.click(getButton())
+    it.each(['ended', 'paused', 'error'])(
+      'should return to play tooltip when %s event is received',
+      async (event) => {
+        render(<AudioBtn value="test" />)
+        await userEvent.click(getButton())
 
-      await act(() => {
-        getLatestAudioCallback()(event)
-      })
+        await act(() => {
+          getLatestAudioCallback()(event)
+        })
 
-      await hoverAndCheckTooltip('play')
-      expect(getButton()).not.toBeDisabled()
-    })
+        await hoverAndCheckTooltip('play')
+        expect(getButton()).not.toBeDisabled()
+      },
+    )
   })
 
   // Prop forwarding and minimal-input behavior.
@@ -183,20 +198,20 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[2]).toBe('msg-1')
-      expect(call[3]).toBe('hello')
-      expect(call[4]).toBe('en-US')
+      expect(call![2]).toBe('msg-1')
+      expect(call![3]).toBe('hello')
+      expect(call![4]).toBe('en-US')
     })
 
-    it('should keep empty route when neither token nor appId is present', async () => {
+    it('should keep empty route when no token, appId, or agentId is present', async () => {
       render(<AudioBtn />)
       await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('')
-      expect(call[1]).toBe(false)
-      expect(call[3]).toBeUndefined()
+      expect(call![0]).toBe('')
+      expect(call![1]).toBe(false)
+      expect(call![3]).toBeUndefined()
     })
   })
 })

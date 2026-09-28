@@ -3,14 +3,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessageRole,
@@ -19,6 +18,7 @@ from dify_graph.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from models.model import Conversation
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test__get_completion_model_prompt_messages():
@@ -128,15 +128,15 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
     )
 
 
-def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args):
+def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args, monkeypatch: pytest.MonkeyPatch):
     model_config_mock, _, messages, inputs, context = get_chat_model_args
-    dify_config.MULTIMODAL_SEND_FORMAT = "url"
+    apply_config_overrides(monkeypatch, MULTIMODAL_SEND_FORMAT="url")
 
     files = [
         File(
-            id="file1",
+            file_id="file1",
             tenant_id="tenant1",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image1.jpg",
             storage_key="",
@@ -145,7 +145,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
 
     prompt_transform = AdvancedPromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
-    with patch("dify_graph.file.file_manager.to_prompt_message_content", autospec=True) as mock_get_encoded_string:
+    with patch("graphon.file.file_manager.to_prompt_message_content", autospec=True) as mock_get_encoded_string:
         mock_get_encoded_string.return_value = ImagePromptMessageContent(
             url=str(files[0].remote_url), format="jpg", mime_type="image/jpg"
         )
@@ -245,9 +245,9 @@ def test_completion_prompt_jinja2_with_files():
     completion_template = CompletionModelPromptTemplate(text="Hi {{name}}", edition_type="jinja2")
 
     file = File(
-        id="file1",
+        file_id="file1",
         tenant_id="tenant1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
         storage_key="",
@@ -379,9 +379,9 @@ def test_chat_prompt_memory_with_files_and_query():
     memory = MagicMock(spec=TokenBufferMemory)
     prompt_template = [ChatModelMessage(text="sys", role=PromptMessageRole.SYSTEM)]
     file = File(
-        id="file1",
+        file_id="file1",
         tenant_id="tenant1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
         storage_key="",
@@ -413,9 +413,9 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     transform = AdvancedPromptTransform()
     model_config_mock = MagicMock(spec=ModelConfigEntity)
     file = File(
-        id="file1",
+        file_id="file1",
         tenant_id="tenant1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
         storage_key="",
@@ -463,9 +463,9 @@ def test_chat_prompt_files_with_query_branch():
     transform = AdvancedPromptTransform()
     model_config_mock = MagicMock(spec=ModelConfigEntity)
     file = File(
-        id="file1",
+        file_id="file1",
         tenant_id="tenant1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
         storage_key="",

@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-vikingdb"
+version = "0.0.1"
+
+dependencies = [
+    "volcengine-compat~=1.0.0",
+]
+description = "Dify vector store backend (dify-vdb-vikingdb)."
+
+[project.entry-points."dify.vector_backends"]
+vikingdb = "dify_vdb_vikingdb.vikingdb_vector:VikingDBVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

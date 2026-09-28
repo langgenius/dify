@@ -1,25 +1,17 @@
 # Dify Frontend
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js] application with [vinext] as the default local development server.
 
 ## Getting Started
 
 ### Run by source code
 
-Before starting the web frontend service, please make sure the following environment is ready.
+The required Node.js and pnpm versions are pinned by the repository root `devEngines.runtime` and `packageManager` fields. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
 
-- [Node.js](https://nodejs.org)
-- [pnpm](https://pnpm.io)
+- [Node.js]
+- [pnpm]
 
-> [!TIP]
-> It is recommended to install and enable Corepack to manage package manager versions automatically:
->
-> ```bash
-> npm install -g corepack
-> corepack enable
-> ```
->
-> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
+Run the following commands from the repository root.
 
 First, install the dependencies:
 
@@ -27,29 +19,12 @@ First, install the dependencies:
 pnpm install
 ```
 
-Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
+Then, configure the environment variables.
+Create `web/.env.local` and copy the contents from `web/.env.example`.
+Modify the values of these environment variables according to your requirements:
 
 ```bash
-cp .env.example .env.local
-```
-
-```txt
-# For production release, change this to PRODUCTION
-NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
-# The deployment edition, SELF_HOSTED
-NEXT_PUBLIC_EDITION=SELF_HOSTED
-# The base URL of console application, refers to the Console base URL of WEB service if console domain is
-# different from api or web app domain.
-# example: http://cloud.dify.ai/console/api
-NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
-NEXT_PUBLIC_COOKIE_DOMAIN=
-# The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
-# console or api domain.
-# example: http://udify.app/api
-NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
-
-# SENTRY
-NEXT_PUBLIC_SENTRY_DSN=
+cp web/.env.example web/.env.local
 ```
 
 > [!IMPORTANT]
@@ -57,15 +32,18 @@ NEXT_PUBLIC_SENTRY_DSN=
 > 1. When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1. The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 > 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
-Finally, run the development server:
+Finally, start the default development stack from the repository root. This runs vinext and the local API proxy together:
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use `pnpm -C web dev` only when you specifically need the Next.js development server without the default vinext process. Proxy environment variables are documented in `web/.env.example`; route ownership remains in `web/dev-proxy.config.ts`.
 
-You can start editing the file under folder `app`. The page auto-updates as you edit the file.
+Open <http://localhost:3000> with your browser to see the result.
+
+You can start editing the files under `web/app`.
+The page auto-updates as you edit the file.
 
 ## Deploy
 
@@ -74,67 +52,55 @@ You can start editing the file under folder `app`. The page auto-updates as you 
 First, build the app for production:
 
 ```bash
-pnpm run build
+pnpm -C web run build
 ```
 
 Then, start the server:
 
 ```bash
-pnpm run start
+pnpm -C web run start
+```
+
+If you build the Docker image manually, use the repository root as the build context:
+
+```bash
+docker build -f web/Dockerfile -t dify-web .
 ```
 
 If you want to customize the host and port:
 
 ```bash
-pnpm run start --port=3001 --host=0.0.0.0
+pnpm -C web run start --port=3001 --host=0.0.0.0
 ```
 
 ## Storybook
 
-This project uses [Storybook](https://storybook.js.org/) for UI component development.
+This project uses [Storybook] for UI component development.
 
 To start the storybook server, run:
 
 ```bash
-pnpm storybook
+pnpm -C web storybook
 ```
 
-Open [http://localhost:6006](http://localhost:6006) with your browser to see the result.
+Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
 
-Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
+Then follow the [Lint Documentation] to lint the code.
 
 ## Test
 
-We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
-
-**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
-
-Run test:
+We use [Vitest] and [React Testing Library] through Vite+. Run unit tests in `happy-dom` with:
 
 ```bash
-pnpm test
+cd web
+vp test run --project unit
 ```
 
-### Example Code
-
-If you are not familiar with writing tests, refer to:
-
-- [classnames.spec.ts](./utils/classnames.spec.ts) - Utility function test example
-- [index.spec.tsx](./app/components/base/button/index.spec.tsx) - Component test example
-
-### Analyze Component Complexity
-
-Before writing tests, use the script to analyze component complexity:
-
-```bash
-pnpm analyze-component app/components/your-component/index.tsx
-```
-
-This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
+Select a project explicitly; bare `vp test` also runs Browser Mode. Use `vp` instead of the standalone `vitest` command. The [Frontend Testing Guide] owns test policy, Browser Mode admission, and diagnostic commands.
 
 ## Documentation
 
@@ -142,4 +108,16 @@ Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 
-The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
+The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
+
+[Discord community]: https://discord.gg/5AEfbxcd9k
+[Frontend Testing Guide]: ./docs/test.md
+[Lint Documentation]: ./docs/lint.md
+[Next.js]: https://nextjs.org
+[Node.js]: https://nodejs.org
+[React Testing Library]: https://testing-library.com/docs/react-testing-library/intro
+[Storybook]: https://storybook.js.org
+[Vite+]: https://viteplus.dev
+[Vitest]: https://vitest.dev
+[pnpm]: https://pnpm.io
+[vinext]: https://github.com/cloudflare/vinext

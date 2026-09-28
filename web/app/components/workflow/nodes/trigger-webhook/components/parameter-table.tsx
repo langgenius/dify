@@ -26,39 +26,40 @@ const ParameterTable: FC<ParameterTableProps> = ({
   placeholder,
   contentType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowIntegrations'])
 
-  // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
-  const typeOptions = useMemo(() =>
-    createParameterTypeOptions(contentType), [contentType])
+  // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
+  const typeOptions = useMemo(() => createParameterTypeOptions(contentType), [contentType])
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: t('nodes.triggerWebhook.varName', { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.varName'], { ns: 'workflowIntegrations' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t('nodes.triggerWebhook.varNamePlaceholder', { ns: 'workflow' }),
+      placeholder: t(($) => $['nodes.triggerWebhook.varNamePlaceholder'], {
+        ns: 'workflowIntegrations',
+      }),
     },
     {
       key: 'type',
-      title: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflowIntegrations' }),
       type: 'select',
       width: 'w-[120px]',
-      placeholder: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
+      placeholder: t(($) => $['nodes.triggerWebhook.varType'], { ns: 'workflowIntegrations' }),
       options: typeOptions,
     },
     {
       key: 'required',
-      title: t('nodes.triggerWebhook.required', { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.required'], { ns: 'workflowIntegrations' }),
       type: 'switch',
       width: 'w-[88px]',
     },
   ]
 
   // Choose sensible default type for new rows according to content type
-  const defaultTypeValue: VarType = typeOptions[0]?.value || 'string'
+  const defaultTypeValue: VarType = typeOptions[0]?.value! || 'string'
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
@@ -67,7 +68,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
     required: false,
   }
 
-  const tableData: GenericTableRow[] = parameters.map(param => ({
+  const tableData: GenericTableRow[] = parameters.map((param) => ({
     key: param.name,
     type: param.type,
     required: param.required,
@@ -80,16 +81,19 @@ const ParameterTable: FC<ParameterTableProps> = ({
     const isOctetStream = (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
-      .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
-      .map(row => ({
+      .filter((row) => typeof row.key === 'string' && (row.key as string).trim() !== '')
+      .map((row) => ({
         name: String(row.key),
-        type: isTextPlain ? VarType.string : isOctetStream ? VarType.file : normalizeParameterType((row.type as string)),
+        type: isTextPlain
+          ? VarType.string
+          : isOctetStream
+            ? VarType.file
+            : normalizeParameterType(row.type as string),
         required: Boolean(row.required),
       }))
 
-    const newParams: WebhookParameter[] = (isTextPlain || isOctetStream)
-      ? normalized.slice(0, 1)
-      : normalized
+    const newParams: WebhookParameter[] =
+      isTextPlain || isOctetStream ? normalized.slice(0, 1) : normalized
 
     onChange(newParams)
   }
@@ -101,7 +105,10 @@ const ParameterTable: FC<ParameterTableProps> = ({
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={placeholder || t('nodes.triggerWebhook.noParameters', { ns: 'workflow' })}
+      placeholder={
+        placeholder ||
+        t(($) => $['nodes.triggerWebhook.noParameters'], { ns: 'workflowIntegrations' })
+      }
       emptyRowData={emptyRowData}
       showHeader={true}
     />

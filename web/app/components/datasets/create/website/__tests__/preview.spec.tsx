@@ -1,6 +1,6 @@
 import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import WebsitePreview from '../preview'
 
 // Mock Setup
@@ -36,14 +36,6 @@ describe('WebsitePreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const payload = createPayload()
-
-      render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
-
-      expect(screen.getByText('Test Page Title')).toBeInTheDocument()
-    })
-
     it('should render the page preview header text', () => {
       const payload = createPayload()
 
@@ -84,9 +76,7 @@ describe('WebsitePreview', () => {
 
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      // Assert - the close button container is a div with cursor-pointer
-      const closeButton = screen.getByText(/pagePreview/i).parentElement?.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /operation\.close$/ })).toBeInTheDocument()
     })
   })
 
@@ -95,11 +85,7 @@ describe('WebsitePreview', () => {
       const payload = createPayload()
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      // Act - find the close button div with cursor-pointer class
-      const closeButton = screen.getByText(/pagePreview/i)
-        .closest('[class*="title"]')!
-        .querySelector('.cursor-pointer') as HTMLElement
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(mockHidePreview).toHaveBeenCalledTimes(1)
     })
@@ -108,9 +94,7 @@ describe('WebsitePreview', () => {
       const payload = createPayload()
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      const closeButton = screen.getByText(/pagePreview/i)
-        .closest('[class*="title"]')!
-        .querySelector('.cursor-pointer') as HTMLElement
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)
 
@@ -181,17 +165,4 @@ describe('WebsitePreview', () => {
   })
 
   // CSS Module Classes
-  describe('CSS Module Classes', () => {
-    it('should apply filePreview class to root container', () => {
-      const payload = createPayload()
-
-      const { container } = render(
-        <WebsitePreview payload={payload} hidePreview={mockHidePreview} />,
-      )
-
-      const root = container.firstElementChild
-      expect(root?.className).toContain('filePreview')
-      expect(root?.className).toContain('h-full')
-    })
-  })
 })

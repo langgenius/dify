@@ -1,5 +1,4 @@
 import type { EditorThemeClasses } from 'lexical'
-
 import './theme.css'
 
 const theme: EditorThemeClasses = {
@@ -8,7 +7,7 @@ const theme: EditorThemeClasses = {
     ul: 'note-editor-theme_list-ul',
     listitem: 'note-editor-theme_list-li',
   },
-  link: 'note-editor-theme_link',
+  link: 'note-editor-theme_link nodrag nopan nowheel',
   text: {
     italic: 'note-editor-theme_text-italic',
     strikethrough: 'note-editor-theme_text-strikethrough',

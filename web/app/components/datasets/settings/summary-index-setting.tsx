@@ -1,18 +1,14 @@
-import type { ChangeEvent } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
-import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 
 type SummaryIndexSettingProps = {
   entry?: 'knowledge-base' | 'dataset-settings' | 'create-document'
@@ -26,10 +22,15 @@ const SummaryIndexSetting = ({
   onSummaryIndexSettingChange,
   readonly = false,
 }: SummaryIndexSettingProps) => {
-  const { t } = useTranslation()
-  const {
-    data: textGenerationModelList,
-  } = useModelList(ModelTypeEnum.textGeneration)
+  const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
+  const summaryLabelId = useId()
+  const summaryModelLabelId = useId()
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const summaryIndexModelConfig = useMemo(() => {
     if (!summaryIndexSetting?.model_name || !summaryIndexSetting?.model_provider_name)
       return undefined
@@ -40,68 +41,92 @@ const SummaryIndexSetting = ({
     }
   }, [summaryIndexSetting?.model_name, summaryIndexSetting?.model_provider_name])
 
-  const handleSummaryIndexEnableChange = useCallback((value: boolean) => {
-    onSummaryIndexSettingChange?.({
-      enable: value,
-    })
-  }, [onSummaryIndexSettingChange])
+  const handleSummaryIndexEnableChange = useCallback(
+    (value: boolean) => {
+      onSummaryIndexSettingChange?.({
+        enable: value,
+      })
+    },
+    [onSummaryIndexSettingChange],
+  )
 
-  const handleSummaryIndexModelChange = useCallback((model: DefaultModel) => {
-    onSummaryIndexSettingChange?.({
-      model_provider_name: model.provider,
-      model_name: model.model,
-    })
-  }, [onSummaryIndexSettingChange])
+  const handleSummaryIndexModelChange = useCallback(
+    (model: DefaultModel) => {
+      onSummaryIndexSettingChange?.({
+        model_provider_name: model.provider,
+        model_name: model.model,
+      })
+    },
+    [onSummaryIndexSettingChange],
+  )
 
-  const handleSummaryIndexPromptChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-    onSummaryIndexSettingChange?.({
-      summary_prompt: e.target.value,
-    })
-  }, [onSummaryIndexSettingChange])
+  const handleSummaryIndexPromptChange = useCallback(
+    (value: string) => {
+      onSummaryIndexSettingChange?.({
+        summary_prompt: value,
+      })
+    },
+    [onSummaryIndexSettingChange],
+  )
 
   if (entry === 'knowledge-base') {
     return (
       <div>
         <div className="flex h-6 items-center justify-between">
-          <div className="system-sm-semibold-uppercase flex items-center text-text-secondary">
-            {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
-            <Tooltip
-              triggerClassName="ml-1 h-4 w-4 shrink-0"
-              popupContent={t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
-            >
-            </Tooltip>
+          <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
+            <span id={summaryLabelId}>
+              {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
+            </span>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={summaryLabelId} className="ml-1" />
+              <InfotipContent aria-labelledby={summaryLabelId}>
+                {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+              </InfotipContent>
+            </Infotip>
           </div>
           <Switch
-            value={summaryIndexSetting?.enable ?? false}
-            onChange={handleSummaryIndexEnableChange}
+            aria-labelledby={summaryLabelId}
+            checked={summaryIndexSetting?.enable ?? false}
+            onCheckedChange={handleSummaryIndexEnableChange}
             size="md"
+            disabled={readonly}
           />
         </div>
-        {
-          summaryIndexSetting?.enable && (
-            <div>
-              <div className="system-xs-medium-uppercase mb-1.5 mt-2 flex h-6 items-center text-text-tertiary">
-                {t('form.summaryModel', { ns: 'datasetSettings' })}
-              </div>
-              <ModelSelector
-                defaultModel={summaryIndexModelConfig && { provider: summaryIndexModelConfig.providerName, model: summaryIndexModelConfig.modelName }}
-                modelList={textGenerationModelList}
-                onSelect={handleSummaryIndexModelChange}
-                readonly={readonly}
-                showDeprecatedWarnIcon
-              />
-              <div className="system-xs-medium-uppercase mt-3 flex h-6 items-center text-text-tertiary">
-                {t('form.summaryInstructions', { ns: 'datasetSettings' })}
-              </div>
-              <Textarea
-                value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
-                disabled={readonly}
-                placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
-              />
+        {summaryIndexSetting?.enable && (
+          <div>
+            <div
+              id={summaryModelLabelId}
+              className="mt-2 mb-1.5 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary"
+            >
+              {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
-          )
-        }
+            <ModelSelector
+              aria-labelledby={summaryModelLabelId}
+              value={
+                summaryIndexModelConfig && {
+                  provider: summaryIndexModelConfig.providerName,
+                  model: summaryIndexModelConfig.modelName,
+                }
+              }
+              models={textGenerationModelList}
+              onValueChange={handleSummaryIndexModelChange}
+              disabled={readonly}
+              showDeprecatedWarnIcon
+            />
+            <div className="mt-3 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
+            </div>
+            <Textarea
+              aria-label={t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
+              value={summaryIndexSetting?.summary_prompt ?? ''}
+              onValueChange={handleSummaryIndexPromptChange}
+              disabled={readonly}
+              placeholder={t(($) => $['form.summaryInstructionsPlaceholder'], {
+                ns: 'datasetSettings',
+              })}
+            />
+          </div>
+        )}
       </div>
     )
   }
@@ -109,72 +134,78 @@ const SummaryIndexSetting = ({
   if (entry === 'dataset-settings') {
     return (
       <div className="space-y-4">
-        <div className="flex gap-x-1">
-          <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-            <div className="system-sm-semibold text-text-secondary">
-              {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
+        <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1">
+          <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
+            <div id={summaryLabelId} className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="py-1.5">
-            <div className="system-sm-semibold flex items-center text-text-secondary">
+            <div className="flex items-center system-sm-semibold text-text-secondary">
               <Switch
+                aria-labelledby={summaryLabelId}
                 className="mr-2"
-                value={summaryIndexSetting?.enable ?? false}
-                onChange={handleSummaryIndexEnableChange}
+                checked={summaryIndexSetting?.enable ?? false}
+                onCheckedChange={handleSummaryIndexEnableChange}
                 size="md"
+                disabled={readonly}
               />
-              {
-                summaryIndexSetting?.enable ? t('list.status.enabled', { ns: 'datasetDocuments' }) : t('list.status.disabled', { ns: 'datasetDocuments' })
-              }
+              {summaryIndexSetting?.enable
+                ? t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' })
+                : t(($) => $['list.status.disabled'], { ns: 'datasetDocuments' })}
             </div>
-            <div className="system-sm-regular mt-2 text-text-tertiary">
-              {
-                summaryIndexSetting?.enable && t('form.summaryAutoGenTip', { ns: 'datasetSettings' })
-              }
-              {
-                !summaryIndexSetting?.enable && t('form.summaryAutoGenEnableTip', { ns: 'datasetSettings' })
-              }
+            <div className="mt-2 system-sm-regular text-text-tertiary">
+              {summaryIndexSetting?.enable &&
+                t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+              {!summaryIndexSetting?.enable &&
+                t(($) => $['form.summaryAutoGenEnableTip'], { ns: 'datasetSettings' })}
             </div>
           </div>
         </div>
-        {
-          summaryIndexSetting?.enable && (
-            <>
-              <div className="flex gap-x-1">
-                <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-                  <div className="system-sm-medium text-text-tertiary">
-                    {t('form.summaryModel', { ns: 'datasetSettings' })}
-                  </div>
-                </div>
-                <div className="grow">
-                  <ModelSelector
-                    defaultModel={summaryIndexModelConfig && { provider: summaryIndexModelConfig.providerName, model: summaryIndexModelConfig.modelName }}
-                    modelList={textGenerationModelList}
-                    onSelect={handleSummaryIndexModelChange}
-                    readonly={readonly}
-                    showDeprecatedWarnIcon
-                    triggerClassName="h-8"
-                  />
+        {summaryIndexSetting?.enable && (
+          <>
+            <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1">
+              <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
+                <div id={summaryModelLabelId} className="system-sm-medium text-text-tertiary">
+                  {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
                 </div>
               </div>
-              <div className="flex">
-                <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-                  <div className="system-sm-medium text-text-tertiary">
-                    {t('form.summaryInstructions', { ns: 'datasetSettings' })}
-                  </div>
-                </div>
-                <div className="grow">
-                  <Textarea
-                    value={summaryIndexSetting?.summary_prompt ?? ''}
-                    onChange={handleSummaryIndexPromptChange}
-                    disabled={readonly}
-                    placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
-                  />
+              <div className="min-w-0 grow">
+                <ModelSelector
+                  aria-labelledby={summaryModelLabelId}
+                  value={
+                    summaryIndexModelConfig && {
+                      provider: summaryIndexModelConfig.providerName,
+                      model: summaryIndexModelConfig.modelName,
+                    }
+                  }
+                  models={textGenerationModelList}
+                  onValueChange={handleSummaryIndexModelChange}
+                  disabled={readonly}
+                  showDeprecatedWarnIcon
+                />
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row">
+              <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
+                <div className="system-sm-medium text-text-tertiary">
+                  {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
                 </div>
               </div>
-            </>
-          )
-        }
+              <div className="min-w-0 grow">
+                <Textarea
+                  aria-label={t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
+                  value={summaryIndexSetting?.summary_prompt ?? ''}
+                  onValueChange={handleSummaryIndexPromptChange}
+                  disabled={readonly}
+                  placeholder={t(($) => $['form.summaryInstructionsPlaceholder'], {
+                    ns: 'datasetSettings',
+                  })}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     )
   }
@@ -183,45 +214,56 @@ const SummaryIndexSetting = ({
     <div className="space-y-3">
       <div className="flex h-6 items-center">
         <Switch
+          aria-labelledby={summaryLabelId}
           className="mr-2"
-          value={summaryIndexSetting?.enable ?? false}
-          onChange={handleSummaryIndexEnableChange}
+          checked={summaryIndexSetting?.enable ?? false}
+          onCheckedChange={handleSummaryIndexEnableChange}
           size="md"
+          disabled={readonly}
         />
-        <div className="system-sm-semibold text-text-secondary">
-          {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
+        <div id={summaryLabelId} className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
         </div>
       </div>
-      {
-        summaryIndexSetting?.enable && (
-          <>
-            <div>
-              <div className="system-sm-medium mb-1.5 flex h-6 items-center text-text-secondary">
-                {t('form.summaryModel', { ns: 'datasetSettings' })}
-              </div>
-              <ModelSelector
-                defaultModel={summaryIndexModelConfig && { provider: summaryIndexModelConfig.providerName, model: summaryIndexModelConfig.modelName }}
-                modelList={textGenerationModelList}
-                onSelect={handleSummaryIndexModelChange}
-                readonly={readonly}
-                showDeprecatedWarnIcon
-                triggerClassName="h-8"
-              />
+      {summaryIndexSetting?.enable && (
+        <>
+          <div>
+            <div
+              id={summaryModelLabelId}
+              className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
+              {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
-            <div>
-              <div className="system-sm-medium mb-1.5 flex h-6 items-center text-text-secondary">
-                {t('form.summaryInstructions', { ns: 'datasetSettings' })}
-              </div>
-              <Textarea
-                value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
-                disabled={readonly}
-                placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
-              />
+            <ModelSelector
+              aria-labelledby={summaryModelLabelId}
+              value={
+                summaryIndexModelConfig && {
+                  provider: summaryIndexModelConfig.providerName,
+                  model: summaryIndexModelConfig.modelName,
+                }
+              }
+              models={textGenerationModelList}
+              onValueChange={handleSummaryIndexModelChange}
+              disabled={readonly}
+              showDeprecatedWarnIcon
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary">
+              {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
             </div>
-          </>
-        )
-      }
+            <Textarea
+              aria-label={t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
+              value={summaryIndexSetting?.summary_prompt ?? ''}
+              onValueChange={handleSummaryIndexPromptChange}
+              disabled={readonly}
+              placeholder={t(($) => $['form.summaryInstructionsPlaceholder'], {
+                ns: 'datasetSettings',
+              })}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 }

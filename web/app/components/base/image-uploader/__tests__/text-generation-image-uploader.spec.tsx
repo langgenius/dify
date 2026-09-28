@@ -123,13 +123,7 @@ describe('TextGenerationImageUploader', () => {
       const settings = createSettings({
         transfer_methods: [TransferMethod.local_file],
       })
-      render(
-        <TextGenerationImageUploader
-          settings={settings}
-          onFilesChange={vi.fn()}
-          disabled
-        />,
-      )
+      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} disabled />)
 
       const fileInput = screen.getByTestId('local-file-input')
       expect(fileInput).toBeDisabled()
@@ -142,13 +136,15 @@ describe('TextGenerationImageUploader', () => {
         number_limits: 1,
         transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
       })
-      mocks.files = [{
-        type: TransferMethod.remote_url,
-        _id: 'file-1',
-        fileId: 'id-1',
-        progress: 100,
-        url: 'https://example.com/image.png',
-      }]
+      mocks.files = [
+        {
+          type: TransferMethod.remote_url,
+          _id: 'file-1',
+          fileId: 'id-1',
+          progress: 100,
+          url: 'https://example.com/image.png',
+        },
+      ]
       render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
 
       const fileInput = screen.getByTestId('local-file-input')
@@ -156,7 +152,9 @@ describe('TextGenerationImageUploader', () => {
       expect(mocks.localUploaderArgs?.disabled).toBe(true)
 
       await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
-      expect(screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder')).not.toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -183,18 +181,24 @@ describe('TextGenerationImageUploader', () => {
       render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
 
       await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
-      const input = await screen.findByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder')
+      const input = await screen.findByPlaceholderText(
+        'common.imageUploader.pasteImageLinkInputPlaceholder',
+      )
       await user.type(input, 'https://example.com/remote.png')
       await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
-      expect(mocks.onUpload).toHaveBeenCalledWith(expect.objectContaining({
-        type: TransferMethod.remote_url,
-        url: 'https://example.com/remote.png',
-        progress: 0,
-      }))
+      expect(mocks.onUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: TransferMethod.remote_url,
+          url: 'https://example.com/remote.png',
+          progress: 0,
+        }),
+      )
 
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -204,16 +208,20 @@ describe('TextGenerationImageUploader', () => {
       const onFilesChange = vi.fn()
       const settings = createSettings()
 
-      const { rerender } = render(<TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />)
+      const { rerender } = render(
+        <TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />,
+      )
       expect(onFilesChange).toHaveBeenCalledWith([])
 
-      const updatedFiles: ImageFile[] = [{
-        type: TransferMethod.remote_url,
-        _id: 'new-file',
-        fileId: '',
-        progress: 0,
-        url: 'https://example.com/new.png',
-      }]
+      const updatedFiles: ImageFile[] = [
+        {
+          type: TransferMethod.remote_url,
+          _id: 'new-file',
+          fileId: '',
+          progress: 0,
+          url: 'https://example.com/new.png',
+        },
+      ]
       mocks.files = updatedFiles
       rerender(<TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />)
 

@@ -1,11 +1,11 @@
 'use client'
 import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 const variants = cva([], {
   variants: {
@@ -20,7 +20,7 @@ const variants = cva([], {
   },
 })
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: string
   onSelect: () => void
@@ -28,7 +28,8 @@ type Props = {
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
   tooltip?: string
-} & VariantProps<typeof variants>
+}> &
+  VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
   className,
@@ -39,35 +40,38 @@ const OptionCard: FC<Props> = ({
   align = 'center',
   tooltip,
 }) => {
+  const titleId = React.useId()
+
   const handleSelect = useCallback(() => {
-    if (selected || disabled)
-      return
+    if (selected || disabled) return
     onSelect()
   }, [onSelect, selected, disabled])
 
   return (
     <div
       className={cn(
-        'system-sm-regular flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
-        (!selected && !disabled) && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-        selected && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
+        'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+        !selected &&
+          !disabled &&
+          'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        selected &&
+          !disabled &&
+          'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
         disabled && 'text-text-disabled',
         variants({ align }),
         className,
       )}
       onClick={handleSelect}
     >
-      <span>{title}</span>
-      {tooltip
-        && (
-          <Tooltip
-            popupContent={(
-              <div className="w-[240px]">
-                {tooltip}
-              </div>
-            )}
-          />
-        )}
+      <span id={titleId}>{title}</span>
+      {tooltip && (
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-60">
+            {tooltip}
+          </InfotipContent>
+        </Infotip>
+      )}
     </div>
   )
 }

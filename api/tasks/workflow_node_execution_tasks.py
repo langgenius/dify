@@ -7,15 +7,17 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from dify_graph.entities.workflow_node_execution import (
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_node_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,
@@ -53,7 +55,12 @@ def save_workflow_node_execution_task(
 
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == app_id,
+                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                )
             )
 
             if existing_execution:
@@ -125,7 +132,7 @@ def _create_node_execution_from_domain(
     else:
         node_execution.execution_metadata = "{}"
 
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.created_by_role = creator_user_role
@@ -143,8 +150,9 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_data = preserve_workflow_agent_binding_id(node_execution.process_data_dict, execution.process_data)
     node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
     )
     node_execution.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
@@ -159,7 +167,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = "{}"
 
     # Update other fields
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.finished_at = execution.finished_at

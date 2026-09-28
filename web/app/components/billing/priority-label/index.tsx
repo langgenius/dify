@@ -1,66 +1,55 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAedFill } from '@remixicon/react'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
-import {
-  DocumentProcessingPriority,
-  Plan,
-} from '../type'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 
 type PriorityLabelProps = {
   className?: string
 }
 
 const PriorityLabel = ({ className }: PriorityLabelProps) => {
-  const { t } = useTranslation()
-  const { plan } = useProviderContext()
+  const { t } = useTranslation(['billing'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
 
-  const priority = useMemo(() => {
-    if (plan.type === Plan.sandbox)
-      return DocumentProcessingPriority.standard
-
-    if (plan.type === Plan.professional)
-      return DocumentProcessingPriority.priority
-
-    if (plan.type === Plan.team || plan.type === Plan.enterprise)
-      return DocumentProcessingPriority.topPriority
-
-    return DocumentProcessingPriority.standard
-  }, [plan])
+  if (deploymentEdition !== 'CLOUD' || plan === undefined) return null
+  const priority = { sandbox: 'standard', professional: 'priority', team: 'top-priority' } as const
+  const label = priority[plan]
 
   return (
-    <Tooltip popupContent={(
-      <div>
-        <div className="mb-1 text-xs font-semibold text-text-primary">
-          {t('plansCommon.documentProcessingPriority', { ns: 'billing' })}
-          :
-          {' '}
-          {t(`plansCommon.priority.${priority}`, { ns: 'billing' })}
-        </div>
-        {
-          priority !== DocumentProcessingPriority.topPriority && (
-            <div className="text-xs text-text-secondary">{t('plansCommon.documentProcessingPriorityTip', { ns: 'billing' })}</div>
-          )
-        }
-      </div>
-    )}
-    >
-      <div
-        className={cn(
-          'system-2xs-medium ml-1 inline-flex h-[18px] shrink-0 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary',
-          className,
+    <div className={cn('ml-1 inline-flex shrink-0 items-center gap-1', className)}>
+      <span className="inline-flex h-4.5 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium text-text-accent-secondary">
+        {(plan === 'professional' || plan === 'team') && (
+          <RiAedFill aria-hidden className="mr-0.5 size-3" />
         )}
-      >
-        {
-          (plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise) && (
-            <RiAedFill className="mr-0.5 size-3" />
-          )
-        }
-        <span>{t(`plansCommon.priority.${priority}`, { ns: 'billing' })}</span>
-      </div>
-    </Tooltip>
+        {t(($) => $[`plansCommon.priority.${label}`], { ns: 'billing' })}
+      </span>
+      <Infotip>
+        <InfotipTrigger
+          aria-label={t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}
+        />
+        <InfotipContent>
+          <InfotipTitle className="font-semibold text-text-primary">
+            {t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}:{' '}
+            {t(($) => $[`plansCommon.priority.${label}`], { ns: 'billing' })}
+          </InfotipTitle>
+          {label !== 'top-priority' && (
+            <div className="mt-1">
+              {t(($) => $['plansCommon.documentProcessingPriorityTip'], { ns: 'billing' })}
+            </div>
+          )}
+        </InfotipContent>
+      </Infotip>
+    </div>
   )
 }
 

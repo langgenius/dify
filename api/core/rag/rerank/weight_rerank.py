@@ -1,8 +1,11 @@
 import math
 from collections import Counter
+from typing import override
 
 import numpy as np
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
@@ -11,7 +14,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -19,13 +22,13 @@ class WeightRerankRunner(BaseRerankRunner):
         self.tenant_id = tenant_id
         self.weights = weights
 
+    @override
     def run(
         self,
         query: str,
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -34,7 +37,6 @@ class WeightRerankRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
 
         :return:
         """
@@ -151,6 +153,7 @@ class WeightRerankRunner(BaseRerankRunner):
 
         return similarities
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def _calculate_cosine(
         self, tenant_id: str, query: str, documents: list[Document], vector_setting: VectorSetting
     ) -> list[float]:
@@ -163,7 +166,7 @@ class WeightRerankRunner(BaseRerankRunner):
         """
         query_vector_scores = []
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=tenant_id,

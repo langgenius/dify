@@ -13,7 +13,7 @@ class TestExternalDataFetch:
         app = Flask(__name__)
         return app
 
-    def test_fetch_success(self, app):
+    def test_fetch_success(self, app: Flask):
         with app.app_context():
             fetcher = ExternalDataFetch()
 
@@ -30,7 +30,7 @@ class TestExternalDataFetch:
                 # This approach is robust regardless of thread scheduling order
                 from unittest.mock import MagicMock
 
-                def factory_side_effect(*args, **kwargs):
+                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
                     variable = kwargs.get("variable")
                     mock_instance = MagicMock()
                     if variable == "var1":
@@ -79,7 +79,7 @@ class TestExternalDataFetch:
         assert result_inputs == inputs
         assert result_inputs is not inputs  # Should be a copy
 
-    def test_fetch_with_none_variable(self, app):
+    def test_fetch_with_none_variable(self, app: Flask):
         with app.app_context():
             fetcher = ExternalDataFetch()
             tool = ExternalDataVariableEntity(variable="var1", type="type1", config={})
@@ -95,7 +95,7 @@ class TestExternalDataFetch:
                 assert "var1" not in result_inputs
                 assert result_inputs == {"in": "val"}
 
-    def test_query_external_data_tool(self, app):
+    def test_query_external_data_tool(self, app: Flask):
         fetcher = ExternalDataFetch()
         tool = ExternalDataVariableEntity(variable="var1", type="type1", config={"k": "v"})
 

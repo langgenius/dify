@@ -3,6 +3,7 @@ import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -22,13 +23,21 @@ vi.mock('@/hooks/use-breakpoints', () => {
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
-    <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
+  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+    <textarea
+      data-testid="code-editor-mock"
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
   ),
 }))
 
 vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
-  function TextGenerationImageUploaderMock({ onFilesChange }: { onFilesChange: (files: VisionFile[]) => void }) {
+  function TextGenerationImageUploaderMock({
+    onFilesChange,
+  }: {
+    onFilesChange: (files: VisionFile[]) => void
+  }) {
     useEffect(() => {
       onFilesChange([])
     }, [onFilesChange])
@@ -40,14 +49,16 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
 })
 
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: object[], onChange: (files: object[]) => void }) => (
+  FileUploaderInAttachmentWrapper: ({
+    value,
+    onChange,
+  }: {
+    value: object[]
+    onChange: (files: object[]) => void
+  }) => (
     <div data-testid="file-uploader-mock">
       <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
-      <span>
-        {value?.length || 0}
-        {' '}
-        files
-      </span>
+      <span>{value?.length || 0} files</span>
     </div>
   ),
 }))
@@ -101,11 +112,13 @@ const siteInfo: SiteInfo = {
   title: 'Share',
 }
 
-const setup = (overrides: {
-  promptConfig?: PromptConfig
-  visionConfig?: VisionSettings
-  runControl?: React.ComponentProps<typeof RunOnce>['runControl']
-} = {}) => {
+const setup = (
+  overrides: {
+    promptConfig?: PromptConfig
+    visionConfig?: VisionSettings
+    runControl?: React.ComponentProps<typeof RunOnce>['runControl']
+  } = {},
+) => {
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
   const onVisionFilesChange = vi.fn()
@@ -161,10 +174,11 @@ describe('RunOnce', () => {
       expect(onVisionFilesChange).toHaveBeenCalledWith([])
     })
 
-    expect(screen.getByText('common.imageUploader.imageUpload')).toBeInTheDocument()
+    expect(screen.getByText('common.imageUploader.imageUpload'))!.toBeInTheDocument()
   })
 
   it('should update inputs when user edits fields', async () => {
+    const user = userEvent.setup()
     const { onInputsChange, getInputsRef } = setup()
 
     await waitFor(() => {
@@ -172,22 +186,24 @@ describe('RunOnce', () => {
     })
     onInputsChange.mockClear()
 
-    fireEvent.change(screen.getByPlaceholderText('Text Input'), {
-      target: { value: 'new text' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Input'), {
-      target: { value: 'paragraph value' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Number Input'), {
-      target: { value: '99' },
-    })
+    const textInput = screen.getByRole('textbox', { name: 'Text Input' })
+    await user.clear(textInput)
+    await user.type(textInput, 'new text')
+
+    const paragraphInput = screen.getByRole('textbox', { name: 'Paragraph Input' })
+    await user.clear(paragraphInput)
+    await user.type(paragraphInput, 'paragraph value')
+
+    const numberInput = screen.getByRole('spinbutton', { name: 'Number Input' })
+    await user.clear(numberInput)
+    await user.type(numberInput, '99')
 
     const label = screen.getByText('Checkbox Input')
     const checkbox = label.closest('div')?.parentElement?.querySelector('div')
     expect(checkbox).toBeTruthy()
     fireEvent.click(checkbox as HTMLElement)
 
-    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1][0]
+    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1]![0]
     expect(latest).toEqual({
       textInput: 'new text',
       paragraphInput: 'paragraph value',
@@ -219,7 +235,7 @@ describe('RunOnce', () => {
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    fireEvent.click(screen.getByTestId('run-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledTimes(1)
   })
 
@@ -233,7 +249,9 @@ describe('RunOnce', () => {
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    const stopButton = screen.getByTestId('stop-button')
+    const stopButton = screen.getByRole('button', {
+      name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
+    })
     fireEvent.click(stopButton)
     expect(onStop).toHaveBeenCalledTimes(1)
   })
@@ -247,8 +265,10 @@ describe('RunOnce', () => {
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    const stopButton = screen.getByTestId('stop-button')
-    expect(stopButton).toBeDisabled()
+    const stopButton = screen.getByRole('button', {
+      name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
+    })
+    expect(stopButton)!.toBeDisabled()
   })
 
   describe('select input type', () => {
@@ -265,13 +285,16 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           selectInput: 'Option A',
         })
       })
-      expect(screen.getByText('Select Input')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Select Input' })).toBeInTheDocument()
     })
   })
 
@@ -287,13 +310,16 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           fileInput: undefined,
         })
       })
-      expect(screen.getByText('File Input')).toBeInTheDocument()
+      expect(screen.getByText('File Input'))!.toBeInTheDocument()
     })
 
     it('should render file uploader for file-list input', async () => {
@@ -307,13 +333,16 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           fileListInput: [],
         })
       })
-      expect(screen.getByText('File List Input')).toBeInTheDocument()
+      expect(screen.getByText('File List Input'))!.toBeInTheDocument()
     })
   })
 
@@ -330,14 +359,17 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           jsonInput: undefined,
         })
       })
-      expect(screen.getByText('JSON Input')).toBeInTheDocument()
-      expect(screen.getByTestId('code-editor-mock')).toBeInTheDocument()
+      expect(screen.getByText('JSON Input'))!.toBeInTheDocument()
+      expect(screen.getByTestId('code-editor-mock'))!.toBeInTheDocument()
     })
 
     it('should update json_object input when code editor changes', async () => {
@@ -351,7 +383,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -386,12 +421,15 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
       expect(screen.queryByText('Hidden Input')).not.toBeInTheDocument()
-      expect(screen.getByText('Visible Input')).toBeInTheDocument()
+      expect(screen.getByText('Visible Input'))!.toBeInTheDocument()
     })
 
     it('should show optional label for non-required fields', async () => {
@@ -406,11 +444,14 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      expect(screen.getByText('workflow.panel.optional')).toBeInTheDocument()
+      expect(screen.getByText('workflow.panel.optional'))!.toBeInTheDocument()
     })
   })
 
@@ -438,7 +479,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -453,7 +497,7 @@ describe('RunOnce', () => {
   })
 
   describe('maxLength behavior', () => {
-    it('should not have maxLength attribute when max_length is not set', async () => {
+    it('should not have maxLength attribute when max_length is zero', async () => {
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -461,14 +505,18 @@ describe('RunOnce', () => {
             key: 'textInput',
             name: 'Text Input',
             type: 'string',
+            max_length: 0,
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
       expect(input).not.toHaveAttribute('maxLength')
     })
 
@@ -484,12 +532,15 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
-      expect(input).toHaveAttribute('maxLength', '100')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
+      expect(input)!.toHaveAttribute('maxLength', '100')
     })
   })
 })

@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import ItemOperation from '../index'
 
 describe('ItemOperation', () => {
@@ -8,10 +10,9 @@ describe('ItemOperation', () => {
 
   const renderComponent = (overrides: Partial<React.ComponentProps<typeof ItemOperation>> = {}) => {
     const props: React.ComponentProps<typeof ItemOperation> = {
+      itemName: 'My App',
       isPinned: false,
-      isShowDelete: true,
       togglePin: vi.fn(),
-      onDelete: vi.fn(),
       ...overrides,
     }
     return {
@@ -21,29 +22,53 @@ describe('ItemOperation', () => {
   }
 
   describe('Rendering', () => {
-    it('should render pin and delete actions when menu is open', async () => {
+    it('should distinguish operation triggers by item name', () => {
+      render(
+        <>
+          <ItemOperation itemName="First App" isPinned={false} togglePin={vi.fn()} />
+          <ItemOperation itemName="Second App" isPinned={false} togglePin={vi.fn()} />
+        </>,
+      )
+
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*First App/ }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Second App/ }),
+      ).toBeInTheDocument()
+    })
+
+    it('should render pin action when menu is open', async () => {
+      const user = userEvent.setup()
       renderComponent()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
 
       expect(await screen.findByText('explore.sidebar.action.pin')).toBeInTheDocument()
-      expect(screen.getByText('explore.sidebar.action.delete')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should render rename action when isShowRenameConversation is true', async () => {
+      const user = userEvent.setup()
       renderComponent({ isShowRenameConversation: true })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
 
       expect(await screen.findByText('explore.sidebar.action.rename')).toBeInTheDocument()
     })
 
     it('should render unpin label when isPinned is true', async () => {
+      const user = userEvent.setup()
       renderComponent({ isPinned: true })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
 
       expect(await screen.findByText('explore.sidebar.action.unpin')).toBeInTheDocument()
     })
@@ -51,37 +76,66 @@ describe('ItemOperation', () => {
 
   describe('User Interactions', () => {
     it('should call togglePin when clicking pin action', async () => {
+      const user = userEvent.setup()
       const { props } = renderComponent()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
+      await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(props.togglePin).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onDelete when clicking delete action', async () => {
-      const { props } = renderComponent()
+    it('should call onRenameConversation when clicking rename action', async () => {
+      const user = userEvent.setup()
+      const onRenameConversation = vi.fn()
+      renderComponent({
+        isShowRenameConversation: true,
+        onRenameConversation,
+      })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
+      await user.click(await screen.findByText('explore.sidebar.action.rename'))
 
-      expect(props.onDelete).toHaveBeenCalledTimes(1)
+      expect(onRenameConversation).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('Edge Cases', () => {
-    it('should close the menu when mouse leaves the panel and item is not hovering', async () => {
-      renderComponent()
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
-      const pinText = await screen.findByText('explore.sidebar.action.pin')
-      const menu = pinText.closest('div')?.parentElement as HTMLElement
+    it('should keep the menu open after rerender', async () => {
+      const user = userEvent.setup()
+      const { props, rerender } = renderComponent()
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
+      await screen.findByText('explore.sidebar.action.pin')
 
-      fireEvent.mouseEnter(menu)
-      fireEvent.mouseLeave(menu)
+      rerender(<ItemOperation {...props} />)
 
-      await waitFor(() => {
-        expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
-      })
+      expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
+    })
+
+    it('should stop propagation when clicking menu actions', async () => {
+      const user = userEvent.setup()
+      const onParentClick = vi.fn()
+      const togglePin = vi.fn()
+
+      render(
+        <div onClick={onParentClick}>
+          <ItemOperation itemName="My App" isPinned={false} togglePin={togglePin} />
+        </div>,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
+      await user.click(await screen.findByText('explore.sidebar.action.pin'))
+
+      expect(togglePin).toHaveBeenCalledTimes(1)
+      expect(onParentClick).not.toHaveBeenCalled()
     })
   })
 })

@@ -3,17 +3,11 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { mergeRegister } from '@lexical/utils'
 import { noop } from 'es-toolkit/function'
 import { $applyNodeReplacement } from 'lexical'
-import {
-  useCallback,
-  useEffect,
-} from 'react'
+import { useCallback, useEffect } from 'react'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../constants'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
-import {
-  $createHistoryBlockNode,
-  HistoryBlockNode,
-} from '../history-block/node'
+import { $createHistoryBlockNode, HistoryBlockNode } from '../history-block/node'
 
 const REGEX = new RegExp(HISTORY_PLACEHOLDER_TEXT)
 
@@ -30,16 +24,14 @@ const HistoryBlockReplacementBlock = ({
   }, [editor])
 
   const createHistoryBlockNode = useCallback((): HistoryBlockNode => {
-    if (onInsert)
-      onInsert()
+    if (onInsert) onInsert()
     return $applyNodeReplacement($createHistoryBlockNode(history, onEditRole))
   }, [history, onEditRole, onInsert])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
-    if (matchArr === null)
-      return null
+    if (matchArr === null) return null
 
     const startOffset = matchArr.index
     const endOffset = startOffset + HISTORY_PLACEHOLDER_TEXT.length
@@ -52,7 +44,9 @@ const HistoryBlockReplacementBlock = ({
   useEffect(() => {
     REGEX.lastIndex = 0
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createHistoryBlockNode)),
+      editor.registerNodeTransform(CustomTextNode, (textNode) =>
+        decoratorTransform(textNode, getMatch, createHistoryBlockNode),
+      ),
     )
   }, [])
 

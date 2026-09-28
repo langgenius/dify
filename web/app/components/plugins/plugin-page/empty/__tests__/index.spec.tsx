@@ -1,21 +1,19 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import type { SystemFeatures } from '@/types/feature'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures, InstallationScope } from '@/types/feature'
-
+import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
-
 import Empty from '../index'
 
 // ==================== Mock Setup ====================
 
-// Use vi.hoisted to define ALL mock state and functions
-const {
-  mockSetActiveTab,
-  mockUseInstalledPluginList,
-  mockState,
-} = vi.hoisted(() => {
+// Use vi.hoisted to define ALL mock state and functions so the local render
+// helper below (and downstream `vi.mock` factories) can read from the same
+// shared object regardless of declaration order.
+const { mockSetActiveTab, mockUseInstalledPluginList, mockState } = vi.hoisted(() => {
   const state = {
     filters: {
       categories: [] as string[],
@@ -28,8 +26,10 @@ const {
         plugin_installation_scope: 'all' as const,
         restrict_to_marketplace_only: false,
       },
-    } as Partial<SystemFeatures>,
-    pluginList: { plugins: [] as Array<{ id: string }> } as { plugins: Array<{ id: string }> } | undefined,
+    } as Partial<GetSystemFeaturesResponse>,
+    pluginList: { plugins: [] as Array<{ id: string }> } as
+      | { plugins: Array<{ id: string }> }
+      | undefined,
   }
   return {
     mockSetActiveTab: vi.fn(),
@@ -37,6 +37,9 @@ const {
     mockState: state,
   }
 })
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: mockState.systemFeatures })
 
 // Mock plugin page context
 vi.mock('../../context', () => ({
@@ -49,18 +52,6 @@ vi.mock('../../context', () => ({
   },
 }))
 
-// Mock global public store (Zustand store)
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        ...mockState.systemFeatures,
-      },
-    })
-  },
-}))
-
 // Mock useInstalledPluginList hook
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockUseInstalledPluginList(),
@@ -68,9 +59,11 @@ vi.mock('@/service/use-plugins', () => ({
 
 // Mock InstallFromGitHub component
 vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
-  default: ({ onClose }: { onSuccess: () => void, onClose: () => void }) => (
+  default: ({ onClose }: { onSuccess: () => void; onClose: () => void }) => (
     <div data-testid="install-from-github-modal">
-      <button data-testid="github-modal-close" onClick={onClose}>Close</button>
+      <button data-testid="github-modal-close" onClick={onClose}>
+        Close
+      </button>
       <button data-testid="github-modal-success">Success</button>
     </div>
   ),
@@ -78,9 +71,11 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
 
 // Mock InstallFromLocalPackage component
 vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', () => ({
-  default: ({ file, onClose }: { file: File, onSuccess: () => void, onClose: () => void }) => (
+  default: ({ file, onClose }: { file: File; onSuccess: () => void; onClose: () => void }) => (
     <div data-testid="install-from-local-modal" data-file-name={file.name}>
-      <button data-testid="local-modal-close" onClick={onClose}>Close</button>
+      <button data-testid="local-modal-close" onClick={onClose}>
+        Close
+      </button>
       <button data-testid="local-modal-success">Success</button>
     </div>
   ),
@@ -88,7 +83,9 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', ()
 
 // Mock Line component
 vi.mock('../../../marketplace/empty/line', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="line-component" className={className} />,
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="line-component" className={className} />
+  ),
 }))
 
 // ==================== Test Utilities ====================
@@ -98,7 +95,7 @@ const resetMockState = () => {
   mockState.systemFeatures = {
     enable_marketplace: true,
     plugin_installation_permission: {
-      plugin_installation_scope: InstallationScope.ALL,
+      plugin_installation_scope: zPluginInstallationScope.enum.all,
       restrict_to_marketplace_only: false,
     },
   }
@@ -110,7 +107,7 @@ const setMockFilters = (filters: Partial<FilterState>) => {
   mockState.filters = { ...mockState.filters, ...filters }
 }
 
-const setMockSystemFeatures = (features: Partial<SystemFeatures>) => {
+const setMockSystemFeatures = (features: Partial<GetSystemFeaturesResponse>) => {
   mockState.systemFeatures = { ...mockState.systemFeatures, ...features }
 }
 
@@ -140,7 +137,7 @@ describe('Empty Component', () => {
   describe('Rendering', () => {
     it('should render basic structure correctly', async () => {
       // Arrange & Act
-      const { container } = render(<Empty />)
+      render(<Empty />)
       await flushEffects()
 
       // Assert - file input
@@ -148,10 +145,6 @@ describe('Empty Component', () => {
       expect(fileInput).toBeInTheDocument()
       expect(fileInput.style.display).toBe('none')
       expect(fileInput.accept).toBe('.difypkg,.difybndl')
-
-      // Assert - skeleton cards (20 in the grid + 1 icon container)
-      const skeletonCards = container.querySelectorAll('.rounded-xl.bg-components-card-bg')
-      expect(skeletonCards.length).toBeGreaterThanOrEqual(20)
 
       // Assert - group icon container
       const iconContainer = document.querySelector('.size-14')
@@ -221,7 +214,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -238,7 +231,7 @@ describe('Empty Component', () => {
       expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
 
       // Verify button order
-      const buttonTexts = buttons.map(btn => btn.textContent)
+      const buttonTexts = buttons.map((btn) => btn.textContent)
       expect(buttonTexts[0]).toContain('plugin.source.marketplace')
       expect(buttonTexts[1]).toContain('plugin.source.github')
       expect(buttonTexts[2]).toContain('plugin.source.local')
@@ -249,7 +242,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -271,7 +264,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -293,7 +286,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -305,6 +298,18 @@ describe('Empty Component', () => {
       // Assert
       const buttons = screen.queryAllByRole('button')
       expect(buttons).toHaveLength(0)
+    })
+
+    it('should render no install methods when install permission is unavailable', async () => {
+      // Act
+      render(<Empty canInstall={false} contentInset="compact" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
     })
   })
 
@@ -320,6 +325,20 @@ describe('Empty Component', () => {
 
       // Assert
       expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
+    })
+
+    it('should use the provided marketplace action when marketplace button is clicked', async () => {
+      // Arrange
+      const onSwitchToMarketplace = vi.fn()
+      render(<Empty onSwitchToMarketplace={onSwitchToMarketplace} />)
+      await flushEffects()
+
+      // Act
+      fireEvent.click(screen.getByText('plugin.source.marketplace'))
+
+      // Assert
+      expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
+      expect(mockSetActiveTab).not.toHaveBeenCalled()
     })
 
     it('should open and close GitHub modal correctly', async () => {
@@ -373,7 +392,10 @@ describe('Empty Component', () => {
 
       // Assert - modal is open with correct file
       expect(screen.getByTestId('install-from-local-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute('data-file-name', 'test-plugin.difypkg')
+      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
+        'data-file-name',
+        'test-plugin.difypkg',
+      )
 
       // Act - close modal
       fireEvent.click(screen.getByTestId('local-modal-close'))
@@ -390,6 +412,23 @@ describe('Empty Component', () => {
 
       // Act - trigger change with empty files
       Object.defineProperty(fileInput, 'files', { value: [], writable: true })
+      fireEvent.change(fileInput)
+
+      // Assert
+      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
+    })
+
+    it('should ignore selected files when install permission is unavailable', async () => {
+      // Arrange
+      render(<Empty canInstall={false} />)
+      await flushEffects()
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      // Act
+      Object.defineProperty(fileInput, 'files', {
+        value: [createMockFile('blocked-plugin.difypkg')],
+        writable: true,
+      })
       fireEvent.change(fileInput)
 
       // Assert
@@ -422,15 +461,27 @@ describe('Empty Component', () => {
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
 
       // Act - select .difypkg file
-      Object.defineProperty(fileInput, 'files', { value: [createMockFile('my-plugin.difypkg')], writable: true })
+      Object.defineProperty(fileInput, 'files', {
+        value: [createMockFile('my-plugin.difypkg')],
+        writable: true,
+      })
       fireEvent.change(fileInput)
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute('data-file-name', 'my-plugin.difypkg')
+      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
+        'data-file-name',
+        'my-plugin.difypkg',
+      )
 
       // Close and select .difybndl file
       fireEvent.click(screen.getByTestId('local-modal-close'))
-      Object.defineProperty(fileInput, 'files', { value: [createMockFile('test-bundle.difybndl')], writable: true })
+      Object.defineProperty(fileInput, 'files', {
+        value: [createMockFile('test-bundle.difybndl')],
+        writable: true,
+      })
       fireEvent.change(fileInput)
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute('data-file-name', 'test-bundle.difybndl')
+      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
+        'data-file-name',
+        'test-bundle.difybndl',
+      )
     })
   })
 
@@ -441,7 +492,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -455,7 +506,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -507,16 +558,6 @@ describe('Empty Component', () => {
     })
   })
 
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo and have displayName', () => {
-      // Assert
-      expect(Empty).toBeDefined()
-      expect((Empty as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      expect((Empty as unknown as { displayName?: string, type?: { displayName?: string } }).displayName || (Empty as unknown as { type?: { displayName?: string } }).type?.displayName).toBeDefined()
-    })
-  })
-
   // ==================== Modal Callbacks Tests ====================
   describe('Modal Callbacks', () => {
     it('should handle modal onSuccess callbacks (noop)', async () => {
@@ -533,7 +574,10 @@ describe('Empty Component', () => {
       fireEvent.click(screen.getByTestId('github-modal-close'))
 
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      Object.defineProperty(fileInput, 'files', { value: [createMockFile('test-plugin.difypkg')], writable: true })
+      Object.defineProperty(fileInput, 'files', {
+        value: [createMockFile('test-plugin.difypkg')],
+        writable: true,
+      })
       fireEvent.change(fileInput)
 
       fireEvent.click(screen.getByTestId('local-modal-success'))

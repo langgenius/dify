@@ -1,4 +1,4 @@
-import { useInspectVarsCrudCommon } from '../../workflow/hooks/use-inspect-vars-crud-common'
+import { useInspectVarsCrudCommon } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useConfigsMap } from './use-configs-map'
 
 export const useInspectVarsCrud = () => {

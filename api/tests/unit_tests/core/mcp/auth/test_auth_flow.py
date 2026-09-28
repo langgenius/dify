@@ -500,6 +500,38 @@ class TestAuthorizationFlow:
             headers={"Content-Type": "application/json"},
         )
 
+    @patch("core.helper.ssrf_proxy.post")
+    def test_register_client_rejected_by_server(self, mock_post):
+        """A rejected dynamic registration must raise ValueError, not httpx.HTTPStatusError.
+
+        `auth()` lets anything that is not a RequestError propagate, and the
+        console MCP auth endpoint only turns MCPError/ValueError into a 4xx, so
+        a raw HTTPStatusError here surfaces as an opaque 500.
+        """
+        mock_response = Mock()
+        mock_response.is_success = False
+        mock_response.status_code = 400
+        mock_response.text = '{"error":"invalid_redirect_uri"}'
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=Mock(), response=mock_response
+        )
+        mock_post.return_value = mock_response
+
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            registration_endpoint="https://auth.example.com/register",
+            response_types_supported=["code"],
+        )
+        client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
+
+        with pytest.raises(ValueError) as exc_info:
+            register_client("https://api.example.com", metadata, client_metadata)
+
+        message = str(exc_info.value)
+        assert "400" in message
+        assert "invalid_redirect_uri" in message
+
     def test_register_client_no_endpoint(self):
         """Test client registration when no endpoint available."""
         metadata = OAuthMetadata(
@@ -801,6 +833,27 @@ class TestAuthOrchestration:
         urls = build_protected_resource_metadata_discovery_urls(None, "https://api.example.com")
         assert urls == ["https://api.example.com/.well-known/oauth-protected-resource"]
 
+    def test_build_protected_resource_metadata_discovery_urls_with_relative_hint(self):
+        urls = build_protected_resource_metadata_discovery_urls(
+            "/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://api.example.com/tenant/mcp",
+        )
+        assert urls == [
+            "https://api.example.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://api.example.com/.well-known/oauth-protected-resource",
+        ]
+
+    def test_build_protected_resource_metadata_discovery_urls_ignores_scheme_less_hint(self):
+        urls = build_protected_resource_metadata_discovery_urls(
+            "/openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/tenant/mcp",
+        )
+
+        assert urls == [
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource",
+        ]
+
     def test_build_oauth_authorization_server_metadata_discovery_urls(self):
         # Case 1: with auth_server_url
         urls = build_oauth_authorization_server_metadata_discovery_urls(
@@ -841,6 +894,15 @@ class TestAuthOrchestration:
         result = discover_protected_resource_metadata(None, "https://api.example.com")
         assert result is None
 
+        # JSONDecodeError (non-JSON 200 response)
+        mock_get.side_effect = None
+        bad_json_response = Mock()
+        bad_json_response.status_code = 200
+        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_response
+        result = discover_protected_resource_metadata(None, "https://api.example.com")
+        assert result is None
+
     @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_authorization_server_metadata(self, mock_get):
         # Success
@@ -868,6 +930,14 @@ class TestAuthOrchestration:
         mock_response.json.return_value = {"invalid": "data"}
         mock_get.side_effect = None
         mock_get.return_value = mock_response
+        result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
+        assert result is None
+
+        # JSONDecodeError (non-JSON 200 response)
+        bad_json_response = Mock()
+        bad_json_response.status_code = 200
+        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_response
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is None
 
@@ -973,6 +1043,24 @@ class TestAuthOrchestration:
 
         # Case 5: RequestError
         mock_get.side_effect = httpx.RequestError("Error")
+        supported, url = check_support_resource_discovery("https://api")
+        assert supported is False
+
+        # Case 6: JSONDecodeError (non-JSON 200 response)
+        mock_get.side_effect = None
+        bad_json_res = Mock()
+        bad_json_res.status_code = 200
+        bad_json_res.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_res
+        supported, url = check_support_resource_discovery("https://api")
+        assert supported is False
+        assert url == ""
+
+        # Case 7: Empty authorization_servers array (IndexError)
+        empty_res = Mock()
+        empty_res.status_code = 200
+        empty_res.json.return_value = {"authorization_servers": []}
+        mock_get.return_value = empty_res
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
 
@@ -1188,13 +1276,13 @@ class TestAuthOrchestration:
         with pytest.raises(ValueError, match="does not support dynamic client registration"):
             register_client("https://api", metadata, client_metadata)
 
-        # Failure: HTTP
+        # Failure: HTTP. A rejected registration must be reported as a ValueError so
+        # callers can turn it into a user-facing error instead of a bare 500.
         res.is_success = False
-        res.raise_for_status = Mock()
         res.status_code = 400
-        # If is_success is false, it should call raise_for_status
-        register_client("https://api", None, client_metadata)
-        res.raise_for_status.assert_called_once()
+        res.text = '{"error":"invalid_redirect_uri"}'
+        with pytest.raises(ValueError, match="Client registration failed: HTTP 400"):
+            register_client("https://api", None, client_metadata)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_orchestration_failures(self, mock_discover):

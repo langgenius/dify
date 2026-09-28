@@ -1,0 +1,1026 @@
+import json
+from unittest.mock import Mock
+from uuid import uuid4
+
+import pytest
+from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from graphon.enums import BuiltinNodeTypes
+from models.account import Account
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentIconType,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
+from models.dataset import Dataset
+from models.enums import AppStatus
+from models.model import App, AppMode
+from models.tools import ToolFile
+from models.workflow import Workflow, WorkflowType
+from services.agent.dsl_entities import (
+    AGENT_NODE_JOB_DSL_KEY,
+    AGENT_PACKAGE_REF_KEY,
+    AgentPackage,
+    AgentPackageMetadata,
+    make_portable_agent_package,
+)
+from services.agent.dsl_service import AgentDslService, AgentPackageImportResult, is_agent_v2_graph
+from services.entities.dsl_entities import DslImportWarning
+from tests.unit_tests.model_factories import make_upload_file
+
+
+def _agent(
+    *,
+    agent_id: str = "agent-1",
+    app_id: str | None = None,
+    name: str = "Portable Agent",
+    scope: AgentScope = AgentScope.ROSTER,
+    source: AgentSource = AgentSource.AGENT_APP,
+) -> Agent:
+    agent = Agent(
+        tenant_id="tenant-1",
+        name=name,
+        description="description",
+        role="researcher",
+        scope=scope,
+        source=source,
+        status=AgentStatus.ACTIVE,
+        app_id=app_id,
+        icon_type=AgentIconType.EMOJI,
+        icon="R",
+    )
+    agent.id = agent_id
+    return agent
+
+
+def _snapshot(
+    *,
+    snapshot_id: str = "snapshot-1",
+    agent_id: str = "agent-1",
+    version: int = 1,
+    soul: AgentSoulConfig | None = None,
+) -> AgentConfigSnapshot:
+    snapshot = AgentConfigSnapshot(
+        tenant_id="tenant-1",
+        agent_id=agent_id,
+        version=version,
+        home_snapshot_id="home-1",
+        config_snapshot=soul or AgentSoulConfig(),
+        created_by="account-1",
+    )
+    snapshot.id = snapshot_id
+    return snapshot
+
+
+def _app(*, name: str = "", description: str = "", mode: AppMode = AppMode.AGENT_CHAT) -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name=name,
+        description=description,
+        mode=mode,
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+    )
+
+
+def _account() -> Account:
+    account = Account(name="Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
+
+
+def _workflow(*, workflow_id: str = "workflow-1") -> Workflow:
+    return Workflow(
+        id=workflow_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [], "edges": []},
+        features={},
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+
+
+def _agent_node(node_id: str, binding: object | None = None) -> dict:
+    data = {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
+    if binding is not None:
+        data["agent_binding"] = binding
+    return {"id": node_id, "data": data}
+
+
+@pytest.mark.parametrize("include_assets", [False, True])
+def test_make_portable_agent_package_strips_workspace_credentials_and_assets(include_assets: bool) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-test",
+                "credential_ref": {"type": "provider", "id": "model-secret"},
+            },
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
+                        "tool_name": "search",
+                        "credential_type": "api-key",
+                        "credential_ref": {"type": "tool", "id": "tool-secret"},
+                        "runtime_parameters": {
+                            "query": "hello",
+                            "upload_file_id": "upload-1",
+                            "api_key": "plain-secret",
+                        },
+                    }
+                ],
+                "cli_tools": [
+                    {
+                        "name": "cli",
+                        "env": {
+                            "secret_refs": [
+                                {
+                                    "name": "TOKEN",
+                                    "value": "plain-secret",
+                                    "credential_id": "credential-1",
+                                }
+                            ]
+                        },
+                    }
+                ],
+            },
+            "env": {"secret_refs": [{"name": "GLOBAL_TOKEN", "value": "plain-secret", "id": "secret-1"}]},
+            "config_skills": [{"name": "research", "file_id": "skill-file"}, {"name": "missing", "is_missing": True}],
+            "config_files": [
+                {"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file", "mime_type": "text/markdown"}
+            ],
+            "human": {
+                "contacts": [
+                    {
+                        "id": "human-1",
+                        "tenant_id": "tenant-1",
+                        "name": "Reviewer",
+                        "email": "reviewer@example.com",
+                    }
+                ]
+            },
+        }
+    )
+
+    original = soul.model_dump(mode="json")
+    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
+    assert soul.model_dump(mode="json") == original
+    serialized = package.model_dump(mode="json")
+
+    assert package.soul.model is not None
+    assert package.soul.model.credential_ref is None
+    assert package.soul.tools.dify_tools[0].credential_type == "unauthorized"
+    assert package.soul.tools.dify_tools[0].credential_ref is None
+    assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
+    assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
+    assert package.soul.config_skills[0].name == "research"
+    assert package.soul.config_skills[0].file_id == ("skill-file" if include_assets else "")
+    assert package.soul.config_skills[0].is_missing is (not include_assets)
+    assert package.soul.config_files[0].name == "guide.md"
+    assert package.soul.config_files[0].file_id == ("config-file" if include_assets else "")
+    assert package.soul.config_files[0].is_missing is (not include_assets)
+    assert package.soul.config_skills[1].is_missing
+    assert package.soul.config_files[0].mime_type == "text/markdown"
+    assert [asset.kind for asset in package.omitted_assets] == (
+        ["skill"] if include_assets else ["skill", "skill", "file"]
+    )
+    assert [asset.name for asset in package.omitted_assets] == (
+        ["missing"] if include_assets else ["research", "missing", "guide.md"]
+    )
+    assert "plain-secret" not in str(serialized)
+    assert "model-secret" not in str(serialized)
+    assert "tool-secret" not in str(serialized)
+    assert ("skill-file" in str(serialized)) is include_assets
+    assert ("config-file" in str(serialized)) is include_assets
+    assert package.soul.human.contacts[0].id is None
+    assert package.soul.human.contacts[0].name == "Reviewer"
+
+    package.soul.config_skills[0].description = "Changed"
+    package.soul.config_files[0].name = "changed.md"
+    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
+    assert soul.model_dump(mode="json") == original
+
+
+def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig())
+
+    restored = AgentPackage.model_validate(package.model_dump(mode="json"))
+
+    assert restored == package
+
+
+def test_agent_package_normalizes_legacy_null_missing_asset_file_ids() -> None:
+    package = make_portable_agent_package(
+        _agent(),
+        AgentSoulConfig.model_validate(
+            {
+                "config_skills": [{"name": "research", "file_id": "skill-file"}],
+                "config_files": [{"name": "guide.md", "file_kind": "tool_file", "file_id": "config-file"}],
+            }
+        ),
+    ).model_dump(mode="json")
+    package["soul"]["config_skills"][0]["file_id"] = None
+    package["soul"]["config_files"][0]["file_id"] = None
+
+    restored = AgentPackage.model_validate(package)
+
+    assert restored.soul.config_skills[0].file_id == ""
+    assert restored.soul.config_files[0].file_id == ""
+    assert restored.model_dump(mode="json")["soul"]["config_skills"][0]["file_id"] == ""
+    assert restored.model_dump(mode="json")["soul"]["config_files"][0]["file_id"] == ""
+
+
+@pytest.mark.parametrize(
+    "asset",
+    [
+        {"name": "research", "file_id": None, "is_missing": False},
+        {"name": "guide.md", "file_kind": "tool_file", "file_id": None, "is_missing": False},
+    ],
+)
+def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig()).model_dump(mode="json")
+    target = "config_files" if "file_kind" in asset else "config_skills"
+    package["soul"][target] = [asset]
+
+    with pytest.raises(ValidationError):
+        AgentPackage.model_validate(package)
+
+
+def test_import_warnings_cover_runtime_setup_removed_from_package(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
+                        "tool_name": "search",
+                        "credential_type": "unauthorized",
+                    }
+                ],
+                "cli_tools": [{"name": "cli", "env": {"secret_refs": [{"name": "CLI_TOKEN"}]}}],
+            },
+            "env": {"secret_refs": [{"name": "GLOBAL_TOKEN"}]},
+            "human": {"contacts": [{"name": "Reviewer", "email": "reviewer@example.com"}]},
+        }
+    )
+    monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", Mock(return_value={}))
+
+    _, warnings = AgentDslService(unbound_session).resolve_package_soul(
+        tenant_id="tenant-1",
+        package=make_portable_agent_package(_agent(), soul),
+        package_path="agent_packages.agent_1",
+    )
+
+    codes = [warning.code for warning in warnings]
+    assert codes.count("agent_tool_authorization_required") == 1
+    assert codes.count("agent_secret_required") == 2
+    assert codes.count("agent_human_contact_unresolved") == 1
+
+
+def test_agent_package_rejects_unknown_schema_version() -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig()).model_dump(mode="json")
+    package["schema_version"] = 2
+
+    with pytest.raises(ValidationError):
+        AgentPackage.model_validate(package)
+
+
+def test_export_agent_app_requires_backing_agent(sqlite_session: Session) -> None:
+    with pytest.raises(ValueError, match="no active backing Agent"):
+        AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
+
+
+@pytest.mark.parametrize("use_draft", [True, False])
+def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session, use_draft: bool) -> None:
+    agent = _agent(app_id="app-1")
+    agent.active_config_snapshot_id = "snapshot-1"
+    snapshot = _snapshot(soul=AgentSoulConfig(config_note="snapshot"))
+    rows: list[object] = [agent, snapshot]
+    if use_draft:
+        rows.append(
+            AgentConfigDraft(
+                id="draft-1",
+                tenant_id="tenant-1",
+                agent_id=agent.id,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                draft_owner_key="",
+                config_snapshot=AgentSoulConfig(config_note="draft"),
+            )
+        )
+    sqlite_session.add_all(rows)
+    sqlite_session.commit()
+
+    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
+
+    assert package_ref == "agent_1"
+    assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")
+
+
+def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Session) -> None:
+    graph = {"nodes": [_agent_node("node-1"), _agent_node("node-2")], "edges": []}
+    bindings = [
+        WorkflowAgentNodeBinding(
+            id=f"binding-{node_id}",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id=node_id,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            node_job_config={"workflow_prompt": node_id},
+            created_by="account-1",
+        )
+        for node_id in ("node-1", "node-2")
+    ]
+    sqlite_session.add_all([_agent(), _snapshot(), *bindings])
+    sqlite_session.commit()
+
+    portable_graph, packages = AgentDslService(sqlite_session).export_workflow_packages(
+        workflow=_workflow(),
+        graph=graph,
+    )
+
+    assert list(packages) == ["agent_1"]
+    for node in portable_graph["nodes"]:
+        assert node["data"]["agent_binding"] == {
+            "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
+            AGENT_PACKAGE_REF_KEY: "agent_1",
+        }
+        assert node["data"][AGENT_NODE_JOB_DSL_KEY]["workflow_prompt"] == node["id"]
+
+
+def test_export_workflow_packages_rejects_incomplete_binding(sqlite_session: Session) -> None:
+    with pytest.raises(ValueError, match="no complete persisted binding"):
+        AgentDslService(sqlite_session).export_workflow_packages(
+            workflow=_workflow(),
+            graph={"nodes": [_agent_node("node-1")], "edges": []},
+        )
+
+
+def test_graph_without_package_bindings_removes_portable_fields() -> None:
+    graph = {
+        "nodes": [
+            _agent_node(
+                "portable",
+                {
+                    "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                    AGENT_PACKAGE_REF_KEY: "agent_1",
+                },
+            ),
+            _agent_node("persisted", {"binding_type": "inline_agent", "agent_id": "agent-1"}),
+        ],
+        "edges": [],
+    }
+    for node in graph["nodes"]:
+        node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": "work"}
+
+    result = AgentDslService.graph_without_package_bindings(graph)
+
+    assert "agent_binding" not in result["nodes"][0]["data"]
+    assert result["nodes"][1]["data"]["agent_binding"]["agent_id"] == "agent-1"
+    assert all(AGENT_NODE_JOB_DSL_KEY not in node["data"] for node in result["nodes"])
+    assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
+
+
+def test_import_agent_app_package_creates_config_and_unpublished_draft(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    service = AgentDslService(sqlite_session)
+    soul = AgentSoulConfig(config_note="portable")
+    warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.unique_roster_name = Mock(return_value="Portable Agent import")
+    agent = _agent()
+    agent.active_config_snapshot_id = "snapshot-1"
+    agent.active_config_is_published = True
+    snapshot = _snapshot(soul=soul)
+    roster_service = Mock()
+
+    def create_backing_agent(**_kwargs: object) -> Agent:
+        sqlite_session.add_all([agent, snapshot])
+        sqlite_session.flush()
+        return agent
+
+    roster_service.create_backing_agent_for_app.side_effect = create_backing_agent
+    monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
+    app = _app()
+    sqlite_session.add(app)
+    sqlite_session.commit()
+
+    result = service.import_agent_app_package(
+        app=app,
+        account=_account(),
+        package=make_portable_agent_package(_agent(), soul),
+    )
+
+    assert result.warnings == [warning]
+    assert agent.active_config_is_published is False
+    assert app.name == "Portable Agent"
+    assert app.description == "description"
+    assert app.app_model_config_id is not None
+    draft = sqlite_session.scalar(
+        select(AgentConfigDraft).where(
+            AgentConfigDraft.agent_id == agent.id,
+            AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+        )
+    )
+    assert draft is not None
+    assert draft.config_snapshot.config_note == "portable"
+
+
+def test_import_workflow_packages_materializes_every_package_binding_as_inline(sqlite_session: Session) -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig())
+    graph = {
+        "nodes": [
+            _agent_node(
+                "roster-1",
+                {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+            ),
+            _agent_node(
+                "roster-2",
+                {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+            ),
+            _agent_node(
+                "inline",
+                {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+            ),
+            _agent_node("missing-binding"),
+            _agent_node("invalid-ref", {AGENT_PACKAGE_REF_KEY: 1}),
+        ],
+        "edges": [],
+    }
+    for node in graph["nodes"][:3]:
+        node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": node["id"]}
+    old_binding = WorkflowAgentNodeBinding(
+        id="old-binding",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version=Workflow.VERSION_DRAFT,
+        node_id="old-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-inline-agent",
+        current_snapshot_id="old-snapshot",
+        node_job_config={},
+        created_by="account-1",
+    )
+    sqlite_session.add(old_binding)
+    sqlite_session.commit()
+    service = AgentDslService(sqlite_session)
+    imported_results = [
+        AgentPackageImportResult(
+            agent=_agent(
+                agent_id=f"inline-agent-{index}",
+                scope=AgentScope.WORKFLOW_ONLY,
+                source=AgentSource.IMPORTED,
+            ),
+            snapshot=_snapshot(
+                snapshot_id=f"inline-snapshot-{index}",
+                agent_id=f"inline-agent-{index}",
+            ),
+            warnings=[DslImportWarning(code=f"inline-{index}", path="agent", message="inline warning")],
+        )
+        for index in range(1, 4)
+    ]
+    service._create_imported_inline_agent = Mock(side_effect=imported_results)
+    workflow = _workflow()
+
+    result, warnings, retirement_candidates = service.import_workflow_packages(
+        workflow=workflow,
+        portable_graph=graph,
+        raw_packages={"agent_1": package.model_dump(mode="json")},
+        account=_account(),
+    )
+
+    assert sqlite_session.get(WorkflowAgentNodeBinding, old_binding.id) is None
+    assert retirement_candidates == {"old-inline-agent"}
+    assert service._create_imported_inline_agent.call_count == 3
+    assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
+        "roster-1",
+        "roster-2",
+        "inline",
+    ]
+    assert [warning.code for warning in warnings] == ["inline-1", "inline-2", "inline-3"]
+    bindings = [result["nodes"][index]["data"]["agent_binding"] for index in range(3)]
+    assert [binding["agent_id"] for binding in bindings] == [
+        "inline-agent-1",
+        "inline-agent-2",
+        "inline-agent-3",
+    ]
+    assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in bindings)
+    assert AGENT_NODE_JOB_DSL_KEY not in result["nodes"][0]["data"]
+    assert json.loads(workflow.graph) == result
+    added_bindings = sqlite_session.scalars(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == workflow.id)
+    ).all()
+    assert len(added_bindings) == 3
+    assert all(binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT for binding in added_bindings)
+
+
+@pytest.mark.parametrize(
+    ("binding", "error"),
+    [
+        (
+            {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value, AGENT_PACKAGE_REF_KEY: "missing"},
+            "unknown package",
+        ),
+        ({"binding_type": "invalid", AGENT_PACKAGE_REF_KEY: "agent_1"}, "invalid binding type"),
+    ],
+)
+def test_import_workflow_packages_rejects_invalid_package_binding(
+    sqlite_session: Session, binding: dict, error: str
+) -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig())
+
+    with pytest.raises(ValueError, match=error):
+        AgentDslService(sqlite_session).import_workflow_packages(
+            workflow=_workflow(),
+            portable_graph={"nodes": [_agent_node("node-1", binding)], "edges": []},
+            raw_packages={"agent_1": package.model_dump(mode="json")},
+            account=_account(),
+        )
+
+
+def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
+    service = AgentDslService(unbound_session)
+    target_agent = _agent(
+        agent_id="target-agent",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+    )
+    target_snapshot = _snapshot(snapshot_id="target-snapshot", agent_id=target_agent.id)
+    service._create_workflow_only_agent = Mock(return_value=(target_agent, target_snapshot))
+    source_agent = _agent()
+    source_soul = AgentSoulConfig(
+        config_note="source",
+        config_skills=[AgentConfigSkillRefConfig(name="summarizer", file_id="skill-file-1")],
+        config_files=[AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")],
+    )
+    source_snapshot = _snapshot(soul=source_soul)
+    workflow = _workflow()
+
+    result = service.clone_inline_binding_for_node(
+        workflow=workflow,
+        node_id="target-node",
+        source_agent=source_agent,
+        source_snapshot=source_snapshot,
+        account_id="account-1",
+    )
+
+    assert result == (target_agent, target_snapshot)
+    create_kwargs = service._create_workflow_only_agent.call_args.kwargs
+    assert create_kwargs["metadata"].name == source_agent.name
+    cloned_soul = create_kwargs["soul"]
+    assert cloned_soul.config_note == "source"
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_skills] == [
+        ("summarizer", "tool_file", "skill-file-1")
+    ]
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_files] == [
+        ("brief.pdf", "upload_file", "config-file-1")
+    ]
+    assert create_kwargs["source"] == AgentSource.WORKFLOW
+
+
+def test_extract_package_dependencies_covers_models_features_tools_and_knowledge(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
+    tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        model_dependency,
+    )
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_tool_dependency",
+        tool_dependency,
+    )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
+            "app_features": {
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "model": {"provider": "provider/follow-up", "name": "follow-up-model"},
+                }
+            },
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_id": "provider/tool",
+                        "provider_type": "plugin",
+                        "credential_type": "unauthorized",
+                    },
+                    {
+                        "plugin_id": "plugin-id",
+                        "provider": "fallback-provider",
+                        "provider_type": "plugin",
+                        "credential_type": "unauthorized",
+                    },
+                ]
+            },
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [{"id": "dataset-1", "name": "Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "single",
+                            "model": {"provider": "provider/retrieval", "name": "embed", "mode": "embedding"},
+                        },
+                        "metadata_filtering": {
+                            "mode": "automatic",
+                            "model_config": {
+                                "provider": "provider/metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    },
+                    {
+                        "id": "set-2",
+                        "name": "Reranked Set",
+                        "datasets": [{"id": "dataset-2", "name": "Reranked Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "reranking_model",
+                            "reranking_model": {"provider": "provider/rerank", "model": "rerank"},
+                        },
+                    },
+                    {
+                        "id": "set-3",
+                        "name": "Weighted Set",
+                        "datasets": [{"id": "dataset-3", "name": "Weighted Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "weighted_score",
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/embedding",
+                                    "embedding_model_name": "embedding-model",
+                                    "vector_weight": 0.7,
+                                },
+                                "keyword_setting": {"keyword_weight": 0.3},
+                            },
+                        },
+                    },
+                ]
+            },
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == [
+        "model:provider/model",
+        "model:provider/follow-up",
+        "tool:provider/tool",
+        "tool:plugin-id/fallback-provider",
+        "model:provider/retrieval",
+        "model:provider/metadata",
+        "model:provider/rerank",
+        "model:provider/embedding",
+    ]
+
+
+def test_extract_package_dependencies_ignores_inactive_knowledge_models(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        model_dependency,
+    )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [{"id": "dataset-1", "name": "Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": False,
+                            "reranking_mode": "weighted_score",
+                            "reranking_model": {"provider": "provider/inactive-rerank", "model": "rerank"},
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/inactive-embedding",
+                                }
+                            },
+                            "model": {
+                                "provider": "provider/inactive-retrieval",
+                                "name": "retrieval-model",
+                                "mode": "chat",
+                            },
+                        },
+                        "metadata_filtering": {
+                            "mode": "disabled",
+                            "model_config": {
+                                "provider": "provider/inactive-metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == []
+    model_dependency.assert_not_called()
+
+
+def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Session) -> None:
+    service = AgentDslService(unbound_session)
+    soul = AgentSoulConfig(config_note="inline")
+    warning = DslImportWarning(code="setup", path="agent", message="setup")
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service._create_workflow_only_agent = Mock(return_value=(_agent(), _snapshot(soul=soul)))
+    workflow = _workflow()
+
+    result = service._create_imported_inline_agent(
+        workflow=workflow,
+        node_id="node-1",
+        account=_account(),
+        package=make_portable_agent_package(_agent(), soul),
+        package_path="agent_packages.agent_1",
+    )
+
+    assert result.warnings == [warning]
+    assert service._create_workflow_only_agent.call_args.kwargs["source"] == AgentSource.IMPORTED
+    assert (
+        service._create_workflow_only_agent.call_args.kwargs["operation"] == AgentConfigRevisionOperation.IMPORT_PACKAGE
+    )
+
+
+def test_create_workflow_only_agent_sets_backing_app_and_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    service = AgentDslService(sqlite_session)
+    roster_service = Mock()
+    backing_app = _app()
+    backing_app.id = "backing-app"
+    roster_service.create_hidden_backing_app_for_workflow_agent.return_value = backing_app
+    monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
+    monkeypatch.setattr("services.agent.dsl_service.agent_soul_has_model", Mock(return_value=True))
+    workflow = _workflow()
+
+    agent, snapshot = service._create_workflow_only_agent(
+        workflow=workflow,
+        node_id="node-1",
+        account_id="account-1",
+        metadata=AgentPackageMetadata(name="Inline", icon_type=AgentIconType.EMOJI.value),
+        soul=AgentSoulConfig(),
+        source=AgentSource.IMPORTED,
+        operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
+    )
+
+    assert sqlite_session.get(Agent, agent.id) is agent
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
+    assert agent.scope == AgentScope.WORKFLOW_ONLY
+    assert agent.backing_app_id == "backing-app"
+    assert agent.active_config_snapshot_id == snapshot.id
+    assert agent.active_config_has_model is True
+    assert agent.active_config_is_published is True
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+    )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
+
+
+def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "config_skills": [{"name": "skill", "file_kind": "tool_file", "file_id": "skill-file"}],
+            "config_files": [{"name": "Guide", "file_kind": "upload_file", "file_id": "guide-file"}],
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [
+                            {"id": "existing", "name": "Existing"},
+                            {"id": "missing", "name": "Missing"},
+                        ],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {"mode": "multiple", "top_k": 3},
+                    }
+                ]
+            },
+        }
+    )
+    existing_dataset = Dataset(
+        id="existing",
+        tenant_id="tenant-1",
+        name="Existing",
+        created_by="account-1",
+    )
+    get_dataset_rows = Mock(return_value={"existing": existing_dataset})
+    monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", get_dataset_rows)
+
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
+        tenant_id="tenant-1",
+        package=make_portable_agent_package(_agent(), soul),
+        package_path="agent_packages.agent_1",
+    )
+
+    get_dataset_rows.assert_called_once_with(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        dataset_ids=["existing", "missing"],
+    )
+    datasets = resolved.knowledge.sets[0].datasets
+    assert datasets[0].id == "existing"
+    assert datasets[1].id is not None
+    assert datasets[1].id.startswith("missing-dataset-")
+    assert resolved.config_skills[0].model_dump(mode="json") == {
+        "name": "skill",
+        "description": "",
+        "file_kind": "tool_file",
+        "file_id": "",
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": "application/zip",
+    }
+    assert resolved.config_files[0].model_dump(mode="json") == {
+        "name": "Guide",
+        "file_kind": "upload_file",
+        "file_id": "",
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": None,
+    }
+    assert {warning.code for warning in warnings} == {
+        "agent_skill_omitted",
+        "agent_file_omitted",
+        "agent_knowledge_unresolved",
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "file_kind"),
+    [("config_skills", "tool_file"), ("config_files", "tool_file"), ("config_files", "upload_file")],
+)
+@pytest.mark.parametrize("availability", ["local", "foreign", "deleted", "invalid_id"])
+def test_resolve_legacy_package_asset_references(
+    sqlite_session: Session, field: str, file_kind: str, availability: str
+) -> None:
+    tenant_id = "tenant-2" if availability == "foreign" else "tenant-1"
+    file_id = "legacy-file-id" if availability == "invalid_id" else str(uuid4())
+    if availability in {"local", "foreign"}:
+        if file_kind == "upload_file":
+            row = make_upload_file(file_id=file_id, tenant_id=tenant_id)
+        else:
+            row = ToolFile(
+                tenant_id=tenant_id,
+                user_id="account-1",
+                conversation_id=None,
+                file_key="tools/asset.zip",
+                mimetype="application/zip",
+            )
+            row.id = file_id
+        sqlite_session.add(row)
+        sqlite_session.flush()
+    package = AgentPackage.model_validate(
+        {
+            "metadata": {"name": "Legacy Agent"},
+            "soul": {field: [{"name": "asset", "file_kind": file_kind, "file_id": file_id, "size": 42}]},
+        }
+    )
+
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
+        tenant_id="tenant-1", package=package, package_path="agent_packages.agent_1"
+    )
+
+    ref = (resolved.config_skills if field == "config_skills" else resolved.config_files)[0]
+    assert ref.is_missing is (availability != "local")
+    assert ref.file_id == (file_id if availability == "local" else "")
+    assert ref.name == "asset"
+    assert ref.size == 42
+    original_ref = (package.soul.config_skills if field == "config_skills" else package.soul.config_files)[0]
+    assert original_ref.file_id == file_id
+    if availability == "local":
+        assert warnings == []
+    else:
+        kind = "skill" if field == "config_skills" else "file"
+        assert [warning.code for warning in warnings] == [f"agent_{kind}_missing"]
+        assert warnings[0].path == f"agent_packages.agent_1.soul.{field}.0"
+
+
+def test_create_snapshot_increments_version_and_records_revision(sqlite_session: Session) -> None:
+    agent = _agent()
+    sqlite_session.add_all(
+        [
+            agent,
+            _snapshot(snapshot_id="snapshot-1", version=1),
+            _snapshot(snapshot_id="snapshot-2", version=2),
+        ]
+    )
+    sqlite_session.commit()
+    service = AgentDslService(sqlite_session)
+
+    snapshot = service._create_snapshot(
+        tenant_id="tenant-1",
+        agent=agent,
+        account_id="account-1",
+        soul=AgentSoulConfig(config_note="version 3"),
+        operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
+    )
+
+    assert snapshot.version == 3
+    assert snapshot.home_snapshot_id is None
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+    )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
+
+
+def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session) -> None:
+    sqlite_session.add_all(
+        [
+            _agent(agent_id="agent-1", name="Agent"),
+            _agent(agent_id="agent-2", name="Agent import"),
+            _agent(agent_id="decoy-agent", name="Agent import 2", scope=AgentScope.WORKFLOW_ONLY),
+        ]
+    )
+    sqlite_session.commit()
+
+    result = AgentDslService(sqlite_session).unique_roster_name(tenant_id="tenant-1", requested="Agent")
+
+    assert result == "Agent import 2"
+
+
+def test_require_helpers_and_graph_detection(sqlite_session: Session) -> None:
+    agent = _agent()
+    snapshot = _snapshot()
+    sqlite_session.add_all([agent, snapshot])
+    sqlite_session.commit()
+    service = AgentDslService(sqlite_session)
+
+    assert service._require_agent(tenant_id="tenant-1", agent_id="agent-1") is agent
+    with pytest.raises(ValueError, match="source Agent"):
+        service._require_agent(tenant_id="tenant-1", agent_id="missing")
+    with pytest.raises(ValueError, match="source snapshot"):
+        service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id=None)
+    assert service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id="snapshot-1") is snapshot
+    with pytest.raises(ValueError, match="source snapshot"):
+        service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id="missing")
+
+    assert AgentDslService._agent_icon_type(AgentIconType.EMOJI.value) == AgentIconType.EMOJI
+    assert AgentDslService._agent_icon_type(None) is None
+    assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
+    assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False

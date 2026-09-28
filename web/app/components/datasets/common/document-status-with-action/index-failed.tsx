@@ -9,9 +9,9 @@ import { retryErrorDocs } from '@/service/datasets'
 import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import StatusWithAction from './status-with-action'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
-}
+}>
 type IIndexState = {
   value: string
 }
@@ -34,7 +34,7 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
 }
 
 const RetryButton: FC<Props> = ({ datasetId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
   const { data: errorDocs, isLoading, refetch: refetchErrorDocs } = useDatasetErrorDocs(datasetId)
 
@@ -45,27 +45,23 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
     if (res.result === 'success') {
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    }
-    else {
+    } else {
       dispatch({ type: 'error' })
     }
   }
 
   useEffect(() => {
-    if (errorDocs?.total === 0)
-      dispatch({ type: 'success' })
-    else
-      dispatch({ type: 'error' })
+    if (errorDocs?.total === 0) dispatch({ type: 'success' })
+    else dispatch({ type: 'error' })
   }, [errorDocs?.total])
 
-  if (isLoading || indexState.value === 'success')
-    return null
+  if (isLoading || indexState.value === 'success') return null
 
   return (
     <StatusWithAction
       type="warning"
-      description={`${errorDocs?.total} ${t('docsFailedNotice', { ns: 'dataset' })}`}
-      actionText={t('retry', { ns: 'dataset' })}
+      description={`${errorDocs?.total} ${t(($) => $.docsFailedNotice, { ns: 'dataset' })}`}
+      actionText={t(($) => $.retry, { ns: 'dataset' })}
       disabled={indexState.value === 'retry'}
       onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />

@@ -7,10 +7,15 @@ with one-time use semantics, and validation error paths.
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 
 from services.plugin.oauth_service import OAuthProxyService
+
+
+def _oauth_proxy_setex_calls(redis_client) -> list:
+    return [call for call in redis_client.setex.call_args_list if call.args[0].startswith("oauth_proxy_context:")]
 
 
 class TestCreateProxyContext:
@@ -22,8 +27,9 @@ class TestCreateProxyContext:
         assert context_id  # non-empty UUID string
         from extensions.ext_redis import redis_client
 
-        redis_client.setex.assert_called_once()
-        call_args = redis_client.setex.call_args
+        oauth_calls = _oauth_proxy_setex_calls(redis_client)
+        assert len(oauth_calls) == 1
+        call_args = oauth_calls[0]
         key = call_args[0][0]
         ttl = call_args[0][1]
         stored_data = json.loads(call_args[0][2])
@@ -83,8 +89,26 @@ class TestUseProxyContext:
         stored = {"user_id": "u1", "tenant_id": "t1", "plugin_id": "p1", "provider": "github"}
         redis_client.get.return_value = json.dumps(stored).encode()
 
-        result = OAuthProxyService.use_proxy_context("valid-id")
+        with patch("services.plugin.oauth_service.redis_client.delete") as delete:
+            result = OAuthProxyService.use_proxy_context("valid-id")
 
         assert result == stored
         expected_key = "oauth_proxy_context:valid-id"
-        redis_client.delete.assert_called_once_with(expected_key)
+        delete.assert_called_once_with(expected_key)
+
+    def test_returns_context_with_credential_id(self):
+        from extensions.ext_redis import redis_client
+
+        stored = {
+            "user_id": "u1",
+            "tenant_id": "t1",
+            "plugin_id": "p1",
+            "provider": "github",
+            "credential_id": "cred-42",
+        }
+        redis_client.get.return_value = json.dumps(stored).encode()
+
+        result = OAuthProxyService.use_proxy_context("ctx-with-cred")
+
+        assert result["credential_id"] == "cred-42"
+        assert result["tenant_id"] == "t1"

@@ -1,958 +1,876 @@
-import base64
+from collections.abc import Callable
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import cast
+from unittest.mock import Mock
 
 import pytest
 import yaml
-
-from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
-    TRIGGER_SCHEDULE_NODE_TYPE,
-    TRIGGER_WEBHOOK_NODE_TYPE,
-)
-from dify_graph.enums import BuiltinNodeTypes
-from models import Account, AppMode
-from models.model import IconType
-from services import app_dsl_service
-from services.app_dsl_service import (
-    AppDslService,
-    CheckDependenciesPendingData,
-    ImportMode,
-    ImportStatus,
-    PendingData,
-    _check_version_compatibility,
-)
-
-
-class _FakeHttpResponse:
-    def __init__(self, content: bytes, *, raises: Exception | None = None):
-        self.content = content
-        self._raises = raises
-
-    def raise_for_status(self) -> None:
-        if self._raises is not None:
-            raise self._raises
-
-
-def _account_mock(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> MagicMock:
-    account = MagicMock(spec=Account)
-    account.current_tenant_id = tenant_id
-    account.id = account_id
-    return account
-
-
-def _yaml_dump(data: dict) -> str:
-    return yaml.safe_dump(data, allow_unicode=True)
-
-
-def _workflow_yaml(*, version: str = app_dsl_service.CURRENT_DSL_VERSION) -> str:
-    return _yaml_dump(
-        {
-            "version": version,
-            "kind": "app",
-            "app": {"name": "My App", "mode": AppMode.WORKFLOW.value},
-            "workflow": {"graph": {"nodes": []}, "features": {}},
-        }
-    )
-
-
-def test_check_version_compatibility_invalid_version_returns_failed():
-    assert _check_version_compatibility("not-a-version") == ImportStatus.FAILED
-
-
-def test_check_version_compatibility_newer_version_returns_pending():
-    assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
-
-
-def test_check_version_compatibility_major_older_returns_pending(monkeypatch):
-    monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
-    assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
-
-
-def test_check_version_compatibility_minor_older_returns_completed_with_warnings():
-    assert _check_version_compatibility("0.5.0") == ImportStatus.COMPLETED_WITH_WARNINGS
-
-
-def test_check_version_compatibility_equal_returns_completed():
-    assert _check_version_compatibility(app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
-
-
-def test_import_app_invalid_import_mode_raises_value_error():
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="Invalid import_mode"):
-        service.import_app(account=_account_mock(), import_mode="invalid-mode", yaml_content="version: '0.1.0'")
-
-
-def test_import_app_yaml_url_requires_url():
-    service = AppDslService(MagicMock())
-    result = service.import_app(account=_account_mock(), import_mode=ImportMode.YAML_URL, yaml_url=None)
-    assert result.status == ImportStatus.FAILED
-    assert "yaml_url is required" in result.error
-
-
-def test_import_app_yaml_content_requires_content():
-    service = AppDslService(MagicMock())
-    result = service.import_app(account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=None)
-    assert result.status == ImportStatus.FAILED
-    assert "yaml_content is required" in result.error
-
-
-def test_import_app_yaml_url_fetch_error_returns_failed(monkeypatch):
-    def fake_get(_url: str, **_kwargs):
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(), import_mode=ImportMode.YAML_URL, yaml_url="https://example.com/a.yml"
-    )
-    assert result.status == ImportStatus.FAILED
-    assert "Error fetching YAML from URL: boom" in result.error
-
-
-def test_import_app_yaml_url_empty_content_returns_failed(monkeypatch):
-    def fake_get(_url: str, **_kwargs):
-        return _FakeHttpResponse(b"")
-
-    monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(), import_mode=ImportMode.YAML_URL, yaml_url="https://example.com/a.yml"
-    )
-    assert result.status == ImportStatus.FAILED
-    assert "Empty content" in result.error
-
-
-def test_import_app_yaml_url_file_too_large_returns_failed(monkeypatch):
-    def fake_get(_url: str, **_kwargs):
-        return _FakeHttpResponse(b"x" * (app_dsl_service.DSL_MAX_SIZE + 1))
-
-    monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(), import_mode=ImportMode.YAML_URL, yaml_url="https://example.com/a.yml"
-    )
-    assert result.status == ImportStatus.FAILED
-    assert "File size exceeds" in result.error
-
-
-def test_import_app_yaml_not_mapping_returns_failed():
-    service = AppDslService(MagicMock())
-    result = service.import_app(account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content="[]")
-    assert result.status == ImportStatus.FAILED
-    assert "content must be a mapping" in result.error
-
-
-def test_import_app_version_not_str_returns_failed():
-    service = AppDslService(MagicMock())
-    yaml_content = _yaml_dump({"version": 1, "kind": "app", "app": {"name": "x", "mode": "workflow"}})
-    result = service.import_app(account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=yaml_content)
-    assert result.status == ImportStatus.FAILED
-    assert "Invalid version type" in result.error
-
-
-def test_import_app_missing_app_data_returns_failed():
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(),
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_yaml_dump({"version": "0.6.0", "kind": "app"}),
-    )
-    assert result.status == ImportStatus.FAILED
-    assert "Missing app data" in result.error
-
-
-def test_import_app_app_id_not_found_returns_failed(monkeypatch):
-    def fake_select(_model):
-        stmt = MagicMock()
-        stmt.where.return_value = stmt
-        return stmt
-
-    monkeypatch.setattr(app_dsl_service, "select", fake_select)
-
-    session = MagicMock()
-    session.scalar.return_value = None
-    service = AppDslService(session)
-    result = service.import_app(
-        account=_account_mock(),
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_workflow_yaml(),
-        app_id="missing-app",
-    )
-    assert result.status == ImportStatus.FAILED
-    assert result.error == "App not found"
-
-
-def test_import_app_overwrite_only_allows_workflow_and_advanced_chat(monkeypatch):
-    def fake_select(_model):
-        stmt = MagicMock()
-        stmt.where.return_value = stmt
-        return stmt
-
-    monkeypatch.setattr(app_dsl_service, "select", fake_select)
-
-    existing_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT.value)
-
-    session = MagicMock()
-    session.scalar.return_value = existing_app
-    service = AppDslService(session)
-    result = service.import_app(
-        account=_account_mock(),
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_workflow_yaml(),
-        app_id="app-1",
-    )
-    assert result.status == ImportStatus.FAILED
-    assert "Only workflow or advanced chat apps" in result.error
-
-
-def test_import_app_pending_stores_import_info_in_redis():
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(),
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_workflow_yaml(version="99.0.0"),
-        name="n",
-        description="d",
-        icon_type="emoji",
-        icon="i",
-        icon_background="#000000",
-    )
-    assert result.status == ImportStatus.PENDING
-    assert result.imported_dsl_version == "99.0.0"
-
-    app_dsl_service.redis_client.setex.assert_called_once()
-    call = app_dsl_service.redis_client.setex.call_args
-    redis_key = call.args[0]
-    assert redis_key.startswith(app_dsl_service.IMPORT_INFO_REDIS_KEY_PREFIX)
-
-
-def test_import_app_completed_uses_declared_dependencies(monkeypatch):
-    dependencies_payload = [{"id": "langgenius/google", "version": "1.0.0"}]
-
-    plugin_deps = [SimpleNamespace(model_dump=lambda: dependencies_payload[0])]
-    monkeypatch.setattr(
-        app_dsl_service.PluginDependency,
-        "model_validate",
-        lambda d: plugin_deps[0],
-    )
-
-    created_app = SimpleNamespace(id="app-new", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
-    monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
-
-    draft_var_service = MagicMock()
-    monkeypatch.setattr(app_dsl_service, "WorkflowDraftVariableService", lambda *args, **kwargs: draft_var_service)
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(),
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_yaml_dump(
-            {
-                "version": app_dsl_service.CURRENT_DSL_VERSION,
-                "kind": "app",
-                "app": {"name": "My App", "mode": AppMode.WORKFLOW.value},
-                "workflow": {"graph": {"nodes": []}, "features": {}},
-                "dependencies": dependencies_payload,
-            }
-        ),
-    )
-
-    assert result.status == ImportStatus.COMPLETED
-    assert result.app_id == "app-new"
-    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-new")
-
-
-@pytest.mark.parametrize("has_workflow", [True, False])
-def test_import_app_legacy_versions_extract_dependencies(monkeypatch, has_workflow: bool):
-    monkeypatch.setattr(
-        AppDslService,
-        "_extract_dependencies_from_workflow_graph",
-        lambda *_args, **_kwargs: ["from-workflow"],
-    )
-    monkeypatch.setattr(
-        AppDslService,
-        "_extract_dependencies_from_model_config",
-        lambda *_args, **_kwargs: ["from-model-config"],
-    )
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "generate_latest_dependencies",
-        lambda deps: [SimpleNamespace(model_dump=lambda: {"dep": deps[0]})],
-    )
-
-    created_app = SimpleNamespace(id="app-legacy", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
-    monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
-
-    draft_var_service = MagicMock()
-    monkeypatch.setattr(app_dsl_service, "WorkflowDraftVariableService", lambda *args, **kwargs: draft_var_service)
-
-    data: dict = {
-        "version": "0.1.5",
-        "kind": "app",
-        "app": {"name": "Legacy", "mode": AppMode.WORKFLOW.value},
-    }
-    if has_workflow:
-        data["workflow"] = {"graph": {"nodes": []}, "features": {}}
-    else:
-        data["model_config"] = {"model": {"provider": "openai"}}
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=_yaml_dump(data)
-    )
-    assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
-    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-legacy")
-
-
-def test_import_app_yaml_error_returns_failed(monkeypatch):
-    def bad_safe_load(_content: str):
-        raise yaml.YAMLError("bad")
-
-    monkeypatch.setattr(app_dsl_service.yaml, "safe_load", bad_safe_load)
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content="x: y")
-    assert result.status == ImportStatus.FAILED
-    assert result.error.startswith("Invalid YAML format:")
-
-
-def test_import_app_unexpected_error_returns_failed(monkeypatch):
-    monkeypatch.setattr(
-        AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("oops"))
-    )
-
-    service = AppDslService(MagicMock())
-    result = service.import_app(
-        account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=_workflow_yaml()
-    )
-    assert result.status == ImportStatus.FAILED
-    assert result.error == "oops"
-
-
-def test_confirm_import_expired_returns_failed():
-    service = AppDslService(MagicMock())
-    result = service.confirm_import(import_id="import-1", account=_account_mock())
-    assert result.status == ImportStatus.FAILED
-    assert "expired" in result.error
-
-
-def test_confirm_import_invalid_pending_data_type_returns_failed():
-    app_dsl_service.redis_client.get.return_value = 123
-    service = AppDslService(MagicMock())
-    result = service.confirm_import(import_id="import-1", account=_account_mock())
-    assert result.status == ImportStatus.FAILED
-    assert "Invalid import information" in result.error
-
-
-def test_confirm_import_success_deletes_redis_key(monkeypatch):
-    def fake_select(_model):
-        stmt = MagicMock()
-        stmt.where.return_value = stmt
-        return stmt
-
-    monkeypatch.setattr(app_dsl_service, "select", fake_select)
-
-    session = MagicMock()
-    session.scalar.return_value = None
-    service = AppDslService(session)
-
-    pending = PendingData(
-        import_mode=ImportMode.YAML_CONTENT,
-        yaml_content=_workflow_yaml(),
-        name="name",
-        description="desc",
-        icon_type="emoji",
-        icon="🤖",
-        icon_background="#fff",
-        app_id=None,
-    )
-    app_dsl_service.redis_client.get.return_value = pending.model_dump_json()
-
-    created_app = SimpleNamespace(id="confirmed-app", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
-    monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
-
-    result = service.confirm_import(import_id="import-1", account=_account_mock())
-    assert result.status == ImportStatus.COMPLETED
-    assert result.app_id == "confirmed-app"
-    app_dsl_service.redis_client.delete.assert_called_once()
-
-
-def test_confirm_import_exception_returns_failed(monkeypatch):
-    app_dsl_service.redis_client.get.return_value = "not-json"
-    monkeypatch.setattr(
-        PendingData, "model_validate_json", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad"))
-    )
-
-    service = AppDslService(MagicMock())
-    result = service.confirm_import(import_id="import-1", account=_account_mock())
-    assert result.status == ImportStatus.FAILED
-    assert result.error == "bad"
-
-
-def test_check_dependencies_returns_empty_when_no_redis_data():
-    service = AppDslService(MagicMock())
-    result = service.check_dependencies(app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
-    assert result.leaked_dependencies == []
-
-
-def test_check_dependencies_calls_analysis_service(monkeypatch):
-    pending = CheckDependenciesPendingData(dependencies=[], app_id="app-1").model_dump_json()
-    app_dsl_service.redis_client.get.return_value = pending
-    dep = app_dsl_service.PluginDependency.model_validate(
-        {"type": "package", "value": {"plugin_unique_identifier": "acme/foo", "version": "1.0.0"}}
-    )
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "get_leaked_dependencies",
-        lambda *, tenant_id, dependencies: [dep],
-    )
-
-    service = AppDslService(MagicMock())
-    result = service.check_dependencies(app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
-    assert len(result.leaked_dependencies) == 1
-
-
-def test_create_or_update_app_missing_mode_raises():
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="loss app mode"):
-        service._create_or_update_app(app=None, data={"app": {}}, account=_account_mock())
-
-
-def test_create_or_update_app_existing_app_updates_fields(monkeypatch):
-    fixed_now = object()
-    monkeypatch.setattr(app_dsl_service, "naive_utc_now", lambda: fixed_now)
-
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = None
-    monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-    monkeypatch.setattr(
-        app_dsl_service.variable_factory,
-        "build_environment_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="env"),
-    )
-    monkeypatch.setattr(
-        app_dsl_service.variable_factory,
-        "build_conversation_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="conv"),
-    )
-
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        mode=AppMode.WORKFLOW.value,
-        name="old",
-        description="old-desc",
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.rbac import RBACPermission, RBACResourceScope
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from models import Account, App, AppMode
+from models.model import AppModelConfig, AppModelConfigDict, IconType
+from models.workflow import Workflow
+from services.agent.dsl_entities import AgentPackage
+from services.app_dsl_service import AppDslService, PendingData
+from services.entities.dsl_entities import ImportStatus
+from services.errors.account import NoPermissionError
+from services.errors.app import WorkflowNotFoundError
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+
+_OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
+_TENANT_ID = "22222222-2222-4222-8222-222222222222"
+_CALLER_ID = "33333333-3333-4333-8333-333333333333"
+_OTHER_ACCOUNT_ID = "44444444-4444-4444-8444-444444444444"
+_PENDING_WORKFLOW_DSL = "version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n"
+_PENDING_DATA_JSON = PendingData(
+    tenant_id=_TENANT_ID,
+    account_id=_CALLER_ID,
+    import_mode="yaml-content",
+    yaml_content=_PENDING_WORKFLOW_DSL,
+    app_id=_OVERWRITE_APP_ID,
+).model_dump_json()
+
+
+def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCOUNT_ID) -> App:
+    app = App(
+        id=_OVERWRITE_APP_ID,
+        tenant_id=_TENANT_ID,
+        name="Target",
+        description="",
+        mode=AppMode.WORKFLOW,
         icon_type=IconType.EMOJI,
-        icon="old-icon",
-        icon_background="#111111",
-        updated_by=None,
-        updated_at=None,
-        app_model_config=None,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=True,
+        created_by=maintainer,
+        maintainer=maintainer,
+        updated_by=maintainer,
     )
-    service = AppDslService(MagicMock())
-    updated = service._create_or_update_app(
-        app=app,
-        data={
-            "app": {"mode": AppMode.WORKFLOW.value, "name": "yaml-name", "icon_type": IconType.IMAGE, "icon": "X"},
-            "workflow": {"graph": {"nodes": []}, "features": {}},
-        },
-        account=_account_mock(),
-        name="override-name",
-        description=None,
-        icon_background="#222222",
+    session.add(app)
+    session.commit()
+    return app
+
+
+def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
+    return make_account(
+        account_id=account_id,
+        name="DSL author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="DSL workspace"),
     )
-    assert updated is app
-    assert app.name == "override-name"
-    assert app.icon_type == IconType.IMAGE
-    assert app.icon == "X"
-    assert app.icon_background == "#222222"
-    assert app.updated_at is fixed_now
 
 
-def test_create_or_update_app_new_app_requires_tenant():
-    account = _account_mock()
-    account.current_tenant_id = None
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="Current tenant is not set"):
-        service._create_or_update_app(
-            app=None,
-            data={"app": {"mode": AppMode.WORKFLOW.value, "name": "n"}},
-            account=account,
-        )
+def _app(
+    *,
+    app_id: str = "11111111-1111-1111-1111-111111111111",
+    tenant_id: str = "33333333-3333-3333-3333-333333333333",
+    mode: AppMode = AppMode.CHAT,
+    app_model_config_id: str | None = None,
+) -> App:
+    return make_app(
+        app_id=app_id,
+        tenant_id=tenant_id,
+        app_model_config_id=app_model_config_id,
+        name="Existing app",
+        mode=mode,
+        max_active_requests=0,
+    )
 
 
-def test_create_or_update_app_creates_workflow_app_and_saves_dependencies(monkeypatch):
-    class DummyApp(SimpleNamespace):
-        pass
+def _workflow(
+    *, graph: dict[str, object], environment_variables: list[LLMEnvironmentVariable] | None = None
+) -> Workflow:
+    return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
 
-    monkeypatch.setattr(app_dsl_service, "App", DummyApp)
 
-    sent: list[tuple[str, object]] = []
-    monkeypatch.setattr(app_dsl_service.app_was_created, "send", lambda app, account: sent.append((app.id, account.id)))
-
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = SimpleNamespace(unique_hash="uh")
-    monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-
+def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        app_dsl_service.variable_factory,
-        "build_environment_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="env"),
+        "services.app_dsl_service.ToolNodeData.model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
     )
-    monkeypatch.setattr(
-        app_dsl_service.variable_factory,
-        "build_conversation_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="conv"),
-    )
-
-    monkeypatch.setattr(
-        AppDslService, "decrypt_dataset_id", lambda *_args, **_kwargs: "00000000-0000-0000-0000-000000000000"
-    )
-
-    session = MagicMock()
-    service = AppDslService(session)
-    deps = [
-        app_dsl_service.PluginDependency.model_validate(
-            {"type": "package", "value": {"plugin_unique_identifier": "acme/foo", "version": "1.0.0"}}
-        )
-    ]
-    data = {
-        "app": {"mode": AppMode.WORKFLOW.value, "name": "n"},
-        "workflow": {
-            "environment_variables": [{"x": 1}],
-            "conversation_variables": [{"y": 2}],
-            "graph": {
-                "nodes": [
-                    {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["enc-1", "enc-2"]}},
-                ]
-            },
-            "features": {},
-        },
-    }
-
-    app = service._create_or_update_app(app=None, data=data, account=_account_mock(), dependencies=deps)
-
-    assert app.tenant_id == "tenant-1"
-    assert sent == [(app.id, "account-1")]
-    app_dsl_service.redis_client.setex.assert_called()
-    workflow_service.sync_draft_workflow.assert_called_once()
-
-    passed_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
-    dataset_ids = passed_graph["nodes"][0]["data"]["dataset_ids"]
-    assert dataset_ids == ["00000000-0000-0000-0000-000000000000", "00000000-0000-0000-0000-000000000000"]
-
-
-def test_create_or_update_app_workflow_missing_workflow_data_raises():
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="Missing workflow data"):
-        service._create_or_update_app(
-            app=SimpleNamespace(
-                id="a",
-                tenant_id="t",
-                mode=AppMode.WORKFLOW.value,
-                name="n",
-                description="d",
-                icon_background="#fff",
-                app_model_config=None,
-            ),
-            data={"app": {"mode": AppMode.WORKFLOW.value}},
-            account=_account_mock(),
-        )
-
-
-def test_create_or_update_app_chat_requires_model_config():
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="Missing model_config"):
-        service._create_or_update_app(
-            app=SimpleNamespace(
-                id="a",
-                tenant_id="t",
-                mode=AppMode.CHAT.value,
-                name="n",
-                description="d",
-                icon_background="#fff",
-                app_model_config=None,
-            ),
-            data={"app": {"mode": AppMode.CHAT.value}},
-            account=_account_mock(),
-        )
-
-
-def test_create_or_update_app_chat_creates_model_config_and_sends_event(monkeypatch):
-    class DummyModelConfig(SimpleNamespace):
-        def from_model_config_dict(self, _cfg: dict):
-            return self
-
-    monkeypatch.setattr(app_dsl_service, "AppModelConfig", DummyModelConfig)
-
-    sent: list[str] = []
-    monkeypatch.setattr(
-        app_dsl_service.app_model_config_was_updated, "send", lambda app, app_model_config: sent.append(app.id)
-    )
-
-    session = MagicMock()
-    service = AppDslService(session)
-
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        mode=AppMode.CHAT.value,
-        name="n",
-        description="d",
-        icon_background="#fff",
-        app_model_config=None,
-    )
-    service._create_or_update_app(
-        app=app,
-        data={"app": {"mode": AppMode.CHAT.value}, "model_config": {"model": {"provider": "openai"}}},
-        account=_account_mock(),
-    )
-
-    assert app.app_model_config_id is not None
-    assert sent == ["app-1"]
-    session.add.assert_called()
-
-
-def test_create_or_update_app_invalid_mode_raises():
-    service = AppDslService(MagicMock())
-    with pytest.raises(ValueError, match="Invalid app mode"):
-        service._create_or_update_app(
-            app=SimpleNamespace(
-                id="a",
-                tenant_id="t",
-                mode=AppMode.RAG_PIPELINE.value,
-                name="n",
-                description="d",
-                icon_background="#fff",
-                app_model_config=None,
-            ),
-            data={"app": {"mode": AppMode.RAG_PIPELINE.value}},
-            account=_account_mock(),
-        )
-
-
-def test_export_dsl_delegates_by_mode(monkeypatch):
-    workflow_calls: list[bool] = []
-    model_calls: list[bool] = []
-    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", lambda **_kwargs: workflow_calls.append(True))
-    monkeypatch.setattr(
-        AppDslService, "_append_model_config_export_data", lambda *_args, **_kwargs: model_calls.append(True)
-    )
-
-    workflow_app = SimpleNamespace(
-        mode=AppMode.WORKFLOW.value,
-        tenant_id="tenant-1",
-        name="n",
-        icon="i",
-        icon_type="emoji",
-        icon_background="#fff",
-        description="d",
-        use_icon_as_answer_icon=False,
-        app_model_config=None,
-    )
-    AppDslService.export_dsl(workflow_app)
-    assert workflow_calls == [True]
-
-    chat_app = SimpleNamespace(
-        mode=AppMode.CHAT.value,
-        tenant_id="tenant-1",
-        name="n",
-        icon="i",
-        icon_type="emoji",
-        icon_background="#fff",
-        description="d",
-        use_icon_as_answer_icon=False,
-        app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
-    )
-    AppDslService.export_dsl(chat_app)
-    assert model_calls == [True]
-
-
-def test_export_dsl_preserves_icon_and_icon_type(monkeypatch):
-    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", lambda **_kwargs: None)
-
-    emoji_app = SimpleNamespace(
-        mode=AppMode.WORKFLOW.value,
-        tenant_id="tenant-1",
-        name="Emoji App",
-        icon="🎨",
-        icon_type=IconType.EMOJI,
-        icon_background="#FF5733",
-        description="App with emoji icon",
-        use_icon_as_answer_icon=True,
-        app_model_config=None,
-    )
-    yaml_output = AppDslService.export_dsl(emoji_app)
-    data = yaml.safe_load(yaml_output)
-    assert data["app"]["icon"] == "🎨"
-    assert data["app"]["icon_type"] == "emoji"
-    assert data["app"]["icon_background"] == "#FF5733"
-
-    image_app = SimpleNamespace(
-        mode=AppMode.WORKFLOW.value,
-        tenant_id="tenant-1",
-        name="Image App",
-        icon="https://example.com/icon.png",
-        icon_type=IconType.IMAGE,
-        icon_background="#FFEAD5",
-        description="App with image icon",
-        use_icon_as_answer_icon=False,
-        app_model_config=None,
-    )
-    yaml_output = AppDslService.export_dsl(image_app)
-    data = yaml.safe_load(yaml_output)
-    assert data["app"]["icon"] == "https://example.com/icon.png"
-    assert data["app"]["icon_type"] == "image"
-    assert data["app"]["icon_background"] == "#FFEAD5"
-
-
-def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
-    workflow_dict = {
-        "graph": {
-            "nodes": [
-                {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["d1", "d2"]}},
-                {"data": {"type": BuiltinNodeTypes.TOOL, "credential_id": "secret"}},
-                {
-                    "data": {
-                        "type": BuiltinNodeTypes.AGENT,
-                        "agent_parameters": {"tools": {"value": [{"credential_id": "secret"}]}},
-                    }
-                },
-                {"data": {"type": TRIGGER_SCHEDULE_NODE_TYPE, "config": {"x": 1}}},
-                {"data": {"type": TRIGGER_WEBHOOK_NODE_TYPE, "webhook_url": "x", "webhook_debug_url": "y"}},
-                {"data": {"type": TRIGGER_PLUGIN_NODE_TYPE, "subscription_id": "s"}},
-            ]
-        }
-    }
-
-    workflow = SimpleNamespace(to_dict=lambda *, include_secret: workflow_dict)
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = workflow
-    monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-
-    monkeypatch.setattr(
-        AppDslService, "encrypt_dataset_id", lambda *, dataset_id, tenant_id: f"enc:{tenant_id}:{dataset_id}"
-    )
-    monkeypatch.setattr(
-        TriggerScheduleNode := app_dsl_service.TriggerScheduleNode,
-        "get_default_config",
-        lambda: {"config": {"default": True}},
-    )
-    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", lambda *_args, **_kwargs: ["dep-1"])
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "generate_dependencies",
-        lambda *, tenant_id, dependencies: [
-            SimpleNamespace(model_dump=lambda: {"tenant": tenant_id, "dep": dependencies[0]})
-        ],
-    )
-    monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
-    export_data: dict = {}
-    AppDslService._append_workflow_export_data(
-        export_data=export_data,
-        app_model=SimpleNamespace(tenant_id="tenant-1"),
-        include_secret=False,
-        workflow_id=None,
-    )
-
-    nodes = export_data["workflow"]["graph"]["nodes"]
-    assert nodes[0]["data"]["dataset_ids"] == ["enc:tenant-1:d1", "enc:tenant-1:d2"]
-    assert "credential_id" not in nodes[1]["data"]
-    assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
-    assert nodes[3]["data"]["config"] == {"default": True}
-    assert nodes[4]["data"]["webhook_url"] == ""
-    assert nodes[4]["data"]["webhook_debug_url"] == ""
-    assert nodes[5]["data"]["subscription_id"] == ""
-    assert export_data["dependencies"] == [{"tenant": "tenant-1", "dep": "dep-1"}]
-
-
-def test_append_workflow_export_data_missing_workflow_raises(monkeypatch):
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = None
-    monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-
-    with pytest.raises(ValueError, match="Missing draft workflow configuration"):
-        AppDslService._append_workflow_export_data(
-            export_data={},
-            app_model=SimpleNamespace(tenant_id="tenant-1"),
-            include_secret=False,
-            workflow_id=None,
-        )
-
-
-def test_append_model_config_export_data_filters_credential_id(monkeypatch):
-    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_model_config", lambda *_args, **_kwargs: ["dep-1"])
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "generate_dependencies",
-        lambda *, tenant_id, dependencies: [
-            SimpleNamespace(model_dump=lambda: {"tenant": tenant_id, "dep": dependencies[0]})
-        ],
-    )
-    monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
-    app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
-    app_model = SimpleNamespace(tenant_id="tenant-1", app_model_config=app_model_config)
-    export_data: dict = {}
-
-    AppDslService._append_model_config_export_data(export_data, app_model)
-    assert export_data["model_config"]["agent_mode"]["tools"] == [{}]
-    assert export_data["dependencies"] == [{"tenant": "tenant-1", "dep": "dep-1"}]
-
-
-def test_append_model_config_export_data_requires_app_config():
-    with pytest.raises(ValueError, match="Missing app configuration"):
-        AppDslService._append_model_config_export_data({}, SimpleNamespace(app_model_config=None))
-
-
-def test_extract_dependencies_from_workflow_graph_covers_all_node_types(monkeypatch):
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "analyze_tool_dependency",
-        lambda provider_id: f"tool:{provider_id}",
-    )
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "analyze_model_provider_dependency",
-        lambda provider: f"model:{provider}",
-    )
-
-    monkeypatch.setattr(app_dsl_service.ToolNodeData, "model_validate", lambda _d: SimpleNamespace(provider_id="p1"))
-    monkeypatch.setattr(
-        app_dsl_service.LLMNodeData, "model_validate", lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m1"))
-    )
-    monkeypatch.setattr(
-        app_dsl_service.QuestionClassifierNodeData,
-        "model_validate",
-        lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m2")),
-    )
-    monkeypatch.setattr(
-        app_dsl_service.ParameterExtractorNodeData,
-        "model_validate",
-        lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m3")),
-    )
-
-    def kr_validate(_d):
-        return SimpleNamespace(
-            retrieval_mode="multiple",
-            multiple_retrieval_config=SimpleNamespace(
-                reranking_mode="weighted_score",
-                weights=SimpleNamespace(vector_setting=SimpleNamespace(embedding_provider_name="m4")),
-                reranking_model=None,
-            ),
-            single_retrieval_config=None,
-        )
-
-    monkeypatch.setattr(app_dsl_service.KnowledgeRetrievalNodeData, "model_validate", kr_validate)
-
     graph = {
         "nodes": [
-            {"data": {"type": BuiltinNodeTypes.TOOL}},
-            {"data": {"type": BuiltinNodeTypes.LLM}},
-            {"data": {"type": BuiltinNodeTypes.QUESTION_CLASSIFIER}},
-            {"data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}},
-            {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}},
-            {"data": {"type": "unknown"}},
+            {"data": {"type": "tool", "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}},
+            {"data": {"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}},
+            {"data": {"type": "agent", "agent_strategy_provider_name": "acme/strategy/provider"}},
         ]
     }
 
-    deps = AppDslService._extract_dependencies_from_workflow_graph(graph)
-    assert deps == ["tool:p1", "model:m1", "model:m2", "model:m3", "model:m4"]
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/tool",
+        "acme/trigger",
+        "acme/drive",
+        "acme/strategy",
+    ]
 
 
-def test_extract_dependencies_from_workflow_graph_handles_exceptions(monkeypatch):
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
     monkeypatch.setattr(
-        app_dsl_service.ToolNodeData, "model_validate", lambda _d: (_ for _ in ()).throw(ValueError("bad"))
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
     )
-    deps = AppDslService._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": BuiltinNodeTypes.TOOL}}]}
-    )
-    assert deps == []
+
+    result = AppDslService._extract_dependencies_from_workflow(workflow)
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
 
 
-def test_extract_dependencies_from_model_config_parses_providers(monkeypatch):
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    monkeypatch: pytest.MonkeyPatch, model_selector: list[str]
+) -> None:
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
     monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "analyze_model_provider_dependency",
-        lambda provider: f"model:{provider}",
-    )
-    monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "analyze_tool_dependency",
-        lambda provider_id: f"tool:{provider_id}",
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
     )
 
-    deps = AppDslService._extract_dependencies_from_model_config(
-        {
-            "model": {"provider": "p1"},
-            "dataset_configs": {
-                "datasets": {"datasets": [{"reranking_model": {"reranking_provider_name": {"provider": "p2"}}}]}
+    result = AppDslService._extract_dependencies_from_workflow(workflow)
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
+
+
+def test_import_app_rejects_oversized_yaml_content_before_parsing(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
+    service = AppDslService(session=unbound_session)
+    account = _account()
+
+    result = service.import_app(account=account, import_mode="yaml-content", yaml_content="你你")
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "File size exceeds the limit of 10MB"
+    assert not unbound_session.in_transaction()
+
+
+def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 1)
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff\xff"
+    monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
+    service = AppDslService(session=unbound_session)
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-url",
+        yaml_url="https://example.com/app.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "File size exceeds the limit of 10MB"
+    assert not unbound_session.in_transaction()
+
+
+def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff"
+    monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
+    service = AppDslService(session=unbound_session)
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-url",
+        yaml_url="https://example.com/app.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "utf-8" in result.error
+    assert not unbound_session.in_transaction()
+
+
+def test_import_app_checks_overwrite_rbac_before_database_access(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_overwrite_target(sqlite_session)
+    account = Mock(id=_CALLER_ID, current_tenant_id=_TENANT_ID)
+
+    def deny_before_transaction(*_args: object, **_kwargs: object) -> bool:
+        assert not sqlite_session.in_transaction()
+        return False
+
+    check = Mock(side_effect=deny_before_transaction)
+    setex = Mock()
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
+
+    with pytest.raises(NoPermissionError, match="permission to overwrite"):
+        AppDslService(sqlite_session).import_app(
+            account=account,
+            import_mode="yaml-content",
+            yaml_content=_PENDING_WORKFLOW_DSL,
+            app_id=_OVERWRITE_APP_ID,
+        )
+
+    check.assert_called_once_with(
+        _TENANT_ID,
+        _CALLER_ID,
+        scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+        resource_type=RBACResourceScope.APP,
+        resource_id=_OVERWRITE_APP_ID,
+    )
+    setex.assert_not_called()
+
+
+def test_confirm_import_rechecks_overwrite_rbac_before_database_access(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_overwrite_target(sqlite_session)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=_PENDING_DATA_JSON))
+    redis_delete = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
+    create_or_update = Mock()
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+
+    def deny_before_transaction(*_args: object, **_kwargs: object) -> bool:
+        assert not sqlite_session.in_transaction()
+        return False
+
+    check = Mock(side_effect=deny_before_transaction)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+
+    with pytest.raises(NoPermissionError, match="permission to overwrite"):
+        service.confirm_import(
+            import_id="import-1",
+            account=Mock(id=_CALLER_ID, current_tenant_id=_TENANT_ID),
+        )
+
+    check.assert_called_once_with(
+        _TENANT_ID,
+        _CALLER_ID,
+        scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+        resource_type=RBACResourceScope.APP,
+        resource_id=_OVERWRITE_APP_ID,
+    )
+    create_or_update.assert_not_called()
+    redis_delete.assert_not_called()
+
+
+def test_confirm_import_does_not_create_when_overwrite_target_disappeared(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=_PENDING_DATA_JSON))
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=True))
+    redis_delete = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
+    service = AppDslService(sqlite_session)
+    create_or_update = Mock()
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+
+    result = service.confirm_import(
+        import_id="import-1",
+        account=Mock(id=_CALLER_ID, current_tenant_id=_TENANT_ID),
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "App not found"
+    create_or_update.assert_not_called()
+    redis_delete.assert_not_called()
+
+
+def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    service = AppDslService(session=unbound_session)
+    creator = _account()
+
+    pending = service.import_app(
+        account=creator,
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    redis_key = f"app_import_info:{pending.id}"
+    assert pending.status == ImportStatus.PENDING
+    assert redis_key in pending_imports
+    pending_data = PendingData.model_validate_json(pending_imports[redis_key])
+    assert pending_data.tenant_id == "tenant-1"
+    assert pending_data.account_id == "account-1"
+
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
+    create_or_update = Mock(return_value=_app(app_id="app-1", mode=AppMode.WORKFLOW))
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr("services.app_dsl_service.yaml.safe_load", load)
+
+    pending_imports[redis_key] = pending_data.model_dump_json(exclude={"tenant_id", "account_id"})
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    assert redis_key in pending_imports
+    pending_imports[redis_key] = pending_data.model_dump_json()
+
+    for other_account in (
+        _account(tenant_id="tenant-2"),
+        _account(account_id="account-2"),
+    ):
+        assert service.confirm_import(import_id=pending.id, account=other_account).status == ImportStatus.FAILED
+
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.COMPLETED
+    assert redis_key not in pending_imports
+
+
+def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    setex = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
+    account = _account()
+    account._current_tenant = None
+
+    result = AppDslService(session=unbound_session).import_app(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "Current tenant is not set"
+    setex.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("caller_tenant_id", "caller_account_id", "expected"),
+    [
+        ("tenant-1", "account-1", True),
+        (None, "account-1", False),
+        ("tenant-2", "account-1", False),
+        ("tenant-1", "account-2", False),
+    ],
+)
+def test_pending_import_owner_access(
+    caller_tenant_id: str | None,
+    caller_account_id: str,
+    expected: bool,
+) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content="",
+    )
+
+    assert pending.is_accessible_by(tenant_id=caller_tenant_id, account_id=caller_account_id) is expected
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"tenant_id":"tenant-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"account_id":"account-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+    ],
+)
+def test_pending_import_owner_is_required(payload: str) -> None:
+    with pytest.raises(ValueError) as exc_info:
+        PendingData.model_validate_json(payload)
+
+    assert "secret-token-123" not in str(exc_info.value)
+
+
+def test_create_or_update_app_loads_existing_model_config_with_service_session(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as arrange_session:
+        app_model_config = AppModelConfig(
+            app_id="11111111-1111-1111-1111-111111111111",
+            created_by="22222222-2222-2222-2222-222222222222",
+            updated_by="22222222-2222-2222-2222-222222222222",
+        )
+        arrange_session.add(app_model_config)
+        arrange_session.commit()
+        app_model_config_id = app_model_config.id
+    app = _app(app_model_config_id=app_model_config_id)
+
+    with sqlite_session_factory() as service_session:
+        result = AppDslService(session=service_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+            account=_account(),
+        )
+
+        assert result is app
+        assert app.app_model_config_id == app_model_config_id
+        configs = list(service_session.scalars(select(AppModelConfig)))
+        assert [config.id for config in configs] == [app_model_config_id]
+
+
+def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_session: Session) -> None:
+    app = _app(tenant_id=_TENANT_ID)
+    service = AppDslService(session=sqlite_session)
+
+    result = service._create_or_update_app(
+        app=app,
+        data={
+            "app": {
+                "mode": AppMode.CHAT.value,
+                "icon_type": IconType.IMAGE.value,
+                "icon": "55555555-5555-4555-8555-555555555555",
             },
-            "agent_mode": {"tools": [{"provider_id": "t1"}]},
-        }
+            "model_config": {"model": {}},
+        },
+        account=_account(tenant_id=_TENANT_ID),
     )
-    assert deps == ["model:p1", "model:p2", "tool:t1"]
+
+    assert result.icon_type == IconType.EMOJI
+    assert result.icon == "🤖"
+    assert service._warnings == []
 
 
-def test_extract_dependencies_from_model_config_handles_exceptions(monkeypatch):
+def test_create_or_update_app_flushes_new_model_config_before_signal(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    events: list[str] = []
+
+    def record_flush(_session: Session, _flush_context: object) -> None:
+        events.append("flush")
+
+    def record_signal(*_args: object, **_kwargs: object) -> None:
+        events.append("signal")
+
+    event.listen(sqlite_session, "after_flush", record_flush)
+    signal = Mock()
+    signal.send.side_effect = record_signal
+    monkeypatch.setattr("services.app_dsl_service.app_model_config_was_updated", signal)
+    app = _app()
+
+    try:
+        AppDslService(session=sqlite_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+            account=_account(account_id="22222222-2222-2222-2222-222222222222"),
+        )
+    finally:
+        event.remove(sqlite_session, "after_flush", record_flush)
+
+    assert events == ["flush", "signal"]
+    assert signal.send.call_args.kwargs["session"] is sqlite_session
+    assert app.app_model_config_id is not None
+    assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
+    assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize(
+    ("feature", "field", "value"),
+    [
+        ("suggested_questions_after_answer", "prompt", None),
+        ("suggested_questions_after_answer", "prompt", 123),
+        ("text_to_speech", "voice", None),
+        ("text_to_speech", "language", 123),
+        ("text_to_speech", "autoPlay", "auto"),
+    ],
+)
+def test_chat_dsl_import_rejects_invalid_feature_fields(
+    sqlite_session: Session, feature: str, field: str, value: object
+) -> None:
+    app = _app()
+
+    with pytest.raises(ValueError, match=field):
+        AppDslService(session=sqlite_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {feature: {"enabled": True, field: value}}},
+            account=_account(),
+        )
+
+    assert app.app_model_config_id is None
+    assert list(sqlite_session.scalars(select(AppModelConfig))) == []
+
+
+def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session) -> None:
+    app = _app()
+    model_config = {
+        "suggested_questions_after_answer": {"enabled": True, "prompt": "Follow up"},
+        "text_to_speech": {"enabled": True, "voice": "alloy", "language": "en", "autoPlay": "disabled"},
+    }
+
+    AppDslService(session=sqlite_session)._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.CHAT}, "model_config": model_config},
+        account=_account(),
+    )
+
+    assert app.app_model_config_id is not None
+    persisted = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+    assert persisted is not None
+    assert persisted.suggested_questions_after_answer_dict == model_config["suggested_questions_after_answer"]
+    assert persisted.text_to_speech_dict == model_config["text_to_speech"]
+
+
+def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    imported_graph: dict[str, object] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": imported_graph},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+        "nodes": [],
+        "edges": [],
+    }
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
+
+
+def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow = SimpleNamespace(id="workflow-1")
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=workflow),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "analyze_model_provider_dependency",
-        lambda _p: (_ for _ in ()).throw(ValueError("bad")),
+        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
+        Mock(return_value={"nodes": [], "edges": []}),
     )
-    deps = AppDslService._extract_dependencies_from_model_config({"model": {"provider": "p1"}})
-    assert deps == []
-
-
-def test_get_leaked_dependencies_empty_returns_empty():
-    assert AppDslService.get_leaked_dependencies("tenant-1", []) == []
-
-
-def test_get_leaked_dependencies_delegates(monkeypatch):
     monkeypatch.setattr(
-        app_dsl_service.DependenciesAnalysisService,
-        "get_leaked_dependencies",
-        lambda *, tenant_id, dependencies: [SimpleNamespace(tenant_id=tenant_id, deps=dependencies)],
+        "services.app_dsl_service.AgentDslService.import_workflow_packages",
+        Mock(return_value=(workflow, [], {"retired-agent"})),
     )
-    res = AppDslService.get_leaked_dependencies("tenant-1", [SimpleNamespace(id="x")])
-    assert len(res) == 1
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
+    retire_unowned = Mock()
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        retire_unowned,
+    )
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": {"nodes": [], "edges": []}},
+            "agent_packages": {"package-1": {}},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    retire_unowned.assert_called_once_with(
+        tenant_id="tenant-1",
+        agent_ids={"retired-agent"},
+        account_id="account-1",
+    )
 
 
-def test_encrypt_decrypt_dataset_id_respects_config(monkeypatch):
-    tenant_id = "tenant-1"
-    dataset_uuid = "00000000-0000-0000-0000-000000000000"
+def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    model_config = cast(AppModelConfigDict, {"model": {}, "agent_mode": {"tools": []}})
+    with sqlite_session_factory() as arrange_session:
+        app_model_config = AppModelConfig(
+            app_id="11111111-1111-1111-1111-111111111111",
+            created_by="22222222-2222-2222-2222-222222222222",
+            updated_by="22222222-2222-2222-2222-222222222222",
+        ).from_model_config_dict(model_config)
+        arrange_session.add(app_model_config)
+        arrange_session.commit()
+        app_model_config_id = app_model_config.id
+        app_id = app_model_config.app_id
+    annotation_reply = {"enabled": False}
+    load_annotation_reply_config = Mock(return_value=annotation_reply)
+    monkeypatch.setattr("services.app_dsl_service.load_annotation_reply_config", load_annotation_reply_config)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+    app = _app(app_model_config_id=app_model_config_id)
 
-    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", False)
-    assert AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id=tenant_id) == dataset_uuid
+    with sqlite_session_factory() as service_session:
+        exported = AppDslService.export_dsl(app, session=service_session)
 
-    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
-    encrypted = AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id=tenant_id)
-    assert encrypted != dataset_uuid
-    assert base64.b64decode(encrypted.encode())
-    assert AppDslService.decrypt_dataset_id(encrypted_data=encrypted, tenant_id=tenant_id) == dataset_uuid
-
-
-def test_decrypt_dataset_id_returns_plain_uuid_unchanged():
-    value = "00000000-0000-0000-0000-000000000000"
-    assert AppDslService.decrypt_dataset_id(encrypted_data=value, tenant_id="tenant-1") == value
+        export_data = yaml.safe_load(exported)
+        assert export_data["model_config"]["model"] == {}
+        assert export_data["model_config"]["annotation_reply"] == annotation_reply
+        load_annotation_reply_config.assert_called_once_with(service_session, app_id)
 
 
-def test_decrypt_dataset_id_returns_none_on_invalid_data(monkeypatch):
-    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
-    assert AppDslService.decrypt_dataset_id(encrypted_data="not-base64", tenant_id="tenant-1") is None
+def test_agent_import_of_new_agent_checks_function_scope(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    check = Mock(return_value=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+    account = _account()
+
+    AppDslService(session=unbound_session)._ensure_agent_import_permission(account, app=None)
+
+    check.assert_called_once_with(
+        account.current_tenant_id,
+        account.id,
+        scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+        resource_type=None,
+        resource_id=None,
+    )
 
 
-def test_decrypt_dataset_id_returns_none_when_decrypted_is_not_uuid(monkeypatch):
-    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
-    encrypted = AppDslService.encrypt_dataset_id(dataset_id="not-a-uuid", tenant_id="tenant-1")
-    assert AppDslService.decrypt_dataset_id(encrypted_data=encrypted, tenant_id="tenant-1") is None
+def test_create_or_update_app_gates_agent_mode_before_creation(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
+    service = AppDslService(session=unbound_session)
+
+    with pytest.raises(NoPermissionError):
+        service._create_or_update_app(
+            app=None,
+            data={"app": {"mode": "agent", "name": "Gated agent"}},
+            account=_account(),
+        )
+
+    assert not unbound_session.in_transaction()
 
 
-def test_is_valid_uuid_handles_bad_inputs():
-    assert AppDslService._is_valid_uuid("00000000-0000-0000-0000-000000000000") is True
-    assert AppDslService._is_valid_uuid("nope") is False
+def test_import_app_reraises_permission_denial_instead_of_failed_result(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
+    service = AppDslService(session=unbound_session)
+
+    with pytest.raises(NoPermissionError):
+        service.import_app(
+            account=_account(),
+            import_mode="yaml-content",
+            yaml_content="app:\n  mode: agent\n  name: Denied agent\n",
+        )
+
+    assert not unbound_session.in_transaction()
+
+
+def test_append_workflow_export_data_reports_missing_selected_workflow(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    workflow_id = "11111111-1111-4111-8111-111111111111"
+    workflow_service = Mock()
+    workflow_service.get_draft_workflow.return_value = None
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    app = _app(app_id="app-1", tenant_id="tenant-1")
+
+    with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
+        AppDslService._append_workflow_export_data(
+            export_data={},
+            app_model=app,
+            include_secret=False,
+            session=unbound_session,
+            workflow_id=workflow_id,
+        )
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],
+)
+def test_export_dsl_preserves_envelope_and_mode_specific_content(
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=mode)
+    package = AgentPackage.model_validate({"metadata": {"name": app.name}, "soul": {}})
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.export_agent_app",
+        Mock(return_value=("agent_1", {"agent_1": package})),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
+
+    def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> list[str]:
+        export_data["workflow"] = {"fixture": "workflow"}
+        return []
+
+    def append_model(export_data: dict[str, object], *_args: object, **_kwargs: object) -> list[str]:
+        export_data["model_config"] = {"fixture": "model"}
+        return []
+
+    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
+    data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
+    assert data["version"] == CURRENT_APP_DSL_VERSION
+    assert data["kind"] == "app"
+    assert data["app"] == {
+        "name": "Existing app",
+        "description": "",
+        "mode": mode.value,
+        "icon_type": "emoji",
+        "icon": "robot",
+        "icon_background": "#FFFFFF",
+        "use_icon_as_answer_icon": False,
+    }
+    if mode == AppMode.AGENT:
+        assert data["agent"] == {"package_ref": "agent_1"}
+        assert AgentPackage.model_validate(data["agent_packages"]["agent_1"]) == package
+        assert data["dependencies"] == []
+        assert "workflow" not in data
+        assert "model_config" not in data
+    elif mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+        assert data["workflow"] == {"fixture": "workflow"}
+        assert "agent" not in data
+        assert "model_config" not in data
+    else:
+        assert data["model_config"] == {"fixture": "model"}
+        assert "agent" not in data
+        assert "workflow" not in data
+
+
+@pytest.mark.parametrize(
+    ("mode", "node_type"),
+    [
+        (AppMode.WORKFLOW, "answer"),
+        (AppMode.ADVANCED_CHAT, "end"),
+        (AppMode.ADVANCED_CHAT, "trigger-webhook"),
+        (AppMode.ADVANCED_CHAT, "trigger-schedule"),
+        (AppMode.ADVANCED_CHAT, "trigger-plugin"),
+    ],
+)
+def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
+    session = Mock()
+    target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
+    service = AppDslService(session)
+    service._load_app_for_overwrite = Mock(return_value=target)
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        app_id=target.id,
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"mode": mode.value, "name": "Changed"},
+                "workflow": {"graph": {"nodes": [{"data": {"type": node_type}}]}},
+            }
+        ),
+    )
+    assert result.status == ImportStatus.FAILED
+    assert result.error is not None
+    assert "incompatible" in result.error
+    assert target.name == "Original"
+    session.add.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("content", "found"),
+    [
+        ({"meta": {}, "nodes": [], "edges": []}, "meta, nodes, edges"),
+        ({"app": None}, "none"),
+        ({"x" * 81: {}}, "x" * 80 + "…"),
+    ],
+    ids=["original-keys", "empty-app", "bounded-key-list"],
+)
+def test_missing_app_section_names_the_keys_that_were_present(
+    unbound_session: Session, content: dict[str, object], found: str
+) -> None:
+    result = AppDslService(session=unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False)
+    )
+    assert result.status == ImportStatus.FAILED
+    assert result.error is not None
+    assert result.error.startswith("Missing app data in YAML content.")
+    assert result.error.endswith(f"(found: {found}).")
+    assert not unbound_session.in_transaction()

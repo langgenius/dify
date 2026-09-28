@@ -1,21 +1,9 @@
 import type { Credential } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Indicator from '@/app/components/header/indicator'
 import CredentialItem from './authorized/credential-item'
 
 type CredentialSelectorProps = {
@@ -32,83 +20,92 @@ const CredentialSelector = ({
   disabled,
   notAllowAddNewCredential,
 }: CredentialSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const [open, setOpen] = useState(false)
-  const handleSelect = useCallback((credential: Credential & { addNewCredential?: boolean }) => {
-    setOpen(false)
-    onSelect(credential)
-  }, [onSelect])
+  const handleSelect = useCallback(
+    (credential: Credential & { addNewCredential?: boolean }) => {
+      setOpen(false)
+      onSelect(credential)
+    },
+    [onSelect],
+  )
   const handleAddNewCredential = useCallback(() => {
     handleSelect({
       credential_id: '__add_new_credential',
       addNewCredential: true,
-      credential_name: t('modelProvider.auth.addNewModelCredential', { ns: 'common' }),
+      credential_name: t(($) => $['modelProvider.auth.addNewModelCredential'], {
+        ns: 'modelProvider',
+      }),
     })
   }, [handleSelect, t])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      triggerPopupSameWidth
-    >
-      <PortalToFollowElemTrigger asChild onClick={() => !disabled && setOpen(v => !v)}>
-        <div className="system-sm-regular flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2">
-          {
-            selectedCredential && (
-              <div className="flex items-center">
-                {
-                  !selectedCredential.addNewCredential && <Indicator className="ml-1 mr-2 shrink-0" />
-                }
-                <div className="system-sm-regular truncate text-components-input-text-filled" title={selectedCredential.credential_name}>{selectedCredential.credential_name}</div>
-                {
-                  selectedCredential.from_enterprise && (
-                    <Badge className="shrink-0">Enterprise</Badge>
-                  )
-                }
-              </div>
-            )
-          }
-          {
-            !selectedCredential && (
-              <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
-            )
-          }
-          <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        disabled={disabled}
+        render={
+          <button
+            type="button"
+            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+          />
+        }
+      >
+        {selectedCredential && (
+          <span className="flex items-center">
+            {!selectedCredential.addNewCredential && <StatusDot className="mr-2 ml-1 shrink-0" />}
+            <span
+              className="truncate system-sm-regular text-components-input-text-filled"
+              title={selectedCredential.credential_name}
+            >
+              {selectedCredential.credential_name}
+            </span>
+            {selectedCredential.from_enterprise && (
+              <span className="badge badge-m shrink-0 px-1.25 py-0.5 system-2xs-medium">
+                Enterprise
+              </span>
+            )}
+          </span>
+        )}
+        {!selectedCredential && (
+          <span className="grow truncate system-sm-regular text-components-input-text-placeholder">
+            {t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'modelProvider' })}
+          </span>
+        )}
+        <RiArrowDownSLine className="size-4 text-text-quaternary" />
+      </PopoverTrigger>
+      <PopoverContent
+        sideOffset={0}
+        className="w-(--anchor-width) rounded-xl border-[0.5px] border-current bg-components-panel-bg-blur p-0"
+      >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'modelProvider' })}
+        </PopoverTitle>
+        <div className="max-h-80 overflow-y-auto p-1">
+          {credentials.map((credential) => (
+            <CredentialItem
+              key={credential.credential_id}
+              credential={credential}
+              disableDelete
+              disableEdit
+              disableRename
+              onItemClick={handleSelect}
+              showSelectedIcon
+              selectedCredentialId={selectedCredential?.credential_id}
+            />
+          ))}
         </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[100]">
-        <div className="border-ccomponents-panel-border rounded-xl border-[0.5px] bg-components-panel-bg-blur shadow-lg">
-          <div className="max-h-[320px] overflow-y-auto p-1">
-            {
-              credentials.map(credential => (
-                <CredentialItem
-                  key={credential.credential_id}
-                  credential={credential}
-                  disableDelete
-                  disableEdit
-                  disableRename
-                  onItemClick={handleSelect}
-                  showSelectedIcon
-                  selectedCredentialId={selectedCredential?.credential_id}
-                />
-              ))
-            }
-          </div>
-          {
-            !notAllowAddNewCredential && (
-              <div
-                className="system-xs-medium flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 text-text-accent-light-mode-only"
-                onClick={handleAddNewCredential}
-              >
-                <RiAddLine className="mr-1 h-4 w-4" />
-                {t('modelProvider.auth.addNewModelCredential', { ns: 'common' })}
-              </div>
-            )
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        {!notAllowAddNewCredential && (
+          <button
+            type="button"
+            className="flex h-10 w-full cursor-pointer items-center border-t border-t-divider-subtle px-7 text-left system-xs-medium text-text-accent-light-mode-only focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            onClick={handleAddNewCredential}
+          >
+            <RiAddLine className="mr-1 size-4" />
+            {t(($) => $['modelProvider.auth.addNewModelCredential'], { ns: 'modelProvider' })}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 

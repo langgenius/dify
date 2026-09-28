@@ -51,3 +51,18 @@ class BaiduVectorDBConfig(BaseSettings):
         description="Parser mode for inverted index in Baidu Vector Database (default is COARSE_MODE)",
         default="COARSE_MODE",
     )
+
+    BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT: int = Field(
+        description="Auto build row count increment threshold (default is 500)",
+        default=500,
+    )
+
+    BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO: float = Field(
+        description="Auto build row count increment ratio threshold (default is 0.05)",
+        default=0.05,
+    )
+
+    BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS: int = Field(
+        description="Timeout in seconds for rebuilding the index in Baidu Vector Database (default is 3600 seconds)",
+        default=300,
+    )

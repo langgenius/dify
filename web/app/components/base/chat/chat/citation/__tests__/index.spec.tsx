@@ -1,18 +1,21 @@
 import type { CitationItem } from '../../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Citation from '../index'
 
 vi.mock('../popup', () => ({
-  default: ({ data, showHitInfo }: { data: { documentName: string }, showHitInfo?: boolean }) => (
+  default: ({ data, showHitInfo }: { data: { documentName: string }; showHitInfo?: boolean }) => (
     <div data-testid="popup" data-show-hit-info={String(!!showHitInfo)}>
       {data.documentName}
     </div>
   ),
 }))
 
-const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'clientWidth',
+)
 
 type ClientWidthConfig = {
   container: number
@@ -23,10 +26,12 @@ const mockClientWidths = ({ container, item }: ClientWidthConfig) => {
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     get() {
       const el = this as HTMLElement
-      if (el.className?.includes?.('chat-answer-container') || el.className?.includes?.('my-custom-container'))
+      if (
+        el.className?.includes?.('chat-answer-container') ||
+        el.className?.includes?.('my-custom-container')
+      )
         return container
-      if (el.dataset?.testid === 'citation-measurement-item')
-        return item
+      if (el.dataset?.testid === 'citation-measurement-item') return item
       return 0
     },
     configurable: true,
@@ -84,13 +89,16 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Alpha' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Beta' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Alpha' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Beta' }),
+          ]}
         />,
       )
-      expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
+      const measurementItems = screen.getAllByTestId('citation-measurement-item')
+      expect(measurementItems).toHaveLength(2)
+      measurementItems.forEach((item) => expect(item).toHaveAttribute('aria-hidden', 'true'))
     })
 
     it('should display the document name inside each measurement item', () => {
@@ -104,10 +112,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1' }),
-          makeCitationItem({ document_id: 'doc-2' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1' }),
+            makeCitationItem({ document_id: 'doc-2' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('popup')).toHaveLength(2)
@@ -129,13 +138,6 @@ describe('Citation', () => {
       expect(screen.getByTestId('citation-title')).toBeInTheDocument()
     })
 
-    it('should use a custom containerClassName to resolve the container element', () => {
-      mockClientWidths({ container: 600, item: 50 })
-      setupContainer('my-custom-container')
-      render(<Citation data={[makeCitationItem()]} containerClassName="my-custom-container" />)
-      expect(screen.getByTestId('citation-title')).toBeInTheDocument()
-    })
-
     it('should forward showHitInfo=true to each rendered Popup', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
@@ -148,18 +150,18 @@ describe('Citation', () => {
           showHitInfo={true}
         />,
       )
-      screen.getAllByTestId('popup').forEach(p =>
-        expect(p).toHaveAttribute('data-show-hit-info', 'true'),
-      )
+      screen
+        .getAllByTestId('popup')
+        .forEach((p) => expect(p).toHaveAttribute('data-show-hit-info', 'true'))
     })
 
     it('should forward showHitInfo=false when prop is omitted', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(<Citation data={[makeCitationItem({ document_id: 'doc-1' })]} />)
-      screen.getAllByTestId('popup').forEach(p =>
-        expect(p).toHaveAttribute('data-show-hit-info', 'false'),
-      )
+      screen
+        .getAllByTestId('popup')
+        .forEach((p) => expect(p).toHaveAttribute('data-show-hit-info', 'false'))
     })
   })
 
@@ -168,10 +170,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'shared', segment_id: 'seg-1' }),
-          makeCitationItem({ document_id: 'shared', segment_id: 'seg-2' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'shared', segment_id: 'seg-1' }),
+            makeCitationItem({ document_id: 'shared', segment_id: 'seg-2' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
@@ -181,11 +184,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-a' }),
-          makeCitationItem({ document_id: 'doc-b' }),
-          makeCitationItem({ document_id: 'doc-c' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-a' }),
+            makeCitationItem({ document_id: 'doc-b' }),
+            makeCitationItem({ document_id: 'doc-c' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(3)
@@ -195,11 +199,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-1' }),
-          makeCitationItem({ document_id: 'doc-y', segment_id: 'seg-2' }),
-          makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-1' }),
+            makeCitationItem({ document_id: 'doc-y', segment_id: 'seg-2' }),
+            makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
@@ -212,15 +217,16 @@ describe('Citation', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1' }),
-          makeCitationItem({ document_id: 'doc-2' }),
-          makeCitationItem({ document_id: 'doc-3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1' }),
+            makeCitationItem({ document_id: 'doc-2' }),
+            makeCitationItem({ document_id: 'doc-3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('popup')).toHaveLength(3)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
@@ -233,13 +239,18 @@ describe('Citation', () => {
       mockClientWidths({ container: 140, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+          ]}
         />,
       )
-      expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'share.chat.expand common.chat.citation.title',
+        }),
+      ).toHaveAttribute('aria-expanded', 'false')
     })
   })
 
@@ -253,14 +264,19 @@ describe('Citation', () => {
       mockClientWidths({ container: 240, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-          makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+            makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
+          ]}
         />,
       )
-      expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'share.chat.expand common.chat.citation.title',
+        }),
+      ).toHaveAttribute('aria-expanded', 'false')
       expect(screen.getAllByTestId('popup')).toHaveLength(2)
     })
   })
@@ -274,79 +290,104 @@ describe('Citation', () => {
       mockClientWidths({ container: 140, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-          makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+            makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
+          ]}
         />,
       )
-      return screen.getByTestId('citation-more-toggle')
+      return screen.getByRole('button', {
+        name: 'share.chat.expand common.chat.citation.title',
+      })
     }
 
     it('should show the overflow count label matching /+\\s*\\d+/ on the more-toggle in collapsed state', () => {
-      renderOverflowScenario()
-      expect(screen.getByTestId('citation-more-toggle').textContent).toMatch(/^\+\s*\d+$/)
+      const toggle = renderOverflowScenario()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(toggle.textContent).toMatch(/^\+\s*\d+$/)
     })
 
-    it('should display the collapse icon div after clicking more-toggle to expand', async () => {
+    it('should expose the expanded state and collapse action after clicking more-toggle', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.click(toggle)
 
-      expect(document.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'share.chat.collapse common.chat.citation.title',
+        }),
+      ).toHaveAttribute('aria-expanded', 'true')
     })
 
     it('should return to the count label after clicking the toggle a second time to collapse', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.click(toggle)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'share.chat.collapse common.chat.citation.title',
+        }),
+      )
 
-      expect(screen.getByTestId('citation-more-toggle').textContent).toMatch(/^\+\s*\d+$/)
+      expect(
+        screen.getByRole('button', {
+          name: 'share.chat.expand common.chat.citation.title',
+        }).textContent,
+      ).toMatch(/^\+\s*\d+$/)
     })
 
     it('should show all resource popups after expanding via the more-toggle', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.click(toggle)
 
       await waitFor(() => {
         expect(screen.getAllByTestId('popup')).toHaveLength(3)
       })
     })
+
+    it.each([
+      ['Enter', '{Enter}'],
+      ['Space', ' '],
+    ])('should expand with the %s key', async (_, key) => {
+      const user = userEvent.setup()
+      const toggle = renderOverflowScenario()
+
+      toggle.focus()
+      await user.keyboard(key)
+
+      expect(
+        screen.getByRole('button', {
+          name: 'share.chat.collapse common.chat.citation.title',
+        }),
+      ).toHaveAttribute('aria-expanded', 'true')
+    })
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing when data is an empty array', () => {
-      mockClientWidths({ container: 500, item: 0 })
-      setupContainer()
-      render(<Citation data={[]} />)
-      expect(screen.getByTestId('citation-title')).toBeInTheDocument()
-      expect(screen.queryAllByTestId('citation-measurement-item')).toHaveLength(0)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
-    })
-
     it('should render correctly with a single citation item that fits', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(<Citation data={[makeCitationItem()]} />)
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('should handle all citations sharing one document_id as a single resource', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'only', segment_id: 's1' }),
-          makeCitationItem({ document_id: 'only', segment_id: 's2' }),
-          makeCitationItem({ document_id: 'only', segment_id: 's3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'only', segment_id: 's1' }),
+            makeCitationItem({ document_id: 'only', segment_id: 's2' }),
+            makeCitationItem({ document_id: 'only', segment_id: 's3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
@@ -356,7 +397,8 @@ describe('Citation', () => {
       mockClientWidths({ container: 5000, item: 50 })
       setupContainer()
       const data = Array.from({ length: 20 }, (_, i) =>
-        makeCitationItem({ document_id: `doc-${i}`, document_name: `Document ${i}` }))
+        makeCitationItem({ document_id: `doc-${i}`, document_name: `Document ${i}` }),
+      )
       expect(() => render(<Citation data={data} />)).not.toThrow()
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(20)
     })

@@ -151,6 +151,12 @@ def deserialize_response(raw_data: bytes) -> Response:
 
     response = Response(response=body, status=status_code)
 
+    # Replace Flask's default headers (e.g. Content-Type, Content-Length) with the
+    # parsed ones so we faithfully reproduce the original response. Use Headers.add
+    # rather than dict-style assignment so that repeated headers such as Set-Cookie
+    # (and any other multi-valued header per RFC 9110) are preserved instead of
+    # being overwritten.
+    response.headers.clear()
     for line in lines[1:]:
         if not line:
             continue
@@ -158,6 +164,6 @@ def deserialize_response(raw_data: bytes) -> Response:
         if ":" not in line_str:
             continue
         name, value = line_str.split(":", 1)
-        response.headers[name] = value.strip()
+        response.headers.add(name, value.strip())
 
     return response

@@ -44,11 +44,22 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
                 metadata={
                     "retriever_resources": [
                         {
+                            "dataset_id": "dataset-1",
+                            "dataset_name": "Dataset 1",
+                            "document_id": "document-1",
                             "segment_id": "s1",
                             "position": 1,
+                            "data_source_type": "file",
                             "document_name": "doc",
                             "score": 0.9,
+                            "hit_count": 2,
+                            "word_count": 128,
+                            "segment_position": 3,
+                            "index_node_hash": "abc1234",
                             "content": "content",
+                            "page": 5,
+                            "title": "Citation Title",
+                            "files": [{"id": "file-1"}],
                         }
                     ],
                     "annotation_reply": {"id": "a"},
@@ -107,11 +118,22 @@ class TestAgentChatAppGenerateResponseConverterStream:
                     metadata={
                         "retriever_resources": [
                             {
+                                "dataset_id": "dataset-1",
+                                "dataset_name": "Dataset 1",
+                                "document_id": "document-1",
                                 "segment_id": "s1",
                                 "position": 1,
+                                "data_source_type": "file",
                                 "document_name": "doc",
                                 "score": 0.9,
+                                "hit_count": 2,
+                                "word_count": 128,
+                                "segment_position": 3,
+                                "index_node_hash": "abc1234",
                                 "content": "content",
+                                "page": 5,
+                                "title": "Citation Title",
+                                "files": [{"id": "file-1"}],
                                 "summary": "summary",
                                 "extra": "ignored",
                             }
@@ -151,11 +173,22 @@ class TestAgentChatAppGenerateResponseConverterStream:
         assert "usage" not in metadata
         assert metadata["retriever_resources"] == [
             {
+                "dataset_id": "dataset-1",
+                "dataset_name": "Dataset 1",
+                "document_id": "document-1",
                 "segment_id": "s1",
                 "position": 1,
+                "data_source_type": "file",
                 "document_name": "doc",
                 "score": 0.9,
+                "hit_count": 2,
+                "word_count": 128,
+                "segment_position": 3,
+                "index_node_hash": "abc1234",
                 "content": "content",
+                "page": 5,
+                "title": "Citation Title",
+                "files": [{"id": "file-1"}],
                 "summary": "summary",
             }
         ]

@@ -1,14 +1,16 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 // Hoisted mock state
 const mocks = vi.hoisted(() => ({
-  rerankModelList: [] as Array<{ provider: { provider: string }, model: string }>,
-  rerankDefaultModel: null as { provider: { provider: string }, model: string } | null,
-  isRerankDefaultModelValid: null as { provider: { provider: string }, model: string } | null,
-  embeddingModelList: [] as Array<{ provider: { provider: string }, model: string }>,
-  defaultEmbeddingModel: null as { provider: { provider: string }, model: string } | null,
+  rerankModelList: [] as Array<{ provider: { provider: string }; model: string }>,
+  rerankDefaultModel: null as { provider: { provider: string }; model: string } | null,
+  isRerankDefaultModelValid: null as { provider: { provider: string }; model: string } | null,
+  embeddingModelList: [] as Array<{ provider: { provider: string }; model: string }>,
+  defaultEmbeddingModel: null as { provider: { provider: string }; model: string } | null,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -17,7 +19,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     defaultModel: mocks.rerankDefaultModel,
     currentModel: mocks.isRerankDefaultModelValid,
   }),
-  useModelList: () => ({ data: mocks.embeddingModelList }),
+
   useDefaultModel: () => ({ data: mocks.defaultEmbeddingModel }),
 }))
 
@@ -158,4 +160,20 @@ describe('useIndexingConfig', () => {
       expect(typeof result.current.showMultiModalTip).toBe('boolean')
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: mocks.embeddingModelList }
+    },
+  }
 })

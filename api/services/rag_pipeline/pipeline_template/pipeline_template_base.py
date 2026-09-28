@@ -1,17 +1,17 @@
-from abc import ABC, abstractmethod
+from typing import Any, Protocol
+
+from sqlalchemy.orm import Session
 
 
-class PipelineTemplateRetrievalBase(ABC):
+class PipelineTemplateRetrievalBase(Protocol):
     """Interface for pipeline template retrieval."""
 
-    @abstractmethod
-    def get_pipeline_templates(self, language: str) -> dict:
-        raise NotImplementedError
+    def get_pipeline_templates(
+        self, language: str, current_tenant_id: str | None = None, *, session: Session
+    ) -> dict[str, Any]: ...
 
-    @abstractmethod
-    def get_pipeline_template_detail(self, template_id: str) -> dict | None:
-        raise NotImplementedError
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None: ...
 
-    @abstractmethod
-    def get_type(self) -> str:
-        raise NotImplementedError
+    def get_type(self) -> str: ...

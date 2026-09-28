@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
 from .cache.redis_pubsub_config import RedisPubSubConfig
+from .key_provider.azure_keyvault_config import AzureKeyVaultConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -50,34 +51,52 @@ from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
+_VALID_STORAGE_TYPE = Literal[
+    "opendal",
+    "s3",
+    "aliyun-oss",
+    "azure-blob",
+    "baidu-obs",
+    "clickzetta-volume",
+    "google-storage",
+    "huawei-obs",
+    "oci-storage",
+    "tencent-cos",
+    "volcengine-tos",
+    "supabase",
+    "local",
+]
+
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: Literal[
-        "opendal",
-        "s3",
-        "aliyun-oss",
-        "azure-blob",
-        "baidu-obs",
-        "clickzetta-volume",
-        "google-storage",
-        "huawei-obs",
-        "oci-storage",
-        "tencent-cos",
-        "volcengine-tos",
-        "supabase",
-        "local",
-    ] = Field(
+    STORAGE_TYPE: _VALID_STORAGE_TYPE = Field(
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
         "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default="opendal",
+        default=cast(_VALID_STORAGE_TYPE, "opendal"),
     )
 
     STORAGE_LOCAL_PATH: str = Field(
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
         deprecated=True,
+    )
+
+
+_VALID_KEY_PROVIDER_TYPE = Literal[
+    "local",
+    "azure-keyvault",
+]
+
+
+class KeyProviderConfig(BaseSettings):
+    KEY_PROVIDER_TYPE: _VALID_KEY_PROVIDER_TYPE = Field(
+        description="Key provider used to encrypt/decrypt tenant credentials (LLM/tool provider secrets)."
+        " Options: 'local' (per-tenant RSA key pair, private key kept in the STORAGE_TYPE backend),"
+        " 'azure-keyvault' (per-tenant RSA key kept in Azure Key Vault, private key never leaves the vault)."
+        " Default is 'local'.",
+        default=cast(_VALID_KEY_PROVIDER_TYPE, "local"),
     )
 
 
@@ -105,6 +124,17 @@ class KeywordStoreConfig(BaseSettings):
         " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )
+
+
+class SQLAlchemyEngineOptionsDict(TypedDict):
+    pool_size: int
+    max_overflow: int
+    pool_recycle: int
+    pool_pre_ping: bool
+    connect_args: dict[str, str]
+    pool_use_lifo: bool
+    pool_reset_on_return: Literal["commit", "rollback", None]
+    pool_timeout: int
 
 
 class DatabaseConfig(BaseSettings):
@@ -147,6 +177,16 @@ class DatabaseConfig(BaseSettings):
     DB_EXTRAS: str = Field(
         description="Additional database connection parameters. Example: 'keepalives_idle=60&keepalives=1'",
         default="",
+    )
+
+    DB_SESSION_TIMEZONE_OVERRIDE: str = Field(
+        description=(
+            "PostgreSQL session timezone override injected via startup options."
+            " Default is 'UTC' for out-of-the-box consistency."
+            " Set to empty string to disable app-level timezone injection, for example when using RDS Proxy"
+            " together with a database-side default timezone."
+        ),
+        default="UTC",
     )
 
     @computed_field  # type: ignore[prop-decorator]
@@ -202,6 +242,11 @@ class DatabaseConfig(BaseSettings):
         default=30,
     )
 
+    SQLALCHEMY_POOL_RESET_ON_RETURN: Literal["commit", "rollback", None] = Field(
+        description="Connection pool reset behavior on return. Options: 'commit', 'rollback', or None",
+        default="rollback",
+    )
+
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
@@ -209,30 +254,32 @@ class DatabaseConfig(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
+    def SQLALCHEMY_ENGINE_OPTIONS(self) -> SQLAlchemyEngineOptionsDict:
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        connect_args = {}
+        connect_args: dict[str, str] = {}
         # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
         if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
-            timezone_opt = "-c timezone=UTC"
-            if options:
-                merged_options = f"{options} {timezone_opt}"
-            else:
-                merged_options = timezone_opt
-            connect_args = {"options": merged_options}
+            merged_options = options.strip()
+            session_timezone_override = self.DB_SESSION_TIMEZONE_OVERRIDE.strip()
+            if session_timezone_override:
+                timezone_opt = f"-c timezone={session_timezone_override}"
+                merged_options = f"{merged_options} {timezone_opt}".strip() if merged_options else timezone_opt
+            if merged_options:
+                connect_args = {"options": merged_options}
 
-        return {
+        result: SQLAlchemyEngineOptionsDict = {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
-            "pool_reset_on_return": None,
+            "pool_reset_on_return": self.SQLALCHEMY_POOL_RESET_ON_RETURN,
             "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
+        return result
 
 
 class CeleryConfig(DatabaseConfig):
@@ -288,22 +335,6 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
-class InternalTestConfig(BaseSettings):
-    """
-    Configuration settings for Internal Test
-    """
-
-    AWS_SECRET_ACCESS_KEY: str | None = Field(
-        description="Internal test AWS secret access key",
-        default=None,
-    )
-
-    AWS_ACCESS_KEY_ID: str | None = Field(
-        description="Internal test AWS access key ID",
-        default=None,
-    )
-
-
 class DatasetQueueMonitorConfig(BaseSettings):
     """
     Configuration settings for Dataset Queue Monitor
@@ -329,6 +360,9 @@ class MiddlewareConfig(
     KeywordStoreConfig,
     RedisConfig,
     RedisPubSubConfig,
+    # configs of the tenant credential encryption key provider
+    KeyProviderConfig,
+    AzureKeyVaultConfig,
     # configs of storage and storage providers
     StorageConfig,
     AliyunOSSStorageConfig,
@@ -366,7 +400,6 @@ class MiddlewareConfig(
     WeaviateConfig,
     ElasticsearchConfig,
     CouchbaseConfig,
-    InternalTestConfig,
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,

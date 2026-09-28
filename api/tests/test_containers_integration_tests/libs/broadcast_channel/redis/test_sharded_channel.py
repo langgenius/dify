@@ -8,6 +8,7 @@ Covers real Redis 7+ sharded pub/sub interactions including:
 - Resource cleanup accounting via PUBSUB SHARDNUMSUB
 """
 
+import socket
 import threading
 import time
 import uuid
@@ -357,9 +358,16 @@ class TestShardedRedisBroadcastChannelClusterIntegration:
         return f"test_sharded_cluster_topic_{uuid.uuid4()}"
 
     @staticmethod
+    def _resolve_announced_ip(host: str) -> str:
+        """Resolve the container host name to a literal IP accepted by Redis cluster config."""
+        return socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)[0][4][0]
+
+    @staticmethod
     def _ensure_single_node_cluster(host: str, port: int) -> None:
+        """Bootstrap a single-node cluster using a literal IP for Redis node advertisement."""
         client = redis.Redis(host=host, port=port, decode_responses=False)
-        client.config_set("cluster-announce-ip", host)
+        announced_ip = TestShardedRedisBroadcastChannelClusterIntegration._resolve_announced_ip(host)
+        client.config_set("cluster-announce-ip", announced_ip)
         client.config_set("cluster-announce-port", port)
         slots = client.execute_command("CLUSTER", "SLOTS")
         if not slots:

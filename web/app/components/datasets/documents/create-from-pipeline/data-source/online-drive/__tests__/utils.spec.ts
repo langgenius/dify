@@ -1,5 +1,5 @@
 import type { OnlineDriveData } from '@/types/pipeline'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import { convertOnlineDriveData, isBucketListInitiation, isFile } from '../utils'
 
@@ -93,10 +93,10 @@ describe('online-drive utils', () => {
 
       const result = convertOnlineDriveData(data, [], 'bucket-1')
       expect(result.fileList).toHaveLength(2)
-      expect(result.fileList[0].type).toBe(OnlineDriveFileType.file)
-      expect(result.fileList[0].size).toBe(100)
-      expect(result.fileList[1].type).toBe(OnlineDriveFileType.folder)
-      expect(result.fileList[1].size).toBeUndefined()
+      expect(result.fileList[0]!.type).toBe(OnlineDriveFileType.file)
+      expect(result.fileList[0]!.size).toBe(100)
+      expect(result.fileList[1]!.type).toBe(OnlineDriveFileType.folder)
+      expect(result.fileList[1]!.size).toBeUndefined()
       expect(result.isTruncated).toBe(true)
       expect(result.nextPageParameters).toEqual({ token: 'next' })
       expect(result.hasBucket).toBe(true)

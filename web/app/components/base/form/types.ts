@@ -1,12 +1,6 @@
-import type {
-  AnyFormApi,
-  FieldValidators,
-} from '@tanstack/react-form'
-import type {
-  ForwardedRef,
-  ReactNode,
-} from 'react'
-import type { Locale } from '@/i18n-config'
+import type { AnyFormApi, FieldValidators } from '@tanstack/react-form'
+import type { ForwardedRef, ReactNode } from 'react'
+import type { Locale } from '@/i18n'
 
 export type TypeWithI18N<T = string> = {
   en_US: T
@@ -14,27 +8,29 @@ export type TypeWithI18N<T = string> = {
   [key: string]: T
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
 
-export enum FormTypeEnum {
-  textInput = 'text-input',
-  textNumber = 'number-input',
-  secretInput = 'secret-input',
-  select = 'select',
-  radio = 'radio',
-  checkbox = 'checkbox',
-  files = 'files',
-  file = 'file',
-  modelSelector = 'model-selector',
-  toolSelector = 'tool-selector',
-  multiToolSelector = 'array[tools]',
-  appSelector = 'app-selector',
-  dynamicSelect = 'dynamic-select',
-  boolean = 'boolean',
-}
+export const FormTypeEnum = {
+  textInput: 'text-input',
+  textNumber: 'number-input',
+  secretInput: 'secret-input',
+  select: 'select',
+  radio: 'radio',
+  checkbox: 'checkbox',
+  files: 'files',
+  file: 'file',
+  modelSelector: 'model-selector',
+  toolSelector: 'tool-selector',
+  multiToolSelector: 'array[tools]',
+  appSelector: 'app-selector',
+  dynamicSelect: 'dynamic-select',
+  boolean: 'boolean',
+} as const
+
+export type FormTypeEnum = (typeof FormTypeEnum)[keyof typeof FormTypeEnum]
 
 export type FormOption = {
   label: string | TypeWithI18N | Record<Locale, string>
@@ -43,14 +39,17 @@ export type FormOption = {
   icon?: string
 }
 
-export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
+type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
-export enum FormItemValidateStatusEnum {
-  Success = 'success',
-  Warning = 'warning',
-  Error = 'error',
-  Validating = 'validating',
-}
+export const FormItemValidateStatusEnum = {
+  Success: 'success',
+  Warning: 'warning',
+  Error: 'error',
+  Validating: 'validating',
+} as const
+
+export type FormItemValidateStatusEnum =
+  (typeof FormItemValidateStatusEnum)[keyof typeof FormItemValidateStatusEnum]
 
 export type FormSchema = {
   type: FormTypeEnum
@@ -81,8 +80,6 @@ export type FormSchema = {
     credential_id: string
   }
 }
-
-export type FormValues = Record<string, any>
 
 export type GetValuesOptions = {
   needTransformWhenSecretFieldIsPristine?: boolean

@@ -1,0 +1,16 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
+    },
+    "types": ["node"],
+    "noEmit": true, // we already have bundlers to handle this.
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": ["*.ts", "bin/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

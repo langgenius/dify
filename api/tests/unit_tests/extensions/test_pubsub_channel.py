@@ -1,19 +1,23 @@
-from configs import dify_config
+import pytest
+
 from extensions import ext_redis
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
+from tests.unit_tests.config_override import apply_config_overrides
 
 
-def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch):
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
+def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
+    monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 
     channel = ext_redis.get_pubsub_broadcast_channel()
 
     assert isinstance(channel, RedisBroadcastChannel)
 
 
-def test_get_pubsub_broadcast_channel_sharded(monkeypatch):
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "sharded")
+def test_get_pubsub_broadcast_channel_sharded(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="sharded")
+    monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 
     channel = ext_redis.get_pubsub_broadcast_channel()
 

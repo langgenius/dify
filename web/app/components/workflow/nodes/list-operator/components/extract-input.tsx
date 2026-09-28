@@ -1,50 +1,56 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   readOnly: boolean
   value: string
   onChange: (value: string) => void
-}
+}>
 
-const ExtractInput: FC<Props> = ({
-  nodeId,
-  readOnly,
-  value,
-  onChange,
-}) => {
-  const { t } = useTranslation()
+const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.number].includes(varPayload.type)
+      const numberVariableTypes: readonly VarType[] = [VarType.number]
+
+      return numberVariableTypes.includes(varPayload.type)
     },
   })
 
   return (
-    <div className="flex items-start  space-x-1">
+    <div className="flex items-start space-x-1">
       <Input
         instanceId="http-extract-number"
-        className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+        className={cn(
+          isFocus
+            ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+            : 'border-components-input-border-hover bg-components-input-bg-normal',
+          'w-0 grow rounded-lg border px-3 py-1.5',
+        )}
         value={value}
         onChange={onChange}
         readOnly={readOnly}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readOnly ? t('nodes.http.extractListPlaceholder', { ns: 'workflow' })! : ''}
-        placeholderClassName="!leading-[21px]"
+        placeholder={
+          !readOnly
+            ? t(($) => $['nodes.http.extractListPlaceholder'], { ns: 'workflowIntegrations' })!
+            : ''
+        }
+        placeholderClassName="leading-[21px]!"
       />
     </div>
   )

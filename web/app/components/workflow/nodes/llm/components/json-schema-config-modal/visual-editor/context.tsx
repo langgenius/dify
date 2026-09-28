@@ -1,10 +1,7 @@
 import { noop } from 'es-toolkit/function'
-import {
-  createContext,
-  useContext,
-  useRef,
-} from 'react'
+import { createContext, use } from 'react'
 import { useMitt } from '@/hooks/use-mitt'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createVisualEditorStore } from './store'
 
 type VisualEditorStore = ReturnType<typeof createVisualEditorStore>
@@ -18,19 +15,14 @@ type VisualEditorProviderProps = {
 export const VisualEditorContext = createContext<VisualEditorContextType>(null)
 
 export const VisualEditorContextProvider = ({ children }: VisualEditorProviderProps) => {
-  const storeRef = useRef<VisualEditorStore | null>(null)
-
-  if (!storeRef.current)
-    storeRef.current = createVisualEditorStore()
+  const storeRef = useRefWithInit(createVisualEditorStore)
 
   return (
-    <VisualEditorContext.Provider value={storeRef.current}>
-      {children}
-    </VisualEditorContext.Provider>
+    <VisualEditorContext.Provider value={storeRef.current}>{children}</VisualEditorContext.Provider>
   )
 }
 
-export const MittContext = createContext<ReturnType<typeof useMitt>>({
+const MittContext = createContext<ReturnType<typeof useMitt>>({
   emit: noop,
   useSubscribe: noop,
 })
@@ -38,13 +30,9 @@ export const MittContext = createContext<ReturnType<typeof useMitt>>({
 export const MittProvider = ({ children }: { children: React.ReactNode }) => {
   const mitt = useMitt()
 
-  return (
-    <MittContext.Provider value={mitt}>
-      {children}
-    </MittContext.Provider>
-  )
+  return <MittContext.Provider value={mitt}>{children}</MittContext.Provider>
 }
 
 export const useMittContext = () => {
-  return useContext(MittContext)
+  return use(MittContext)
 }

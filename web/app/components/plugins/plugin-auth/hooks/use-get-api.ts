@@ -1,10 +1,5 @@
-import type {
-  CredentialTypeEnum,
-  PluginPayload,
-} from '../types'
-import {
-  AuthCategory,
-} from '../types'
+import type { CredentialTypeEnum, PluginPayload } from '../types'
+import { AuthCategory } from '../types'
 
 export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {
   if (category === AuthCategory.tool) {
@@ -15,7 +10,8 @@ export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayl
       addCredential: `/workspaces/current/tool-provider/builtin/${provider}/add`,
       updateCredential: `/workspaces/current/tool-provider/builtin/${provider}/update`,
       deleteCredential: `/workspaces/current/tool-provider/builtin/${provider}/delete`,
-      getCredentialSchema: (credential_type: CredentialTypeEnum) => `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/${credential_type}`,
+      getCredentialSchema: (credential_type: CredentialTypeEnum) =>
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/${credential_type}`,
       getOauthUrl: `/oauth/plugin/${provider}/tool/authorization-url`,
       getOauthClientSchema: `/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`,
       setCustomOauthClient: `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,

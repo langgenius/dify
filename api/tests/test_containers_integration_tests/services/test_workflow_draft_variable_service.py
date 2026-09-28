@@ -2,8 +2,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.variables.segments import StringSegment
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from graphon.variables.segments import StringSegment
 from models import App, Workflow
 from models.enums import DraftVariableType
 from models.workflow import WorkflowDraftVariable
@@ -45,7 +45,9 @@ class TestWorkflowDraftVariableService:
         # WorkflowDraftVariableService doesn't have external dependencies that need mocking
         return {}
 
-    def _create_test_app(self, db_session_with_containers: Session, mock_external_service_dependencies, fake=None):
+    def _create_test_app(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, fake: Faker | None = None
+    ):
         """
         Helper method to create a test app with realistic data for testing.
 
@@ -80,7 +82,7 @@ class TestWorkflowDraftVariableService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, fake: Faker | None = None):
         """
         Helper method to create a test workflow associated with an app.
 
@@ -482,7 +484,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from dify_graph.variables.variables import StringVariable
+        from graphon.variables.variables import StringVariable
 
         conv_var = StringVariable(
             id=fake.uuid4(),
@@ -734,7 +736,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from dify_graph.variables.variables import StringVariable
+        from graphon.variables.variables import StringVariable
 
         conv_var1 = StringVariable(
             id=fake.uuid4(),

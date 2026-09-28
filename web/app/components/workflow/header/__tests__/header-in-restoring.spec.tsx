@@ -1,0 +1,176 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { VersionHistory } from '@/types/workflow'
+import { fireEvent, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
+import { FlowType } from '@/types/common'
+import { renderWorkflowComponent as renderWorkflow } from '../../__tests__/workflow-test-env'
+import { WorkflowVersion } from '../../types'
+import HeaderInRestoring from '../header-in-restoring'
+
+const mockRestoreWorkflow = vi.fn()
+const mockInvalidAllLastRun = vi.fn()
+const mockResetWorkflowVersionHistory = vi.fn()
+const mockHandleLoadBackupDraft = vi.fn()
+const mockHandleRefreshWorkflowDraft = vi.fn()
+let mockPlanType: CloudPlan = 'professional'
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+
+vi.mock('@/hooks/use-theme', () => ({
+  default: () => ({
+    theme: 'light',
+  }),
+}))
+
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: vi.fn(() => '09:30:00'),
+  }),
+}))
+
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({
+    formatTimeFromNow: vi.fn(() => '3 hours ago'),
+  }),
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
+  useRestoreWorkflow: () => ({
+    mutateAsync: mockRestoreWorkflow,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
+  useWorkflowRun: () => ({
+    handleLoadBackupDraft: mockHandleLoadBackupDraft,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
+  useWorkflowRefreshDraft: () => ({
+    handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
+  }),
+}))
+
+const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+  id: 'version-1',
+  graph: {
+    nodes: [],
+    edges: [],
+  },
+  created_at: 1_700_000_000,
+  created_by: {
+    id: 'user-1',
+    name: 'Alice',
+    email: 'alice@example.com',
+  },
+  hash: 'hash-1',
+  updated_at: 1_700_000_100,
+  updated_by: {
+    id: 'user-2',
+    name: 'Bob',
+    email: 'bob@example.com',
+  },
+  tool_published: false,
+  version: 'v1',
+  marked_name: 'Release 1',
+  marked_comment: '',
+  ...overrides,
+})
+
+describe('HeaderInRestoring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPlanType = 'professional'
+    deploymentEdition = 'CLOUD'
+  })
+
+  it('should disable restore when the flow id is not ready yet', () => {
+    renderWorkflowComponent(<HeaderInRestoring />, {
+      initialStoreState: {
+        currentVersion: createVersion(),
+      },
+      hooksStoreProps: {
+        configsMap: undefined,
+      },
+    })
+
+    expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
+  })
+
+  it('should enable restore when version and flow id are both ready', () => {
+    renderWorkflowComponent(<HeaderInRestoring />, {
+      initialStoreState: {
+        currentVersion: createVersion(),
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: undefined as never,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeEnabled()
+  })
+
+  it('should keep restore disabled for draft versions even when flow config is ready', () => {
+    renderWorkflowComponent(<HeaderInRestoring />, {
+      initialStoreState: {
+        currentVersion: createVersion({
+          version: WorkflowVersion.Draft,
+        }),
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
+  })
+
+  it('should show plan upgrade modal instead of restoring when sandbox users click restore', () => {
+    mockPlanType = 'sandbox'
+    renderWorkflowComponent(<HeaderInRestoring />, {
+      initialStoreState: {
+        currentVersion: createVersion(),
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+    expect(screen.getByText('billing.upgrade.workflowRestore.title')).toBeInTheDocument()
+    expect(mockRestoreWorkflow).not.toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+})
+
+function renderWorkflowComponent(
+  ui: Parameters<typeof renderWorkflow>[0],
+  options: Parameters<typeof renderWorkflow>[1] = {},
+) {
+  const queryClient = createConsoleQueryClient()
+  createConsoleQueryWrapper({ queryClient })
+  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
+  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
+  return renderWorkflow(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { ...options, queryClient })
+}

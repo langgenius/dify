@@ -1,0 +1,151 @@
+import { renderHook } from '@testing-library/react'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
+
+const mockUseIsChatMode = vi.fn()
+const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
+const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
+
+vi.mock('../use-is-chat-mode', () => ({
+  useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
+  isAgentV2InChatflowEnabled: () => mockIsAgentV2InChatflowEnabled(),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `/docs${path}`,
+}))
+
+describe('useAvailableNodesMetaData', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockIsAgentV2Enabled.mockReturnValue(true)
+    mockIsAgentV2InChatflowEnabled.mockReturnValue(false)
+  })
+
+  it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.isUndeletable).toBe(true)
+    expect(result.current.nodesMap?.[BlockEnum.Answer]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.End]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.VariableAssigner]).toBe(
+      result.current.nodesMap?.[BlockEnum.VariableAggregator],
+    )
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain(
+      '/docs/use-dify/nodes/',
+    )
+  })
+
+  it('should expose only legacy Agent in chat mode by default even when Agent v2 is enabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.Agent)
+    expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
+  })
+
+  it('should expose Agent v2 in chat mode when the Chatflow gate is enabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+    mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.AgentV2)
+    expect(nodeTypes).not.toContain(BlockEnum.Agent)
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+  })
+
+  it('should expose only legacy Agent in chat mode when Agent v2 is disabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+    mockIsAgentV2Enabled.mockReturnValue(false)
+    mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.Agent)
+    expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
+  })
+
+  it('should include workflow-specific trigger and end nodes outside chat mode', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.isUndeletable).toBe(false)
+    expect(result.current.nodesMap?.[BlockEnum.End]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.StartPlaceholder]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerSchedule]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerPlugin]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.Answer]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.defaultValue).toMatchObject({
+      type: BlockEnum.Start,
+      title: 'workflow.blocks.start',
+    })
+  })
+
+  it('should use explicit docs pages and skip nodes without generated docs pages', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.End]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/output',
+    )
+    expect(
+      result.current.nodesMap?.[BlockEnum.IterationStart]?.metaData.helpLinkUri,
+    ).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopEnd]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/start',
+    )
+  })
+
+  it('should hide legacy Agent from the node picker but retain its validator when Agent v2 is enabled', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.AgentV2)
+    expect(nodeTypes).not.toContain(BlockEnum.Agent)
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]?.checkValid).toEqual(expect.any(Function))
+    expect(result.current.nodesMap?.[BlockEnum.Agent]?.checkValid).toEqual(expect.any(Function))
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/agent#new-agent',
+    )
+  })
+
+  it('should expose only legacy Agent while retaining Agent v2 metadata when Agent v2 is disabled', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+    mockIsAgentV2Enabled.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.Agent)
+    expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.Agent]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/agent#classic-agent',
+    )
+  })
+})

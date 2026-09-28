@@ -1,11 +1,14 @@
+import pytest
 from flask import Blueprint, Flask
-from flask_restx import Resource
+from flask_restx import Api, Resource
 from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
+from core.plugin.impl.exc import PluginRuntimeError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from libs.rate_limit import _BearerRateLimited
 
 
 def _create_api_app():
@@ -38,6 +41,14 @@ def _create_api_app():
         def get(self):
             raise RuntimeError("oops")
 
+    @api.route("/plugin-runtime-error")
+    class PluginRuntime(Resource):
+        def get(self):
+            raise PluginRuntimeError(
+                "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
+                lambda_request_id="lambda-request-id",
+            )
+
     # Note: We avoid altering default_mediatype to keep normal error paths
 
     # Special 400 message rewrite
@@ -57,6 +68,13 @@ def _create_api_app():
             # Coerce a mapping description to trigger param error shaping
             e.description = {"field": "is required"}
             raise e
+
+    # The per-token rate limit raises this; ExternalApi must carry its Retry-After header to the
+    # wire (it reads getattr(e, "headers"), not werkzeug's get_headers()).
+    @api.route("/rate-limited")
+    class RateLimited(Resource):
+        def get(self):
+            raise _BearerRateLimited(23)
 
     app.register_blueprint(bp, url_prefix="/api")
     return app
@@ -99,6 +117,24 @@ def test_external_api_json_message_and_bad_request_rewrite():
     assert res.get_json()["message"] == "Invalid JSON payload received or JSON payload is empty."
 
 
+def test_external_api_plugin_runtime_error(mocker):
+    mocker.patch("libs.external_api.get_request_id", return_value="api-request-id")
+    app = _create_api_app()
+
+    res = app.test_client().get("/api/plugin-runtime-error")
+
+    assert res.status_code == 502
+    assert res.get_json() == {
+        "code": "plugin_runtime_error",
+        "message": "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
+        "details": {
+            "request_id": "api-request-id",
+            "lambda_request_id": "lambda-request-id",
+        },
+        "status": 502,
+    }
+
+
 def test_external_api_param_mapping_and_quota():
     app = _create_api_app()
     client = app.test_client()
@@ -113,6 +149,16 @@ def test_external_api_param_mapping_and_quota():
     # Quota path — depending on Flask-RESTX internals it may be handled
     res = client.get("/api/quota")
     assert res.status_code in (400, 429)
+
+
+def test_external_api_carries_exception_headers_to_429_response():
+    # Locks the coupling enforce_bearer_rate_limit relies on: handle_error reads getattr(e,
+    # "headers") and puts it on the response, so Retry-After reaches the wire.
+    app = _create_api_app()
+    res = app.test_client().get("/api/rate-limited")
+    assert res.status_code == 429
+    assert res.headers["Retry-After"] == "23"
+    assert (res.get_json() or {})["status"] == 429
 
 
 def test_unauthorized_and_force_logout_clears_cookies():
@@ -176,3 +222,16 @@ def test_unauthorized_and_force_logout_clears_cookies():
     assert COOKIE_NAME_ACCESS_TOKEN in cookie_names_found
     assert COOKIE_NAME_CSRF_TOKEN in cookie_names_found
     assert COOKIE_NAME_REFRESH_TOKEN in cookie_names_found
+
+
+class _PassthroughFormatter:
+    def finalize(self, _e: Exception, data: dict[str, object], _status_code: int) -> dict[str, object]:
+        return data
+
+
+def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.MonkeyPatch):
+    """The guard exists so a flask-restx upgrade breaks construction, not the first 404."""
+    monkeypatch.delattr(Api, "_should_use_fr_error_handler")
+
+    with pytest.raises(RuntimeError, match="_should_use_fr_error_handler"):
+        ExternalApi(Blueprint("guard", __name__), error_body_formatter=_PassthroughFormatter())

@@ -1,25 +1,13 @@
 import type { VariableAssignerNodeType } from '../../types'
-import type {
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { memo, useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
-import { cn } from '@/utils/classnames'
 import { useVariableAssigner } from '../../hooks'
 
-export type AddVariableProps = {
+type AddVariableProps = {
   variableAssignerNodeId: string
   variableAssignerNodeData: VariableAssignerNodeType
   availableVars: NodeOutPutVar[]
@@ -31,58 +19,68 @@ const AddVariable = ({
   variableAssignerNodeData,
   handleId,
 }: AddVariableProps) => {
+  const { t } = useTranslation(['workflowLogic'])
   const [open, setOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
-  const handleSelectVariable = useCallback((v: ValueSelector, varDetail: Var) => {
-    handleAssignVariableValueChange(
-      variableAssignerNodeId,
-      v,
-      varDetail,
-      handleId,
-    )
-    setOpen(false)
-  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId, setOpen])
+  const handleSelectVariable = useCallback(
+    (v: ValueSelector, varDetail: Var) => {
+      handleAssignVariableValueChange(variableAssignerNodeId, v, varDetail, handleId)
+      setOpen(false)
+    },
+    [handleAssignVariableValueChange, variableAssignerNodeId, handleId, setOpen],
+  )
 
   return (
-    <div className={cn(
-      open && '!flex',
-      variableAssignerNodeData.selected && '!flex',
-    )}
-    >
-      <PortalToFollowElem
-        placement="right"
-        offset={4}
-        open={open}
-        onOpenChange={setOpen}
-      >
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(!open)}
+    <div className={cn(open && 'flex!', variableAssignerNodeData.selected && 'flex!')}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={(props, state) => (
+            <button
+              {...props}
+              type="button"
+              aria-label={t(($) => $['nodes.variableAssigner.setAssignVariable'], {
+                ns: 'workflowLogic',
+              })}
+              className={cn('block border-none bg-transparent p-0', props.className)}
+            >
+              <div
+                className={cn(
+                  'group/addvariable flex items-center justify-center',
+                  'size-4 cursor-pointer',
+                  'hover:rounded-full hover:bg-primary-600',
+                  state.open && 'rounded-full! bg-primary-600!',
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'i-custom-vender-line-general-plus-02 h-2.5 w-2.5',
+                    cn(
+                      'size-2.5 text-text-tertiary',
+                      'group-hover/addvariable:text-text-primary',
+                      state.open && 'text-text-primary!',
+                    ),
+                  )}
+                />
+              </div>
+            </button>
+          )}
+        />
+        <PopoverContent
+          ref={popupRef}
+          placement="right"
+          sideOffset={4}
+          className="border-none bg-transparent shadow-none"
         >
-          <div
-            className={cn(
-              'group/addvariable flex items-center justify-center',
-              'h-4 w-4 cursor-pointer',
-              'hover:rounded-full hover:bg-primary-600',
-              open && '!rounded-full !bg-primary-600',
-            )}
-          >
-            <Plus02
-              className={cn(
-                'h-2.5 w-2.5 text-text-tertiary',
-                'group-hover/addvariable:text-text-primary',
-                open && '!text-text-primary',
-              )}
-            />
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1000]">
           <AddVariablePopup
             onSelect={handleSelectVariable}
             availableVars={availableVars}
+            keyboardTarget={popupRef}
           />
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

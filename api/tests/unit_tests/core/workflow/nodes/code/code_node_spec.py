@@ -1,13 +1,13 @@
 from configs import dify_config
-from dify_graph.nodes.code.code_node import CodeNode
-from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
-from dify_graph.nodes.code.exc import (
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
+from graphon.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.variables.types import SegmentType
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -143,27 +143,6 @@ class TestCodeNodeCheckMethods:
         result = node._check_string("你好世界🌍", "test_var")
 
         assert result == "你好世界🌍"
-
-    def test_check_boolean_none_value(self):
-        """Test _check_boolean with None value."""
-        node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(None, "test_var")
-
-        assert result is None
-
-    def test_check_boolean_true_value(self):
-        """Test _check_boolean with True value."""
-        node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(True, "test_var")
-
-        assert result is True
-
-    def test_check_boolean_false_value(self):
-        """Test _check_boolean with False value."""
-        node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(False, "test_var")
-
-        assert result is False
 
     def test_check_number_none_value(self):
         """Test _check_number with None value."""

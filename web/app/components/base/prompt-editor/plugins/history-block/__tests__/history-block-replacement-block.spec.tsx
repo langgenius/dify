@@ -4,14 +4,14 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import HistoryBlockReplacementBlock from '../history-block-replacement-block'
 import { HistoryBlockNode } from '../node'
 
@@ -63,7 +63,11 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
+    setEditorRootText(
+      editor,
+      `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`,
+      (text) => new CustomTextNode(text),
+    )
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)
@@ -78,7 +82,11 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, 'plain text without history placeholder', text => new CustomTextNode(text))
+    setEditorRootText(
+      editor,
+      'plain text without history placeholder',
+      (text) => new CustomTextNode(text),
+    )
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(0)
@@ -91,7 +99,7 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, HISTORY_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
+    setEditorRootText(editor, HISTORY_PLACEHOLDER_TEXT, (text) => new CustomTextNode(text))
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)

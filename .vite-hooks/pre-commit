@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+git_path() {
+    git rev-parse --git-path "$1"
+}
+
+if [ -f "$(git_path MERGE_HEAD)" ] || \
+   [ -f "$(git_path CHERRY_PICK_HEAD)" ] || \
+   [ -f "$(git_path REVERT_HEAD)" ] || \
+   [ -f "$(git_path SQUASH_MSG)" ] || \
+   [ -d "$(git_path rebase-merge)" ] || \
+   [ -d "$(git_path rebase-apply)" ]; then
+    echo "Git operation in progress, skipping staged checks; CI validates the result."
+    exit 0
+fi
+
+vp staged

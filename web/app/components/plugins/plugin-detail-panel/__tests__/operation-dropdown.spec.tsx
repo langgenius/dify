@@ -1,41 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactElement } from 'react'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginSource } from '../../types'
-import OperationDropdown from '../operation-dropdown'
+import { OperationDropdown } from '../operation-dropdown'
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: <T,>(selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => T): T =>
-    selector({ systemFeatures: { enable_marketplace: true } }),
-}))
+const render = (ui: ReactElement, enableMarketplace = true) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
-vi.mock('@/utils/classnames', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-    <button data-testid="action-button" className={className} onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="portal-content" className={className}>{children}</div>
-  ),
-}))
+const openDropdown = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+}
 
 describe('OperationDropdown', () => {
   const mockOnInfo = vi.fn()
   const mockOnCheckVersion = vi.fn()
   const mockOnRemove = vi.fn()
+  const mockOnViewReadme = vi.fn()
   const defaultProps = {
     source: PluginSource.github,
     detailUrl: 'https://github.com/test/repo',
@@ -49,160 +30,130 @@ describe('OperationDropdown', () => {
   })
 
   describe('Rendering', () => {
-    it('should render trigger button', () => {
+    it('should render the actions trigger', () => {
       render(<OperationDropdown {...defaultProps} />)
 
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      expect(screen.getByTestId('action-button')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      ).toBeInTheDocument()
     })
 
-    it('should render dropdown content', () => {
-      render(<OperationDropdown {...defaultProps} />)
-
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    })
-
-    it('should render info option for github source', () => {
+    it('should render GitHub actions when marketplace is enabled', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
+
+      openDropdown()
 
       expect(screen.getByText('plugin.detailPanel.operation.info')).toBeInTheDocument()
-    })
-
-    it('should render check update option for github source', () => {
-      render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
-
       expect(screen.getByText('plugin.detailPanel.operation.checkUpdate')).toBeInTheDocument()
-    })
-
-    it('should render view detail option for github source with marketplace enabled', () => {
-      render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
-
       expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
-    })
-
-    it('should render view detail option for marketplace source', () => {
-      render(<OperationDropdown {...defaultProps} source={PluginSource.marketplace} />)
-
-      expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
-    })
-
-    it('should always render remove option', () => {
-      render(<OperationDropdown {...defaultProps} />)
-
       expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 
-    it('should not render info option for marketplace source', () => {
+    it('should render marketplace detail action for marketplace source', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.marketplace} />)
+
+      openDropdown()
 
       expect(screen.queryByText('plugin.detailPanel.operation.info')).not.toBeInTheDocument()
-    })
-
-    it('should not render check update option for marketplace source', () => {
-      render(<OperationDropdown {...defaultProps} source={PluginSource.marketplace} />)
-
       expect(screen.queryByText('plugin.detailPanel.operation.checkUpdate')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 
-    it('should not render view detail for local source', () => {
+    it('should render README action only when provided', () => {
+      const { unmount } = render(<OperationDropdown {...defaultProps} />)
+
+      openDropdown()
+      expect(screen.queryByText('plugin.detailPanel.operation.viewReadme')).not.toBeInTheDocument()
+
+      unmount()
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+      openDropdown()
+      expect(screen.getByText('plugin.detailPanel.operation.viewReadme')).toBeInTheDocument()
+    })
+
+    it('should not render marketplace detail when source cannot open a detail page', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.local} />)
 
+      openDropdown()
+
       expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 
-    it('should not render view detail for debugging source', () => {
-      render(<OperationDropdown {...defaultProps} source={PluginSource.debugging} />)
+    it('should not render the trigger when every action is unavailable', () => {
+      render(
+        <OperationDropdown
+          {...defaultProps}
+          source={PluginSource.local}
+          showRemove={false}
+          showCheckVersion={false}
+        />,
+      )
 
-      expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
-    it('should toggle dropdown when trigger is clicked', () => {
-      render(<OperationDropdown {...defaultProps} />)
-
-      const trigger = screen.getByTestId('portal-trigger')
-      fireEvent.click(trigger)
-
-      // The portal-elem should reflect the open state
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-    })
-
-    it('should call onInfo when info option is clicked', () => {
+    it('should call onInfo when the info action is clicked', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
 
+      openDropdown()
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
 
       expect(mockOnInfo).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onCheckVersion when check update option is clicked', () => {
+    it('should call onCheckVersion when the check update action is clicked', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
 
+      openDropdown()
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.checkUpdate'))
 
       expect(mockOnCheckVersion).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onRemove when remove option is clicked', () => {
-      render(<OperationDropdown {...defaultProps} />)
+    it('should call onRemove when the remove action is clicked', () => {
+      render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
 
+      openDropdown()
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
       expect(mockOnRemove).toHaveBeenCalledTimes(1)
     })
 
-    it('should have correct href for view detail link', () => {
+    it('should call onViewReadme when README action is clicked', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+
+      openDropdown()
+      fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
+
+      expect(mockOnViewReadme).toHaveBeenCalledTimes(1)
+    })
+
+    it('should render view detail as an external link', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
+
+      openDropdown()
 
       const link = screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')
       expect(link).toHaveAttribute('href', 'https://github.com/test/repo')
       expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 
-  describe('Props Variations', () => {
-    it('should handle all plugin sources', () => {
-      const sources = [
-        PluginSource.github,
-        PluginSource.marketplace,
-        PluginSource.local,
-        PluginSource.debugging,
-      ]
+  describe('Feature Flags', () => {
+    it('should hide marketplace detail when marketplace is disabled', () => {
+      render(<OperationDropdown {...defaultProps} source={PluginSource.github} />, false)
 
-      sources.forEach((source) => {
-        const { unmount } = render(
-          <OperationDropdown {...defaultProps} source={source} />,
-        )
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-        expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
-        unmount()
-      })
-    })
+      openDropdown()
 
-    it('should handle different detail URLs', () => {
-      const urls = [
-        'https://github.com/owner/repo',
-        'https://marketplace.example.com/plugin/123',
-      ]
-
-      urls.forEach((url) => {
-        const { unmount } = render(
-          <OperationDropdown {...defaultProps} detailUrl={url} source={PluginSource.github} />,
-        )
-        const link = screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')
-        expect(link).toHaveAttribute('href', url)
-        unmount()
-      })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Verify the component is exported as a memo component
-      expect(OperationDropdown).toBeDefined()
-      // React.memo wraps the component, so it should have $$typeof
-      expect((OperationDropdown as { $$typeof?: symbol }).$$typeof).toBeDefined()
+      expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.info')).toBeInTheDocument()
     })
   })
 })

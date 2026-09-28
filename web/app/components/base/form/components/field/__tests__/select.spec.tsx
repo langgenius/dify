@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SelectField from '../select'
 
 const mockField = {
@@ -29,10 +30,27 @@ describe('SelectField', () => {
         ]}
       />,
     )
-    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveTextContent('Alpha')
   })
 
-  it('should update value when users select another option', () => {
+  it('should render the option label when selected value is an empty string', () => {
+    mockField.state.value = ''
+
+    render(
+      <SelectField
+        label="Mode"
+        options={[
+          { label: 'No default selected', value: '' },
+          { label: 'Alpha', value: 'alpha' },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveTextContent('No default selected')
+  })
+
+  it('should update value when users select another option', async () => {
+    const user = userEvent.setup()
     render(
       <SelectField
         label="Mode"
@@ -42,8 +60,8 @@ describe('SelectField', () => {
         ]}
       />,
     )
-    fireEvent.click(screen.getByText('Alpha'))
-    fireEvent.click(screen.getByText('Beta'))
+    await user.click(screen.getByRole('combobox', { name: 'Mode' }))
+    await user.click(screen.getByRole('option', { name: 'Beta' }))
     expect(mockField.handleChange).toHaveBeenCalledWith('beta')
   })
 })

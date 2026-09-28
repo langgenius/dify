@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.tool import PluginToolManager
 
@@ -15,7 +17,7 @@ def _tool_provider(name: str = "provider") -> SimpleNamespace:
 
 
 class TestPluginToolManager:
-    def test_fetch_tool_providers(self, mocker):
+    def test_fetch_tool_providers(self, mocker: MockerFixture):
         manager = PluginToolManager()
         provider = _tool_provider("remote")
         mocker.patch("core.plugin.impl.tool.resolve_dify_schema_refs", return_value={"resolved": True})
@@ -44,7 +46,7 @@ class TestPluginToolManager:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.tools[0].identity.provider == "org/plugin/remote"
 
-    def test_fetch_tool_provider(self, mocker):
+    def test_fetch_tool_provider(self, mocker: MockerFixture):
         manager = PluginToolManager()
         provider = _tool_provider("provider")
         mocker.patch("core.plugin.impl.tool.resolve_dify_schema_refs", return_value={"resolved": True})
@@ -68,7 +70,7 @@ class TestPluginToolManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.tools[0].identity.provider == "org/plugin/provider"
 
-    def test_invoke_merges_chunks(self, mocker):
+    def test_invoke_merges_chunks(self, mocker: MockerFixture):
         manager = PluginToolManager()
         stream_mock = mocker.patch.object(
             manager, "_request_with_plugin_daemon_response_stream", return_value=iter(["chunk"])
@@ -92,7 +94,7 @@ class TestPluginToolManager:
         assert merge_mock.call_count == 1
         assert stream_mock.call_args.kwargs["headers"]["X-Plugin-ID"] == "org/plugin"
 
-    def test_validate_credentials_paths(self, mocker):
+    def test_validate_credentials_paths(self, mocker: MockerFixture):
         manager = PluginToolManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
 
@@ -108,7 +110,7 @@ class TestPluginToolManager:
         stream_mock.return_value = iter([])
         assert manager.validate_datasource_credentials("tenant-1", "user-1", "org/plugin/provider", {"k": "v"}) is False
 
-    def test_get_runtime_parameters_paths(self, mocker):
+    def test_get_runtime_parameters_paths(self, mocker: MockerFixture):
         manager = PluginToolManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
 

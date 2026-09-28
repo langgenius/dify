@@ -5,7 +5,7 @@ export type ModelAndParameter = {
   parameters: Record<string, any>
 }
 
-export type MultipleAndConfigs = {
+type MultipleAndConfigs = {
   multiple: boolean
   configs: ModelAndParameter[]
 }

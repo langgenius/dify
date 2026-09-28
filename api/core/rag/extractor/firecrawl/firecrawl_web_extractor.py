@@ -1,3 +1,5 @@
+from typing import override
+
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from services.website_service import WebsiteService
@@ -30,6 +32,7 @@ class FirecrawlWebExtractor(BaseExtractor):
         self.mode = mode
         self.only_main_content = only_main_content
 
+    @override
     def extract(self) -> list[Document]:
         """Extract content from the URL."""
         documents = []

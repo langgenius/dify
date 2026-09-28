@@ -933,7 +933,7 @@ class TestHandlePostRequestNew:
 
     def _stream_ctx(self, mock_response):
         @contextmanager
-        def _stream(*args, **kwargs):
+        def _stream[**P](*args: P.args, **kwargs: P.kwargs):
             yield mock_response
 
         return _stream
@@ -971,6 +971,23 @@ class TestHandlePostRequestNew:
         assert isinstance(item, SessionMessage)
         assert isinstance(item.message.root, JSONRPCError)
         assert item.message.root.id == 77
+        assert item.message.root.error.message == "Session terminated by server"
+
+    def test_404_on_initialization_includes_url_in_error(self):
+        t = _new_transport(url="http://example.com/mcp/server/abc123/mcp")
+        q: queue.Queue = queue.Queue()
+        msg = _make_request_msg("initialize", 1)
+        ctx = self._make_ctx(t, q, message=msg)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        ctx.client.stream = self._stream_ctx(mock_resp)
+        t._handle_post_request(ctx)
+        item = q.get_nowait()
+        assert isinstance(item, SessionMessage)
+        assert isinstance(item.message.root, JSONRPCError)
+        assert item.message.root.error.code == 32600
+        assert "404 Not Found" in item.message.root.error.message
+        assert "http://example.com/mcp/server/abc123/mcp" in item.message.root.error.message
 
     def test_404_for_notification_no_error_sent(self):
         t = _new_transport()
@@ -1371,7 +1388,7 @@ class TestPostWriterNew:
 
         original_get = c2s.get
 
-        def patched_get(*args, **kwargs):
+        def patched_get[**P](*args: P.args, **kwargs: P.kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 raise queue.Empty

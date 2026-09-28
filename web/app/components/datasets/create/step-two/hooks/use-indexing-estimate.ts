@@ -1,6 +1,12 @@
 import type { IndexingType } from './use-indexing-config'
 import type { NotionPage } from '@/models/common'
-import type { ChunkingMode, CrawlOptions, CrawlResultItem, CustomFile, ProcessRule } from '@/models/datasets'
+import type {
+  ChunkingMode,
+  CrawlOptions,
+  CrawlResultItem,
+  CustomFile,
+  ProcessRule,
+} from '@/models/datasets'
 import { useCallback } from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
@@ -10,7 +16,7 @@ import {
   useFetchFileIndexingEstimateForWeb,
 } from '@/service/knowledge/use-create-dataset'
 
-export type UseIndexingEstimateOptions = {
+type UseIndexingEstimateOptions = {
   dataSourceType: DataSourceType
   datasetId?: string
   // Document settings
@@ -55,9 +61,7 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.FILE,
-    files: previewFileName
-      ? [files.find(file => file.name === previewFileName)!]
-      : files,
+    files: previewFileName ? [files.find((file) => file.name === previewFileName)!] : files,
     indexingTechnique,
     processRule,
     dataset_id: datasetId!,
@@ -91,10 +95,8 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
 
   // Get current mutation based on data source type
   const getCurrentMutation = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE)
-      return fileQuery
-    if (dataSourceType === DataSourceType.NOTION)
-      return notionQuery
+    if (dataSourceType === DataSourceType.FILE) return fileQuery
+    if (dataSourceType === DataSourceType.NOTION) return notionQuery
     return websiteQuery
   }, [dataSourceType, fileQuery, notionQuery, websiteQuery])
 
@@ -102,12 +104,9 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
 
   // Trigger estimate fetch
   const fetchEstimate = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE)
-      fileQuery.mutate()
-    else if (dataSourceType === DataSourceType.NOTION)
-      notionQuery.mutate()
-    else
-      websiteQuery.mutate()
+    if (dataSourceType === DataSourceType.FILE) fileQuery.mutate()
+    else if (dataSourceType === DataSourceType.NOTION) notionQuery.mutate()
+    else websiteQuery.mutate()
   }, [dataSourceType, fileQuery, notionQuery, websiteQuery])
 
   return {
@@ -119,5 +118,3 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     reset: currentMutation.reset,
   }
 }
-
-export type IndexingEstimate = ReturnType<typeof useIndexingEstimate>

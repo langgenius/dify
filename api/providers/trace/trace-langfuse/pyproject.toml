@@ -1,0 +1,10 @@
+[project]
+name = "dify-trace-langfuse"
+version = "0.0.1"
+dependencies = [
+    "langfuse>=4.2.0,<5.0.0",
+]
+description = "Dify ops tracing provider (Langfuse)."
+
+[tool.setuptools.packages.find]
+where = ["src"]

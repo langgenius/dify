@@ -1,37 +1,41 @@
 import dataclasses
+from typing import Annotated
 
 import orjson
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Discriminator, Tag
 
 from core.helper import encrypter
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.segment_group import SegmentGroup
-from dify_graph.variables.segments import (
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import (
     ArrayAnySegment,
+    ArrayBooleanSegment,
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
     Segment,
-    SegmentUnion,
     StringSegment,
     get_segment_discriminator,
 )
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.utils import (
+from graphon.variables.template_resolution import convert_template
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import (
     dumps_with_segments,
     segment_orjson_default,
     to_selector,
 )
-from dify_graph.variables.variables import (
+from graphon.variables.variables import (
     ArrayAnyVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
@@ -46,22 +50,56 @@ from dify_graph.variables.variables import (
     StringVariable,
     Variable,
 )
+from models.utils.file_input_compat import rebuild_serialized_graph_files_without_lookup
+
+type SegmentUnion = Annotated[
+    (
+        Annotated[NoneSegment, Tag(SegmentType.NONE)]
+        | Annotated[StringSegment, Tag(SegmentType.STRING)]
+        | Annotated[FloatSegment, Tag(SegmentType.FLOAT)]
+        | Annotated[IntegerSegment, Tag(SegmentType.INTEGER)]
+        | Annotated[ObjectSegment, Tag(SegmentType.OBJECT)]
+        | Annotated[FileSegment, Tag(SegmentType.FILE)]
+        | Annotated[BooleanSegment, Tag(SegmentType.BOOLEAN)]
+        | Annotated[ArrayAnySegment, Tag(SegmentType.ARRAY_ANY)]
+        | Annotated[ArrayStringSegment, Tag(SegmentType.ARRAY_STRING)]
+        | Annotated[ArrayNumberSegment, Tag(SegmentType.ARRAY_NUMBER)]
+        | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
+        | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
+        | Annotated[ArrayBooleanSegment, Tag(SegmentType.ARRAY_BOOLEAN)]
+    ),
+    Discriminator(get_segment_discriminator),
+]
+
+
+def _build_variable_pool(
+    *,
+    system_variables: list[Variable] | None = None,
+    environment_variables: list[Variable] | None = None,
+) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_bootstrap_variables(
+            system_variables=system_variables or [],
+            environment_variables=environment_variables or [],
+        ),
+    )
+    return variable_pool
 
 
 def test_segment_group_to_text():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="fake-user-id"),
-        user_inputs={},
+    variable_pool = _build_variable_pool(
+        system_variables=build_system_variables(user_id="fake-user-id"),
         environment_variables=[
             SecretVariable(name="secret_key", value="fake-secret-key"),
         ],
-        conversation_variables=[],
     )
     variable_pool.add(("node_id", "custom_query"), "fake-user-query")
     template = (
         "Hello, {{#sys.user_id#}}! Your query is {{#node_id.custom_query#}}. And your key is {{#env.secret_key#}}."
     )
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
 
     assert segments_group.text == "Hello, fake-user-id! Your query is fake-user-query. And your key is fake-secret-key."
     assert segments_group.log == (
@@ -71,27 +109,19 @@ def test_segment_group_to_text():
 
 
 def test_convert_constant_to_segment_group():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="1", app_id="1", workflow_id="1"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
+    variable_pool = _build_variable_pool(
+        system_variables=build_system_variables(user_id="1", app_id="1", workflow_id="1"),
     )
     template = "Hello, world!"
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
     assert segments_group.text == "Hello, world!"
     assert segments_group.log == "Hello, world!"
 
 
 def test_convert_variable_to_segment_group():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="fake-user-id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    variable_pool = _build_variable_pool(system_variables=build_system_variables(user_id="fake-user-id"))
     template = "{{#sys.user_id#}}"
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
     assert segments_group.text == "fake-user-id"
     assert segments_group.log == "fake-user-id"
     assert isinstance(segments_group.value[0], StringVariable)
@@ -116,8 +146,7 @@ def create_test_file(
 ) -> File:
     """Factory function to create File objects for testing"""
     return File(
-        tenant_id="test-tenant",
-        type=file_type,
+        file_type=file_type,
         transfer_method=transfer_method,
         filename=filename,
         extension=extension,
@@ -154,7 +183,7 @@ class TestSegmentDumpAndLoad:
         assert restored == model
 
     def test_all_segments_serialization(self):
-        """Test serialization/deserialization of all segment types"""
+        """Test file-aware segment serialization through Dify's model boundary."""
         # Create one instance of each segment type
         test_file = create_test_file()
 
@@ -175,7 +204,7 @@ class TestSegmentDumpAndLoad:
         # Test serialization and deserialization
         model = _Segments(segments=all_segments)
         json_str = model.model_dump_json()
-        loaded = _Segments.model_validate_json(json_str)
+        loaded = _Segments.model_validate(rebuild_serialized_graph_files_without_lookup(orjson.loads(json_str)))
 
         # Verify all segments are preserved
         assert len(loaded.segments) == len(all_segments)
@@ -190,14 +219,13 @@ class TestSegmentDumpAndLoad:
                 loaded_file = loaded_segment.value
                 assert isinstance(orig_file, File)
                 assert isinstance(loaded_file, File)
-                assert loaded_file.tenant_id == orig_file.tenant_id
                 assert loaded_file.type == orig_file.type
                 assert loaded_file.filename == orig_file.filename
             else:
                 assert loaded_segment.value == original.value
 
     def test_all_variables_serialization(self):
-        """Test serialization/deserialization of all variable types"""
+        """Test file-aware variable serialization through Dify's model boundary."""
         # Create one instance of each variable type
         test_file = create_test_file()
 
@@ -218,7 +246,7 @@ class TestSegmentDumpAndLoad:
         # Test serialization and deserialization
         model = _Variables(variables=all_variables)
         json_str = model.model_dump_json()
-        loaded = _Variables.model_validate_json(json_str)
+        loaded = _Variables.model_validate(rebuild_serialized_graph_files_without_lookup(orjson.loads(json_str)))
 
         # Verify all variables are preserved
         assert len(loaded.variables) == len(all_variables)
@@ -234,7 +262,6 @@ class TestSegmentDumpAndLoad:
                 loaded_file = loaded_variable.value
                 assert isinstance(orig_file, File)
                 assert isinstance(loaded_file, File)
-                assert loaded_file.tenant_id == orig_file.tenant_id
                 assert loaded_file.type == orig_file.type
                 assert loaded_file.filename == orig_file.filename
             else:

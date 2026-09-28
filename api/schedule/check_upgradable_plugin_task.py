@@ -3,11 +3,12 @@ import math
 import time
 
 import click
+from sqlalchemy import select
 
 import app
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 logger = logging.getLogger(__name__)
@@ -28,17 +29,14 @@ def check_upgradable_plugin_task():
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
-    strategies = (
-        db.session.query(TenantPluginAutoUpgradeStrategy)
-        .where(
+    strategies = db.session.scalars(
+        select(TenantPluginAutoUpgradeStrategy).where(
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
             < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting
-            != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            TenantPluginAutoUpgradeStrategy.strategy_setting != TenantPluginAutoUpgradeStrategySetting.DISABLED,
         )
-        .all()
-    )
+    ).all()
 
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
@@ -56,13 +54,22 @@ def check_upgradable_plugin_task():
     # This reduces load on marketplace from 300k requests to 1 request per check cycle
     logger.info("fetching global plugin manifest from marketplace")
     try:
-        fetch_global_plugin_manifest(CACHE_REDIS_KEY_PREFIX, CACHE_REDIS_TTL)
-        logger.info("successfully fetched and cached global plugin manifest")
+        cached_count = fetch_global_plugin_manifest(CACHE_REDIS_KEY_PREFIX, CACHE_REDIS_TTL)
     except Exception as e:
+        # The marketplace is unreachable, so the per-plugin fallback would fail as well.
+        # Skip this cycle instead of issuing one doomed request per tenant.
         logger.exception("failed to fetch global plugin manifest")
         click.echo(click.style(f"failed to fetch global plugin manifest: {e}", fg="red"))
         click.echo(click.style("skipping plugin upgrade check for this cycle", fg="yellow"))
         return
+
+    if cached_count == 0:
+        # The snapshot was served but carries no plugins. The marketplace itself is reachable,
+        # so let the per-tenant tasks fall back to the batch API rather than upgrading nothing.
+        logger.warning("global plugin manifest contained no plugins; falling back to per-plugin marketplace lookups")
+        click.echo(click.style("global plugin manifest is empty, falling back to batch lookups", fg="yellow"))
+    else:
+        logger.info("successfully fetched and cached %d plugin manifests", cached_count)
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
@@ -74,6 +81,7 @@ def check_upgradable_plugin_task():
                 strategy.upgrade_mode,
                 strategy.exclude_plugins,
                 strategy.include_plugins,
+                strategy.category,
             )
 
         # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one

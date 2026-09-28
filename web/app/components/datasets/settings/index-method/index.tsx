@@ -1,14 +1,6 @@
 'use client'
-import { useHover } from 'ahooks'
-import { useRef } from 'react'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
-import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { IndexingType } from '../../create/step-two'
 import { EffectColor } from '../chunk-structure/types'
 import OptionCard from '../option-card'
@@ -31,22 +23,25 @@ const IndexMethod = ({
   keywordNumber,
   onKeywordNumberChange,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
-  const economyDomRef = useRef<HTMLDivElement>(null)
-  const isHoveringEconomy = useHover(economyDomRef)
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
 
   return (
-    <div className={cn('flex flex-col gap-y-2')}>
+    <RadioGroup<IndexingType>
+      aria-label={t(($) => $['form.indexMethod'], { ns: 'datasetSettings' })}
+      value={value}
+      onValueChange={onChange}
+      disabled={disabled}
+      className="flex flex-col items-stretch gap-x-0 gap-y-2"
+    >
       {/* High Quality */}
       <OptionCard
         id={IndexingType.QUALIFIED}
         isActive={value === IndexingType.QUALIFIED}
-        onClick={onChange}
-        icon={<HighQuality className="size-[18px]" />}
+        icon={<span aria-hidden className="i-custom-vender-knowledge-high-quality size-4.5" />}
         iconActiveColor="text-util-colors-orange-orange-500"
-        title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-        description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+        title={t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
+        description={t(($) => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
         disabled={disabled}
         isRecommended
         effectColor={EffectColor.orange}
@@ -54,40 +49,36 @@ const IndexMethod = ({
         className="gap-x-2"
       />
       {/* Economy */}
-      <PortalToFollowElem
-        open={isHoveringEconomy}
-        offset={4}
-        placement="right"
+      <OptionCard
+        id={IndexingType.ECONOMICAL}
+        isActive={value === IndexingType.ECONOMICAL}
+        icon={<span aria-hidden className="i-custom-vender-knowledge-economic size-4.5" />}
+        iconActiveColor="text-util-colors-indigo-indigo-600"
+        title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+        description={[
+          t(($) => $['form.indexMethodEconomyTip'], {
+            ns: 'datasetSettings',
+            count: keywordNumber,
+          }),
+          isEconomyDisabled
+            ? t(($) => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        disabled={disabled || isEconomyDisabled}
+        effectColor={EffectColor.indigo}
+        showEffectColor
+        showChildren={value === IndexingType.ECONOMICAL}
+        className="gap-x-2"
       >
-        <PortalToFollowElemTrigger>
-          <OptionCard
-            ref={economyDomRef}
-            id={IndexingType.ECONOMICAL}
-            isActive={value === IndexingType.ECONOMICAL}
-            onClick={onChange}
-            icon={<Economic className="size-[18px]" />}
-            iconActiveColor="text-util-colors-indigo-indigo-600"
-            title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-            description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
-            disabled={disabled || isEconomyDisabled}
-            effectColor={EffectColor.indigo}
-            showEffectColor
-            showChildren
-            className="gap-x-2"
-          >
-            <KeywordNumber
-              keywordNumber={keywordNumber}
-              onKeywordNumberChange={onKeywordNumberChange}
-            />
-          </OptionCard>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent style={{ zIndex: 60 }}>
-          <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
-            {t('form.indexMethodChangeToEconomyDisabledTip', { ns: 'datasetSettings' })}
-          </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
-    </div>
+        <KeywordNumber
+          disabled={disabled || isEconomyDisabled}
+          keywordNumber={keywordNumber}
+          onKeywordNumberChange={onKeywordNumberChange}
+        />
+      </OptionCard>
+    </RadioGroup>
   )
 }
 

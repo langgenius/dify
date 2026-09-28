@@ -1,13 +1,13 @@
-import { RiMoreFill } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { BreadcrumbItem, BreadcrumbSeparator } from '@langgenius/dify-ui/breadcrumb'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
-import Menu from './menu'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 
 type DropdownProps = {
   startIndex: number
@@ -15,52 +15,38 @@ type DropdownProps = {
   onBreadcrumbClick: (index: number) => void
 }
 
-const Dropdown = ({
-  startIndex,
-  breadcrumbs,
-  onBreadcrumbClick,
-}: DropdownProps) => {
-  const [open, setOpen] = useState(false)
-
-  const handleTrigger = useCallback(() => {
-    setOpen(prev => !prev)
-  }, [])
-
-  const handleBreadCrumbClick = useCallback((index: number) => {
-    onBreadcrumbClick(index)
-    setOpen(false)
-  }, [onBreadcrumbClick])
+const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps) => {
+  const { t } = useTranslation(['common'])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-        crossAxis: -13,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <button
-          type="button"
-          className={cn(
-            'flex size-6 items-center justify-center rounded-md',
-            open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-          )}
-        >
-          <RiMoreFill className="size-4 text-text-tertiary" />
-        </button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
-        <Menu
-          breadcrumbs={breadcrumbs}
-          startIndex={startIndex}
-          onBreadcrumbClick={handleBreadCrumbClick}
-        />
-      </PortalToFollowElemContent>
-      <span className="system-xs-regular text-divider-deep">/</span>
-    </PortalToFollowElem>
+    <>
+      <BreadcrumbItem className="shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                className="data-popup-open:bg-state-base-hover"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </IconButton>
+            }
+          />
+          <DropdownMenuContent placement="bottom-start" className="w-34 px-1">
+            {breadcrumbs.map((breadcrumb, index) => (
+              <DropdownMenuItem
+                key={breadcrumbs.slice(0, index + 1).join('/')}
+                className="px-3 py-1.5 system-md-regular"
+                onClick={() => onBreadcrumbClick(startIndex + index)}
+              >
+                {breadcrumb}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </BreadcrumbItem>
+      <BreadcrumbSeparator className="system-xs-regular text-divider-deep" />
+    </>
   )
 }
 

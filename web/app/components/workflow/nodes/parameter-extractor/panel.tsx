@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ParameterExtractorNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -23,11 +23,10 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.parameterExtractor'
 const i18nCommonPrefix = 'common'
 
-const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
+const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => {
+  const instructionLabelId = React.useId()
+
+  const { t } = useTranslation(['workflow', 'workflowModels'])
 
   const {
     readOnly,
@@ -59,12 +58,9 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4">
-        <Field
-          title={t(`${i18nCommonPrefix}.model`, { ns: 'workflow' })}
-          required
-        >
+        <Field title={t(($) => $[`${i18nCommonPrefix}.model`], { ns: 'workflow' })} required>
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -75,12 +71,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
-          required
-        >
+        <Field title={t(($) => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })} required>
           <>
             <VarReferencePicker
               readonly={readOnly}
@@ -103,20 +98,16 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           onConfigChange={handleVisionResolutionChange}
         />
         <Field
-          title={t(`${i18nPrefix}.extractParameters`, { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.extractParameters`], { ns: 'workflow' })}
           required
           operations={
-            !readOnly
-              ? (
-                  <div className="flex items-center space-x-1">
-                    {!readOnly && (
-                      <ImportFromTool onImport={handleImportFromTool} />
-                    )}
-                    {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
-                    <AddExtractParameter type="add" onSave={addExtractParameter} />
-                  </div>
-                )
-              : undefined
+            !readOnly ? (
+              <div className="flex items-center space-x-1">
+                {!readOnly && <ImportFromTool onImport={handleImportFromTool} />}
+                {!readOnly && <div className="h-3 w-px bg-divider-regular"></div>}
+                <AddExtractParameter type="add" onSave={addExtractParameter} />
+              </div>
+            ) : undefined
           }
         >
           <ExtractParameter
@@ -126,19 +117,19 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           />
         </Field>
         <Editor
-          title={(
+          title={
             <div className="flex items-center space-x-1">
-              <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
-              <Tooltip
-                popupContent={(
-                  <div className="w-[120px]">
-                    {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
-                  </div>
-                )}
-                triggerClassName="w-3.5 h-3.5 ml-0.5"
-              />
+              <span id={instructionLabelId} className="uppercase">
+                {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
+              </span>
+              <Infotip>
+                <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+                <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
+                  {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
+                </InfotipContent>
+              </Infotip>
             </div>
-          )}
+          }
           value={inputs.instruction}
           onChange={handleInstructionChange}
           readOnly={readOnly}
@@ -150,7 +141,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           availableNodes={availableNodesWithParent}
         />
       </div>
-      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`, { ns: 'workflow' })}>
+      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <>
           {/* Memory */}
           {isChatMode && (
@@ -190,17 +181,23 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 <VarItem
                   name="__is_success"
                   type={VarType.number}
-                  description={t(`${i18nPrefix}.outputVars.isSuccess`, { ns: 'workflow' })}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.isSuccess`], {
+                    ns: 'workflowModels',
+                  })}
                 />
                 <VarItem
                   name="__reason"
                   type={VarType.string}
-                  description={t(`${i18nPrefix}.outputVars.errorReason`, { ns: 'workflow' })}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.errorReason`], {
+                    ns: 'workflowModels',
+                  })}
                 />
                 <VarItem
                   name="__usage"
                   type="object"
-                  description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.usage`], {
+                    ns: 'workflowModels',
+                  })}
                 />
               </>
             </OutputVars>

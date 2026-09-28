@@ -35,30 +35,6 @@ describe('OptionListItem', () => {
     })
   })
 
-  describe('Selection State', () => {
-    it('should have selected styles when isSelected is true', () => {
-      render(
-        <OptionListItem isSelected={true} onClick={vi.fn()}>
-          Selected
-        </OptionListItem>,
-      )
-
-      const item = screen.getByRole('listitem')
-      expect(item).toHaveClass('bg-components-button-ghost-bg-hover')
-    })
-
-    it('should not have selected styles when isSelected is false', () => {
-      render(
-        <OptionListItem isSelected={false} onClick={vi.fn()}>
-          Not Selected
-        </OptionListItem>,
-      )
-
-      const item = screen.getByRole('listitem')
-      expect(item).not.toHaveClass('bg-components-button-ghost-bg-hover')
-    })
-  })
-
   describe('Auto-Scroll', () => {
     it('should scroll into view on mount when isSelected is true', () => {
       render(
@@ -100,7 +76,7 @@ describe('OptionListItem', () => {
           Clickable
         </OptionListItem>,
       )
-      fireEvent.click(screen.getByRole('listitem'))
+      fireEvent.click(screen.getByRole('button'))
 
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
@@ -111,7 +87,7 @@ describe('OptionListItem', () => {
           Item
         </OptionListItem>,
       )
-      fireEvent.click(screen.getByRole('listitem'))
+      fireEvent.click(screen.getByRole('button'))
 
       expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
     })
@@ -126,7 +102,7 @@ describe('OptionListItem', () => {
         </OptionListItem>,
       )
 
-      const item = screen.getByRole('listitem')
+      const item = screen.getByRole('button')
       fireEvent.click(item)
       fireEvent.click(item)
       fireEvent.click(item)

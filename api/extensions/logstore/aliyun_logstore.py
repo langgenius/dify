@@ -198,7 +198,7 @@ class AliyunLogStore:
         )
 
         # Append Dify identification to the existing user agent
-        original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
+        original_user_agent = self.client._user_agent
         dify_version = dify_config.project.version
         enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
         self.client.set_user_agent(enhanced_user_agent)
@@ -280,9 +280,9 @@ class AliyunLogStore:
             else:
                 logger.info("Using SDK mode for project %s", self.project_name)
                 return False
-        except Exception as e:
+        except Exception:
             logger.info("Using SDK mode for project %s", self.project_name)
-            logger.debug("PG connection details: %s", str(e))
+            logger.debug("PG connection details", exc_info=True)
             self._use_pg_protocol = False
             return False
 

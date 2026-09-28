@@ -2,6 +2,7 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
 
 from configs import dify_config
 
@@ -20,7 +21,7 @@ class SMTPClient:
         self.use_tls = use_tls
         self.opportunistic_tls = opportunistic_tls
 
-    def send(self, mail: dict):
+    def send(self, mail: dict[str, Any]):
         smtp: smtplib.SMTP | None = None
         local_host = dify_config.SMTP_LOCAL_HOSTNAME
         try:
@@ -59,4 +60,12 @@ class SMTPClient:
             raise
         finally:
             if smtp:
-                smtp.quit()
+                # Cleanup must not replace a send failure or turn an accepted send into a failure.
+                try:
+                    smtp.quit()
+                except Exception:
+                    logger.warning("Failed to quit SMTP connection", exc_info=True)
+                    try:
+                        smtp.close()
+                    except Exception:
+                        logger.warning("Failed to close SMTP connection", exc_info=True)

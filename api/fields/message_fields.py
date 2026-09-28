@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypeAlias
+from decimal import Decimal
+from typing import Annotated
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, WithJsonSchema, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
-from dify_graph.file import File
+from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
+from graphon.file import File
+from libs.helper import to_timestamp
 
-JSONValueType: TypeAlias = JSONValue
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+type JSONValueType = JSONValue
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
 
 
 class SimpleFeedback(ResponseModel):
@@ -22,47 +24,54 @@ class SimpleFeedback(ResponseModel):
 
 
 class RetrieverResource(ResponseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    message_id: str = Field(default_factory=lambda: str(uuid4()))
+    id: UUIDString = Field(default_factory=lambda: str(uuid4()))
+    message_id: UUIDString = Field(default_factory=lambda: str(uuid4()))
     position: int
-    dataset_id: str | None = None
+    dataset_id: UUIDString | None = None
     dataset_name: str | None = None
-    document_id: str | None = None
+    document_id: UUIDString | None = None
     document_name: str | None = None
     data_source_type: str | None = None
-    segment_id: str | None = None
-    score: float | None = None
+    segment_id: UUIDString | None = None
+    score: FloatNumber | None = None
     hit_count: int | None = None
     word_count: int | None = None
     segment_position: int | None = None
     index_node_hash: str | None = None
     content: str | None = None
     summary: str | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class MessageListItem(ResponseModel):
-    id: str
-    conversation_id: str
-    parent_message_id: str | None = None
+    id: UUIDString
+    conversation_id: UUIDString
+    parent_message_id: UUIDString | None = None
     inputs: dict[str, JSONValueType]
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
     retriever_resources: list[RetrieverResource]
-    created_at: int | None = None
+    created_at: Int64 | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
+    message_tokens: int = 0
+    answer_tokens: int = 0
+    provider_response_latency: FloatNumber = 0
+    total_price: Decimal | None = None
+    currency: str | None = None
     status: str
     error: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
+
+    @computed_field
+    def total_tokens(self) -> int:
+        return self.message_tokens + self.answer_tokens
 
     @field_validator("inputs", mode="before")
     @classmethod
@@ -72,13 +81,21 @@ class MessageListItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
+
+
+class ExploreMessageListItem(MessageListItem):
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -91,6 +108,12 @@ class WebMessageInfiniteScrollPagination(ResponseModel):
     limit: int
     has_more: bool
     data: list[WebMessageListItem]
+
+
+class ExploreMessageInfiniteScrollPagination(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[ExploreMessageListItem]
 
 
 class SavedMessageItem(ResponseModel):
@@ -110,9 +133,7 @@ class SavedMessageItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class SavedMessageInfiniteScrollPagination(ResponseModel):
@@ -125,15 +146,11 @@ class SuggestedQuestionsResponse(ResponseModel):
     data: list[str]
 
 
-def to_timestamp(value: datetime | None) -> int | None:
-    if value is None:
-        return None
-    return int(value.timestamp())
-
-
 def format_files_contained(value: JSONValueType) -> JSONValueType:
     if isinstance(value, File):
-        return value.model_dump()
+        # Response payloads must preserve legacy file keys like `related_id`/`url`
+        # while still exposing the new graph-layer `reference` field.
+        return value.to_dict()
     if isinstance(value, dict):
         return {k: format_files_contained(v) for k, v in value.items()}
     if isinstance(value, list):

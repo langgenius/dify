@@ -5,7 +5,7 @@ import HumanInputFormList from '../human-input-form-list'
 
 // Mock child components
 vi.mock('../human-input-content/content-wrapper', () => ({
-  default: ({ children, nodeTitle }: { children: React.ReactNode, nodeTitle: string }) => (
+  default: ({ children, nodeTitle }: { children: React.ReactNode; nodeTitle: string }) => (
     <div data-testid="content-wrapper" data-nodetitle={nodeTitle}>
       {children}
     </div>
@@ -13,7 +13,15 @@ vi.mock('../human-input-content/content-wrapper', () => ({
 }))
 
 vi.mock('../human-input-content/unsubmitted', () => ({
-  UnsubmittedHumanInputContent: ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }) => (
+  UnsubmittedHumanInputContent: ({
+    showEmailTip,
+    isEmailDebugMode,
+    showDebugModeTip,
+  }: {
+    showEmailTip: boolean
+    isEmailDebugMode: boolean
+    showDebugModeTip: boolean
+  }) => (
     <div data-testid="unsubmitted-content">
       <span data-testid="email-tip">{showEmailTip ? 'true' : 'false'}</span>
       <span data-testid="email-debug">{isEmailDebugMode ? 'true' : 'false'}</span>

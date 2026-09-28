@@ -3,10 +3,12 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -29,12 +31,14 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     """
     logger.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
     start_at = time.perf_counter()
-    indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+    indexing_cache_key = f"app_annotation_batch_import_{job_id}"
     active_jobs_key = f"annotation_import_active:{tenant_id}"
 
     with session_factory.create_session() as session:
         # get app info
-        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+        app = session.scalar(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+        )
 
         if app:
             try:
@@ -52,14 +56,14 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     )
                     documents.append(document)
                 # if annotation reply is enabled , batch add annotations' index
-                app_annotation_setting = (
-                    session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+                app_annotation_setting = session.scalar(
+                    select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
                 )
 
                 if app_annotation_setting:
                     dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, "annotation"
+                            app_annotation_setting.collection_binding_id, session, "annotation"
                         )
                     )
                     if not dataset_collection_binding:
@@ -67,13 +71,13 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     dataset = Dataset(
                         id=app_id,
                         tenant_id=tenant_id,
-                        indexing_technique="high_quality",
+                        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                         embedding_model_provider=dataset_collection_binding.provider_name,
                         embedding_model=dataset_collection_binding.model_name,
                         collection_binding_id=dataset_collection_binding.id,
                     )
 
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                     vector.create(documents, duplicate_check=True)
 
                 session.commit()
@@ -90,7 +94,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             except Exception as e:
                 session.rollback()
                 redis_client.setex(indexing_cache_key, 600, "error")
-                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
+                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id}"
                 redis_client.setex(indexing_error_msg_key, 600, str(e))
                 logger.exception("Build index for batch import annotations failed")
             finally:

@@ -4,9 +4,7 @@ from unittest.mock import Mock
 
 from core.mcp.entities import (
     SUPPORTED_PROTOCOL_VERSIONS,
-    LifespanContextT,
     RequestContext,
-    SessionT,
 )
 from core.mcp.session.base_session import BaseSession
 from core.mcp.types import LATEST_PROTOCOL_VERSION, RequestParams
@@ -198,42 +196,3 @@ class TestRequestContext:
         assert "RequestContext" in repr_str
         assert "test-123" in repr_str
         assert "MockSession" in repr_str
-
-
-class TestTypeVariables:
-    """Test type variables defined in the module."""
-
-    def test_session_type_var(self):
-        """Test SessionT type variable."""
-
-        # Create a custom session class
-        class CustomSession(BaseSession):
-            pass
-
-        # Use in generic context
-        def process_session(session: SessionT) -> SessionT:
-            return session
-
-        mock_session = Mock(spec=CustomSession)
-        result = process_session(mock_session)
-        assert result == mock_session
-
-    def test_lifespan_context_type_var(self):
-        """Test LifespanContextT type variable."""
-
-        # Use in generic context
-        def process_lifespan(context: LifespanContextT) -> LifespanContextT:
-            return context
-
-        # Test with different types
-        str_context = "string-context"
-        assert process_lifespan(str_context) == str_context
-
-        dict_context = {"key": "value"}
-        assert process_lifespan(dict_context) == dict_context
-
-        class CustomContext:
-            pass
-
-        custom_context = CustomContext()
-        assert process_lifespan(custom_context) == custom_context

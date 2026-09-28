@@ -1,11 +1,19 @@
-from flask import request
-from flask_restx import Resource, fields
+from typing import Any
+
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import (
+    DEFAULT_REF_TEMPLATE_OPENAPI_3_0,
+    query_params_from_model,
+    register_response_schema_models,
+)
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
-from libs.login import login_required
-from services.advanced_prompt_template_service import AdvancedPromptTemplateService
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import validate_request
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from machinery.context import RequestContext
 
 
 class AdvancedPromptTemplateQuery(BaseModel):
@@ -15,25 +23,35 @@ class AdvancedPromptTemplateQuery(BaseModel):
     model_name: str = Field(..., description="Model name")
 
 
+class AdvancedPromptTemplateResponse(ResponseModel):
+    chat_prompt_config: dict[str, Any] | None = Field(default=None)
+    completion_prompt_config: dict[str, Any] | None = Field(default=None)
+
+
 console_ns.schema_model(
     AdvancedPromptTemplateQuery.__name__,
-    AdvancedPromptTemplateQuery.model_json_schema(ref_template="#/definitions/{model}"),
+    AdvancedPromptTemplateQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
 )
+register_response_schema_models(console_ns, AdvancedPromptTemplateResponse)
 
 
 @console_ns.route("/app/prompt-templates")
 class AdvancedPromptTemplateList(Resource):
     @console_ns.doc("get_advanced_prompt_templates")
     @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
-    @console_ns.expect(console_ns.models[AdvancedPromptTemplateQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AdvancedPromptTemplateQuery))
     @console_ns.response(
-        200, "Prompt templates retrieved successfully", fields.List(fields.Raw(description="Prompt template data"))
+        200,
+        "Prompt templates retrieved successfully",
+        console_ns.models[AdvancedPromptTemplateResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        args = AdvancedPromptTemplateQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-
-        return AdvancedPromptTemplateService.get_prompt(args.model_dump())
+    @console_account_admission()
+    def get(self, context: RequestContext):
+        req_data = validate_request(AdvancedPromptTemplateQuery)
+        result = application_services().advanced_prompt_templates.get_prompt(
+            app_mode=req_data.app_mode,
+            model_mode=req_data.model_mode,
+            has_context=req_data.has_context,
+        )
+        return AdvancedPromptTemplateResponse.model_validate(result).model_dump(mode="json", exclude_unset=True)

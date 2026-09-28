@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import asdict
-from typing import Any
+from typing import Any, override
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
@@ -33,6 +33,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
         self._document_ids = document_ids
         self._tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, self.QUEUE_NAME)
 
+    @override
     def _send_to_direct_queue(self, task_func: Callable[[str, str, Sequence[str]], Any]):
         """
         Send batch task to direct queue.
@@ -45,6 +46,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
             tenant_id=self._tenant_id, dataset_id=self._dataset_id, document_ids=self._document_ids
         )
 
+    @override
     def _send_to_tenant_queue(self, task_func: Callable[[str, str, Sequence[str]], Any]):
         """
         Send batch task to tenant-isolated queue.

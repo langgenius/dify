@@ -5,7 +5,7 @@ app:
 max_workers: 4
 max_requests: 50
 worker_timeout: 5
-python_path: /usr/local/bin/python3
+python_path: /opt/python/bin/python3
 python_lib_path:
   - /usr/local/lib/python3.10
   - /usr/lib/python3.10

@@ -28,12 +28,13 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
-from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -88,12 +89,18 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
+    def _get_app_model_config(
+        self,
+        app_model: App,
+        conversation: Conversation | None = None,
+        *,
+        session: Session,
+    ) -> AppModelConfig:
         if conversation:
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
-            app_model_config = db.session.scalar(stmt)
+            app_model_config = session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -101,7 +108,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
 
-            app_model_config = app_model.app_model_config
+            app_model_config = session.get(AppModelConfig, app_model.app_model_config_id)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -117,6 +124,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AdvancedChatAppGenerateEntity,
         ],
         conversation: Conversation | None = None,
+        *,
+        session: Session,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -130,10 +139,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         end_user_id = None
         account_id = None
         if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            from_source = "api"
+            from_source = ConversationFromSource.API
             end_user_id = application_generate_entity.user_id
         else:
-            from_source = "console"
+            from_source = ConversationFromSource.CONSOLE
             account_id = application_generate_entity.user_id
 
         if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
@@ -182,9 +191,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     from_account_id=account_id,
                 )
 
-                db.session.add(conversation)
-                db.session.flush()
-                db.session.refresh(conversation)
+                session.add(conversation)
+                session.flush()
+                session.refresh(conversation)
             else:
                 conversation.updated_at = naive_utc_now()
 
@@ -215,9 +224,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 app_mode=app_config.app_mode,
             )
 
-            db.session.add(message)
-            db.session.flush()
-            db.session.refresh(message)
+            session.add(message)
+            session.flush()
+            session.refresh(message)
 
             message_files = []
             for file in application_generate_entity.files:
@@ -225,25 +234,25 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     message_id=message.id,
                     type=file.type,
                     transfer_method=file.transfer_method,
-                    belongs_to="user",
+                    belongs_to=MessageFileBelongsTo.USER,
                     url=file.remote_url,
-                    upload_file_id=file.related_id,
+                    upload_file_id=resolve_file_record_id(file.reference),
                     created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                     created_by=account_id or end_user_id or "",
                 )
                 message_files.append(message_file)
 
             if message_files:
-                db.session.add_all(message_files)
+                session.add_all(message_files)
 
-            db.session.commit()
+            session.commit()
 
             if isinstance(application_generate_entity, ConversationAppGenerateEntity):
                 application_generate_entity.conversation_id = conversation.id
                 application_generate_entity.is_new_conversation = created_new_conversation
             return conversation, message
         except Exception:
-            db.session.rollback()
+            session.rollback()
             raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:
@@ -314,8 +323,14 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
+        subscriber = topic.as_subscriber()
+        subscription = (
+            subscriber.prepare_subscription()
+            if isinstance(subscriber, SupportsPreparedSubscription)
+            else subscriber.subscribe()
+        )
         return stream_topic_events(
-            topic=topic,
+            subscription=subscription,
             idle_timeout=idle_timeout,
             on_subscribe=on_subscribe,
         )

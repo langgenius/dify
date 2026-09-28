@@ -6,7 +6,7 @@
 
 .dot-flashing::before,
 .dot-flashing::after {
-  content: "";
+  content: '';
   display: inline-block;
   position: absolute;
   top: 0;
@@ -34,7 +34,7 @@
 
 @keyframes dot-flashing-avatar {
   0% {
-    background-color: #155EEF;
+    background-color: #155eef;
   }
 
   50%,
@@ -74,8 +74,8 @@
   width: 2px;
   height: 2px;
   border-radius: 50%;
-  background-color: #155EEF;
-  color: #155EEF;
+  background-color: #155eef;
+  color: #155eef;
   animation: dot-flashing-avatar 1s infinite linear alternate;
 }
 

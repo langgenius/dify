@@ -1,48 +1,50 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import useGetRequirements from '../use-get-requirements'
 
-const mockUseGetTryAppFlowPreview = vi.fn()
+const mockUseQuery = vi.fn()
 
-vi.mock('@/service/use-try-app', () => ({
-  useGetTryAppFlowPreview: (...args: unknown[]) => mockUseGetTryAppFlowPreview(...args),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }))
 
 vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.api',
 }))
 
-const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo => ({
-  id: 'test-app-id',
-  name: 'Test App',
-  description: 'Test Description',
-  mode,
-  site: {
-    title: 'Test Site Title',
-    icon: 'icon',
-    icon_type: 'emoji',
-    icon_background: '#FFFFFF',
-    icon_url: '',
-  },
-  model_config: {
-    model: {
-      provider: 'langgenius/openai/openai',
-      name: 'gpt-4',
-      mode: 'chat',
+const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+  ({
+    id: 'test-app-id',
+    name: 'Test App',
+    description: 'Test Description',
+    mode,
+    site: {
+      title: 'Test Site Title',
+      icon: 'icon',
+      icon_type: 'emoji',
+      icon_background: '#FFFFFF',
+      icon_url: '',
     },
-    dataset_configs: {
-      datasets: {
-        datasets: [],
+    model_config: {
+      model: {
+        provider: 'langgenius/openai/openai',
+        name: 'gpt-4',
+        mode: 'chat',
       },
+      dataset_configs: {
+        datasets: {
+          datasets: [],
+        },
+      },
+      agent_mode: {
+        tools: [],
+      },
+      user_input_form: [],
     },
-    agent_mode: {
-      tools: [],
-    },
-    user_input_form: [],
-  },
-  ...overrides,
-} as unknown as TryAppInfo)
+    ...overrides,
+  }) as unknown as TryAppInfo
 
 describe('useGetRequirements', () => {
   afterEach(() => {
@@ -51,20 +53,20 @@ describe('useGetRequirements', () => {
 
   describe('basic app modes (chat, completion, agent-chat)', () => {
     it('returns model provider for chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('openai')
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/langgenius/openai/icon')
+      expect(result.current.requirements[0]!.name).toBe('openai')
+      expect(result.current.requirements[0]!.iconUrl).toBe(
+        'https://marketplace.api/plugins/langgenius/openai/icon',
+      )
     })
 
     it('returns model provider for completion mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('completion', {
         model_config: {
@@ -79,16 +81,14 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('claude')
+      expect(result.current.requirements[0]!.name).toBe('claude')
     })
 
     it('returns model provider and tools for agent-chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -121,19 +121,17 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(3)
-      expect(result.current.requirements.map(r => r.name)).toContain('openai')
-      expect(result.current.requirements.map(r => r.name)).toContain('Google Search')
-      expect(result.current.requirements.map(r => r.name)).toContain('Web Scraper')
-      expect(result.current.requirements.map(r => r.name)).not.toContain('Disabled Tool')
+      expect(result.current.requirements.map((r) => r.name)).toContain('openai')
+      expect(result.current.requirements.map((r) => r.name)).toContain('Google Search')
+      expect(result.current.requirements.map((r) => r.name)).toContain('Web Scraper')
+      expect(result.current.requirements.map((r) => r.name)).not.toContain('Disabled Tool')
     })
 
     it('filters out disabled tools in agent mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -161,18 +159,16 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('openai')
+      expect(result.current.requirements[0]!.name).toBe('openai')
     })
   })
 
   describe('advanced app modes (workflow, advanced-chat)', () => {
     it('returns requirements from flow data for workflow mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -198,17 +194,15 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(2)
-      expect(result.current.requirements.map(r => r.name)).toContain('gpt-4')
-      expect(result.current.requirements.map(r => r.name)).toContain('Google Tool')
+      expect(result.current.requirements.map((r) => r.name)).toContain('gpt-4')
+      expect(result.current.requirements.map((r) => r.name)).toContain('Google Tool')
     })
 
     it('returns requirements from flow data for advanced-chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -227,16 +221,14 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('advanced-chat')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('claude-3-opus')
+      expect(result.current.requirements[0]!.name).toBe('claude-3-opus')
     })
 
     it('returns empty requirements when flow data has no nodes', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [],
@@ -245,28 +237,24 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(0)
     })
 
     it('returns empty requirements when flow data is null', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: null,
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(0)
     })
 
     it('extracts multiple LLM nodes from flow data', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -294,17 +282,15 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(2)
-      expect(result.current.requirements.map(r => r.name)).toContain('gpt-4')
-      expect(result.current.requirements.map(r => r.name)).toContain('claude-3')
+      expect(result.current.requirements.map((r) => r.name)).toContain('gpt-4')
+      expect(result.current.requirements.map((r) => r.name)).toContain('claude-3')
     })
 
     it('extracts multiple tool nodes from flow data', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -328,19 +314,17 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(2)
-      expect(result.current.requirements.map(r => r.name)).toContain('Tool 1')
-      expect(result.current.requirements.map(r => r.name)).toContain('Tool 2')
+      expect(result.current.requirements.map((r) => r.name)).toContain('Tool 1')
+      expect(result.current.requirements.map((r) => r.name)).toContain('Tool 2')
     })
   })
 
   describe('deduplication', () => {
     it('removes duplicate requirements by name', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -368,18 +352,16 @@ describe('useGetRequirements', () => {
       })
 
       const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('gpt-4')
+      expect(result.current.requirements[0]!.name).toBe('gpt-4')
     })
   })
 
   describe('icon URL generation', () => {
     it('generates correct icon URL for model providers', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -394,15 +376,15 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/org/plugin/icon')
+      expect(result.current.requirements[0]!.iconUrl).toBe(
+        'https://marketplace.api/plugins/org/plugin/icon',
+      )
     })
 
     it('maps google model provider to gemini plugin icon URL', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -417,15 +399,15 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/langgenius/gemini/icon')
+      expect(result.current.requirements[0]!.iconUrl).toBe(
+        'https://marketplace.api/plugins/langgenius/gemini/icon',
+      )
     })
 
     it('maps special builtin tool providers to *_tool plugin icon URL', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -448,32 +430,34 @@ describe('useGetRequirements', () => {
         },
       } as unknown as Partial<TryAppInfo>)
 
-      const { result } = renderHook(() =>
-        useGetRequirements({ appDetail, appId: 'test-app-id' }),
-      )
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      const toolRequirement = result.current.requirements.find(item => item.name === 'Jina Search')
-      expect(toolRequirement?.iconUrl).toBe('https://marketplace.api/plugins/langgenius/jina_tool/icon')
+      const toolRequirement = result.current.requirements.find(
+        (item) => item.name === 'Jina Search',
+      )
+      expect(toolRequirement?.iconUrl).toBe(
+        'https://marketplace.api/plugins/langgenius/jina_tool/icon',
+      )
     })
   })
 
   describe('hook calls', () => {
-    it('calls useGetTryAppFlowPreview with correct parameters for basic apps', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+    it('does not request workflow data for basic apps', () => {
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', true)
+      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
     })
 
-    it('calls useGetTryAppFlowPreview with correct parameters for advanced apps', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+    it('requests workflow data for advanced apps', () => {
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('workflow')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', false)
+      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
     })
   })
 })

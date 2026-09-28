@@ -1,24 +1,36 @@
 import inspect
 import json
 import logging
-from collections.abc import Callable, Generator
-from typing import Any, TypeVar, cast
+from collections.abc import Callable, Generator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, cast
+from urllib.parse import unquote
 
 import httpx
 from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
+from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import (
+    PluginDaemonBasicResponse,
+    PluginDaemonError,
+    PluginDaemonInnerError,
+    PluginListResponse,
+)
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
     PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
+    PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
 from core.trigger.errors import (
@@ -27,14 +39,14 @@ from core.trigger.errors import (
     TriggerPluginInvokeError,
     TriggerProviderCredentialValidationError,
 )
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
@@ -42,16 +54,67 @@ _plugin_daemon_timeout_config = cast(
     getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 600.0),
 )
 plugin_daemon_request_timeout: httpx.Timeout | None
-if _plugin_daemon_timeout_config is None:
-    plugin_daemon_request_timeout = None
-elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
-    plugin_daemon_request_timeout = _plugin_daemon_timeout_config
-else:
-    plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
+match _plugin_daemon_timeout_config:
+    case None:
+        plugin_daemon_request_timeout = None
+    case httpx.Timeout():
+        plugin_daemon_request_timeout = _plugin_daemon_timeout_config
+    case _:
+        plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
-T = TypeVar("T", bound=(BaseModel | dict[str, Any] | list[Any] | bool | str))
+_plugin_daemon_request_timeout_override: ContextVar[httpx.Timeout | None] = ContextVar(
+    "plugin_daemon_request_timeout_override",
+    default=None,
+)
 
 logger = logging.getLogger(__name__)
+
+PLUGIN_DAEMON_MAX_PATH_LENGTH = 4096
+PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH = 8
+
+_httpx_client: httpx.Client = get_pooled_http_client(
+    "plugin_daemon",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False),
+)
+
+
+@contextmanager
+def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None, None, None]:
+    """Temporarily shorten plugin-daemon requests made in the current context."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be greater than zero")
+
+    token = _plugin_daemon_request_timeout_override.set(httpx.Timeout(timeout_seconds))
+    try:
+        yield
+    finally:
+        _plugin_daemon_request_timeout_override.reset(token)
+
+
+def _get_plugin_daemon_request_timeout() -> httpx.Timeout | None:
+    return _plugin_daemon_request_timeout_override.get() or plugin_daemon_request_timeout
+
+
+def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[object]) -> Any:
+    if type_ is not PluginListResponse:
+        return json_response
+
+    if isinstance(json_response, list):
+        return {
+            "code": 0,
+            "message": "",
+            "data": {"list": json_response, "total": len(json_response)},
+        }
+
+    if isinstance(json_response, dict):
+        data = json_response.get("data")
+        if isinstance(data, list):
+            return {
+                **json_response,
+                "data": {"list": data, "total": len(data)},
+            }
+
+    return json_response
 
 
 class BasePluginClient:
@@ -75,7 +138,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": plugin_daemon_request_timeout,
+            "timeout": _get_plugin_daemon_request_timeout(),
         }
         if isinstance(prepared_data, dict):
             request_kwargs["data"] = prepared_data
@@ -83,7 +146,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = httpx.request(**request_kwargs)
+            response = _httpx_client.request(**request_kwargs)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -98,6 +161,20 @@ class BasePluginClient:
         params: dict[str, Any] | None,
         files: dict[str, Any] | None,
     ) -> tuple[str, dict[str, str], bytes | dict[str, Any] | str | None, dict[str, Any] | None, dict[str, Any] | None]:
+        if len(path) > PLUGIN_DAEMON_MAX_PATH_LENGTH:
+            raise ValueError(f"Invalid plugin daemon path: path length exceeds {PLUGIN_DAEMON_MAX_PATH_LENGTH}")
+
+        decoded_path = path
+        for _ in range(PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH):
+            next_decoded_path = unquote(decoded_path)
+            if next_decoded_path == decoded_path:
+                break
+            decoded_path = next_decoded_path
+        else:
+            raise ValueError("Invalid plugin daemon path: path is too deeply encoded")
+
+        if any(seg == ".." for seg in decoded_path.split("/")):
+            raise ValueError(f"Invalid plugin daemon path: traversal sequence detected in {path!r}")
         url = plugin_daemon_inner_api_baseurl / path
         prepared_headers = dict(headers or {})
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
@@ -162,7 +239,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": plugin_daemon_request_timeout,
+            "timeout": _get_plugin_daemon_request_timeout(),
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data
@@ -170,7 +247,7 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with httpx.stream(**stream_kwargs) as response:
+            with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
@@ -184,7 +261,7 @@ class BasePluginClient:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
-    def _stream_request_with_model(
+    def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
         method: str,
         path: str,
@@ -200,7 +277,7 @@ class BasePluginClient:
         for line in self._stream_request(method, path, params, headers, data, files):
             yield type_(**json.loads(line))  # type: ignore
 
-    def _request_with_model(
+    def _request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
         method: str,
         path: str,
@@ -216,7 +293,7 @@ class BasePluginClient:
         response = self._request(method, path, headers, data, params, files)
         return type_(**response.json())  # type: ignore[return-value]
 
-    def _request_with_plugin_daemon_response(
+    def _request_with_plugin_daemon_response[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
         method: str,
         path: str,
@@ -235,7 +312,10 @@ class BasePluginClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
-            raise e
+            if e.response.status_code < 500:
+                raise PluginDaemonClientSideError(description=str(e))
+            else:
+                raise PluginDaemonInternalServerError(description=str(e))
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
             logger.exception("Failed to request plugin daemon, url: %s", path)
@@ -245,21 +325,22 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
+            json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
-        except Exception:
+        except Exception as e:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
                 f" url: {path}"
             )
             logger.exception(msg)
-            raise ValueError(msg)
+            raise ValueError(msg) from e
 
         if rep.code != 0:
             try:
                 error = PluginDaemonError.model_validate(json.loads(rep.message))
-            except Exception:
-                raise ValueError(f"{rep.message}, code: {rep.code}")
+            except Exception as e:
+                raise ValueError(f"{rep.message}, code: {rep.code}") from e
 
             self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
@@ -268,7 +349,7 @@ class BasePluginClient:
 
         return rep.data
 
-    def _request_with_plugin_daemon_response_stream(
+    def _request_with_plugin_daemon_response_stream[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
         method: str,
         path: str,
@@ -299,8 +380,8 @@ class BasePluginClient:
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError.model_validate(json.loads(rep.message))
-                    except Exception:
-                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+                    except Exception as e:
+                        raise PluginDaemonInnerError(code=rep.code, message=rep.message) from e
 
                     logger.error("Error in stream response for plugin %s", rep.__dict__)
                     self._handle_plugin_daemon_error(error.error_type, error.message)
@@ -343,6 +424,22 @@ class BasePluginClient:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
                         raise EventIgnoreError(description=error_object.get("message"))
+                    # NOTE: current plugin sdk / plugin daemon does not raise exception with
+                    # type `PluginLLMPollingUnsupportedError`.
+                    case PluginLLMPollingUnsupportedError.__name__:
+                        raise PluginLLMPollingUnsupportedError(description=error_object.get("message"))
+                    case PluginRuntimeError.__name__:
+                        args = error_object.get("args")
+                        lambda_request_id = args.get("request_id") if isinstance(args, Mapping) else None
+                        if not isinstance(lambda_request_id, str):
+                            lambda_request_id = None
+                        runtime_message = error_object.get("message")
+                        if not isinstance(runtime_message, str):
+                            runtime_message = "Plugin runtime request failed"
+                        raise PluginRuntimeError(
+                            description=runtime_message,
+                            lambda_request_id=lambda_request_id,
+                        )
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

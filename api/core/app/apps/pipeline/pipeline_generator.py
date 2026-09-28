@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -26,7 +27,11 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -34,13 +39,14 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
-from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -58,9 +64,10 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -73,9 +80,10 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -88,36 +96,37 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = pipeline.retrieve_dataset(session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
         datasource_type = DatasourceProviderType(args["datasource_type"])
@@ -132,9 +141,13 @@ class PipelineGenerator(BaseAppGenerator):
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
+            from services.feature_service import FeatureService
+
+            features = FeatureService.get_features(pipeline.tenant_id)
+            DocumentService.check_document_creation_limits(len(datasource_info_list), features)
 
             for datasource_info in datasource_info_list:
-                position = DocumentService.get_documents_position(dataset.id)
+                position = DocumentService.get_documents_position(dataset.id, session)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
@@ -147,9 +160,9 @@ class PipelineGenerator(BaseAppGenerator):
                     batch=batch,
                     document_form=dataset.chunk_structure,
                 )
-                db.session.add(document)
+                session.add(document)
                 documents.append(document)
-            db.session.commit()
+            session.flush()
 
         # run in child thread
         rag_pipeline_invoke_entities = []
@@ -167,8 +180,7 @@ class PipelineGenerator(BaseAppGenerator):
                     pipeline_id=pipeline.id,
                     created_by=user.id,
                 )
-                db.session.add(document_pipeline_execution_log)
-                db.session.commit()
+                session.add(document_pipeline_execution_log)
             application_generate_entity = RagPipelineGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
@@ -176,7 +188,7 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=args.get("original_document_id"),
+                original_document_id=None if is_retry else args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -204,6 +216,7 @@ class PipelineGenerator(BaseAppGenerator):
             session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=pipeline.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -211,12 +224,14 @@ class PipelineGenerator(BaseAppGenerator):
 
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=pipeline.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
             )
             if invoke_from == InvokeFrom.DEBUGGER or is_retry:
                 return self._generate(
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     context=contextvars.copy_context(),
                     pipeline=pipeline,
@@ -243,6 +258,8 @@ class PipelineGenerator(BaseAppGenerator):
                     )
                 )
 
+        if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
+            session.commit()
         if rag_pipeline_invoke_entities:
             RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
         # return batch, dataset, documents
@@ -272,11 +289,12 @@ class PipelineGenerator(BaseAppGenerator):
     def _generate(
         self,
         *,
+        session: Session,
         flask_app: Flask,
         context: contextvars.Context,
         pipeline: Pipeline,
         workflow_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -284,7 +302,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -300,7 +318,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
+            workflow = session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -331,18 +349,30 @@ class PipelineGenerator(BaseAppGenerator):
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
                 user,
+                tenant_id=pipeline.tenant_id,
             )
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                stream=streaming,
-                draft_var_saver_factory=draft_var_saver_factory,
-            )
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    stream=streaming,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -352,16 +382,19 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -374,10 +407,9 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        with Session(db.engine) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = pipeline.retrieve_dataset(session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
@@ -407,6 +439,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
@@ -414,11 +447,12 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -428,6 +462,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            session=session,
             flask_app=current_app._get_current_object(),  # type: ignore
             pipeline=pipeline,
             workflow_id=workflow.id,
@@ -449,16 +484,19 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -466,10 +504,9 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        with Session(db.engine) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = pipeline.retrieve_dataset(session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
 
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
@@ -503,6 +540,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
@@ -510,11 +548,12 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -524,6 +563,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            session=session,
             flask_app=current_app._get_current_object(),  # type: ignore
             pipeline=pipeline,
             workflow_id=workflow.id,
@@ -614,18 +654,20 @@ class PipelineGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,
         application_generate_entity: RagPipelineGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -666,7 +708,7 @@ class PipelineGenerator(BaseAppGenerator):
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Union[Account, EndUser],
+        account: Account | EndUser,
         batch: str,
         document_form: str,
     ):
@@ -713,7 +755,7 @@ class PipelineGenerator(BaseAppGenerator):
         pipeline: Pipeline,
         workflow: Workflow,
         start_node_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
         Format datasource info list.
@@ -780,11 +822,26 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
+        _visited_folder_ids: set[str] | None = None,
     ):
         """
         Get files in a folder.
+
+        Recursively lists all files inside the given folder prefix.
+        ``_visited_folder_ids`` tracks folders already expanded so that a
+        self-referencing folder (where the API returns the folder as its own
+        child) cannot cause infinite recursion.
         """
+        if _visited_folder_ids is None:
+            _visited_folder_ids = set()
+
+        # Guard: skip folders we have already expanded to prevent infinite
+        # recursion from self-referencing folder entries in the API response.
+        if prefix in _visited_folder_ids:
+            return
+        _visited_folder_ids.add(prefix)
+
         result_generator = datasource_runtime.online_drive_browse_files(
             user_id=user_id,
             request=OnlineDriveBrowseFilesRequest(
@@ -796,10 +853,14 @@ class PipelineGenerator(BaseAppGenerator):
             provider_type=datasource_runtime.datasource_provider_type(),
         )
         is_truncated = False
+        has_files = False
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
+                    has_files = True
                     if file.type == "folder":
+                        if file.id in _visited_folder_ids:
+                            continue
                         self._get_files_in_folder(
                             datasource_runtime,
                             file.id,
@@ -808,6 +869,7 @@ class PipelineGenerator(BaseAppGenerator):
                             all_files,
                             datasource_info,
                             None,
+                            _visited_folder_ids,
                         )
                     else:
                         all_files.append(
@@ -820,7 +882,17 @@ class PipelineGenerator(BaseAppGenerator):
                 is_truncated = files.is_truncated
                 next_page_parameters = files.next_page_parameters
 
-        if is_truncated:
+        # Guard: only follow pagination when the API actually returned files.
+        # An empty folder that incorrectly reports ``is_truncated=True`` would
+        # otherwise recurse forever on the same empty page.
+        if is_truncated and has_files:
             self._get_files_in_folder(
-                datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
+                datasource_runtime,
+                prefix,
+                bucket,
+                user_id,
+                all_files,
+                datasource_info,
+                next_page_parameters,
+                _visited_folder_ids,
             )

@@ -1,17 +1,25 @@
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import {
+  useActivePluginType,
+  useFilterPluginTags,
+  useFilterTemplateLanguages,
+  useMarketplaceMoreClick,
+  useMarketplaceSearchMode,
+  useMarketplaceSort,
+  useMarketplaceSortValue,
+  useSearchPluginText,
+} from '../atoms'
 import { DEFAULT_SORT } from '../constants'
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { wrapper }
@@ -22,8 +30,7 @@ describe('Marketplace sort atoms', () => {
     vi.clearAllMocks()
   })
 
-  it('should return default sort value from useMarketplaceSort', async () => {
-    const { useMarketplaceSort } = await import('../atoms')
+  it('should return default sort value from useMarketplaceSort', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
 
@@ -31,24 +38,14 @@ describe('Marketplace sort atoms', () => {
     expect(typeof result.current[1]).toBe('function')
   })
 
-  it('should return default sort value from useMarketplaceSortValue', async () => {
-    const { useMarketplaceSortValue } = await import('../atoms')
+  it('should return default sort value from useMarketplaceSortValue', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useMarketplaceSortValue(), { wrapper })
 
     expect(result.current).toEqual(DEFAULT_SORT)
   })
 
-  it('should return setter from useSetMarketplaceSort', async () => {
-    const { useSetMarketplaceSort } = await import('../atoms')
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useSetMarketplaceSort(), { wrapper })
-
-    expect(typeof result.current).toBe('function')
-  })
-
-  it('should update sort value via useMarketplaceSort setter', async () => {
-    const { useMarketplaceSort } = await import('../atoms')
+  it('should update sort value via useMarketplaceSort setter', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
 
@@ -65,8 +62,7 @@ describe('useSearchPluginText', () => {
     vi.clearAllMocks()
   })
 
-  it('should return empty string as default', async () => {
-    const { useSearchPluginText } = await import('../atoms')
+  it('should return empty string as default', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useSearchPluginText(), { wrapper })
 
@@ -74,8 +70,7 @@ describe('useSearchPluginText', () => {
     expect(typeof result.current[1]).toBe('function')
   })
 
-  it('should parse q from search params', async () => {
-    const { useSearchPluginText } = await import('../atoms')
+  it('should parse q from search params', () => {
     const { wrapper } = createWrapper('?q=hello')
     const { result } = renderHook(() => useSearchPluginText(), { wrapper })
 
@@ -83,16 +78,14 @@ describe('useSearchPluginText', () => {
   })
 
   it('should expose a setter function for search text', async () => {
-    const { useSearchPluginText } = await import('../atoms')
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useSearchPluginText(), { wrapper })
 
-    expect(typeof result.current[1]).toBe('function')
-
-    // Calling the setter should not throw
     await act(async () => {
       result.current[1]('search term')
     })
+
+    expect(result.current[0]).toBe('search term')
   })
 })
 
@@ -101,16 +94,14 @@ describe('useActivePluginType', () => {
     vi.clearAllMocks()
   })
 
-  it('should return "all" as default category', async () => {
-    const { useActivePluginType } = await import('../atoms')
+  it('should return "all" as default category', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useActivePluginType(), { wrapper })
 
     expect(result.current[0]).toBe('all')
   })
 
-  it('should parse category from search params', async () => {
-    const { useActivePluginType } = await import('../atoms')
+  it('should parse category from search params', () => {
     const { wrapper } = createWrapper('?category=tool')
     const { result } = renderHook(() => useActivePluginType(), { wrapper })
 
@@ -123,20 +114,37 @@ describe('useFilterPluginTags', () => {
     vi.clearAllMocks()
   })
 
-  it('should return empty array as default', async () => {
-    const { useFilterPluginTags } = await import('../atoms')
+  it('should return empty array as default', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => useFilterPluginTags(), { wrapper })
 
     expect(result.current[0]).toEqual([])
   })
 
-  it('should parse tags from search params', async () => {
-    const { useFilterPluginTags } = await import('../atoms')
+  it('should parse tags from search params', () => {
     const { wrapper } = createWrapper('?tags=search')
     const { result } = renderHook(() => useFilterPluginTags(), { wrapper })
 
     expect(result.current[0]).toEqual(['search'])
+  })
+})
+
+describe('useFilterTemplateLanguages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return empty array as default', () => {
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+
+    expect(result.current[0]).toEqual([])
+  })
+
+  it('parses languages from search params', () => {
+    const { wrapper } = createWrapper('?languages=ja')
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+    expect(result.current[0]).toEqual(['ja'])
   })
 })
 
@@ -145,42 +153,35 @@ describe('useMarketplaceSearchMode', () => {
     vi.clearAllMocks()
   })
 
-  it('should return false when no search text, no tags, and category has collections (all)', async () => {
-    const { useMarketplaceSearchMode } = await import('../atoms')
+  it('should return false when no search text, no tags, and category has collections (all)', () => {
     const { wrapper } = createWrapper('?category=all')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
-    // "all" is in PLUGIN_CATEGORY_WITH_COLLECTIONS, so search mode should be false
     expect(result.current).toBe(false)
   })
 
-  it('should return true when search text is present', async () => {
-    const { useMarketplaceSearchMode } = await import('../atoms')
+  it('should return true when search text is present', () => {
     const { wrapper } = createWrapper('?q=test&category=all')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
     expect(result.current).toBe(true)
   })
 
-  it('should return true when tags are present', async () => {
-    const { useMarketplaceSearchMode } = await import('../atoms')
+  it('should return true when tags are present', () => {
     const { wrapper } = createWrapper('?tags=search&category=all')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
     expect(result.current).toBe(true)
   })
 
-  it('should return true when category does not have collections (e.g. model)', async () => {
-    const { useMarketplaceSearchMode } = await import('../atoms')
+  it('should return true when category does not have collections (e.g. model)', () => {
     const { wrapper } = createWrapper('?category=model')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
-    // "model" is NOT in PLUGIN_CATEGORY_WITH_COLLECTIONS, so search mode = true
     expect(result.current).toBe(true)
   })
 
-  it('should return false when category has collections (tool) and no search/tags', async () => {
-    const { useMarketplaceSearchMode } = await import('../atoms')
+  it('should return false when category has collections (tool) and no search/tags', () => {
     const { wrapper } = createWrapper('?category=tool')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
@@ -193,33 +194,38 @@ describe('useMarketplaceMoreClick', () => {
     vi.clearAllMocks()
   })
 
-  it('should return a callback function', async () => {
-    const { useMarketplaceMoreClick } = await import('../atoms')
+  it('should do nothing when called with no params', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+        searchText: useSearchPluginText()[0],
+      }),
+      { wrapper },
+    )
 
-    expect(typeof result.current).toBe('function')
-  })
+    const sortBefore = result.current.sort
+    const searchTextBefore = result.current.searchText
 
-  it('should do nothing when called with no params', async () => {
-    const { useMarketplaceMoreClick } = await import('../atoms')
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
-
-    // Should not throw when called with undefined
     act(() => {
-      result.current(undefined)
+      result.current.handleMoreClick(undefined)
     })
+
+    expect(result.current.sort).toEqual(sortBefore)
+    expect(result.current.searchText).toBe(searchTextBefore)
   })
 
-  it('should update search state when called with search params', async () => {
-    const { useMarketplaceMoreClick, useMarketplaceSortValue } = await import('../atoms')
+  it('should update search state when called with search params', () => {
     const { wrapper } = createWrapper()
 
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
       result.current.handleMoreClick({
@@ -229,17 +235,23 @@ describe('useMarketplaceMoreClick', () => {
       })
     })
 
-    // Sort should be updated via the jotai atom
     expect(result.current.sort).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
   })
 
-  it('should use defaults when search params fields are missing', async () => {
-    const { useMarketplaceMoreClick } = await import('../atoms')
+  it('should use defaults when search params fields are missing', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
-      result.current({})
+      result.current.handleMoreClick({})
     })
+
+    expect(result.current.sort).toEqual(DEFAULT_SORT)
   })
 })

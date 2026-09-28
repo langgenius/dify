@@ -53,7 +53,11 @@
   <a href="../tr-TR/README.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="../vi-VN/README.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
   <a href="../de-DE/README.md"><img alt="README in Deutsch" src="https://img.shields.io/badge/German-d9d9d9"></a>
+  <a href="../it-IT/README.md"><img alt="README in Italiano" src="https://img.shields.io/badge/Italiano-d9d9d9"></a>
+  <a href="../pt-BR/README.md"><img alt="README em Português do Brasil" src="https://img.shields.io/badge/Portugu%C3%AAs%20do%20Brasil-d9d9d9"></a>
+  <a href="../sl-SI/README.md"><img alt="README Slovenščina" src="https://img.shields.io/badge/Sloven%C5%A1%C4%8Dina-d9d9d9"></a>
   <a href="../bn-BD/README.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
+  <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </p>
 
 <div style="text-align: right;">
@@ -88,13 +92,11 @@
 - **مشروع Dify للشركات / المؤسسات</br>**
   نحن نوفر ميزات إضافية مركزة على الشركات. [جدول اجتماع معنا](https://cal.com/guchenhe/30min) أو [أرسل لنا بريدًا إلكترونيًا](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) لمناقشة احتياجات الشركات. </br>
 
-> بالنسبة للشركات الناشئة والشركات الصغيرة التي تستخدم خدمات AWS، تحقق من [Dify Premium على AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) ونشرها في شبكتك الخاصة على AWS VPC بنقرة واحدة. إنها عرض AMI بأسعار معقولة مع خيار إنشاء تطبيقات بشعار وعلامة تجارية مخصصة.
-
 ## البقاء قدمًا
 
 قم بإضافة نجمة إلى Dify على GitHub وتلق تنبيهًا فوريًا بالإصدارات الجديدة.
 
-![نجمنا](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## البداية السريعة
 
@@ -119,78 +121,31 @@ docker compose up -d
 
 ## الخطوات التالية
 
-إذا كنت بحاجة إلى تخصيص الإعدادات، فيرجى الرجوع إلى التعليقات في ملف [.env.example](../../docker/.env.example) وتحديث القيم المقابلة في ملف `.env`. بالإضافة إلى ذلك، قد تحتاج إلى إجراء تعديلات على ملف `docker-compose.yaml` نفسه، مثل تغيير إصدارات الصور أو تعيينات المنافذ أو نقاط تحميل وحدات التخزين، بناءً على بيئة النشر ومتطلباتك الخاصة. بعد إجراء أي تغييرات، يرجى إعادة تشغيل `docker-compose up -d`. يمكنك العثور على قائمة كاملة بمتغيرات البيئة المتاحة [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
-
-### مراقبة المقاييس باستخدام Grafana
-
-استيراد لوحة التحكم إلى Grafana، باستخدام قاعدة بيانات PostgreSQL الخاصة بـ Dify كمصدر للبيانات، لمراقبة المقاييس بدقة للتطبيقات والمستأجرين والرسائل وغير ذلك.
-
-- [لوحة تحكم Grafana بواسطة @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
-
-### النشر باستخدام Kubernetes
-
-يوجد مجتمع خاص بـ [Helm Charts](https://helm.sh/) وملفات YAML التي تسمح بتنفيذ Dify على Kubernetes للنظام من الإيجابيات العلوية.
-
-- [رسم بياني Helm من قبل @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [رسم بياني Helm من قبل @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [رسم بياني Helm من قبل @magicsong](https://github.com/magicsong/ai-charts)
-- [ملف YAML من قبل @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [ملف YAML من قبل @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 جديد! ملفات YAML (تدعم Dify v1.6.0) بواسطة @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### استخدام Terraform للتوزيع
-
-انشر Dify إلى منصة السحابة بنقرة واحدة باستخدام [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform بواسطة @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform بواسطة @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### استخدام AWS CDK للنشر
-
-انشر Dify على AWS باستخدام [CDK](https://aws.amazon.com/cdk/)
-
-##### AWS
-
-- [AWS CDK بواسطة @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK بواسطة @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### استخدام Alibaba Cloud للنشر
-
-[بسرعة نشر Dify إلى سحابة علي بابا مع عش الحوسبة السحابية علي بابا](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### استخدام Alibaba Cloud Data Management للنشر
-
-انشر ​​Dify على علي بابا كلاود بنقرة واحدة باستخدام [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### استخدام Azure Devops Pipeline للنشر على AKS
-
-انشر Dify على AKS بنقرة واحدة باستخدام [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
+لخيارات التكوين المخصص والمراقبة والنشر، راجع [الإعداد المتقدم](ADVANCED_SETUP.md).
 
 ## المساهمة
 
-لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا.
-في الوقت نفسه، يرجى النظر في دعم Dify عن طريق مشاركته على وسائل التواصل الاجتماعي وفي الفعاليات والمؤتمرات.
+يرحب Dify بالمساهمات بجميع أشكالها:
 
-> نحن نبحث عن مساهمين لمساعدة في ترجمة Dify إلى لغات أخرى غير اللغة الصينية المندرين أو الإنجليزية. إذا كنت مهتمًا بالمساعدة، يرجى الاطلاع على [README للترجمة](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لمزيد من المعلومات، واترك لنا تعليقًا في قناة `global-users` على [خادم المجتمع على Discord](https://discord.gg/8Tpq4AcN9c).
+- **الشفرة البرمجية**: اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)، ثم تصفح [المشكلات المناسبة للمساهمين الجدد](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **الأفكار والملاحظات**: ابدأ أو انضم إلى [مناقشة على GitHub](https://github.com/langgenius/dify/discussions).
+- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) لإضافة لغة أو تحديثها.
+- **المجتمع**: شارك التطبيقات التي تبنيها، وساعد المستخدمين الآخرين، وساهم في نشر Dify.
 
-**المساهمون**
+### المساهمون
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## المجتمع والاتصال
 
-- [مناقشة GitHub](https://github.com/langgenius/dify/discussions). الأفضل لـ: مشاركة التعليقات وطرح الأسئلة.
-- [المشكلات على GitHub](https://github.com/langgenius/dify/issues). الأفضل لـ: الأخطاء التي تواجهها في استخدام Dify.AI، واقتراحات الميزات. انظر [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). الأفضل لـ: مشاركة تطبيقاتك والترفيه مع المجتمع.
-- [تويتر](https://twitter.com/dify_ai). الأفضل لـ: مشاركة تطبيقاتك والترفيه مع المجتمع.
+اختر القناة الأنسب لسؤالك:
 
+- [مناقشات GitHub](https://github.com/langgenius/dify/discussions): للحصول على المساعدة ومشاركة الملاحظات واقتراح الأفكار.
+- [مشكلات GitHub](https://github.com/langgenius/dify/issues): للإبلاغ عن الأخطاء القابلة لإعادة الإنتاج ومتابعة العمل الهندسي. اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) قبل فتح مشكلة.
+- [Discord](https://discord.gg/FngNHpbcY7): للدردشة الفورية ومشاركة تطبيقاتك والتواصل مع مستخدمي Dify الآخرين.
+- [X](https://x.com/dify_ai): لمتابعة أخبار الإصدارات وتحديثات المشروع.
 ## تاريخ النجمة
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

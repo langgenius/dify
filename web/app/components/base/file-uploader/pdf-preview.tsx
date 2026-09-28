@@ -1,14 +1,13 @@
-import type { FC } from 'react'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
-import { t } from 'i18next'
-import * as React from 'react'
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
-import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { basePath } from '@/utils/var'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
 
 type PdfPreviewProps = {
@@ -16,92 +15,171 @@ type PdfPreviewProps = {
   onCancel: () => void
 }
 
-const PdfPreview: FC<PdfPreviewProps> = ({
-  url,
-  onCancel,
-}) => {
+function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const isMobile = media === MediaType.mobile
 
   const zoomIn = () => {
-    setScale(prevScale => Math.min(prevScale * 1.2, 15))
+    setScale((prevScale) => Math.min(prevScale * 1.2, 15))
     setPosition({ x: position.x - 50, y: position.y - 50 })
   }
 
   const zoomOut = () => {
     setScale((prevScale) => {
       const newScale = Math.max(prevScale / 1.2, 0.5)
-      if (newScale === 1)
-        setPosition({ x: 0, y: 0 })
-      else
-        setPosition({ x: position.x + 50, y: position.y + 50 })
+      if (newScale === 1) setPosition({ x: 0, y: 0 })
+      else setPosition({ x: position.x + 50, y: position.y + 50 })
 
       return newScale
     })
   }
 
-  useHotkeys('esc', onCancel)
-  useHotkeys('up', zoomIn)
-  useHotkeys('down', zoomOut)
+  useHotkey(
+    'ArrowUp',
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      zoomIn()
+    },
+    {
+      target: previewRef,
+      enabled: true,
+      ignoreInputs: true,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
+  useHotkey(
+    'ArrowDown',
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      zoomOut()
+    },
+    {
+      target: previewRef,
+      enabled: true,
+      ignoreInputs: true,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
-  return createPortal(
-    <div
-      className={`fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
-      onClick={e => e.stopPropagation()}
-      tabIndex={-1}
-    >
-      <div
-        className="h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden"
-        style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+  const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
+  const zoomInLabel = t(($) => $['operation.zoomIn'], { ns: 'common' })
+  const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
+
+  return (
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={t(($) => $['common.preview'], { ns: 'workflow' })}
+        className={`fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
       >
-        <PdfLoader
-          workerSrc="/pdf.worker.min.mjs"
-          url={url}
-          beforeLoad={<div className="flex h-64 items-center justify-center"><Loading type="app" /></div>}
-        >
-          {(pdfDocument) => {
-            return (
-              <PdfHighlighter
-                pdfDocument={pdfDocument}
-                enableAreaSelection={event => event.altKey}
-                scrollRef={noop}
-                onScrollChange={noop}
-                onSelectionFinished={() => null}
-                highlightTransform={() => { return <div /> }}
-                highlights={[]}
-              />
-            )
+        <div
+          tabIndex={-1}
+          className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
-        </PdfLoader>
-      </div>
-      <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
-        <div
-          className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
-          onClick={zoomOut}
         >
-          <RiZoomOutLine className="h-4 w-4 text-gray-500" />
+          <PdfLoader
+            workerSrc={`${basePath}/pdf.worker.min.mjs`}
+            url={url}
+            beforeLoad={<LoadingPlaceholder className="h-64" />}
+          >
+            {(pdfDocument) => {
+              return (
+                <PdfHighlighter
+                  pdfDocument={pdfDocument}
+                  enableAreaSelection={(event) => event.altKey}
+                  scrollRef={noop}
+                  onScrollChange={noop}
+                  onSelectionFinished={() => null}
+                  highlightTransform={() => {
+                    return <div />
+                  }}
+                  highlights={[]}
+                />
+              )
+            }}
+          </PdfLoader>
         </div>
-      </Tooltip>
-      <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
-        <div
-          className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
-          onClick={zoomIn}
-        >
-          <RiZoomInLine className="h-4 w-4 text-gray-500" />
-        </div>
-      </Tooltip>
-      <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
-        <div
-          className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
-          onClick={onCancel}
-        >
-          <RiCloseLine className="h-4 w-4 text-gray-500" />
-        </div>
-      </Tooltip>
-    </div>,
-    document.body,
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={zoomOutLabel}
+                className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                onClick={zoomOut}
+              >
+                <RiZoomOutLine className="size-4 text-gray-500" />
+              </button>
+            }
+          />
+          <TooltipContent>{zoomOutLabel}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={zoomInLabel}
+                className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                onClick={zoomIn}
+              >
+                <RiZoomInLine className="size-4 text-gray-500" />
+              </button>
+            }
+          />
+          <TooltipContent>{zoomInLabel}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={cancelLabel}
+                className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+                onClick={onCancel}
+              >
+                <RiCloseLine className="size-4 text-gray-500" />
+              </button>
+            }
+          />
+          <TooltipContent>{cancelLabel}</TooltipContent>
+        </Tooltip>
+      </DialogPopup>
+    </>
+  )
+}
+
+function PdfPreview(props: PdfPreviewProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <PdfPreviewContent {...props} />
+      </DialogPortal>
+    </Dialog>
   )
 }
 

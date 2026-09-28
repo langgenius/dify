@@ -13,7 +13,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
 
@@ -42,7 +44,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
         dataset = Dataset(
             tenant_id=tenant_id or str(uuid4()),
             name=name,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by or str(uuid4()),
         )
         if dataset_id:
@@ -72,20 +74,22 @@ class DocumentBatchUpdateIntegrationDataFactory:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info=json.dumps({"upload_file_id": str(uuid4())}),
             batch=f"batch-{uuid4()}",
             name=name,
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by or str(uuid4()),
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id or str(uuid4())
         document.enabled = enabled
         document.archived = archived
         document.indexing_status = indexing_status
         document.completed_at = (
-            completed_at if completed_at is not None else (FIXED_TIME if indexing_status == "completed" else None)
+            completed_at
+            if completed_at is not None
+            else (FIXED_TIME if indexing_status == IndexingStatus.COMPLETED else None)
         )
 
         for key, value in kwargs.items():
@@ -192,7 +196,11 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Act
         DocumentService.batch_update_document_status(
-            dataset=dataset, document_ids=document_ids, action="enable", user=user
+            dataset=dataset,
+            document_ids=document_ids,
+            action="enable",
+            user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -224,6 +232,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="enable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -243,7 +252,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             dataset=dataset,
             document_ids=document_ids,
             enabled=True,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         # Act
@@ -252,6 +261,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=document_ids,
             action="disable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -277,7 +287,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             db_session_with_containers,
             dataset=dataset,
             enabled=False,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             completed_at=FIXED_TIME,
         )
 
@@ -287,6 +297,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[disabled_doc.id],
             action="disable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -306,7 +317,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             db_session_with_containers,
             dataset=dataset,
             enabled=True,
-            indexing_status="indexing",
+            indexing_status=IndexingStatus.INDEXING,
             completed_at=None,
         )
 
@@ -317,6 +328,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
                 document_ids=[non_completed_doc.id],
                 action="disable",
                 user=user,
+                session=db_session_with_containers,
             )
 
     def test_batch_update_archive_documents_success(self, db_session_with_containers: Session, patched_dependencies):
@@ -334,6 +346,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -360,6 +373,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -385,6 +399,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -408,6 +423,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="un_archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -435,6 +451,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="un_archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -460,6 +477,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[document.id],
             action="un_archive",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -491,6 +509,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
                 document_ids=[document.id],
                 action="enable",
                 user=user,
+                session=db_session_with_containers,
             )
 
         assert "test_document.pdf" in str(exc_info.value)
@@ -513,6 +532,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
                 document_ids=[document.id],
                 action="enable",
                 user=user,
+                session=db_session_with_containers,
             )
 
         db_session_with_containers.refresh(document)
@@ -527,7 +547,11 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Act
         result = DocumentService.batch_update_document_status(
-            dataset=dataset, document_ids=[], action="enable", user=user
+            dataset=dataset,
+            document_ids=[],
+            action="enable",
+            user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -548,6 +572,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=[missing_document_id],
             action="enable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -586,6 +611,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=document_ids,
             action="enable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -624,6 +650,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=document_ids,
             action="enable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -675,6 +702,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             document_ids=document_ids,
             action="enable",
             user=user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -691,3 +719,23 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{doc1.id}_indexing", 600, 1)
         patched_dependencies["add_task"].delay.assert_called_once_with(doc1.id)
+
+    def test_batch_update_invalid_action_raises_value_error(
+        self, db_session_with_containers: Session, patched_dependencies
+    ):
+        """Test that an invalid action raises ValueError."""
+        factory = DocumentBatchUpdateIntegrationDataFactory
+        dataset = factory.create_dataset(db_session_with_containers)
+        doc = factory.create_document(db_session_with_containers, dataset)
+        user = UserDouble(id=str(uuid4()))
+
+        patched_dependencies["redis_client"].get.return_value = None
+
+        with pytest.raises(ValueError, match="Invalid action"):
+            DocumentService.batch_update_document_status(
+                dataset=dataset,
+                document_ids=[doc.id],
+                action="invalid_action",
+                user=user,
+                session=db_session_with_containers,
+            )
