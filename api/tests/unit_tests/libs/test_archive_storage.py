@@ -6,6 +6,7 @@ from unittest.mock import ANY, MagicMock
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError
 
+from configs.extra.archive_config import ArchiveStorageConfig
 from libs import archive_storage as storage_module
 from libs.archive_storage import (
     ArchiveStorage,
@@ -115,6 +116,30 @@ def test_init_sets_client(monkeypatch: pytest.MonkeyPatch):
     )
     assert storage.client is client
     assert storage.bucket == BUCKET_NAME
+
+
+def test_init_default_address_style_is_path(monkeypatch: pytest.MonkeyPatch):
+    # _configure_storage does not set ARCHIVE_STORAGE_ADDRESS_STYLE, so the
+    # pydantic field default is exercised.
+    _configure_storage(monkeypatch)
+    _, boto_client = _mock_client(monkeypatch)
+
+    ArchiveStorage(bucket=BUCKET_NAME)
+
+    assert ArchiveStorageConfig.model_fields["ARCHIVE_STORAGE_ADDRESS_STYLE"].default == "path"
+    config = boto_client.call_args.kwargs["config"]
+    assert config.s3 == {"addressing_style": "path"}
+
+
+@pytest.mark.parametrize("address_style", ["virtual", "auto"])
+def test_init_address_style_override(monkeypatch: pytest.MonkeyPatch, address_style: str):
+    _configure_storage(monkeypatch, ARCHIVE_STORAGE_ADDRESS_STYLE=address_style)
+    _, boto_client = _mock_client(monkeypatch)
+
+    ArchiveStorage(bucket=BUCKET_NAME)
+
+    config = boto_client.call_args.kwargs["config"]
+    assert config.s3 == {"addressing_style": address_style}
 
 
 def test_put_object_returns_checksum(monkeypatch: pytest.MonkeyPatch):
