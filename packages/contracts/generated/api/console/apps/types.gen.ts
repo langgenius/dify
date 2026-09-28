@@ -599,7 +599,7 @@ export type McpServerUpdatePayload = {
   parameters: {
     [key: string]: unknown
   }
-  status?: string | null
+  status?: AppMcpServerStatus | null
 }
 
 export type AppSiteUpdatePayload = {
@@ -5297,7 +5297,11 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
   404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
@@ -5690,6 +5694,7 @@ export type PostAppsByAppIdServerData = {
 
 export type PostAppsByAppIdServerErrors = {
   403: unknown
+  409: unknown
 }
 
 export type PostAppsByAppIdServerResponses = {

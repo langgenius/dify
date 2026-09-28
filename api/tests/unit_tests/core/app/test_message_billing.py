@@ -79,10 +79,10 @@ def entity(agent=False, quota_type=ProviderQuotaType.PAID, tokener=False):
 
 
 @pytest.fixture
-def billing(mocker):
+def billing(mocker, config_overrides):
     state = {"phase": "prepared", "route_epoch": 0, "model_mapping_version": "fixture-v1"}
     mocker.patch("core.model_invocation_routing.migration_routing_state", side_effect=lambda _: state)
-    mocker.patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch.object(type(dify_config), "get_model_credits", return_value=9)
     reserve = mocker.patch("core.app.llm.message_billing.CreditPoolService.reserve_credits_capped")
     reserve.return_value.amount = 1  # Atomic capped tail balance, not the requested 9.
@@ -144,9 +144,9 @@ def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_i
     billing.profile.assert_not_called()
 
 
-def test_non_cloud_legacy_keeps_post_message_capped_accounting(billing, mocker):
+def test_non_cloud_legacy_keeps_post_message_capped_accounting(billing, mocker, config_overrides):
     mocker.patch("core.model_invocation_routing.migration_routing_state", return_value=None)
-    mocker.patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     billing.profile.return_value = True
     app = entity(agent=True)
     owner = begin_message_billing(app, MESSAGE)

@@ -3,12 +3,13 @@
 from dataclasses import asdict
 from typing import override
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.enums import AppStatus
 from models.model import App, Site
+from repositories.app.console_visibility import console_visible_condition
 from services.app_site_service import (
     AppSiteAppNotFoundError,
     AppSiteChanges,
@@ -16,6 +17,15 @@ from services.app_site_service import (
     AppSiteNotFoundError,
     AppSiteStore,
 )
+
+
+def _console_app_conditions(workspace_id: str, app_id: str) -> tuple[ColumnElement[bool], ...]:
+    return (
+        App.id == app_id,
+        App.tenant_id == workspace_id,
+        App.status == AppStatus.NORMAL,
+        console_visible_condition(),
+    )
 
 
 class AppSiteCommandRepository(AppSiteStore):
@@ -61,27 +71,12 @@ class AppSiteCommandRepository(AppSiteStore):
     @staticmethod
     def _get_site(session: Session, workspace_id: str, app_id: str) -> Site:
         site = session.scalar(
-            select(Site)
-            .join(App, App.id == Site.app_id)
-            .where(
-                App.id == app_id,
-                App.tenant_id == workspace_id,
-                App.status == AppStatus.NORMAL,
-            )
-            .limit(1)
+            select(Site).join(App, App.id == Site.app_id).where(*_console_app_conditions(workspace_id, app_id)).limit(1)
         )
         if site is not None:
             return site
 
-        app_exists = session.scalar(
-            select(App.id)
-            .where(
-                App.id == app_id,
-                App.tenant_id == workspace_id,
-                App.status == AppStatus.NORMAL,
-            )
-            .limit(1)
-        )
+        app_exists = session.scalar(select(App.id).where(*_console_app_conditions(workspace_id, app_id)).limit(1))
         if app_exists is None:
             raise AppSiteAppNotFoundError
         raise AppSiteNotFoundError

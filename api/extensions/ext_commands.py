@@ -2,7 +2,6 @@ from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
-    from model_billing_migration_commands import tokener_migration
     from commands import (
         add_qdrant_index,
         archive_workflow_runs,
@@ -47,6 +46,7 @@ def init_app(app: DifyApp):
         upgrade_db,
         vdb_migrate,
     )
+    from model_billing_migration_commands import tokener_migration
 
     cmds_to_register = [
         tokener_migration,

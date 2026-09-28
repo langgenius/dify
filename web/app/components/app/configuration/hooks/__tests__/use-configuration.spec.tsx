@@ -25,7 +25,6 @@ const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
 }
 
 const mockSetSettingsDestination = vi.fn()
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -98,8 +97,6 @@ vi.mock('@/app/components/app/store', () => ({
         mode: AppModeEnum.CHAT,
         permission_keys: mockAppPermissionKeys,
       },
-      showAppConfigureFeaturesModal: false,
-      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
     }),
 }))
 
@@ -273,6 +270,18 @@ describe('useConfiguration', () => {
         external_data_tools: [],
       }),
     })
+  })
+
+  it('opens, closes, and reopens feature configuration within the current session', async () => {
+    const { result } = renderHook(() => useConfiguration())
+    await waitFor(() => expect(result.current.showLoading).toBe(false))
+    expect(result.current.showAppConfigureFeaturesModal).toBe(false)
+    act(() => result.current.contextValue.onOpenFeatures())
+    expect(result.current.showAppConfigureFeaturesModal).toBe(true)
+    act(() => result.current.onCloseFeaturePanel())
+    expect(result.current.showAppConfigureFeaturesModal).toBe(false)
+    act(() => result.current.contextValue.onOpenFeatures())
+    expect(result.current.showAppConfigureFeaturesModal).toBe(true)
   })
 
   it('should leave loading through the error boundary when the app has no model configuration', async () => {
@@ -742,7 +751,7 @@ describe('useConfiguration', () => {
       })
     })
 
-    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
+    expect(result.current.showAppConfigureFeaturesModal).toBe(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
@@ -855,6 +864,6 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.visionConfig.enabled).toBe(true)
     expect(result.current.contextValue.canReturnToSimpleMode).toBe(false)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalledTimes(2)
-    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(false)
+    expect(result.current.showAppConfigureFeaturesModal).toBe(false)
   })
 })

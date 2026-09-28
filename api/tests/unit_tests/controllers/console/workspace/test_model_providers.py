@@ -275,6 +275,7 @@ class TestModelProviderCreditsApi:
         get_model_provider_credits.assert_called_once_with("tenant1", session=session)
         assert result == {
             "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "none",
             "tokener_bootstrap_status": None,
             "pool_type": "paid",
             "quota_limit": -1,
@@ -300,6 +301,7 @@ class TestModelProviderCreditsApi:
 
         assert result == {
             "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "none",
             "tokener_bootstrap_status": None,
             "pool_type": None,
             "quota_limit": None,

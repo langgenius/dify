@@ -62,6 +62,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
         if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
+            if annotation_reply is None:
+                raise ValueError("Annotation reply config is required")
             app_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
             config_dict = app_model_config_dict.copy()
         else:

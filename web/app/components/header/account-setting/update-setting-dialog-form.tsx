@@ -163,6 +163,7 @@ const UpdateSettingDialogForm = ({
               title={t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               minuteFilter={minuteFilter}
               renderTrigger={renderTimePickerTrigger}
+              triggerNativeButton
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">

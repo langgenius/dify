@@ -229,19 +229,23 @@ const CreateAppModal = ({
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
               </label>
               <div className="flex items-center justify-between space-x-2">
-                <AppIcon
-                  size="large"
-                  onClick={() => {
-                    setShowIconPicker(true)
-                  }}
-                  className="cursor-pointer"
-                  iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
-                  icon={currentIcon.icon ?? undefined}
-                  background={currentIcon.icon_background}
-                  imageUrl={
-                    currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
-                  }
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowIconPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    size="large"
+                    iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
+                    icon={currentIcon.icon ?? undefined}
+                    background={currentIcon.icon_background}
+                    imageUrl={
+                      currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
+                    }
+                  />
+                </button>
                 <Input
                   id={nameInputId}
                   value={name}

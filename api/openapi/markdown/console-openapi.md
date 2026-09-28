@@ -663,7 +663,11 @@ Get suggested questions for an Agent App message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
 | 404 | Agent, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
@@ -2510,7 +2514,11 @@ Get suggested questions for a message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 404 | Message or conversation not found |  |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
+| 404 | App, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation
@@ -2891,6 +2899,7 @@ Create MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
+| 409 | MCP server already exists for this app |  |
 
 ### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
@@ -16596,11 +16605,11 @@ This class is used to store the schema information of an api based tool.
 
 #### AppMCPServerStatus
 
-AppMCPServer Status Enum
+Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+| AppMCPServerStatus | string | Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls. |  |
 
 #### AppMetadataConditionPayload
 
@@ -20479,9 +20488,9 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Server description | No |
-| id | string | Server ID | Yes |
+| id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
-| status | string | Server status | No |
+| status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
 
 #### Marketplace
 

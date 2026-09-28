@@ -18,11 +18,13 @@ import { consoleQuery } from '@/service/console'
 import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
+import { useDebugWithMultipleModelContext } from './context'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) => {
+  const { onOpenLog } = useDebugWithMultipleModelContext()
   const {
     isAdvancedMode,
     modelConfig,
@@ -141,6 +143,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
       messageId={messageId}
       isError={false}
       onRetry={noop}
+      onOpenLog={onOpenLog}
       inSidePanel
     />
   )

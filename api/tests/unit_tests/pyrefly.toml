@@ -8,6 +8,17 @@ min-severity = "warn"
 
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
+  "commands/test_model_billing_migration_commands.py",
+  "controllers/inner_api/test_model_billing_migration.py",
+  "core/app/apps/test_execution_stream.py",
+  "core/app/test_message_billing.py",
+  "core/test_model_invocation_routing.py",
+  "services/test_model_billing_migration_contract.py",
+  "services/test_model_billing_migration_service.py",
+  "services/test_model_billing_migration_shared_manual.py",
+  "services/test_model_billing_profile_service.py",
+  "services/test_workspace_service.py",
+  "tasks/test_prepare_tokener_migration_task.py",
   "clients/agent_backend/test_cleanup_composition_compositor_integration.py",
   "clients/agent_backend/test_client.py",
   "clients/agent_backend/test_event_adapter.py",

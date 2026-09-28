@@ -217,6 +217,9 @@ describe('Form', () => {
       )
 
       expect(screen.getByPlaceholderText('API Key'))!.toHaveValue('default-key')
+      expect(screen.getByRole('textbox', { name: 'API Key' })).toHaveValue('default-key')
+      expect(screen.getByLabelText('Secret')).toHaveValue('top-secret')
+      expect(screen.getByRole('spinbutton', { name: 'Limit' })).toHaveValue(5)
       expect(screen.getByPlaceholderText('Secret'))!.toHaveValue('top-secret')
       expect(screen.getByPlaceholderText('Limit'))!.toHaveValue(5)
       expect(screen.queryByText('Hidden')).not.toBeInTheDocument()
