@@ -1,9 +1,12 @@
 import { act, waitFor } from '@testing-library/react'
+import Cookies from 'js-cookie'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { updateAppModelConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -22,7 +25,6 @@ const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
 
 const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
-const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -97,10 +99,6 @@ vi.mock('@/app/components/app/store', () => ({
       showAppConfigureFeaturesModal: false,
       setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
     }),
-}))
-
-vi.mock('@/app/components/detail-sidebar/storage', () => ({
-  useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -193,6 +191,7 @@ vi.mock('@/utils/completion-params', () => ({
 describe('useConfiguration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     latestAdvancedPromptConfigOptions = undefined
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
@@ -272,14 +271,17 @@ describe('useConfiguration', () => {
     const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(detailQueryKey, {
-      enable_api: false,
-      enable_site: false,
-      icon_url: null,
-      id: 'app-1',
-      mode: 'chat',
-      name: 'Cached app',
-    })
+    queryClient.setQueryData(
+      detailQueryKey,
+      createAppDetailFixture({
+        enable_api: false,
+        enable_site: false,
+        icon_url: null,
+        id: 'app-1',
+        mode: 'chat',
+        name: 'Cached app',
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -671,7 +673,7 @@ describe('useConfiguration', () => {
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
-    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',

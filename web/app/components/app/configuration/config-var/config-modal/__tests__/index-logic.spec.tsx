@@ -1,5 +1,5 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -128,7 +128,7 @@ describe('ConfigModal logic', () => {
     useStore.setState({
       appDetail: {
         mode: AppModeEnum.CHAT,
-      } as App & Partial<AppSSO>,
+      } as App,
     })
   })
 

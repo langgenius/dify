@@ -3,8 +3,20 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from './routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -12,7 +24,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -64,6 +76,15 @@ const headerDescriptionDocPaths = {
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 } satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
 
+const compactNavigationQuery = '(width < 48rem)'
+const subscribeToCompactNavigation = (onChange: () => void) => {
+  const mediaQuery = window.matchMedia(compactNavigationQuery)
+  mediaQuery.addEventListener('change', onChange)
+  return () => mediaQuery.removeEventListener('change', onChange)
+}
+const getCompactNavigationSnapshot = () => window.matchMedia(compactNavigationQuery).matches
+const getServerCompactNavigationSnapshot = () => false
+
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
   href: string
@@ -74,8 +95,8 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
   const title = typeof children === 'string' ? children : undefined
 
   return (
-    <span className="inline-flex min-w-0 items-center gap-0.5">
-      <span className="truncate" title={title}>
+    <span className="inline-flex max-w-full min-w-0 items-center gap-0.5">
+      <span className="min-w-0 break-words whitespace-normal sm:truncate" title={title}>
         {children}
       </span>
       <Link
@@ -125,8 +146,13 @@ export default function IntegrationsPage({
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
-  const { t } = useTranslation(['navigation', 'modelProvider'])
+  const { t } = useTranslation(['navigation', 'modelProvider', 'common'])
   const navigationTitleId = useId()
+  const isCompact = useSyncExternalStore(
+    subscribeToCompactNavigation,
+    getCompactNavigationSnapshot,
+    getServerCompactNavigationSnapshot,
+  )
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -143,6 +169,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false)
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -221,6 +248,7 @@ export default function IntegrationsPage({
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
+      setIsNavigationOpen(false)
       onSectionChange(nextSection)
       return
     }
@@ -248,108 +276,143 @@ export default function IntegrationsPage({
     </>
   )
 
+  const sidebar = (
+    <div
+      className={cn(
+        'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
+        isCompact
+          ? 'h-full w-full items-stretch overflow-y-auto'
+          : 'w-50 items-end border-r border-divider-burn',
+      )}
+      data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
+    >
+      <div
+        className={cn('flex min-h-0 flex-1 flex-col gap-0.5 pb-4', isCompact ? 'w-full' : 'w-46')}
+      >
+        <div
+          className={cn(
+            'flex shrink-0 items-start pr-0 pl-2.5',
+            reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+          )}
+        >
+          <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
+            <div
+              id={navigationTitleId}
+              className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
+            >
+              {t(($) => $['settings.integrations'], { ns: 'navigation' })}
+            </div>
+          </div>
+        </div>
+        {showInstallAction && (
+          <IntegrationSidebarActions
+            canManagement={canInstallPlugin}
+            installContextCategory={getPluginCategoryBySection(section)}
+            onSwitchToMarketplace={handleSwitchToMarketplace}
+          />
+        )}
+        {!showInstallAction && reserveInstallActionSlot && (
+          <div aria-hidden="true" className="h-8 w-full shrink-0" />
+        )}
+        <nav
+          aria-labelledby={navigationTitleId}
+          className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
+        >
+          <IntegrationSidebarNavItem
+            item={providerItem}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
+            section={section}
+          />
+          <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
+            <CollapsibleTrigger
+              className={cn(
+                toolsNavItemClassName,
+                'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
+              )}
+            >
+              {toolsNavItemContent}
+            </CollapsibleTrigger>
+            <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+              {toolItems.map((item) => (
+                <IntegrationSidebarNavItem
+                  key={item.label}
+                  item={item}
+                  onSelect={onSectionChange ? handleSelectSection : undefined}
+                  section={section}
+                />
+              ))}
+            </CollapsiblePanel>
+          </Collapsible>
+          <IntegrationSidebarNavItem
+            item={dataSourceItem}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
+            section={section}
+          />
+          {secondaryItems.map((item) => (
+            <IntegrationSidebarNavItem
+              key={item.label}
+              item={item}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
+              section={section}
+            />
+          ))}
+          <IntegrationSidebarNavItem
+            item={customEndpointItem}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
+            section={section}
+          />
+        </nav>
+      </div>
+      {showUtilityActions && (
+        <IntegrationSidebarUtilityActions
+          canDebugger={canDebugger}
+          permission={permission}
+          showPermissionQuickPanel={showPermissionQuickPanel}
+          onPermissionChange={handlePermissionChange}
+        />
+      )}
+    </div>
+  )
+
   return (
     <div
-      className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg"
+      className="flex h-full min-h-0 w-full flex-1 flex-col bg-components-panel-bg max-md:h-auto max-md:min-h-full md:flex-row"
       style={sidebarWidthStyle}
     >
       {syncDocumentTitle && (
         <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
       )}
-      <div
-        className={cn(
-          'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
-          'w-50 items-end',
-        )}
-        data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
-      >
-        <div className="flex min-h-0 w-46 flex-1 flex-col gap-0.5 pb-4">
-          <div
-            className={cn(
-              'flex shrink-0 items-start pr-0 pl-2.5',
-              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
-            )}
-          >
-            <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
-              <div
-                id={navigationTitleId}
-                className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
-              >
-                {t(($) => $['settings.integrations'], { ns: 'navigation' })}
-              </div>
-            </div>
-          </div>
-          {showInstallAction && (
-            <IntegrationSidebarActions
-              canManagement={canInstallPlugin}
-              installContextCategory={getPluginCategoryBySection(section)}
-              onSwitchToMarketplace={handleSwitchToMarketplace}
-            />
-          )}
-          {!showInstallAction && reserveInstallActionSlot && (
-            <div aria-hidden="true" className="h-8 w-full shrink-0" />
-          )}
-          <nav
-            aria-labelledby={navigationTitleId}
-            className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
-          >
-            <IntegrationSidebarNavItem
-              item={providerItem}
-              onSelect={onSectionChange}
-              section={section}
-            />
-            <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
-              <CollapsibleTrigger
-                className={cn(
-                  toolsNavItemClassName,
-                  'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
-                )}
-              >
-                {toolsNavItemContent}
-              </CollapsibleTrigger>
-              <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
-                {toolItems.map((item) => (
-                  <IntegrationSidebarNavItem
-                    key={item.label}
-                    item={item}
-                    onSelect={onSectionChange}
-                    section={section}
-                  />
-                ))}
-              </CollapsiblePanel>
-            </Collapsible>
-            <IntegrationSidebarNavItem
-              item={dataSourceItem}
-              onSelect={onSectionChange}
-              section={section}
-            />
-            {secondaryItems.map((item) => (
-              <IntegrationSidebarNavItem
-                key={item.label}
-                item={item}
-                onSelect={onSectionChange}
-                section={section}
-              />
-            ))}
-            <IntegrationSidebarNavItem
-              item={customEndpointItem}
-              onSelect={onSectionChange}
-              section={section}
-            />
-          </nav>
+      {isCompact ? (
+        <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
+          <Drawer swipeDirection="left" open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
+            <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
+              <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
+              <span className="truncate">
+                {integrationsTitle}: {sectionTitle}
+              </span>
+            </DrawerTrigger>
+            <DrawerPortal>
+              <DrawerBackdrop className="fixed" />
+              <DrawerViewport>
+                <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
+                  <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
+                    <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
+                    <DrawerCloseButton
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    />
+                  </div>
+                  <DrawerContent className="min-h-0 flex-1 p-0 pb-0">{sidebar}</DrawerContent>
+                </DrawerPopup>
+              </DrawerViewport>
+            </DrawerPortal>
+          </Drawer>
         </div>
-        {showUtilityActions && (
-          <IntegrationSidebarUtilityActions
-            canDebugger={canDebugger}
-            permission={permission}
-            showPermissionQuickPanel={showPermissionQuickPanel}
-            onPermissionChange={handlePermissionChange}
-          />
-        )}
-      </div>
-      <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      ) : (
+        sidebar
+      )}
+      <section className="flex min-w-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
         {useFillLayout ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
             <IntegrationSectionRenderer
               key={section}
               section={section}

@@ -125,9 +125,14 @@ class _Runtime:
 
 
 @dataclass(frozen=True)
+class _TrialAppServices:
+    access: TrialAppAccessService
+    usage: TrialAppRepository
+
+
+@dataclass(frozen=True)
 class _ApplicationServices:
-    trial_app_access: TrialAppAccessService
-    trial_app_usage: TrialAppRepository
+    trial_apps: _TrialAppServices
     app_audio: _Runtime
     recommended_app_queries: _FeatureState
 
@@ -186,7 +191,11 @@ def harness(
 
     runtime = _Runtime(sessions=sessions)
     repository = TrialAppRepository(session_factory=repository_factory)
-    services = _ApplicationServices(TrialAppAccessService(apps=repository), repository, runtime, state)
+    services = _ApplicationServices(
+        trial_apps=_TrialAppServices(access=TrialAppAccessService(apps=repository), usage=repository),
+        app_audio=runtime,
+        recommended_app_queries=state,
+    )
 
     def setup_completed() -> bool:
         state.events.append("setup")

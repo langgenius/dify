@@ -6,7 +6,7 @@ import type { ModelProviderQuotaGetPaid } from '../utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -88,6 +88,18 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   )
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !canSetPluginPreferences || !expanded || !hasFetchedModelList
+  const cardRef = useRef<HTMLDivElement>(null)
+  const collapsedButtonRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusAfterCollapseRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (!showCollapsedSection || !restoreFocusAfterCollapseRef.current) return
+
+    // The grid action is visible while focus remains inside the card.
+    if (layout === 'grid') cardRef.current?.focus()
+    collapsedButtonRef.current?.focus()
+    restoreFocusAfterCollapseRef.current = false
+  }, [layout, showCollapsedSection])
   const showModelProvider =
     systemConfig.enabled &&
     MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) &&
@@ -132,6 +144,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     refetchModelList().catch(() => {})
   }, [expanded, loading, refetchModelList, setExpanded])
 
+  const handleCollapseModelList = useCallback(() => {
+    restoreFocusAfterCollapseRef.current = true
+    setExpanded(false)
+  }, [setExpanded])
+
   const providerLabel = renderI18nObject(provider.label, language)
   const description = renderI18nObject(provider.description || provider.label, language)
   const organization = currentProviderName.split('/')[0]
@@ -139,6 +156,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   if (layout === 'grid') {
     return (
       <div
+        ref={cardRef}
+        tabIndex={-1}
         className={cn(
           'group relative mb-0 min-h-30 overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
           currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
@@ -192,9 +211,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         <div className="absolute right-0 bottom-0 left-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
           {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
+              ref={collapsedButtonRef}
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               <span className="truncate">
@@ -236,7 +255,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <ModelList
               provider={provider}
               models={modelList}
-              onCollapse={() => setExpanded(false)}
+              onCollapse={handleCollapseModelList}
               onChange={refreshModelList}
             />
           </div>
@@ -279,9 +298,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
           {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
+              ref={collapsedButtonRef}
               type="button"
               className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               {hasModelList
@@ -313,7 +332,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         <ModelList
           provider={provider}
           models={modelList}
-          onCollapse={() => setExpanded(false)}
+          onCollapse={handleCollapseModelList}
           onChange={refreshModelList}
         />
       )}

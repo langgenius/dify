@@ -8,6 +8,7 @@ from typing import BinaryIO, Literal, Protocol
 from uuid import UUID, uuid4
 
 from machinery.context import RequestContext
+from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.entities.app_entities import (
@@ -228,7 +229,7 @@ class ConsoleAppService:
             id=str(uuid4()),
             status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
             app_id=result.app_id,
-            app_mode="agent",
+            app_mode=AppMode.AGENT,
             warnings=result.warnings,
         )
 
@@ -300,7 +301,7 @@ class ConsoleAppService:
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord:
         app = self._apps.update(context, app_id, params)
         self._lifecycle.updated(context, app)
-        return self._lifecycle.present(context, app)
+        return self.get(context, app_id)
 
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord:
         app = self._apps.rename(context, app_id, name)

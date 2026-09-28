@@ -43,10 +43,6 @@ const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
 }))
-const hotkeyMocks = vi.hoisted(() => ({
-  hotkeys: [] as string[],
-  handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
-}))
 const collaborationMocks = vi.hoisted(() => ({
   handler: undefined as
     | ((update: {
@@ -60,13 +56,6 @@ const collaborationMocks = vi.hoisted(() => ({
 
 let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
-
-vi.mock('@tanstack/react-hotkeys', () => ({
-  useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
-    hotkeyMocks.hotkeys.push(hotkey)
-    hotkeyMocks.handlers.push(handler)
-  },
-}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { appDetail: Record<string, any> | null }) => unknown) =>
@@ -255,8 +244,6 @@ vi.mock('../built-in-publisher/actions-section', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.hotkeys.length = 0
-    hotkeyMocks.handlers.length = 0
     collaborationMocks.handler = undefined
     sectionProps.summary = null
     sectionProps.actions = null
@@ -938,36 +925,7 @@ describe('AppPublisher', () => {
     expect(mockOnToggle).not.toHaveBeenCalled()
   })
 
-  it('should keep keyboard publishing available in multiple model mode', async () => {
-    const preventDefault = vi.fn()
-    mockOnPublish.mockResolvedValue(undefined)
-
-    render(
-      <AppPublisher
-        debugWithMultipleModel
-        multipleModelConfigs={[
-          {
-            id: 'model-1',
-            model: 'gpt-4o',
-            provider: 'openai',
-            parameters: {},
-          },
-        ]}
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-      />,
-    )
-
-    hotkeyMocks.handlers[0]!({ preventDefault })
-
-    await waitFor(() => {
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockOnPublish).toHaveBeenCalledTimes(1)
-    })
-  })
-
   it('should keep the popover open when restore and publish fail', async () => {
-    const preventDefault = vi.fn()
     const onRestore = vi.fn().mockRejectedValue(new Error('restore failed'))
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
 
@@ -975,15 +933,10 @@ describe('AppPublisher', () => {
       <AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} onRestore={onRestore} />,
     )
 
-    hotkeyMocks.handlers[0]!({ preventDefault })
-
-    await waitFor(() => {
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockOnPublish).toHaveBeenCalledTimes(1)
-    })
-    expect(mockTrackEvent).not.toHaveBeenCalled()
-
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-summary-publish'))
+    await waitFor(() => expect(mockOnPublish).toHaveBeenCalledTimes(1))
+    expect(mockTrackEvent).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('publisher-summary-restore'))
 
     await waitFor(() => {

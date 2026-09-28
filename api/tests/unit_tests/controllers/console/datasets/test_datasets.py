@@ -920,11 +920,14 @@ class TestDatasetUseCheckApi(_UsesSQLiteSession):
         check_permission.assert_called_once_with(dataset, current_user, session)
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
-    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask, config_overrides: Callable[..., None]):
+    def test_get_use_check_delegates_permission_check_in_rbac_mode(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
         config_overrides(RBAC_ENABLED=True)
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-id")
+        current_user = make_account()
         session = self.session
         with (
             app.test_request_context("/datasets/dataset-id/use-check"),
@@ -932,10 +935,10 @@ class TestDatasetUseCheckApi(_UsesSQLiteSession):
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "dataset_use_check", return_value=False),
         ):
-            _, status = method(api, session, "tenant-1", make_account(), "dataset-id")
+            _, status = method(api, session, "tenant-1", current_user, "dataset-id")
 
         assert status == 200
-        check_permission.assert_not_called()
+        check_permission.assert_called_once_with(dataset, current_user, session)
 
 
 @pytest.mark.parametrize(

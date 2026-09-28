@@ -54,10 +54,6 @@ vi.mock('../app-info', () => ({
   AppInfoView: () => <div />,
 }))
 
-vi.mock('../app-info/use-app-info-actions', () => ({
-  useAppInfoActions: vi.fn(() => ({})),
-}))
-
 vi.mock('../nav-link', () => ({
   default: ({ name, href }: { name: string; href: string }) => <a href={href}>{name}</a>,
 }))

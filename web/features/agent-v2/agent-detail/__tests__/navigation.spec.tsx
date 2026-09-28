@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
@@ -86,22 +87,23 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
-  permission_keys: Object.values(AgentPermission),
-  app_id: 'app-1',
-  description: 'Find and summarize market materials.',
-  enable_api: true,
-  enable_site: true,
-  icon: '🧪',
-  icon_background: '#E0F2FE',
-  icon_type: 'emoji',
-  id: 'agent-1',
-  icon_url: null,
-  mode: 'agent',
-  name: 'Research Agent',
-  role: 'Research Assistant',
-  ...overrides,
-})
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite =>
+  createAgentFixture({
+    permission_keys: Object.values(AgentPermission),
+    app_id: 'app-1',
+    description: 'Find and summarize market materials.',
+    enable_api: true,
+    enable_site: true,
+    icon: '🧪',
+    icon_background: '#E0F2FE',
+    icon_type: 'emoji',
+    id: 'agent-1',
+    icon_url: null,
+    mode: 'agent',
+    name: 'Research Agent',
+    role: 'Research Assistant',
+    ...overrides,
+  })
 
 function renderAgentDetailSection(expand = true) {
   const queryClient = new QueryClient()
@@ -133,6 +135,47 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(agentAvatar).toHaveTextContent('🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
+  })
+
+  it('renders an uploaded sidebar avatar using its signed URL', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: 'https://files.example.com/avatar.png?sign=signature',
+    })
+    renderAgentDetailSection()
+
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+      'src',
+      'https://files.example.com/avatar.png?sign=signature',
+    )
+  })
+
+  it('preserves an external sidebar avatar when icon_url is null', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'link',
+      icon: 'https://example.com/avatar.png',
+      icon_url: null,
+    })
+    renderAgentDetailSection()
+
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+      'src',
+      'https://example.com/avatar.png',
+    )
+  })
+
+  it('shows a fallback without exposing the file ID when the signed URL is missing', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: null,
+    })
+    renderAgentDetailSection()
+
+    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
+    expect(screen.getByText('🤖')).toBeInTheDocument()
   })
 
   it.each([null, '', '   '])(

@@ -22,7 +22,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import { useUpdateWorkflow } from '../use-workflow'
+import { usePublishWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryKey,
@@ -30,12 +30,13 @@ import {
 } from '../workflow-queries'
 
 const mockPatch = vi.hoisted(() => vi.fn())
+const mockPost = vi.hoisted(() => vi.fn())
 
 vi.mock('../base', () => ({
   del: vi.fn(),
   get: vi.fn(),
   patch: (...args: unknown[]) => mockPatch(...args),
-  post: vi.fn(),
+  post: (...args: unknown[]) => mockPost(...args),
   put: vi.fn(),
 }))
 
@@ -107,6 +108,42 @@ const createEnvironmentDeployment = ({
     id: environmentId,
     status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
   },
+})
+
+describe('usePublishWorkflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns the server warning with the publish result', async () => {
+    const published = {
+      result: 'success',
+      created_at: 1_710_000_100,
+      warning: '"Answer" ← "Producer"',
+    }
+    mockPost.mockResolvedValue(published)
+    const queryClient = createQueryClient()
+    const { result } = renderHook(() => usePublishWorkflow(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    let response: unknown
+    await act(async () => {
+      response = await result.current.mutateAsync({
+        url: '/apps/app-1/workflows/publish',
+        title: 'Release 1',
+        releaseNotes: 'Notes',
+      })
+    })
+
+    expect(response).toEqual(published)
+    expect(mockPost).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
+      body: {
+        marked_name: 'Release 1',
+        marked_comment: 'Notes',
+      },
+    })
+  })
 })
 
 describe('useUpdateWorkflow', () => {

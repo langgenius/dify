@@ -1,7 +1,7 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import type { App } from '@/types/app'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -12,7 +12,7 @@ import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 
 type ServiceApiAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   availability: AccessPointAvailability
   canManage: boolean
   highlighted?: boolean

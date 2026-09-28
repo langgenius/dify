@@ -127,17 +127,11 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
       <div className="rounded-b-xl px-2 pb-2">
         <div className="rounded-lg bg-components-panel-bg py-1">
           <div className="flex items-center pr-0.75 pl-1">
-            <span className="group mr-2 flex shrink-0 items-center">
-              <span className="inline-flex h-6 items-center pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:hidden">
-                {t(($) => $['modelProvider.modelsNum'], {
-                  ns: 'modelProvider',
-                  num: models.length,
-                })}
-                <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
-              </span>
+            <span className="mr-2 flex shrink-0 items-center">
               <button
                 type="button"
-                className="hidden h-6 cursor-pointer items-center rounded-lg border-none bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary outline-hidden group-hover:inline-flex focus-visible:inline-flex focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="inline-flex h-6 cursor-pointer items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                aria-expanded="true"
                 onClick={() => onCollapse()}
               >
                 {t(($) => $['modelProvider.modelsNum'], {

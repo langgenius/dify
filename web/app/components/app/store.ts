@@ -1,9 +1,9 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { create } from 'zustand'
 
 type State = {
-  appDetail?: App & Partial<AppSSO>
+  appDetail?: App
   currentLogItem?: IChatItem
   currentLogModalActiveTab: string
   showPromptLogModal: boolean
@@ -13,7 +13,7 @@ type State = {
 }
 
 type Action = {
-  setAppDetail: (appDetail?: App & Partial<AppSSO>) => void
+  setAppDetail: (appDetail?: App) => void
   setCurrentLogItem: (item?: IChatItem) => void
   setCurrentLogModalActiveTab: (tab: string) => void
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
