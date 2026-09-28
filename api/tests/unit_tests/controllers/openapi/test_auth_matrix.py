@@ -310,6 +310,59 @@ ROUTES: tuple[Route, ...] = (
     Route("app_run.advanced_chat", "POST", "/apps/{app_id}/advanced-chat:run", _RUN_TRAITS),
     Route("app_run.completion", "POST", "/apps/{app_id}/completion:run", _RUN_TRAITS),
     Route(
+        "app_run.draft.workflow",
+        "POST",
+        "/apps/{app_id}/draft/workflow:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_run.draft.advanced_chat",
+        "POST",
+        "/apps/{app_id}/draft/advanced-chat:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route("app_workflow.run.list", "GET", "/apps/{app_id}/runs", frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED})),
+    Route(
+        "app_workflow.run.describe",
+        "GET",
+        "/apps/{app_id}/runs/{run_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_workflow.run.nodes",
+        "GET",
+        "/apps/{app_id}/runs/{run_id}/nodes",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_workflow.publish", "POST", "/apps/{app_id}:publish", frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED})
+    ),
+    Route(
+        "app_workflow.version.list",
+        "GET",
+        "/apps/{app_id}/versions",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_workflow.version.restore",
+        "POST",
+        "/apps/{app_id}/versions/{version_id}:restore",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route("app_workflow.env.list", "GET", "/apps/{app_id}/env", frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED})),
+    Route(
+        "app_workflow.env.set",
+        "PUT",
+        "/apps/{app_id}/env/{env_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_workflow.env.delete",
+        "DELETE",
+        "/apps/{app_id}/env/{env_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
         "app_run.stop",
         "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
@@ -563,6 +616,34 @@ _DUAL_SUBJECT_RUN: dict[Case, Expect] = {
 }
 
 
+_ACCOUNT_READER_APP: dict[Case, Expect] = {
+    Case.MEMBER: ADMIT,
+    Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
+    Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+    Case.NON_MEMBER: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
+    Case.LOW_ROLE: ADMIT,
+    Case.APP_API_DISABLED: DENY_API_DISABLED,
+    Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
+    Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
+    Case.EE_ACCOUNT_PUBLIC: ADMIT,
+    Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
+    Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
+    Case.RBAC_ON_DENIED: DENY_RBAC,
+    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+}
+
+_ACCOUNT_EDITOR_APP: dict[Case, Expect] = {
+    **_ACCOUNT_READER_APP,
+    Case.LOW_ROLE: DENY_ROLE,
+    Case.RBAC_ON_LOW_ROLE: ADMIT,
+}
+
+
 MATRIX: dict[str, dict[Case, Expect]] = {
     "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
@@ -573,46 +654,19 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
-    "apps.describe": {
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
-    "app_dsl.export": {
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-    },
+    "apps.describe": dict(_ACCOUNT_READER_APP),
+    "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
+    "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
+    "app_run.draft.advanced_chat": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
+    "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
+    "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
+    "app_workflow.publish": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.version.list": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.version.restore": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.env.list": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.env.set": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.env.delete": dict(_ACCOUNT_EDITOR_APP),
     "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
     "app_run.chat": dict(_DUAL_SUBJECT_RUN),
     "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
@@ -716,6 +770,45 @@ _REQ_RUN = (
     CheckAppAccess(),
 )
 _REQ_RUN_FORM = (*_REQ_RUN, CheckFormSurface())
+_REQ_RELEASE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_VERSION_READ = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_ENV_WRITE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_EDIT, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_RUN_HISTORY = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())),
+)
+_REQ_DRAFT_RUN = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
 _REQ_FILES = (
     CheckSubject(allowed=_ACCOUNT_OR_EXTERNAL),
     CheckAppApiEnabled(),
@@ -756,6 +849,17 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_run.chat": _REQ_RUN,
     "app_run.advanced_chat": _REQ_RUN,
     "app_run.completion": _REQ_RUN,
+    "app_run.draft.workflow": _REQ_DRAFT_RUN,
+    "app_run.draft.advanced_chat": _REQ_DRAFT_RUN,
+    "app_workflow.run.list": _REQ_RUN_HISTORY,
+    "app_workflow.run.describe": _REQ_RUN_HISTORY,
+    "app_workflow.run.nodes": _REQ_RUN_HISTORY,
+    "app_workflow.publish": _REQ_RELEASE,
+    "app_workflow.version.list": _REQ_VERSION_READ,
+    "app_workflow.version.restore": _REQ_RELEASE,
+    "app_workflow.env.list": _REQ_VERSION_READ,
+    "app_workflow.env.set": _REQ_ENV_WRITE,
+    "app_workflow.env.delete": _REQ_ENV_WRITE,
     "app_run.stop": _REQ_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
@@ -1041,6 +1145,9 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "import_id": str(uuid.uuid4()),
         "task_id": str(uuid.uuid4()),
         "form_token": uuid.uuid4().hex,
+        "run_id": str(uuid.uuid4()),
+        "version_id": str(uuid.uuid4()),
+        "env_id": str(uuid.uuid4()),
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -1268,6 +1375,17 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/draft/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/draft/advanced-chat:run"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/runs"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/runs/{run_id}"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/runs/{run_id}/nodes"): frozenset({"200", "default"}),
+    ("post", "/apps/{app_id}:publish"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/versions"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/versions/{version_id}:restore"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/env"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/env/{env_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/apps/{app_id}/env/{env_id}"): frozenset({"200", "default"}),
     # The five device-flow rows are the only operations with no `default`: they
     # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
     # so no `ErrorBody` schema is registered for them.

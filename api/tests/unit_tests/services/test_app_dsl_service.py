@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
@@ -8,14 +9,16 @@ import yaml
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants import HIDDEN_VALUE
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from graphon.variables import StringVariable
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
-from services.app_dsl_service import AppDslService, PendingData
+from services.app_dsl_service import DRAFT_CHANGED_ERROR, AppDslService, PendingData, _keep_stored_secrets
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
@@ -726,6 +729,149 @@ def test_create_or_update_app_gates_agent_mode_before_creation(
     assert not unbound_session.in_transaction()
 
 
+_OVERWRITE_DSL = yaml.safe_dump(
+    {
+        "version": CURRENT_APP_DSL_VERSION,
+        "kind": "app",
+        "app": {"mode": AppMode.WORKFLOW.value, "name": "Changed"},
+        "workflow": {"graph": {"nodes": []}},
+    }
+)
+
+
+def _exported_draft() -> Workflow:
+    return make_workflow(
+        tenant_id="tenant",
+        app_id="target",
+        environment_variables=[StringVariable(id="env-1", name="URL", value="https://x", selector=["env", "URL"])],
+    )
+
+
+def _add_env_variable_after_export(draft: Workflow) -> None:
+    draft.environment_variables = [
+        *draft.environment_variables,
+        StringVariable(id="env-2", name="ADDED", value="y", selector=["env", "ADDED"]),
+    ]
+
+
+def _change_graph_after_export(draft: Workflow) -> None:
+    draft.graph = json.dumps({"nodes": [{"id": "start"}], "edges": []})
+
+
+def _overwrite_target_service(monkeypatch: pytest.MonkeyPatch, draft: Workflow | None) -> tuple[AppDslService, Mock]:
+    workflow_service = Mock()
+    workflow_service.get_draft_workflow_for_update.return_value = draft
+    workflow_service.get_draft_workflow.return_value = draft
+    workflow_service.sync_draft_workflow.return_value = SimpleNamespace(id="workflow-1")
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    return AppDslService(Mock()), workflow_service
+
+
+@pytest.mark.parametrize("edit", [_add_env_variable_after_export, _change_graph_after_export], ids=lambda f: f.__name__)
+def test_overwrite_refuses_a_draft_changed_since_export(
+    monkeypatch: pytest.MonkeyPatch, edit: Callable[[Workflow], None]
+) -> None:
+    draft = _exported_draft()
+    export_hash = draft.content_hash
+    edit(draft)
+    target = App(id="target", tenant_id="tenant", mode=AppMode.WORKFLOW, name="Original")
+    service, workflow_service = _overwrite_target_service(monkeypatch, draft)
+    service._load_app_for_overwrite = Mock(return_value=target)
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        app_id=target.id,
+        draft_hash=export_hash,
+        yaml_content=_OVERWRITE_DSL,
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == DRAFT_CHANGED_ERROR
+    workflow_service.sync_draft_workflow.assert_not_called()
+    assert target.name == "Original"
+
+
+def test_overwrite_refuses_a_draft_hash_when_the_app_has_no_draft(monkeypatch: pytest.MonkeyPatch) -> None:
+    target = App(id="target", tenant_id="tenant", mode=AppMode.WORKFLOW, name="Original")
+    service, workflow_service = _overwrite_target_service(monkeypatch, None)
+    service._load_app_for_overwrite = Mock(return_value=target)
+
+    result = service.import_app(
+        account=_account(), import_mode="yaml-content", app_id=target.id, draft_hash="any", yaml_content=_OVERWRITE_DSL
+    )
+
+    assert result.error == DRAFT_CHANGED_ERROR
+    workflow_service.sync_draft_workflow.assert_not_called()
+
+
+def test_overwrite_with_the_current_draft_hash_syncs_against_the_locked_draft(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    draft = _exported_draft()
+    target = App(id="target", tenant_id="tenant", mode=AppMode.WORKFLOW, name="Original")
+    service, workflow_service = _overwrite_target_service(monkeypatch, draft)
+
+    service._create_or_update_app(
+        app=target, data=yaml.safe_load(_OVERWRITE_DSL), account=_account(), draft_hash=draft.content_hash
+    )
+
+    workflow_service.get_draft_workflow_for_update.assert_called_once()
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["unique_hash"] == draft.unique_hash
+
+
+def test_overwrite_without_draft_hash_does_not_lock_the_draft_early(monkeypatch: pytest.MonkeyPatch) -> None:
+    draft = _exported_draft()
+    target = App(id="target", tenant_id="tenant", mode=AppMode.WORKFLOW, name="Original")
+    service, workflow_service = _overwrite_target_service(monkeypatch, draft)
+
+    service._create_or_update_app(app=target, data=yaml.safe_load(_OVERWRITE_DSL), account=_account())
+
+    workflow_service.get_draft_workflow_for_update.assert_not_called()
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["unique_hash"] == draft.unique_hash
+
+
+def test_confirm_import_with_a_stale_draft_hash_fails_and_keeps_the_pending_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    draft = _exported_draft()
+    export_hash = draft.content_hash
+    _add_env_variable_after_export(draft)
+    account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
+    pending = PendingData(
+        tenant_id=_TENANT_ID,
+        account_id=_CALLER_ID,
+        import_mode="yaml-content",
+        yaml_content=_OVERWRITE_DSL,
+        app_id=_OVERWRITE_APP_ID,
+        draft_hash=export_hash,
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    redis_delete = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
+    target = App(id=_OVERWRITE_APP_ID, tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW, name="Original")
+    service, workflow_service = _overwrite_target_service(monkeypatch, draft)
+    service._load_app_for_overwrite = Mock(return_value=target)
+
+    result = service.confirm_import(import_id="import-1", account=account)
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == DRAFT_CHANGED_ERROR
+    workflow_service.sync_draft_workflow.assert_not_called()
+    redis_delete.assert_not_called()
+    assert target.name == "Original"
+
+
+def test_blank_secret_keeps_the_stored_value_only_when_it_is_stored() -> None:
+    mappings = [
+        {"id": "stored", "name": "KEY", "value_type": "secret", "value": ""},
+        {"id": "new", "name": "NEW_KEY", "value_type": "secret", "value": ""},
+        {"id": "plain", "name": "URL", "value_type": "string", "value": ""},
+        {"id": "stored", "name": "KEY", "value_type": "secret", "value": "rotated"},
+    ]
+    assert [m["value"] for m in _keep_stored_secrets(mappings, {"stored"})] == [HIDDEN_VALUE, "", "", "rotated"]
+
+
 def test_import_app_reraises_permission_denial_instead_of_failed_result(
     monkeypatch: pytest.MonkeyPatch,
     unbound_session: Session,
@@ -843,13 +989,14 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
                 "version": CURRENT_APP_DSL_VERSION,
                 "kind": "app",
                 "app": {"mode": mode.value, "name": "Changed"},
-                "workflow": {"graph": {"nodes": [{"data": {"type": node_type}}]}},
+                "workflow": {"graph": {"nodes": [{"id": "n1", "data": {"type": node_type}}]}},
             }
         ),
     )
     assert result.status == ImportStatus.FAILED
     assert result.error is not None
     assert "incompatible" in result.error
+    assert f"n1 ({node_type})" in result.error
     assert target.name == "Original"
     session.add.assert_not_called()
 

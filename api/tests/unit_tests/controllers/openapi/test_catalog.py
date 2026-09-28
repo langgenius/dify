@@ -93,7 +93,8 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             assert meta.kind is Kind.SSE, meta.op
     assert set(ops) <= set(seen)
     per_mode = {f"run.console_app.{mode}" for mode in ("workflow", "chat", "advanced_chat", "completion")}
-    assert streaming == per_mode | {"get.run.event"}
+    draft = {f"run.console_app.draft.{mode}" for mode in ("workflow", "advanced_chat")}
+    assert streaming == per_mode | draft | {"get.run.event"}
 
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:

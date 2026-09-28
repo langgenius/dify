@@ -1,15 +1,29 @@
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Protocol, cast
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
+from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
-from controllers.openapi._models import AppDslImportPayload, AppDslImportResponse, Hint
-from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi._models import (
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
+    AppDslImportResponse,
+    Hint,
+)
+from controllers.openapi.app_dsl import AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.subjects import Subject
+from extensions.ext_database import db
 from machinery.context import RequestContext
+from models.model import App, AppMode
+from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.account import NoPermissionError
 from tests.unit_tests.controllers.conftest import ControllerTestServices
@@ -20,6 +34,12 @@ class _EndpointView(Protocol):
 
     __spec__: EndpointSpec
     __handler__: Callable[..., tuple[AppDslImportResponse, int]]
+
+
+class _ExportView(Protocol):
+    """Same stand-in, typed for the export endpoint's response."""
+
+    __handler__: Callable[..., tuple[AppDslExportResponse, int]]
 
 
 @pytest.mark.parametrize(
@@ -97,3 +117,37 @@ def test_import_hints_a_confirm_only_while_pending(
         )
 
     assert (code, response.hints) == (status, hints)
+
+
+def test_export_reads_draft_hash_before_building_dsl(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The hash must describe the draft as of before the export, not after: an edit that
+    commits in between would otherwise make a later import silently overwrite it."""
+    call_order: list[str] = []
+
+    def fake_export_dsl(**_kwargs):
+        call_order.append("export")
+        return "app: {}"
+
+    def fake_get_draft_workflow(**_kwargs):
+        call_order.append("draft_hash")
+        return SimpleNamespace(unique_hash="graph-only-hash", content_hash="hash-before-edit")
+
+    # `WorkflowService()` needs a live db.engine; stand in for the whole service so the
+    # bare Flask app these tests run under does not need one.
+    service = Mock()
+    service.get_draft_workflow.side_effect = fake_get_draft_workflow
+
+    monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
+    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: service)
+    monkeypatch.setattr(db, "session", lambda: None)
+
+    ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})
+    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+
+    api = AppDslExportApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/dsl"):
+        response, status = cast(_ExportView, api.get).__handler__(api, ctx, "app-1", query=AppDslExportQuery())
+
+    assert call_order == ["draft_hash", "export"]
+    assert response.draft_hash == "hash-before-edit"
+    assert status == 200

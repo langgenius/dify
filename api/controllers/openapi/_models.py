@@ -12,7 +12,9 @@ from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
-from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
+from fields.workflow_run_fields import WorkflowRunPaginationResponse
+from graphon.variables import SegmentType
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
 from models.model import AppMode
 from services.app_dsl_service import Import
 
@@ -366,6 +368,10 @@ class WorkflowRunPayload(RunPayloadBase, _WorkflowVersionFields):
     model_config = ConfigDict(extra="forbid")
 
 
+class DraftWorkflowRunPayload(RunPayloadBase):
+    model_config = ConfigDict(extra="forbid")
+
+
 class ChatRunPayload(RunPayloadBase, _ConversationFields):
     model_config = ConfigDict(extra="forbid")
 
@@ -498,6 +504,11 @@ class AppDslImportPayload(BaseModel):
     icon: str | None = Field(None)
     icon_background: str | None = Field(None)
     app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+    draft_hash: str | None = Field(
+        None,
+        description="draft_hash from the export or restore this import is based on. The import fails if the "
+        "draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
+    )
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
@@ -521,6 +532,11 @@ class AppDslExportResponse(BaseModel):
     """Export DSL response."""
 
     data: str = Field(..., description="DSL YAML string")
+    draft_hash: str | None = Field(
+        None,
+        description="Hash of the draft's graph, features, environment variables and conversation variables; "
+        "pass it to the import to refuse overwriting newer edits",
+    )
 
 
 class AppDslImportResponse(Import, Hinted):
@@ -550,3 +566,99 @@ class HumanInputFormDefinitionResponse(BaseModel):
     resolved_default_values: dict[str, str]
     user_actions: list[dict[str, Any]] = Field(default_factory=list)
     expiration_time: int | None = None
+
+
+class RunListQuery(BaseModel):
+    last_id: UUIDStr | None = Field(None, description="Cursor: id of the last run on the previous page")
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = None
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        None, description="debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console"
+    )
+
+
+class RunListResponse(WorkflowRunPaginationResponse, Hinted):
+    """Cursor page of runs; `hints` carries the next page."""
+
+
+class PublishPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    marked_name: str = Field("", max_length=20, description="Version name")
+    marked_comment: str = Field("", max_length=100, description="Version note")
+
+
+class PublishResponse(BaseModel):
+    version_id: str
+    created_at: int
+    warning: str | None = Field(None, description="Variable references that may read a skipped branch")
+
+
+class VersionListQuery(PageQuery):
+    named_only: bool = Field(False, description="Only versions that have a name")
+
+
+class VersionRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    marked_name: str
+    marked_comment: str
+    created_by: str | None = None
+    created_at: int
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _timestamp(cls, value: datetime | int) -> int | None:
+        return to_timestamp(value)
+
+
+class VersionListResponse(Hinted):
+    """Page of published versions, newest first; there is no total, `hints` carries the next page."""
+
+    page: int
+    limit: int
+    has_more: bool
+    data: list[VersionRow]
+
+
+class EnvVariableRow(BaseModel):
+    id: str = Field(description="What set and delete take to address this variable")
+    name: str = Field(description="What nodes use to refer to this variable")
+    description: str = ""
+    value_type: str
+    value: Any = Field(description="The value; a secret with a value is masked, an empty one reads as empty")
+
+
+class EnvVariableListResponse(BaseModel):
+    data: list[EnvVariableRow]
+
+
+class EnvVariableValueType(StrEnum):
+    """Value types the draft environment-variable ``set`` op accepts.
+
+    A curated subset of ``SegmentType``: what the console's environment-variable editor
+    allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py).
+    Members reference ``SegmentType.*.value`` so the subset relationship is type-checked.
+    """
+
+    STRING = SegmentType.STRING.value
+    NUMBER = SegmentType.NUMBER.value
+    SECRET = SegmentType.SECRET.value
+
+
+class EnvVariableSetPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(description="Variable name")
+    value_type: EnvVariableValueType = Field(description="string, number or secret")
+    value: Any = Field(description="The value; sending the masked value of an existing secret keeps the stored one")
+    description: str = Field("", description="What the variable is for")
+
+
+class RestoreResponse(BaseModel):
+    result: Literal["success"]
+    draft_hash: str = Field(
+        description="Hash of the restored draft's graph, features, environment variables and conversation "
+        "variables; pass it to a DSL import as draft_hash"
+    )

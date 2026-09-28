@@ -55,6 +55,7 @@ export type AppDetailWithSite = {
 export type AppImportPayload = {
   app_id?: string | null
   description?: string | null
+  draft_hash?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
