@@ -72,6 +72,11 @@ function restAfterPath(tokens: readonly string[], pathLength: number): readonly 
   return []
 }
 
+function leadingWords(tokens: readonly string[]): number {
+  const at = tokens.findIndex((token) => !isWord(token))
+  return at === -1 ? tokens.length : at
+}
+
 // An unreachable server must not cost the caller the static half of help.
 async function fromOps<T>(
   ctx: CommandContext,
@@ -209,7 +214,11 @@ export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promi
     words.length === 0 || byHelpWord || argv.some((token) => HELP_FLAGS.includes(token))
   const walked = await resolveWithOps({ tree, path, wantsHelp, ctx, streams })
   const resolved = walked.resolved
-  if (resolved === undefined)
+  const rest = resolved === undefined ? [] : restAfterPath(tokens, resolved.path.length)
+  if (
+    resolved === undefined ||
+    (wantsHelp && leadingWords(rest) > resolved.command.positional.length)
+  )
     return discover({
       tree: walked.tree,
       path,
@@ -222,7 +231,6 @@ export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promi
     })
 
   const Ctor = resolved.command
-  const rest = restAfterPath(tokens, resolved.path.length)
   if (wantsHelp) {
     await streams.document(descriptorView(await Ctor.help({ path: resolved.path, rest, ctx })))
     return ExitCode.Success
