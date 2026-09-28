@@ -232,8 +232,8 @@ describe('ModelModal', () => {
     const predefined = renderModal()
 
     expect(
-      screen.getByText('modelProvider.modelProvider.auth.apiKeyModal.title'),
-    )!.toBeInTheDocument()
+      screen.getByRole('dialog', { name: 'modelProvider.modelProvider.auth.apiKeyModal.title' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByText('modelProvider.modelProvider.auth.apiKeyModal.desc'),
     )!.toBeInTheDocument()

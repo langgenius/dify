@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { AppModeEnum } from '@/types/app'
 import { PublisherPanel } from '../publisher-content/publisher-panel'
 
 vi.mock('../environment-deployment-flow', () => ({
@@ -18,8 +20,16 @@ vi.mock('../environment-deployment-flow', () => ({
   ),
 }))
 
-function PublisherPanelHarness() {
-  const [open, setOpen] = useState(true)
+function PublisherPanelHarness({
+  initialOpen = true,
+  onPublish = vi.fn(),
+  showBuiltInPublisher = false,
+}: {
+  initialOpen?: boolean
+  onPublish?: () => Promise<void>
+  showBuiltInPublisher?: boolean
+}) {
+  const [open, setOpen] = useState(initialOpen)
 
   return (
     <>
@@ -27,19 +37,22 @@ function PublisherPanelHarness() {
       <PublisherPanel
         builtInPublisher={{
           actions: {
-            appDetail: null,
-            appURL: '',
+            appDetail: { id: 'app-1', mode: AppModeEnum.CHAT },
+            appURL: 'https://example.com/app',
             canViewAccessPoint: false,
             disabledFunctionButton: false,
+            publishedAt: 1_710_000_000_000,
             workflowToolIsLoading: false,
             onConfigureWorkflowTool: vi.fn(),
           },
           summary: {
             formatTimeFromNow: () => '',
-            handlePublish: vi.fn(),
+            handlePublish: onPublish,
             handleRestore: vi.fn(),
             isChatApp: false,
+            isPublishing: false,
             published: false,
+            publishedAt: 1_710_000_000_000,
             upgradeHighlightStyle: {},
           },
         }}
@@ -56,7 +69,7 @@ function PublisherPanelHarness() {
         }}
         environmentPublisherKey="staging"
         open={open}
-        showBuiltInPublisher={false}
+        showBuiltInPublisher={showBuiltInPublisher}
         workflowLaunch={{
           hiddenVariables: [],
           open: false,
@@ -70,6 +83,35 @@ function PublisherPanelHarness() {
 }
 
 describe('PublisherPanel', () => {
+  it('publishes from the actions section on first open and reopen, but not while closed', async () => {
+    const user = userEvent.setup()
+    const onPublish = vi.fn().mockResolvedValue(undefined)
+    const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    const shortcut = `{${modifier}>}{Shift>}P{/Shift}{/${modifier}}`
+    render(<PublisherPanelHarness initialOpen={false} onPublish={onPublish} showBuiltInPublisher />)
+    const trigger = screen.getByRole('button', { name: /common\.publish\b/ })
+
+    for (let opened = 1; opened <= 2; opened++) {
+      await user.click(trigger)
+      const openWebApp = screen.getByRole('link', { name: /common\.openWebApp\b/ })
+      act(() => openWebApp.focus())
+      expect(openWebApp).toHaveFocus()
+      expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
+      await user.keyboard(shortcut)
+      expect(onPublish).toHaveBeenCalledTimes(opened)
+
+      await user.click(trigger)
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('link', { name: /common\.openWebApp\b/ }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(trigger).toHaveFocus()
+      await user.keyboard(shortcut)
+      expect(onPublish).toHaveBeenCalledTimes(opened)
+    }
+  })
+
   it('keeps the publisher open after an outside press when dismissal is prevented', async () => {
     const user = userEvent.setup()
     render(<PublisherPanelHarness />)

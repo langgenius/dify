@@ -36,9 +36,9 @@ export function SkillPublishBottomActions({ children }: { children: ReactNode })
 export function SkillPublishShortcut() {
   return (
     <KbdGroup aria-hidden>
-      {PUBLISH_SKILL_HOTKEY.split('+').map((key) => (
+      {formatForDisplay(PUBLISH_SKILL_HOTKEY, { parts: true }).map((key) => (
         <Kbd key={key} color="white">
-          {formatForDisplay(key)}
+          {key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -56,10 +56,22 @@ export function SkillPublishBar({
   const { t } = useTranslation(['skill'])
   const canPublish = hasPublishPermission && (state === 'draft' || state === 'unpublished')
 
-  useHotkey(PUBLISH_SKILL_HOTKEY, onPublish, {
-    enabled: canPublish,
-    ignoreInputs: false,
-  })
+  useHotkey(
+    PUBLISH_SKILL_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      onPublish()
+    },
+    {
+      enabled: canPublish,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   const stateMeta = {
     draft: {

@@ -109,7 +109,7 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 }
 
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const imageUrl =
     reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
@@ -123,7 +123,7 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
     reference.app_updated_at != null
       ? formatTime(
           reference.app_updated_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
       : t(($) => $['agentDetail.access.workflow.notAvailable'])
   const nodeCount = reference.node_ids?.length ?? 0

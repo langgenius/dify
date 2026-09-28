@@ -178,12 +178,15 @@ describe('ModelList', () => {
         onChange={mockOnChange}
       />,
     )
-    expect(screen.getAllByText(/modelProvider\.modelsNum/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
     expect(screen.getByRole('button', { name: 'gpt-4' }))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'gpt-3.5' }))!.toBeInTheDocument()
   })
 
-  it('should trigger collapse when collapsed label is clicked', () => {
+  it('should allow the keyboard to focus and collapse the expanded model list', async () => {
     render(
       <ModelList
         provider={mockProvider}
@@ -193,8 +196,10 @@ describe('ModelList', () => {
       />,
     )
 
-    const countElements = screen.getAllByText(/modelProvider\.modelsNum/)
-    fireEvent.click(countElements[1]!)
+    const user = userEvent.setup()
+    await user.tab()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/ })).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(mockOnCollapse).toHaveBeenCalled()
   })
 

@@ -1072,7 +1072,7 @@ describe('agent/panel', () => {
 
     expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'agentV2.roster.nodeSelector.createInlineFailed',
+      'agentRoster.roster.nodeSelector.createInlineFailed',
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))

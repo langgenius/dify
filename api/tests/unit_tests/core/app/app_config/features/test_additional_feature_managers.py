@@ -81,6 +81,10 @@ class TestAdditionalFeatureManagers:
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "prompt": 123}}
             )
+        with pytest.raises(ValueError, match="prompt in suggested_questions_after_answer must be of string type"):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": False, "prompt": None}}
+            )
         with pytest.raises(ValueError, match="must be less than or equal to 1000 characters"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "prompt": "a" * 1001}}
@@ -128,6 +132,16 @@ class TestAdditionalFeatureManagers:
             TextToSpeechConfigManager.validate_and_set_defaults({"text_to_speech": "bad"})
         with pytest.raises(ValueError):
             TextToSpeechConfigManager.validate_and_set_defaults({"text_to_speech": {"enabled": "yes"}})
+        for field, value in (("voice", None), ("language", 42), ("autoPlay", "auto"), ("autoPlay", None)):
+            with pytest.raises(ValueError, match=f"{field} in text_to_speech"):
+                TextToSpeechConfigManager.validate_and_set_defaults(
+                    {"text_to_speech": {"enabled": False, field: value}}
+                )
+
+        valid, _ = TextToSpeechConfigManager.validate_and_set_defaults(
+            {"text_to_speech": {"enabled": True, "voice": "v", "language": "en", "autoPlay": "enabled"}}
+        )
+        assert valid["text_to_speech"]["autoPlay"] == "enabled"
 
         result = TextToSpeechConfigManager.convert(
             {"text_to_speech": {"enabled": True, "voice": "v", "language": "en"}}

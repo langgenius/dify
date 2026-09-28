@@ -39,7 +39,7 @@ export function AgentSelectorContent({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
 }) {
-  const { t } = useTranslation(['workflow', 'agentV2', 'common'])
+  const { t } = useTranslation(['workflow', 'common', 'agentRoster'])
   const appId = useHooksStore((s) => s.configsMap?.flowId)
   const [searchText, setSearchText] = useState('')
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
@@ -76,11 +76,11 @@ export function AgentSelectorContent({
   const statusText = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : agentsQuery.isError
-      ? t(($) => $['roster.loadingError'], { ns: 'agentV2' })
+      ? t(($) => $['roster.loadingError'], { ns: 'agentRoster' })
       : agents.length === 0
         ? debouncedSearchText
-          ? t(($) => $['roster.emptySearch'], { ns: 'agentV2' })
-          : t(($) => $['roster.empty'], { ns: 'agentV2' })
+          ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+          : t(($) => $['roster.empty'], { ns: 'agentRoster' })
         : null
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
@@ -104,8 +104,10 @@ export function AgentSelectorContent({
               className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             />
             <ComboboxInput
-              aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentV2' })}
-              placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentV2' })}
+              aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
+              placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], {
+                ns: 'agentRoster',
+              })}
               className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
             />
           </ComboboxInputGroup>
@@ -131,7 +133,7 @@ export function AgentSelectorContent({
             >
               <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
               <span className="min-w-0 flex-1 truncate">
-                {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
+                {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentRoster' })}
               </span>
             </Button>
           )}
@@ -150,7 +152,7 @@ export function AgentSelectorContent({
               className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
             />
             <span className="min-w-0 flex-1 truncate">
-              {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
+              {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentRoster' })}
             </span>
           </Link>
         </div>
@@ -235,7 +237,7 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation(['workflow', 'agentV2', 'navigation'])
+  const { t } = useTranslation(['workflow', 'navigation', 'agentRoster'])
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
@@ -275,7 +277,7 @@ export function AgentBlockItem({
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <PopoverTitle className="sr-only">
-          {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}
+          {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
         </PopoverTitle>
         <AgentSelectorContent
           open={open}

@@ -172,6 +172,12 @@ families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
 and accessible edge labels in the core even when their keys have a node prefix;
 a key prefix alone does not define a loading boundary.
 
+Agent roster pages, selectors, and metadata use `agentRoster`; agent detail copy
+stays in `agentV2`. Shared upload configuration uses `fileUpload`, and prompt/code
+generation uses `appGeneration`, without requesting the complete `appDebug`
+dictionary. Runtime loading remains locale/namespace based; these boundaries do
+not introduce route preloading or per-key transport.
+
 Declare resources at the component that renders them. A hidden feature should not
 request its dictionary just because its controller is mounted. The tour keeps its
 session controller mounted and renders its translation consumer only when the

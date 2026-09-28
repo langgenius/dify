@@ -95,7 +95,6 @@ export function PublisherContent({
     onClose: closePublisher,
     onPublish,
     onRestore,
-    publishDisabled,
     publishedAt,
     supportsMultiEnvironment,
   })
@@ -142,7 +141,7 @@ export function PublisherContent({
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appURL = getPublisherAppUrl({
     appBaseUrl: appBaseURL,
-    accessToken,
+    accessToken: accessToken ?? '',
     mode: appDetail?.mode,
   })
   const shouldLoadUserCanAccessApp = Boolean(
@@ -202,6 +201,7 @@ export function PublisherContent({
             handlePublish: publish.handlePublish,
             handleRestore: publish.handleRestore,
             isChatApp: publish.isChatApp,
+            isPublishing: publish.isPublishing,
             isWorkflowApp: publish.isWorkflowApp,
             multipleModelConfigs,
             onEditVersion: versionInfo.openEditor,

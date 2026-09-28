@@ -2,7 +2,7 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLazyModelProviderDetail } from '../../hooks'
@@ -74,6 +74,7 @@ function ModelAuthDropdown({
         }
       />
       <PopoverContent placement="bottom-end">
+        <PopoverTitle className="sr-only">{buttonConfig.text}</PopoverTitle>
         {currentProvider ? (
           <DropdownContent
             provider={currentProvider}

@@ -123,7 +123,7 @@ function AgentRosterDrawer({
   onSaveInlineToRoster?: () => void
   onClose: () => void
 }) {
-  const { t } = useTranslation(['workflow', 'agentV2', 'common', 'workflowAgent'])
+  const { t } = useTranslation(['workflow', 'common', 'workflowAgent', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
   const isSetup = mode === 'setup'
   const title = isInlineSetup
@@ -237,7 +237,9 @@ function AgentRosterDrawer({
                                 aria-hidden
                                 className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
                               />
-                              <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+                              <span>
+                                {t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}
+                              </span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -362,7 +364,7 @@ export function AgentRosterField({
   onSaveInlineToRoster?: () => void
   onStartFromScratch?: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'workflowAgent'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
@@ -447,7 +449,7 @@ export function AgentRosterField({
             className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <PopoverTitle className="sr-only">
-              {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}
+              {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
             </PopoverTitle>
             <AgentSelectorContent
               open={isSelectorOpen}

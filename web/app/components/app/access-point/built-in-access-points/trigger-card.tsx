@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { AppTrigger } from '@/service/use-tools'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -131,7 +131,7 @@ function TriggerAccessPointItem({
 }
 
 type TriggerAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
   highlighted?: boolean

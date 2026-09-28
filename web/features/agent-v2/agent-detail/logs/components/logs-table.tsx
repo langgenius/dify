@@ -107,7 +107,7 @@ function AgentLogsTableBody({
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const notAvailable = t(($) => $['agentDetail.logs.notAvailable'])
@@ -116,7 +116,7 @@ function AgentLogsTableBody({
       ? notAvailable
       : formatTime(
           value,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (

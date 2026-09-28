@@ -57,9 +57,9 @@ class AuthRouter:
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 
-        # One session spans the loaders and the handler, so the objects the
-        # requirements load stay attached while the handler reads them. It is
-        # finalised here, like `with_session` does, until repositories own it.
+        # ORM-backed endpoints share the admission session with the handler.
+        # Account-context endpoints materialize identity and release it in the
+        # pipeline, before calling services that own their transactions.
         with session_factory.create_session() as session:
             ctx = Context(subject, session, dict(request.view_args or {}))
             try:

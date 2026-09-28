@@ -35,10 +35,10 @@ export const agentAction: ActionItem = {
   key: '@agents',
   shortcut: '@agents',
   get title() {
-    return getI18n().t(($) => $['roster.title'], { ns: 'agentV2' })
+    return getI18n().t(($) => $['roster.title'], { ns: 'agentRoster' })
   },
   get description() {
-    return getI18n().t(($) => $['roster.searchLabel'], { ns: 'agentV2' })
+    return getI18n().t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })
   },
   source: 'remote',
 }

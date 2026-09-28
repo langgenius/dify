@@ -3,8 +3,13 @@ from dataclasses import dataclass, field
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import sessionmaker
 
 from enums import WebAppAccessMode
+from models.enums import CustomizeTokenStrategy
+from models.model import Site
+from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessQuery,
@@ -160,6 +165,62 @@ def test_enabled_auth_delegates_user_permission() -> None:
 
     assert service.is_user_allowed(user_id="user-1", app_id="app-1") is False
     is_user_allowed_for_app.assert_called_once_with("user-1", "app-1")
+
+
+@pytest.mark.parametrize("missing", [False, True], ids=["found", "missing"])
+def test_app_code_lookup_releases_database_before_access_policy(sqlite_engine: Engine, missing: bool) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id = "11111111-1111-1111-1111-111111111111"
+    with factory.begin() as session:
+        session.add(
+            Site(
+                app_id=app_id,
+                code="site-code",
+                title="Test Site",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.UUID,
+            )
+        )
+
+    connections: set[object] = set()
+    resolved: list[str] = []
+
+    def checkout(connection: object, *_args: object) -> None:
+        connections.add(connection)
+
+    def checkin(connection: object, *_args: object) -> None:
+        connections.remove(connection)
+
+    def access_mode_for_app(resolved_app_id: str) -> WebAppAccessMode:
+        assert not connections
+        resolved.append(resolved_app_id)
+        return WebAppAccessMode.PRIVATE
+
+    def is_user_allowed_for_app(_user_id: str, _app_id: str) -> bool:
+        raise AssertionError("Resolving access mode must not query user permissions")
+
+    service = WebAppAccessQueryService(
+        access=WebAppAccessQueryRepository(session_factory=factory),
+        webapp_auth_enabled=True,
+        access_mode_for_app=access_mode_for_app,
+        is_user_allowed_for_app=is_user_allowed_for_app,
+        get_access_modes=_unexpected_access_modes,
+        get_user_permissions=_unexpected_user_permissions,
+    )
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+    try:
+        if missing:
+            with pytest.raises(WebAppAccessAppNotFoundError):
+                service.get_access_mode(app_id="must-not-fallback", app_code="missing-code")
+            assert resolved == []
+        else:
+            assert service.get_access_mode(app_id=None, app_code="site-code") is WebAppAccessMode.PRIVATE
+            assert resolved == [app_id]
+        assert not connections
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
 
 
 @dataclass

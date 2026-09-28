@@ -38,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation(['appDebug', 'common', 'workflowDebug'])
+  const { t } = useTranslation(['common', 'workflowDebug', 'appGeneration'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -217,7 +217,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appGeneration' })}
                   </TooltipContent>
                 </Tooltip>
               )}

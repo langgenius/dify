@@ -2,7 +2,7 @@
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
+import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -60,8 +60,8 @@ export function WebAppAccessCard({
           appBaseUrl,
           siteInfo: {
             title: site?.title ?? agent?.name ?? '',
-            chat_color_theme: site?.chat_color_theme ?? undefined,
-            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
+            chat_color_theme: site?.chat_color_theme ?? null,
+            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? false,
           },
         }
       : null
@@ -117,8 +117,8 @@ export function WebAppAccessCard({
               ...agentDetail,
               site: {
                 ...agentDetail.site,
-                ...site,
-                access_token: site.code,
+                code: site.code ?? agentDetail.site.code,
+                access_token: site.code ?? agentDetail.site.access_token,
               },
             }
           },
@@ -184,46 +184,18 @@ export function WebAppAccessCard({
     })
   }
 
-  async function handleSaveSettings(params: ConfigParams) {
+  async function handleSaveSettings(params: AppSiteUpdatePayload) {
     if (!appId || !canManageWebApp) return
 
-    const { enable_sso: _enableSso, ...body } = params
-    const sitePayload = body satisfies AppSiteUpdatePayload
+    const sitePayload = params satisfies AppSiteUpdatePayload
 
     try {
-      const updatedSite = await updateSiteMutation.mutateAsync({
+      await updateSiteMutation.mutateAsync({
         params: {
           app_id: appId,
         },
         body: sitePayload,
       })
-
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        agentDetailQueryKey,
-        (agentDetail) =>
-          agentDetail
-            ? {
-                ...agentDetail,
-                site: {
-                  ...agentDetail.site,
-                  ...updatedSite,
-                  ...sitePayload,
-                  access_token:
-                    updatedSite.code ??
-                    agentDetail.site?.access_token ??
-                    agentDetail.site?.code ??
-                    null,
-                  code:
-                    updatedSite.code ??
-                    agentDetail.site?.code ??
-                    agentDetail.site?.access_token ??
-                    null,
-                  app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
-                  icon_url: null,
-                },
-              }
-            : agentDetail,
-      )
       await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
     } catch {
