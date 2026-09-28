@@ -1,3 +1,4 @@
+from __future__ import annotations
 import hashlib
 import json
 import logging
@@ -54,6 +55,12 @@ _tracer_providers: dict[str, TracerProvider] = {}
 _tracer_providers_lock = threading.Lock()
 
 
+class _ThreadLocalSeeds(threading.local):
+    def __init__(self) -> None:
+        self.trace_id: int | None = None
+        self.span_id: int | None = None
+
+
 class _SeededIdGenerator(RandomIdGenerator):
     """Random OTel id generator that can be seeded once per thread.
 
@@ -65,7 +72,7 @@ class _SeededIdGenerator(RandomIdGenerator):
     """
 
     def __init__(self) -> None:
-        self._seeds = threading.local()
+        self._seeds = _ThreadLocalSeeds()
 
     def seed_next(self, *, trace_id: int | None = None, span_id: int | None = None) -> None:
         if trace_id is not None:
@@ -75,7 +82,7 @@ class _SeededIdGenerator(RandomIdGenerator):
 
     @override
     def generate_trace_id(self) -> int:
-        seeded = getattr(self._seeds, "trace_id", None)
+        seeded = self._seeds.trace_id
         if seeded is not None:
             self._seeds.trace_id = None
             return seeded
@@ -83,7 +90,7 @@ class _SeededIdGenerator(RandomIdGenerator):
 
     @override
     def generate_span_id(self) -> int:
-        seeded = getattr(self._seeds, "span_id", None)
+        seeded = self._seeds.span_id
         if seeded is not None:
             self._seeds.span_id = None
             return seeded
