@@ -65,7 +65,9 @@ def get_url(url: str, user_agent: str | None = None) -> str:
             return ExtractProcessor.load_from_url(url, return_text=True)
 
         if not response_from_get:
-            response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
+            response = remote_fetcher.make_request(
+                "GET", url, headers=headers, follow_redirects=True, timeout=(120, 300)
+            )
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
         object.__setattr__(scraper, "perform_request", remote_fetcher.make_request)
