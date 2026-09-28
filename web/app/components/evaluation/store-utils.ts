@@ -576,15 +576,12 @@ const buildJudgmentConfigPayload = (
   }
 }
 
-export const buildEvaluationConfigPayload = (
+export const buildEvaluationTemplateConfigPayload = (
   resource: EvaluationResourceState,
   resourceType: EvaluationResourceType,
   resourceId: string,
-): EvaluationConfigPayload | null => {
-  const hasBuiltinMetrics = resource.metrics.some((metric) => metric.kind === 'builtin')
+): EvaluationConfigPayload => {
   const selectedModel = decodeModelSelection(resource.judgeModelId)
-
-  if (hasBuiltinMetrics && !selectedModel) return null
 
   return {
     ...(selectedModel
@@ -605,6 +602,20 @@ export const buildEvaluationConfigPayload = (
       : buildCustomizedMetricsPayload(resource.metrics),
     judgment_config: buildJudgmentConfigPayload(resource, resourceType, resourceId),
   }
+}
+
+export const buildEvaluationConfigPayload = (
+  resource: EvaluationResourceState,
+  resourceType: EvaluationResourceType,
+  resourceId: string,
+): EvaluationConfigPayload | null => {
+  const hasBuiltinMetrics = resource.metrics.some((metric) => metric.kind === 'builtin')
+  const payload = buildEvaluationTemplateConfigPayload(resource, resourceType, resourceId)
+
+  if (hasBuiltinMetrics && (!payload.evaluation_model || !payload.evaluation_model_provider))
+    return null
+
+  return payload
 }
 
 export const buildEvaluationRunRequest = (
