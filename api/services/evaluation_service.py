@@ -1170,23 +1170,27 @@ class EvaluationService:
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
 
-        required_output_node_ids: list[str | None] = []
-        required_tool_call_node_ids: list[str | None] = []
+        required_output_nodes: list[NodeInfo | None] = []
+        required_tool_call_nodes: list[NodeInfo | None] = []
         for metric in default_metrics:
-            node_ids: list[str | None] = (
-                [node.node_id for node in metric.node_info_list] if metric.node_info_list else [None]
-            )
+            nodes: list[NodeInfo | None] = list(metric.node_info_list) if metric.node_info_list else [None]
             if evaluation_instance.metric_requires_expected_output(metric.metric):
-                required_output_node_ids.extend(node_ids)
+                required_output_nodes.extend(nodes)
             if evaluation_instance.metric_requires_expected_tool_calls(metric.metric) is True:
-                required_tool_call_node_ids.extend(node_ids)
+                required_tool_call_nodes.extend(nodes)
 
         missing_output_indices = [
             item.index
             for item in items
             if any(
-                not str(item.get_expected_output_for_node(node_id) or "").strip()
-                for node_id in required_output_node_ids
+                not str(
+                    item.get_expected_output_for_node(
+                        node.node_id if node else None,
+                        node.title if node else None,
+                    )
+                    or ""
+                ).strip()
+                for node in required_output_nodes
             )
         ]
         if missing_output_indices:
@@ -1198,7 +1202,13 @@ class EvaluationService:
         missing_tool_call_indices = [
             item.index
             for item in items
-            if any(not item.get_expected_tool_calls_for_node(node_id) for node_id in required_tool_call_node_ids)
+            if any(
+                not item.get_expected_tool_calls_for_node(
+                    node.node_id if node else None,
+                    node.title if node else None,
+                )
+                for node in required_tool_call_nodes
+            )
         ]
         if missing_tool_call_indices:
             raise EvaluationDatasetInvalidError(
@@ -1668,7 +1678,7 @@ class EvaluationService:
         *,
         evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> list[EvaluationTemplateColumn]:
-        """Build one node-ID-scoped expected_output column per node that needs a reference answer."""
+        """Build one node-title-scoped expected_output column per node that needs a reference answer."""
         filtered_metrics = cls.filter_console_default_metrics(default_metrics)
         if not filtered_metrics:
             return []
@@ -1682,7 +1692,7 @@ class EvaluationService:
             if not evaluation_instance.metric_requires_expected_output(metric.metric):
                 continue
             for node_info in metric.node_info_list:
-                column_name = f"{node_info.node_id} : expected_output"
+                column_name = f"{node_info.title} : expected_output"
                 if column_name in seen:
                     continue
                 seen.add(column_name)
@@ -1696,7 +1706,7 @@ class EvaluationService:
         *,
         evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> list[EvaluationTemplateColumn]:
-        """Build node-ID-scoped JSON reference columns for Agent metrics."""
+        """Build node-title-scoped JSON reference columns for Agent metrics."""
         filtered_metrics = cls.filter_console_default_metrics(default_metrics)
         if not filtered_metrics:
             return []
@@ -1710,7 +1720,7 @@ class EvaluationService:
             if evaluation_instance.metric_requires_expected_tool_calls(metric.metric) is not True:
                 continue
             for node_info in metric.node_info_list:
-                column_name = f"{node_info.node_id} : expected_tool_calls"
+                column_name = f"{node_info.title} : expected_tool_calls"
                 if column_name in seen:
                     continue
                 seen.add(column_name)
@@ -2216,11 +2226,11 @@ class EvaluationService:
         Supported schemas:
 
         - ``index,<input...>,expected_output`` for the legacy single-reference flow
-        - ``index,<input...>,<node_id> : expected_output`` for node-specific references
-        - ``index,<input...>,<node_id> : expected_tool_calls`` for Agent trace references
+        - ``index,<input...>,<node_title> : expected_output`` for node-specific references
+        - ``index,<input...>,<node_title> : expected_tool_calls`` for Agent trace references
 
         Column parsing treats the *last* ``:`` as the separator between the
-        stable node ID and the reference-field suffix.
+        node title and the reference-field suffix.
         """
         filename_lower = filename.lower()
         if filename_lower.endswith(".csv"):
@@ -2267,7 +2277,7 @@ class EvaluationService:
         CSV follows the same schema as XLSX:
         the first column must be `index`, remaining columns become inputs,
         and expected-output columns can be either the legacy
-        ``expected_output`` or node-scoped ``<node_id> : expected_output``.
+        ``expected_output`` or node-scoped ``<node_title> : expected_output``.
         Agent tool-call references use JSON in ``expected_tool_calls`` columns.
         """
         try:
@@ -2418,7 +2428,7 @@ class EvaluationService:
 
     @staticmethod
     def _parse_expected_output_header(header: str) -> str | None:
-        """Return the node ID for an expected-output column, if any.
+        """Return the node title or legacy node ID for an expected-output column, if any.
 
         ``expected_output`` keeps the legacy single-reference behaviour and
         returns an empty string marker. Node-specific columns split on the last
@@ -2431,27 +2441,27 @@ class EvaluationService:
         if ":" not in normalized_header:
             return None
 
-        node_id, suffix = normalized_header.rsplit(":", 1)
+        node_key, suffix = normalized_header.rsplit(":", 1)
         if suffix.strip() != "expected_output":
             return None
 
-        normalized_node_id = node_id.strip()
-        return normalized_node_id or None
+        normalized_node_key = node_key.strip()
+        return normalized_node_key or None
 
     @staticmethod
     def _parse_expected_tool_calls_header(header: str) -> str | None:
-        """Return the node ID for an expected-tool-calls column, if any."""
+        """Return the node title or legacy node ID for an expected-tool-calls column, if any."""
         normalized_header = header.strip()
         if normalized_header == "expected_tool_calls":
             return ""
         if ":" not in normalized_header:
             return None
 
-        node_id, suffix = normalized_header.rsplit(":", 1)
+        node_key, suffix = normalized_header.rsplit(":", 1)
         if suffix.strip() != "expected_tool_calls":
             return None
-        normalized_node_id = node_id.strip()
-        return normalized_node_id or None
+        normalized_node_key = node_key.strip()
+        return normalized_node_key or None
 
     @staticmethod
     def _parse_expected_tool_calls_cell(

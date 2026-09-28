@@ -28,7 +28,7 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
             EvaluationDatasetInput(
                 index=1,
                 inputs={"query": "What is Dify?"},
-                expected_outputs={"llm-1": "Dify is a platform."},
+                expected_outputs={"Answer": "Dify is a platform."},
             )
         ],
         node_info=NodeInfo(node_id="llm-1", type="llm", title="Answer"),

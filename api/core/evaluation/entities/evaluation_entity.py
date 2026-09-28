@@ -189,10 +189,10 @@ class EvaluationDatasetInput(BaseModel):
 
     ``expected_output`` keeps backward compatibility with the original
     single-reference template. When users upload node-specific reference
-    columns such as ``llm-node-id : expected_output``, they are stored in
-    ``expected_outputs`` and resolved by stable node ID at execution time.
-    Agent reference traces follow the same convention with
-    ``expected_tool_calls``.
+    columns such as ``Answer : expected_output``, they are stored in
+    ``expected_outputs`` and resolved by the user-visible node title at
+    execution time. Legacy node-ID columns remain supported. Agent reference
+    traces follow the same convention with ``expected_tool_calls``.
     """
 
     index: int
@@ -202,21 +202,28 @@ class EvaluationDatasetInput(BaseModel):
     expected_tool_calls: list[AgentToolCall] | None = None
     expected_tool_calls_by_node: dict[str, list[AgentToolCall]] = Field(default_factory=dict)
 
-    def get_expected_output_for_node(self, node_id: str | None) -> str | None:
-        """Return the node-specific answer or the explicit global reference."""
-        if node_id:
-            if node_id in self.expected_outputs:
-                return self.expected_outputs[node_id]
+    def get_expected_output_for_node(self, node_id: str | None, node_title: str | None = None) -> str | None:
+        """Return the title-scoped answer, legacy ID-scoped answer, or global reference."""
+        for node_key in (node_title, node_id):
+            normalized_node_key = str(node_key or "").strip()
+            if normalized_node_key and normalized_node_key in self.expected_outputs:
+                return self.expected_outputs[normalized_node_key]
 
         if self.expected_output is not None:
             return self.expected_output
 
         return None
 
-    def get_expected_tool_calls_for_node(self, node_id: str | None) -> list[AgentToolCall] | None:
-        """Return node-specific tool calls or the explicit global reference."""
-        if node_id and node_id in self.expected_tool_calls_by_node:
-            return self.expected_tool_calls_by_node[node_id]
+    def get_expected_tool_calls_for_node(
+        self,
+        node_id: str | None,
+        node_title: str | None = None,
+    ) -> list[AgentToolCall] | None:
+        """Return title-scoped, legacy ID-scoped, or global reference tool calls."""
+        for node_key in (node_title, node_id):
+            normalized_node_key = str(node_key or "").strip()
+            if normalized_node_key and normalized_node_key in self.expected_tool_calls_by_node:
+                return self.expected_tool_calls_by_node[normalized_node_key]
 
         if self.expected_tool_calls is not None:
             return self.expected_tool_calls
@@ -245,8 +252,8 @@ class EvaluationDatasetInput(BaseModel):
             serialized_expected_outputs["expected_tool_calls"] = [
                 tool_call.model_dump(mode="json", exclude_none=True) for tool_call in self.expected_tool_calls
             ]
-        for node_id, tool_calls in self.expected_tool_calls_by_node.items():
-            serialized_expected_outputs[f"{node_id} : expected_tool_calls"] = [
+        for node_key, tool_calls in self.expected_tool_calls_by_node.items():
+            serialized_expected_outputs[f"{node_key} : expected_tool_calls"] = [
                 tool_call.model_dump(mode="json", exclude_none=True) for tool_call in tool_calls
             ]
 
@@ -258,13 +265,13 @@ class EvaluationDatasetInput(BaseModel):
         if self.expected_output is not None:
             columns.append(("expected_output", self.expected_output))
 
-        for node_id, value in self.expected_outputs.items():
-            columns.append((f"{node_id} : expected_output", value))
+        for node_key, value in self.expected_outputs.items():
+            columns.append((f"{node_key} : expected_output", value))
 
         if self.expected_tool_calls is not None:
             columns.append(("expected_tool_calls", _serialize_tool_calls(self.expected_tool_calls)))
-        for node_id, tool_calls in self.expected_tool_calls_by_node.items():
-            columns.append((f"{node_id} : expected_tool_calls", _serialize_tool_calls(tool_calls)))
+        for node_key, tool_calls in self.expected_tool_calls_by_node.items():
+            columns.append((f"{node_key} : expected_tool_calls", _serialize_tool_calls(tool_calls)))
 
         return columns
 

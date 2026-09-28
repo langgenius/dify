@@ -5,7 +5,7 @@ from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluat
 from graphon.node_events import NodeRunResult
 
 
-def test_retrieval_runner_resolves_expected_output_by_node_id() -> None:
+def test_retrieval_runner_resolves_expected_output_by_node_title() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.evaluate_retrieval.return_value = []
     runner = RetrievalEvaluationRunner(evaluation_instance)
@@ -26,7 +26,7 @@ def test_retrieval_runner_resolves_expected_output_by_node_id() -> None:
             EvaluationDatasetInput(
                 index=1,
                 inputs={"query": "What is Dify?"},
-                expected_outputs={"retrieval-1": "Dify is a platform."},
+                expected_outputs={"Search": "Dify is a platform."},
             )
         ],
         node_info=node_info,
