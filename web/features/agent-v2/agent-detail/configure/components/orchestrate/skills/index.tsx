@@ -826,6 +826,7 @@ export function AgentTemplateSkills() {
     <ConfigureSection
       label={t(($) => $['agentDetail.configure.skills.label'])}
       labelId={labelId}
+      tip={<AgentConfigureTipContent type="skills" />}
       rootClassName="border-b border-divider-subtle pt-4"
       panelContentClassName="pb-4"
     >

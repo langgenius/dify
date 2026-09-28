@@ -7,6 +7,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, describe, expect, it, vi } from 'vite-plus/test'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import AgentAppPreview from '../agent-app-preview'
 
 const appDetail = {
@@ -76,6 +79,8 @@ describe('AgentAppPreview', () => {
 
   it('shows a read-only Agent configuration alongside the template introduction', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
+    const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: Request | string) => {
@@ -86,9 +91,9 @@ describe('AgentAppPreview', () => {
       }),
     )
     render(
-      <QueryClientProvider client={client}>
+      <QueryClientTestProvider queryClient={client}>
         <AgentAppPreview appDetail={appDetail} composer={composer} />
-      </QueryClientProvider>,
+      </QueryClientTestProvider>,
     )
 
     expect(screen.getByRole('heading', { name: 'Tender Analyst' })).toBeInTheDocument()
@@ -113,6 +118,14 @@ describe('AgentAppPreview', () => {
     expect(
       screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }),
     ).not.toBeInTheDocument()
+
+    for (const field of ['prompt', 'skills', 'files', 'tools']) {
+      const label = `agentV2.agentDetail.configure.${field}.label`
+      const infoTrigger = screen.getByRole('button', { name: label, expanded: false })
+      await user.click(infoTrigger)
+      expect(await screen.findByRole('dialog', { name: label })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+    }
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
