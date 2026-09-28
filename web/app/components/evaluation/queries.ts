@@ -366,7 +366,7 @@ export const useEvaluationActions = ({ resourceType, resourceId }: EvaluationRes
     })
   }
 
-  const downloadTemplate = () => {
+  const downloadTemplate = (configPayload: EvaluationConfigPayload = {}) => {
     if (resourceType === 'datasets') {
       return datasetTemplateMutation.mutateAsync({
         params: { dataset_id: resourceId },
@@ -374,6 +374,7 @@ export const useEvaluationActions = ({ resourceType, resourceId }: EvaluationRes
     }
 
     return targetTemplateMutation.mutateAsync({
+      body: configPayload,
       params: {
         evaluate_target_id: resourceId,
         evaluate_target_type: resourceType,

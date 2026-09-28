@@ -193,17 +193,6 @@ export const zJudgmentConfig = z.object({
 })
 
 /**
- * EvaluationConfigResponse
- */
-export const zEvaluationConfigResponse = z.object({
-  customized_metrics: zCustomizedMetrics.nullish(),
-  default_metrics: z.array(zDefaultMetric).nullish(),
-  evaluation_model: z.string().nullish(),
-  evaluation_model_provider: z.string().nullish(),
-  judgment_config: zJudgmentConfig.nullish(),
-})
-
-/**
  * EvaluationConfigPayload
  */
 export const zEvaluationConfigPayload = z.object({
@@ -211,6 +200,17 @@ export const zEvaluationConfigPayload = z.object({
   default_metrics: z.array(zDefaultMetric).optional(),
   evaluation_model: z.string().optional().default(''),
   evaluation_model_provider: z.string().optional().default(''),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationConfigResponse
+ */
+export const zEvaluationConfigResponse = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
   judgment_config: zJudgmentConfig.nullish(),
 })
 
@@ -270,6 +270,9 @@ export const zEvaluationRunDetailResponse = z.object({
   items: zEvaluationRunItemPaginationResponse,
   run: zEvaluationRunResponse,
 })
+
+export const zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadBody =
+  zEvaluationConfigPayload
 
 export const zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadPath = z.object({
   evaluate_target_id: z.uuid(),
