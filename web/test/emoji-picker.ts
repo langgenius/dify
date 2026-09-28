@@ -1,16 +1,30 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render } from '@testing-library/react'
+import { createElement } from 'react'
 import data from '@/public/emoji/emojibase-17.0.0/en/data.json'
 import messages from '@/public/emoji/emojibase-17.0.0/en/messages.json'
 
-/** Exercise the real picker with the same data served in production, without network. */
+const clients: QueryClient[] = []
+export function renderWithEmoji(ui: ReactNode, options: RenderOptions = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  const Wrapper = options.wrapper
+  return render(ui, {
+    ...options,
+    wrapper: ({ children }) =>
+      createElement(
+        QueryClientProvider,
+        { client },
+        Wrapper ? createElement(Wrapper, null, children) : children,
+      ),
+  })
+}
+
+/** Exercise the same catalog used in production at the network boundary. */
 export function mockEmojiData() {
   beforeEach(() => {
-    // oxlint-disable-next-line no-restricted-globals -- Reset Frimousse's own cache to exercise its data loader.
-    localStorage.removeItem('frimousse/data/en')
-    sessionStorage.removeItem('frimousse/metadata')
-    sessionStorage.setItem(
-      'frimousse/metadata',
-      JSON.stringify({ emojiVersion: 17, countryFlags: true }),
-    )
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
       if (!/^\/.*emoji\/emojibase-17\.0\.0\/en\/(?:data|messages)\.json$/.test(url))
@@ -18,5 +32,8 @@ export function mockEmojiData() {
       return new Response(JSON.stringify(url.endsWith('/messages.json') ? messages : data))
     })
   })
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    clients.splice(0).forEach((client) => client.clear())
+    vi.restoreAllMocks()
+  })
 }

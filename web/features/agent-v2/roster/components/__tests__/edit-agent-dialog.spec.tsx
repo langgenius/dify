@@ -24,23 +24,23 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
+vi.mock('@/app/components/base/icon-picker', () => ({
   __esModule: true,
-  default: ({
-    initialEmoji,
-    onSelect,
+  IconPickerDialog: ({
+    defaultValue,
+    onConfirm,
     open,
   }: {
-    initialEmoji?: { icon: string; background: string }
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+    defaultValue?: { icon: string; background: string }
+    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
     open: boolean
   }) =>
     open ? (
       <div>
-        <span>{`${initialEmoji?.icon}:${initialEmoji?.background}`}</span>
+        <span>{`${defaultValue?.icon}:${defaultValue?.background}`}</span>
         <button
           type="button"
-          onClick={() => onSelect({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
+          onClick={() => onConfirm({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
         >
           Select brain icon
         </button>
