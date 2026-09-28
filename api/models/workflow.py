@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
-from uuid import uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from core.workflow.nodes.human_input.pause_reason import (
@@ -589,36 +590,7 @@ class Workflow(Base):  # bug
     def environment_variables(
         self,
     ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable]:
-        # Use workflow.tenant_id to avoid relying on request user in background threads
-        tenant_id = self.tenant_id
-
-        if not tenant_id:
-            return []
-
-        environment_variables_dict = cast(SerializedWorkflowVariables, json.loads(self._environment_variables or "{}"))
-        results = [
-            variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
-        ]
-
-        # decrypt secret variables value
-        def decrypt_func(
-            var: VariableBase,
-        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable:
-            match var:
-                case SecretVariable():
-                    return var.model_copy(
-                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
-                    )
-                case StringVariable() | IntegerVariable() | FloatVariable() | LLMEnvironmentVariable():
-                    return var
-                case _:
-                    # Other variable types are not supported for environment variables
-                    raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
-
-        decrypted_results: list[
-            SecretVariable | StringVariable | IntegerVariable | FloatVariable | LLMEnvironmentVariable
-        ] = [decrypt_func(var) for var in results]
-        return decrypted_results
+        return load_environment_variables(tenant_id=self.tenant_id, serialized_variables=self._environment_variables)
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[VariableBase]):
@@ -1515,14 +1487,29 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
+    def storage_id(cls, variable: VariableBase) -> str:
+        """UUID primary key for ``variable``.
+
+        Draft and DSL ids such as ``opt-comp-prompt-var`` are not UUIDs and cannot
+        be inserted. Those become a uuid5 of the variable name, so the same variable
+        keeps one row. An id that is already a UUID is stored unchanged. Callers
+        still see the author id on the variable payload.
+        """
+        row_id = variable.id
+        try:
+            UUID(str(row_id))
+        except (ValueError, TypeError, AttributeError):
+            return str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
+        return str(row_id)
+
+    @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
-        obj = cls(
-            id=variable.id,
+        return cls(
+            id=cls.storage_id(variable),
             app_id=app_id,
             conversation_id=conversation_id,
             data=variable.model_dump_json(),
         )
-        return obj
 
     def to_variable(self) -> VariableBase:
         mapping = json.loads(self.data)

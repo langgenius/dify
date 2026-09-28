@@ -18,7 +18,10 @@ from models.account import Account
 from models.model import DifySetup
 from services.entities.auth_audit_entities import LoginFailureReason
 
-pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+pytestmark = [
+    pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True),
+    pytest.mark.usefixtures("app_query_services"),
+]
 
 
 def encode_code(code: str) -> str:
@@ -253,8 +256,10 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token")
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=False)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.requires_permission_check", return_value=False
+    )
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code", return_value="app-1")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_public_app_user_logged_in(
         self,
@@ -275,8 +280,8 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=True)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.requires_permission_check", return_value=True)
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code", return_value="app-1")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_private_app_passport_fails(
         self,
@@ -304,3 +309,13 @@ class TestLogoutApi:
 
         assert response.get_json() == {"result": "success"}
         mock_clear.assert_called_once()
+
+
+def test_unknown_web_app_code_returns_http_not_found(app: Flask) -> None:
+    from flask_restx import Api
+
+    api = Api(app)
+    api.add_resource(LoginStatusApi, "/web/login/status")
+    response = app.test_client().get("/web/login/status?app_code=does-not-exist")
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "app_not_found"

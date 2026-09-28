@@ -23,7 +23,7 @@ type Props = {
 }
 
 const ToolDateRangePicker: FC<Props> = ({ value, onChange, readOnly = false, timezone }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['time', 'workflow'])
   const parsed = parseToolDateRangeValue(value)
 
   const patch = (partial: Partial<{ start?: string; end?: string }>) => {

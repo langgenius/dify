@@ -45,6 +45,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from extensions.ext_database import db
 from factories import variable_factory
 from fields.base import ResponseModel
@@ -57,7 +58,6 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import login_required
@@ -151,6 +151,14 @@ class RagPipelineOpaqueResponse(RootModel[Any]):
     root: Any
 
 
+class RagPipelineDatasourceProviderResponse(PluginDatasourceProviderEntity, ResponseModel):
+    pass
+
+
+class RagPipelineDatasourceListResponse(RootModel[list[RagPipelineDatasourceProviderResponse]]):
+    pass
+
+
 class RagPipelineStepParametersResponse(ResponseModel):
     variables: Any
 
@@ -175,6 +183,8 @@ register_response_schema_models(
     console_ns,
     DefaultBlockConfigResponse,
     DefaultBlockConfigsResponse,
+    RagPipelineDatasourceListResponse,
+    RagPipelineDatasourceProviderResponse,
     RagPipelineOpaqueResponse,
     RagPipelineStepParametersResponse,
     RagPipelineWorkflowPublishResponse,
@@ -1000,13 +1010,14 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
 
 @console_ns.route("/rag/pipelines/datasource-plugins")
 class DatasourceListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineDatasourceListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
-        return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id))
+        providers = RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id)
+        return RagPipelineDatasourceListResponse.model_validate(providers, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run")

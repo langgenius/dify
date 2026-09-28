@@ -24,7 +24,7 @@ const ImportFromMarketplaceTemplateModal = ({
   onClose,
   onConfirm,
 }: ImportFromMarketplaceTemplateModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
   const template = data?.data
   const [importing, setImporting] = useState(false)

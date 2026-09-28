@@ -17,7 +17,7 @@ type IProps = {
 }
 
 const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [previewContent, setPreviewContent] = useState('')
   const [loading, setLoading] = useState(true)
 

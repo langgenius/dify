@@ -28,7 +28,7 @@ export function ToolTrigger({
   className,
   ...buttonProps
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   return (
     <Button
       {...buttonProps}

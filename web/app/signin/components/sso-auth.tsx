@@ -5,7 +5,6 @@ import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.ge
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
@@ -16,7 +15,7 @@ type SSOAuthProps = {
 
 const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 
@@ -65,7 +64,10 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="size-5 text-text-accent-light-mode-only" />
+      <span
+        aria-hidden
+        className="i-custom-vender-solid-security-lock-01 size-5 text-text-accent-light-mode-only"
+      />
       <span className="truncate">{t(($) => $.withSSO, { ns: 'login' })}</span>
     </Button>
   )

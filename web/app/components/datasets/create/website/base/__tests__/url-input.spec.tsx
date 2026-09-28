@@ -31,13 +31,13 @@ describe('UrlInput', () => {
     it('should render button with run text when not running', () => {
       render(<UrlInput isRunning={false} onRun={mockOnRun} />)
       const button = screen.getByRole('button')
-      expect(button).toHaveTextContent(/run/i)
+      expect(button.textContent).toMatch(/run/i)
     })
 
     it('should keep the run label while running', () => {
       render(<UrlInput isRunning={true} onRun={mockOnRun} />)
       const button = screen.getByRole('button', { name: /run/i })
-      expect(button).toHaveTextContent(/run/i)
+      expect(button.textContent).toMatch(/run/i)
     })
 
     it('should show loading state on button when running', () => {
@@ -134,7 +134,7 @@ describe('UrlInput', () => {
       const { rerender } = render(<UrlInput isRunning={false} onRun={mockOnRun} />)
 
       const button = screen.getByRole('button')
-      expect(button).toHaveTextContent(/run/i)
+      expect(button.textContent).toMatch(/run/i)
 
       rerender(<UrlInput isRunning={true} onRun={mockOnRun} />)
 
@@ -145,11 +145,11 @@ describe('UrlInput', () => {
       const { rerender } = render(<UrlInput isRunning={true} onRun={mockOnRun} />)
 
       const button = screen.getByRole('button', { name: /run/i })
-      expect(button).toHaveTextContent(/run/i)
+      expect(button.textContent).toMatch(/run/i)
 
       rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)
 
-      expect(button).toHaveTextContent(/run/i)
+      expect(button.textContent).toMatch(/run/i)
     })
 
     it('should preserve input value when isRunning prop changes', async () => {
@@ -330,7 +330,7 @@ describe('UrlInput', () => {
       const { rerender } = render(<UrlInput isRunning={false} onRun={mockOnRun} />)
 
       // Initial state: not running
-      expect(screen.getByRole('button')).toHaveTextContent(/run/i)
+      expect(screen.getByRole('button').textContent).toMatch(/run/i)
 
       // Simulate running state
       rerender(<UrlInput isRunning={true} onRun={mockOnRun} />)
@@ -338,7 +338,7 @@ describe('UrlInput', () => {
 
       // Simulate finished state
       rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)
-      expect(screen.getByRole('button')).toHaveTextContent(/run/i)
+      expect(screen.getByRole('button').textContent).toMatch(/run/i)
     })
   })
 })

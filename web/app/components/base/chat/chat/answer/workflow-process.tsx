@@ -20,7 +20,7 @@ const WorkflowProcessItem = ({
   hideProcessDetail = false,
   readonly = false,
 }: WorkflowProcessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded

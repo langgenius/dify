@@ -31,7 +31,7 @@ const ToolDatePicker: FC<Props> = ({
   placeholder,
   readOnly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const locale = useLocale()
   const displayFormat = t(($) => $['dateFormats.display'], { ns: 'time' })
   const resolvedPlaceholder = placeholder || t(($) => $['operation.pickDate'], { ns: 'time' })

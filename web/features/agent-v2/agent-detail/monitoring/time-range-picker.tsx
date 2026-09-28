@@ -140,7 +140,7 @@ export function AgentMonitoringTimeRangePicker({
   value,
   onChange,
 }: AgentMonitoringTimeRangePickerProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const locale = useLocale()
   const [selectedRange, setSelectedRange] = useState<TimeRangeKey | 'custom'>('today')
   const [start, setStart] = useState(() => dayjs(value.query.start))

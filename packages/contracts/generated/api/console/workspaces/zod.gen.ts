@@ -3,16 +3,6 @@
 import * as z from 'zod'
 
 /**
- * AgentProviderResponse
- */
-export const zAgentProviderResponse = z.record(z.string(), z.unknown())
-
-/**
- * AgentProviderListResponse
- */
-export const zAgentProviderListResponse = z.array(z.record(z.string(), z.unknown()))
-
-/**
  * AgentSkillBindingsPayload
  */
 export const zAgentSkillBindingsPayload = z.object({
@@ -63,10 +53,10 @@ export const zEndpointCreatePayload = z.object({
 })
 
 /**
- * SuccessResponse
+ * EndpointMutationResponse
  */
-export const zSuccessResponse = z.object({
-  success: z.boolean(),
+export const zEndpointMutationResponse = z.object({
+  success: z.literal(true),
 })
 
 /**
@@ -275,6 +265,13 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
  */
 export const zPluginAutoUpgradeChangeResponse = z.object({
   message: z.string().nullish(),
+  success: z.boolean(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
   success: z.boolean(),
 })
 
@@ -778,6 +775,14 @@ export const zWorkspaceInfoPayload = z.object({
  */
 export const zSwitchWorkspacePayload = z.object({
   tenant_id: z.string(),
+})
+
+/**
+ * Meta
+ */
+export const zMeta = z.object({
+  minimum_dify_version: z.string().nullish(),
+  version: z.string().nullish(),
 })
 
 /**
@@ -2369,14 +2374,6 @@ export const zCoreToolsEntitiesCommonEntitiesI18nObject = z.object({
 })
 
 /**
- * Meta
- */
-export const zMeta = z.object({
-  minimum_dify_version: z.string().nullish(),
-  version: z.string().nullish(),
-})
-
-/**
  * Plugins
  */
 export const zPlugins = z.object({
@@ -2808,6 +2805,72 @@ export const zOAuthSchema = z.object({
 })
 
 /**
+ * ToolLabelEnum
+ */
+export const zToolLabelEnum = z.enum([
+  'business',
+  'design',
+  'education',
+  'entertainment',
+  'finance',
+  'image',
+  'medical',
+  'news',
+  'other',
+  'productivity',
+  'rag',
+  'search',
+  'social',
+  'travel',
+  'utilities',
+  'videos',
+  'weather',
+])
+
+/**
+ * AgentStrategyProviderIdentity
+ *
+ * Inherits from ToolProviderIdentity, without any additional fields.
+ */
+export const zAgentStrategyProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * AgentStrategyProviderEntity
+ */
+export const zAgentStrategyProviderEntity = z.object({
+  identity: zAgentStrategyProviderIdentity,
+  plugin_id: z.string().nullish(),
+})
+
+/**
+ * AgentFeature
+ *
+ * Agent Feature, used to describe the features of the agent strategy.
+ */
+export const zAgentFeature = z.enum(['history-messages'])
+
+/**
+ * AgentStrategyIdentity
+ *
+ * Inherits from ToolIdentity, without any additional fields.
+ */
+export const zAgentStrategyIdentity = z.object({
+  author: z.string(),
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
  * EndpointDeclarationResponse
  */
 export const zEndpointDeclarationResponse = z.object({
@@ -2869,6 +2932,18 @@ export const zFieldModelSchema = z.object({
 export const zProviderQuotaType = z.enum(['free', 'paid', 'trial'])
 
 /**
+ * DatasourceProviderIdentity
+ */
+export const zDatasourceProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
  * DatasourceProviderType
  *
  * Enum class for datasource provider
@@ -2879,6 +2954,18 @@ export const zDatasourceProviderType = z.enum([
   'online_drive',
   'website_crawl',
 ])
+
+/**
+ * DatasourceProviderEntity
+ *
+ * Datasource provider entity
+ */
+export const zDatasourceProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zDatasourceProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  provider_type: zDatasourceProviderType,
+})
 
 /**
  * EndpointDeclaration
@@ -2899,6 +2986,29 @@ export const zEndpointDeclaration = z.object({
 export const zEndpointProviderDeclaration = z.object({
   endpoints: z.array(zEndpointDeclaration).nullish(),
   settings: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * ToolProviderIdentity
+ */
+export const zToolProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * ToolProviderEntity
+ */
+export const zToolProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zToolProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  plugin_id: z.string().nullish(),
 })
 
 /**
@@ -2966,6 +3076,26 @@ export const zEventParameterType = z.enum([
   'object',
   'select',
   'string',
+])
+
+/**
+ * AgentStrategyParameterType
+ *
+ * Keep all the types from PluginParameterType
+ */
+export const zAgentStrategyParameterType = z.enum([
+  'any',
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'file',
+  'files',
+  'model-selector',
+  'number',
+  'secret-input',
+  'select',
+  'string',
+  'system-files',
 ])
 
 /**
@@ -3386,99 +3516,6 @@ export const zModelProviderListResponse = z.object({
 })
 
 /**
- * ToolLabelEnum
- */
-export const zToolLabelEnum = z.enum([
-  'business',
-  'design',
-  'education',
-  'entertainment',
-  'finance',
-  'image',
-  'medical',
-  'news',
-  'other',
-  'productivity',
-  'rag',
-  'search',
-  'social',
-  'travel',
-  'utilities',
-  'videos',
-  'weather',
-])
-
-/**
- * AgentStrategyProviderIdentity
- *
- * Inherits from ToolProviderIdentity, without any additional fields.
- */
-export const zAgentStrategyProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * AgentStrategyProviderEntity
- */
-export const zAgentStrategyProviderEntity = z.object({
-  identity: zAgentStrategyProviderIdentity,
-  plugin_id: z.string().nullish(),
-})
-
-/**
- * DatasourceProviderIdentity
- */
-export const zDatasourceProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * DatasourceProviderEntity
- *
- * Datasource provider entity
- */
-export const zDatasourceProviderEntity = z.object({
-  credentials_schema: z.array(zProviderConfig).optional(),
-  identity: zDatasourceProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish(),
-  provider_type: zDatasourceProviderType,
-})
-
-/**
- * ToolProviderIdentity
- */
-export const zToolProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * ToolProviderEntity
- */
-export const zToolProviderEntity = z.object({
-  credentials_schema: z.array(zProviderConfig).optional(),
-  identity: zToolProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish(),
-  plugin_id: z.string().nullish(),
-})
-
-/**
  * PriceConfig
  *
  * Model class for pricing info.
@@ -3830,6 +3867,72 @@ export const zTriggerProviderApiEntity = z.object({
 export const zTriggerProviderListResponse = z.array(zTriggerProviderApiEntity)
 
 /**
+ * AgentStrategyParameter
+ */
+export const zAgentStrategyParameter = z.object({
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z
+    .union([
+      z.number(),
+      z.int(),
+      z.string(),
+      z.boolean(),
+      z.array(z.unknown()),
+      z.record(z.string(), z.unknown()),
+    ])
+    .nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject,
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
+  name: z.string(),
+  options: z.array(zPluginParameterOption).optional(),
+  placeholder: zI18nObject.nullish(),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
+  type: zAgentStrategyParameterType,
+})
+
+/**
+ * AgentStrategyEntity
+ */
+export const zAgentStrategyEntity = z.object({
+  description: zI18nObject,
+  features: z.array(zAgentFeature).nullish(),
+  identity: zAgentStrategyIdentity,
+  meta_version: z.string().nullish(),
+  output_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.array(zAgentStrategyParameter).optional(),
+})
+
+/**
+ * AgentProviderEntityWithPlugin
+ */
+export const zAgentProviderEntityWithPlugin = z.object({
+  identity: zAgentStrategyProviderIdentity,
+  plugin_id: z.string().nullish(),
+  strategies: z.array(zAgentStrategyEntity).optional(),
+})
+
+/**
+ * AgentProviderResponse
+ */
+export const zAgentProviderResponse = z.object({
+  declaration: zAgentProviderEntityWithPlugin,
+  meta: zMeta,
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * AgentProviderListResponse
+ */
+export const zAgentProviderListResponse = z.array(zAgentProviderResponse)
+
+/**
  * EventEntity
  *
  * The configuration of an event
@@ -4118,35 +4221,35 @@ export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsCreateBody = zEndpointCreatePayload
 
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsCreateResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsCreateResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsDeleteBody = zEndpointIdPayload
 
 /**
  * Endpoint deleted successfully
  */
-export const zPostWorkspacesCurrentEndpointsDeleteResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsDeleteResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsDisableBody = zEndpointIdPayload
 
 /**
  * Endpoint disabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsDisableResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsDisableResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsEnableBody = zEndpointIdPayload
 
 /**
  * Endpoint enabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsEnableResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointMutationResponse
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
   page: z.int().gte(1),
@@ -4174,7 +4277,7 @@ export const zPostWorkspacesCurrentEndpointsUpdateBody = zLegacyEndpointUpdatePa
 /**
  * Endpoint updated successfully
  */
-export const zPostWorkspacesCurrentEndpointsUpdateResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsUpdateResponse = zEndpointMutationResponse
 
 export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
   id: z.string(),
@@ -4183,7 +4286,7 @@ export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint deleted successfully
  */
-export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
+export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
 
 export const zPatchWorkspacesCurrentEndpointsByIdBody = zEndpointUpdatePayload
 
@@ -4194,7 +4297,7 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint updated successfully
  */
-export const zPatchWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
+export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
 
 /**
  * Success

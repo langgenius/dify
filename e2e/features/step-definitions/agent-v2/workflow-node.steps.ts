@@ -1,15 +1,15 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { createE2EResourceName } from '../../../support/naming'
-import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 import {
   createAgentSoulConfigWithModel,
   normalAgentPrompt,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { syncAgentV2WorkflowDraft } from '../../agent-v2/support/workflow'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { syncAgentV2WorkflowDraft } from '../../agent-v2/support/workflow.ts'
 
 Given(
   'a workflow app with an Agent v2 node has been created via API',

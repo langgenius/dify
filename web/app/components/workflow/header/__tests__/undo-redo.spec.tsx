@@ -43,10 +43,6 @@ vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/app/components/workflow/operator/tip-popup', () => ({
   default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }))

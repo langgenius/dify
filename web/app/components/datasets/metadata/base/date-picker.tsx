@@ -16,7 +16,7 @@ type Props = Readonly<{
   onChange: (date: number | null) => void
 }>
 const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,

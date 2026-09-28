@@ -1006,7 +1006,6 @@ describe('ChatInputArea', () => {
       const footerNotice = 'Agent runs in a Linux sandbox.'
       const footerNoticeTooltip =
         'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
-      const accessibleName = `common.operation.learnMore: ${footerNotice}`
       render(
         <ChatInputArea
           visionConfig={mockVisionConfig}
@@ -1018,9 +1017,10 @@ describe('ChatInputArea', () => {
       expect(screen.getByText(footerNotice)).toBeInTheDocument()
       expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: accessibleName }))
+      await user.click(screen.getByRole('button', { name: footerNotice }))
 
-      expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
+      const dialog = await screen.findByRole('dialog', { name: footerNotice })
+      expect(dialog).toHaveTextContent(footerNoticeTooltip)
     })
 
     it('should render feature bar when showFeatureBar is true', () => {

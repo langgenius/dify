@@ -20,8 +20,8 @@ package components; consumers import only through public subpaths.
 
 Use the primitive name without a `Root` suffix for the canonical boundary and matching props type:
 `Select` and `SelectProps`, `Drawer` and `DrawerProps`. Keep `Root` only when the same subpath
-exports both low-level anatomy and a higher-level convenience component, such as `CheckboxRoot`
-and `Checkbox`.
+exports both low-level anatomy and a higher-level convenience component, such as `AvatarRoot`
+and `Avatar`.
 
 Every runtime component must have an accurate, importable props type with the matching name. Use a
 direct alias for an unchanged Base UI part. Define Dify-authored composite props at the Dify UI
@@ -57,11 +57,15 @@ State, event details and reasons, actions, controlled-state helpers, context val
 helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
 already provide contextual typing for inline render and event callbacks.
 
-When a wrapper consumes `className` through `cn()`, omit the upstream state-callback form and
-expose `className?: string`. Public types must describe behavior the wrapper actually implements.
+Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI
+part's state before merging default classes with `cn()`, including through composite wrappers.
+Forward `style` unchanged unless the wrapper needs to merge styles; then resolve its callback first.
+Do not add state callbacks to native DOM props or unrelated custom APIs. See [Styling].
 
 ## Evidence
 
 Use local public-subpath type tests to protect generic inference, required relationships, and
 intentional errors. Read current official Base UI documentation and installed type declarations
 before changing an upstream-derived contract.
+
+[Styling]: ./styling.md

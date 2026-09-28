@@ -27,7 +27,7 @@ export function ResourceAccessRuleSection({
 }: {
   resourceType: AccessPolicyResourceType
 }) {
-  const { t } = useTranslation('permission')
+  const { t } = useTranslation(['permission'])
   const language = getAccessControlTemplateLanguage(useLocale())
   const canManage = hasPermission(
     useAtomValue(workspacePermissionKeysAtom),

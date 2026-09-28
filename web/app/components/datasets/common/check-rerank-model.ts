@@ -3,6 +3,31 @@ import type { RetrievalConfig } from '@/types/app'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
+/**
+ * Hybrid Search renders no rerank on/off switch, so `reranking_enable` is only ever written when
+ * the retrieval method is switched. A dataset configured as "open -> pick rerank model -> save"
+ * therefore keeps the stale `false` default and silently never reranks, even though the selected
+ * model is displayed in the UI. In Hybrid Search a chosen rerank model is exactly what
+ * `isReRankModelSelected` already validates, so derive the flag from the selection on save.
+ */
+export const normalizeRetrievalConfigForSave = (
+  retrievalConfig: RetrievalConfig,
+): RetrievalConfig => {
+  if (
+    retrievalConfig.search_method === RETRIEVE_METHOD.hybrid &&
+    retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel &&
+    retrievalConfig.reranking_model?.reranking_provider_name &&
+    retrievalConfig.reranking_model?.reranking_model_name
+  ) {
+    return {
+      ...retrievalConfig,
+      reranking_enable: true,
+    }
+  }
+
+  return retrievalConfig
+}
+
 export const isReRankModelSelected = ({
   retrievalConfig,
   rerankModelList,

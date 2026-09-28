@@ -1,11 +1,12 @@
-import fs from 'node:fs'
+import type { TranslationAdapter } from './api.ts'
+import type { ModuleResolutions } from './compiler.ts'
 import path from 'node:path'
 import * as ts from 'typescript'
+import { createTranslationApiResolver } from './api.ts'
+import { camelCase, readTranslationCatalog } from './catalog.ts'
+import { createTranslationProgram, readCompilerOptions } from './compiler.ts'
 
-const PLURAL = /_(?:zero|one|two|few|many|other)$/
 const MAX_VALUES = 200
-const camelCase = (name: string) =>
-  name.replace(/[-_]+([a-z0-9])/gi, (_, char: string) => char.toUpperCase())
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 type Translation = { namespaces: string[]; prefix: string; argument: number }
@@ -52,53 +53,79 @@ function initializer(node: ts.Node): Value | undefined {
   if (ts.isFunctionDeclaration(node) && node.body) return node
 }
 
+export type AnalysisEvidence = {
+  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace'
+  moduleId: string
+  file: string
+  line: number
+  column: number
+  namespaces: string[]
+  message: string
+  import?: {
+    specifier: string
+    kind: 'style' | 'asset' | 'package' | 'virtual' | 'source'
+    origin: 'source' | 'generated'
+  }
+}
+
+export function createAnalysisContext(root: string, adapters: readonly TranslationAdapter[] = []) {
+  return {
+    adapters,
+    translations: readTranslationCatalog(root),
+    compilerOptions: readCompilerOptions(root),
+  }
+}
+
 // Only module IDs supplied by Vite are visited. Type dependencies inform static
 // expressions but never contribute usage merely by existing on disk.
-export function checkTranslationGraph(root: string, modules: ReadonlyMap<string, string>) {
-  const catalog = new Map<string, Set<string>>()
-  const directory = path.join(root, 'i18n/locales/en-US')
-  for (const file of fs
-    .readdirSync(directory)
-    .filter((file) => file.endsWith('.json'))
-    .sort()) {
-    const content: unknown = JSON.parse(fs.readFileSync(path.join(directory, file), 'utf8'))
-    if (!content || typeof content !== 'object' || Array.isArray(content))
-      throw new Error(`Invalid translation catalog: ${file}`)
-    catalog.set(camelCase(file.slice(0, -5)), new Set(Object.keys(content)))
-  }
-  const configPath = ts.findConfigFile(root, ts.sys.fileExists)
-  const config = configPath ? ts.readConfigFile(configPath, ts.sys.readFile) : undefined
-  if (config?.error)
-    throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
-  const options =
-    configPath && config
-      ? ts.parseJsonConfigFileContent(
-          config.config,
-          { ...ts.sys, readDirectory: () => [] },
-          path.dirname(configPath),
-        ).options
-      : {}
-  const compilerOptions: ts.CompilerOptions = {
-    ...options,
-    allowJs: true,
-    jsx: ts.JsxEmit.ReactJSX,
-    noEmit: true,
-    skipLibCheck: true,
-  }
-  const host = ts.createCompilerHost(compilerOptions)
-  const readFile = host.readFile.bind(host)
-  host.readFile = (file) => modules.get(file) ?? readFile(file)
-  const fileExists = host.fileExists.bind(host)
-  host.fileExists = (file) => modules.has(file) || fileExists(file)
-  const getSourceFile = host.getSourceFile.bind(host)
-  host.getSourceFile = (file, languageVersion, onError, shouldCreateNewSourceFile) => {
-    const source = modules.get(file)
-    return source === undefined
-      ? getSourceFile(file, languageVersion, onError, shouldCreateNewSourceFile)
-      : ts.createSourceFile(file, source, languageVersion, true)
-  }
-  const program = ts.createProgram([...modules.keys()], compilerOptions, host)
+export function checkTranslationGraph(
+  root: string,
+  modules: ReadonlyMap<string, string>,
+  resolutions: ModuleResolutions = new Map(),
+  context = createAnalysisContext(root),
+) {
+  const { catalog } = context.translations
+  const literalKeys = new Set([...catalog.values()].flatMap((keys) => [...keys]))
+  const programStarted = performance.now()
+  const { program, fileNames } = createTranslationProgram(
+    root,
+    modules,
+    resolutions,
+    context.compilerOptions,
+  )
   const checker = program.getTypeChecker()
+  const programMs = performance.now() - programStarted
+  const analysisStarted = performance.now()
+  const { resolve: translationApi, isAdapter } = createTranslationApiResolver(
+    root,
+    program,
+    context.adapters,
+  )
+  const evidence = new Map<string, AnalysisEvidence>()
+  let currentModule = ''
+  let currentSite: ts.Node | undefined
+  function explain(
+    kind: AnalysisEvidence['kind'],
+    namespaces: string[],
+    message: string,
+    importInfo?: AnalysisEvidence['import'],
+  ) {
+    if (!currentSite) return
+    const location = currentSite
+      .getSourceFile()
+      .getLineAndCharacterOfPosition(currentSite.getStart())
+    const item = {
+      kind,
+      moduleId: currentModule,
+      file: path.relative(root, currentModule.split('?')[0]!).replaceAll('\\', '/'),
+      line: location.line + 1,
+      column: location.character + 1,
+      namespaces: [...namespaces].sort(),
+      message,
+      ...(importInfo ? { import: importInfo } : {}),
+    }
+    evidence.set(JSON.stringify(item), item)
+  }
   const used = new Map<string, Set<string>>()
   const protectedNamespaces = new Set<string>()
   const moduleNamespaces = new Map<string, Set<string>>()
@@ -124,31 +151,6 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     const next = new Set(seen).add(node)
     if (ts.isConditionalExpression(node))
       return [...alternatives(node.whenTrue, next), ...alternatives(node.whenFalse, next)]
-    if (ts.isCallExpression(node)) {
-      for (const fn of alternatives(node.expression, next)) {
-        if (
-          !fn ||
-          !(
-            ts.isArrowFunction(fn) ||
-            ts.isFunctionExpression(fn) ||
-            ts.isFunctionDeclaration(fn)
-          ) ||
-          !fn.body
-        )
-          continue
-        const body = ts.isBlock(fn.body)
-          ? fn.body.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]!)
-            ? fn.body.statements[0]!.expression
-            : undefined
-          : fn.body
-        if (!body) continue
-        const returned = unwrap(body)
-        const index = fn.parameters.findIndex(
-          (parameter) => parameter.name.getText() === returned.getText(),
-        )
-        if (index >= 0 && node.arguments[index]) return alternatives(node.arguments[index]!, next)
-      }
-    }
     if (ts.isIdentifier(node)) {
       if (node.text === 'undefined') return []
       const values = declarations(node)
@@ -197,6 +199,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     if (!expression) return
     const node = unwrap(expression)
     if (ts.isStringLiteralLike(node)) return [node.text]
+    if (ts.isCallExpression(node)) return undefined
     if (ts.isArrayLiteralExpression(node)) {
       const values = node.elements.map((element) => strings(element))
       return values.every((value) => value !== undefined) ? values.flat() : undefined
@@ -212,6 +215,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     const node = unwrap(expression)
     if (!ts.isObjectLiteralExpression(node)) return
     for (const member of node.properties) {
+      if (ts.isShorthandPropertyAssignment(member) && member.name.text === name) return member.name
       if (
         ts.isPropertyAssignment(member) &&
         member.name.getText().replace(/^['"]|['"]$/g, '') === name
@@ -226,6 +230,27 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     return constraint && constraint !== type ? selectorType(constraint) : undefined
   }
 
+  function mayInstantiateSelector(type: ts.Type): boolean {
+    if (selectorType(type)) return true
+    // Instantiation can reduce these types to a selector alias. Keep them even
+    // when the declaration itself does not expose SelectorParam.
+    if (
+      type.flags &
+      (ts.TypeFlags.TypeParameter |
+        ts.TypeFlags.IndexedAccess |
+        ts.TypeFlags.Conditional |
+        ts.TypeFlags.Substitution |
+        ts.TypeFlags.UnionOrIntersection)
+    )
+      return true
+    // Ordinary object/function types retain their shape and alias when their
+    // type arguments are instantiated. Mapped types can instead reduce.
+    return !!(
+      type.flags & ts.TypeFlags.Object &&
+      (type as ts.ObjectType).objectFlags & (ts.ObjectFlags.Mapped | ts.ObjectFlags.ReverseMapped)
+    )
+  }
+
   function typedTranslation(node: ts.Node, call?: ts.CallExpression): Translation | undefined {
     const type = checker.getTypeAtLocation(node)
     const brand = type.getProperty('$TFunctionBrand')
@@ -235,8 +260,21 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     }
     // Prefer the instantiated namespace. Inferred selector functions can lose
     // their alias, so retain declaration signatures for recognizing adapters.
-    const resolved = call && checker.getResolvedSignature(call)
-    const signatures = [...(resolved ? [resolved] : []), ...type.getCallSignatures()]
+    const declared = type.getCallSignatures()
+    // Resolving a call checks its arguments and contextual types too. Only
+    // request that work if overload selection or generic instantiation could
+    // expose a selector parameter; unrelated generic APIs need neither.
+    const resolved =
+      call &&
+      (declared.length > 1 || declared.some((signature) => signature.typeParameters?.length)) &&
+      declared.some((signature) =>
+        signature.parameters.some((parameter) =>
+          mayInstantiateSelector(checker.getTypeOfSymbolAtLocation(parameter, node)),
+        ),
+      )
+        ? checker.getResolvedSignature(call)
+        : undefined
+    const signatures = [...(resolved ? [resolved] : []), ...declared]
     for (const signature of signatures) {
       for (const [argument, parameter] of signature.parameters.entries()) {
         const selector = selectorType(checker.getTypeOfSymbolAtLocation(parameter, node))
@@ -268,12 +306,12 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         if (ts.isVariableDeclaration(variable) && variable.initializer) {
           const call = unwrap(variable.initializer)
           if (ts.isCallExpression(call)) {
-            const name = call.expression.getText()
-            if (/(?:^|\.)(?:useTranslation|getTranslation)$/.test(name)) {
-              const nsIndex = name.endsWith('getTranslation') ? 1 : 0
+            const api = translationApi(call.expression)
+            if (api?.kind === 'translation' && api.selectorArgument === undefined) {
+              const nsIndex = api.namespaceArgument
               return {
                 namespaces:
-                  strings(call.arguments[nsIndex]) ??
+                  (call.arguments[nsIndex] && namespaceStrings(call.arguments[nsIndex]!)) ??
                   (call.arguments[nsIndex] ? [...catalog.keys()] : ['app']),
                 prefix: strings(property(call.arguments[nsIndex + 1], 'keyPrefix'))?.[0] ?? '',
                 argument: 0,
@@ -315,9 +353,16 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
 
   function keyPatterns(expression: ts.Expression): Key[] {
     const node = unwrap(expression)
-    if (ts.isCallExpression(node)) {
+    if (ts.isCallExpression(node)) return [{ text: '.*', wildcard: true }]
+    if (ts.isIdentifier(node)) {
       const values = alternatives(node)
-      if (values.some((value) => value !== node)) {
+      if (
+        values.some((value) => value !== node) &&
+        values.some(
+          (value) =>
+            value && !ts.isFunctionDeclaration(value) && ts.isTemplateExpression(unwrap(value)),
+        )
+      ) {
         return values.flatMap((value) =>
           value && !ts.isFunctionDeclaration(value)
             ? keyPatterns(value)
@@ -325,7 +370,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         )
       }
     }
-    const values = strings(expression)
+    const values = ts.isTemplateExpression(node) ? undefined : strings(expression)
     if (values) return values.map((text) => ({ text }))
     if (
       (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) &&
@@ -424,16 +469,26 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         if (!catalog.has(namespace)) continue
         if (key.wildcard && text === '.*' && !info.prefix) {
           protectedNamespaces.add(namespace)
+          explain(
+            'dynamic-key',
+            [namespace],
+            'The key cannot be narrowed; every key in this namespace is protected.',
+          )
           continue
         }
         const prefix = info.prefix ? `${info.prefix}.` : ''
-        const pattern = key.wildcard ? new RegExp(`^${escapeRegex(prefix)}${text}$`) : undefined
-        const matches = (candidate: string) =>
-          pattern ? pattern.test(candidate) : candidate === prefix + text
         const kept = used.get(namespace) ?? new Set<string>()
-        for (const candidate of catalog.get(namespace)!) {
-          if (matches(candidate) || matches(candidate.replace(PLURAL, ''))) kept.add(candidate)
-        }
+        const matches = context.translations.match(
+          namespace,
+          key.wildcard ? `${escapeRegex(prefix)}${text}` : prefix + text,
+          !!key.wildcard,
+        )
+        for (const candidate of matches) kept.add(candidate)
+        explain(
+          'usage',
+          [namespace],
+          key.wildcard ? `Static key pattern: ${prefix}${text}` : `Static key: ${prefix}${text}`,
+        )
         used.set(namespace, kept)
       }
     }
@@ -456,18 +511,76 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       ) {
         record(selectorKeys(value), info)
       } else {
-        record(
-          value && !ts.isFunctionDeclaration(value)
-            ? keyPatterns(value)
-            : [{ text: '.*', wildcard: true }],
-          info,
-        )
+        record(value ? keyPatterns(value) : [{ text: '.*', wildcard: true }], info)
       }
     }
   }
 
+  // Namespace values are deliberately narrower than key/type matching. Only
+  // inline arrays and immutable string bindings are concrete loading evidence.
+  function namespaceValues(
+    expression: ts.Expression,
+    seen = new Set<ts.Node>(),
+    allowArray = true,
+  ): { namespaces: string[]; unknown: boolean } {
+    const unknown = { namespaces: [], unknown: true }
+    const node = unwrap(expression)
+    if (seen.has(node)) return unknown
+    const next = new Set(seen).add(node)
+    if (ts.isStringLiteralLike(node)) return { namespaces: [node.text], unknown: false }
+    if (allowArray && ts.isArrayLiteralExpression(node)) {
+      const values = node.elements.map((element) => namespaceValues(element, next))
+      return {
+        namespaces: values.flatMap((value) => value.namespaces),
+        unknown: values.some((value) => value.unknown),
+      }
+    }
+    if (allowArray && ts.isSpreadElement(node)) return namespaceValues(node.expression, next)
+    if (
+      !ts.isIdentifier(node) &&
+      !ts.isPropertyAccessExpression(node) &&
+      !ts.isElementAccessExpression(node)
+    )
+      return unknown
+    const values = declarations(node).filter(ts.isVariableDeclaration)
+    if (!values.length) return unknown
+    const resolved = values.map((declaration) =>
+      ts.isVariableDeclarationList(declaration.parent) &&
+      declaration.parent.flags & ts.NodeFlags.Const &&
+      declaration.initializer
+        ? namespaceValues(declaration.initializer, next, false)
+        : unknown,
+    )
+    return {
+      namespaces: resolved.flatMap((value) => value.namespaces),
+      unknown: resolved.some((value) => value.unknown),
+    }
+  }
+  function namespaceStrings(expression: ts.Expression): string[] {
+    const { namespaces, unknown } = namespaceValues(expression)
+    // Unknown values may select any catalog namespace. Preserve known values
+    // outside the catalog too, so route validation still sees those requests.
+    return unknown ? [...new Set([...namespaces, ...catalog.keys()])] : namespaces
+  }
+  function recordLoadedNamespaces(expression: ts.Expression): boolean {
+    const { namespaces, unknown } = namespaceValues(expression)
+    for (const namespace of namespaces) {
+      currentNamespaces.add(namespace)
+      explain('usage', [namespace], 'Explicit namespace load.')
+    }
+    return !unknown
+  }
+
   function visit(node: ts.Node) {
-    if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
+    if (isAdapter(node)) return
+    currentSite = node
+    // Contextual key unions can only contribute usage when the literal itself
+    // exists in a catalog. Avoid type-checking unrelated paths, URLs and text.
+    if (
+      ts.isStringLiteralLike(node) &&
+      (node.text.includes('.') || node.text.includes(':')) &&
+      literalKeys.has(node.text)
+    ) {
       const contextual = checker.getContextualType(node)
       const values = contextual && literalTypes(contextual)
       if (values?.includes(node.text)) {
@@ -479,12 +592,45 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       }
     }
     if (ts.isCallExpression(node)) {
-      const info = translation(node.expression, node)
+      currentSite = node
+      const api = translationApi(node.expression)
+      if (api?.kind === 'translation') {
+        // Explicit loading requests matter even when their t function is unused.
+        // Do not mark translation keys as used merely because a namespace loads.
+        const nsIndex = api.namespaceArgument
+        const argument = node.arguments[nsIndex]
+        if (argument && !recordLoadedNamespaces(argument))
+          explain(
+            'unknown-namespace',
+            [],
+            'Only literal namespaces, inline arrays and const string bindings are resolved; runtime values remain unknown.',
+          )
+      }
+      const info =
+        api?.kind === 'translation' && api.selectorArgument !== undefined
+          ? {
+              namespaces: (node.arguments[api.namespaceArgument] &&
+                namespaceStrings(node.arguments[api.namespaceArgument]!)) || [...catalog.keys()],
+              prefix: '',
+              argument: api.selectorArgument,
+            }
+          : node.arguments.length
+            ? translation(node.expression, node)
+            : undefined
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
-        const options = node.arguments.at(-1)
+        const options =
+          api?.kind === 'translation' && api.selectorArgument !== undefined
+            ? undefined
+            : node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
-        const namespaces = strings(namespaceOption)
+        const namespaces = namespaceOption && namespaceStrings(namespaceOption)
+        if (namespaceOption && namespaceValues(namespaceOption).unknown)
+          explain(
+            'unknown-namespace',
+            [],
+            'The translation namespace cannot be narrowed to finite values.',
+          )
         consume(argument, {
           ...info,
           namespaces: namespaces ?? (namespaceOption ? [...catalog.keys()] : info.namespaces),
@@ -493,8 +639,9 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     }
     if (
       (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
-      node.tagName.getText() === 'Trans'
+      translationApi(node.tagName)?.kind === 'trans'
     ) {
+      currentSite = node
       const attributes = new Map<string, ts.Expression>()
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute) || !attribute.initializer) continue
@@ -504,10 +651,13 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         if (value) attributes.set(attribute.name.getText(), value)
       }
       const key = attributes.get('i18nKey')
+      if (attributes.has('ns') && namespaceValues(attributes.get('ns')!).unknown)
+        explain('unknown-namespace', [], 'The Trans namespace cannot be narrowed to finite values.')
       if (key)
         consume(key, {
           namespaces:
-            strings(attributes.get('ns')) ?? (attributes.has('ns') ? [...catalog.keys()] : ['app']),
+            (attributes.get('ns') && namespaceStrings(attributes.get('ns')!)) ??
+            (attributes.has('ns') ? [...catalog.keys()] : ['app']),
           prefix: '',
           argument: 0,
         })
@@ -515,10 +665,46 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     ts.forEachChild(node, visit)
   }
   for (const id of modules.keys()) {
-    const source = program.getSourceFile(id)
+    if (id.endsWith('.json')) continue
+    currentModule = id
+    const source = program.getSourceFile(fileNames.get(id)!)
     currentNamespaces = new Set<string>()
     moduleNamespaces.set(id, currentNamespaces)
-    if (source) visit(source)
+    if (source) {
+      const sourceImports = new Set(
+        ts.preProcessFile(source.text, true, true).importedFiles.map((item) => item.fileName),
+      )
+      for (const [specifier, resolved] of resolutions.get(id) ?? []) {
+        if (!resolved.diagnostic) continue
+        currentSite =
+          source.statements.find(
+            (statement) =>
+              ts.isImportDeclaration(statement) &&
+              ts.isStringLiteral(statement.moduleSpecifier) &&
+              statement.moduleSpecifier.text === specifier,
+          ) ?? source
+        explain(
+          'unresolved-import',
+          [],
+          `Cannot trace runtime import ${specifier} after transforms; the original file was not used as a fallback.`,
+          {
+            specifier,
+            kind: /\.(?:css|scss|sass|less|styl)(?:\?|$)|vite-rsc\/css/.test(specifier)
+              ? 'style'
+              : /\.(?:svg|png|jpe?g|webp|gif|ico|woff2?)(?:\?|$)/.test(specifier)
+                ? 'asset'
+                : specifier.startsWith('\0') || specifier.startsWith('virtual:')
+                  ? 'virtual'
+                  : specifier.includes('/node_modules/') ||
+                      /^(?:@[^/]+\/[^/]+|[\w-]+)(?:\/|$)/.test(specifier)
+                    ? 'package'
+                    : 'source',
+            origin: sourceImports.has(specifier) ? 'source' : 'generated',
+          },
+        )
+      }
+      visit(source)
+    }
   }
   const unused: Record<string, string[]> = {}
   for (const [namespace, keys] of catalog) {
@@ -528,8 +714,9 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
   }
   return {
     unused,
+    evidence: [...evidence.values()],
+    timings: { programMs, analysisMs: performance.now() - analysisStarted },
     protectedNamespaces: [...protectedNamespaces].sort(),
-    moduleCount: modules.size,
     moduleNamespaces,
   }
 }

@@ -1,3 +1,5 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 /**
  * WorkflowAppLogList Component Tests
  *
@@ -8,14 +10,13 @@
  * - Drawer with run details
  * - Loading states
  */
-
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
+import type { AppModeEnum } from '@/types/app'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import WorkflowAppLogList from '../list'
 
 // ============================================================================
@@ -90,35 +91,14 @@ vi.mock('ahooks', () => ({
 // Test Data Factories
 // ============================================================================
 
-const createMockApp = (overrides: Partial<App> = {}): App => ({
-  id: 'test-app-id',
-  name: 'Test App',
-  description: 'Test app description',
-  author_name: 'Test Author',
-  icon_type: 'emoji' as AppIconType,
-  icon: '🚀',
-  icon_background: '#FFEAD5',
-  icon_url: null,
-  use_icon_as_answer_icon: false,
-  mode: 'workflow' as AppModeEnum,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
-  created_at: Date.now(),
-  updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
-  tags: [],
-  access_mode: 'public_access' as App['access_mode'],
-  ...overrides,
-})
+const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite =>
+  createAppDetailFixture({
+    id: 'test-app-id',
+    name: 'Test App',
+    mode: 'workflow',
+    site: createAppSiteFixture({ access_token: 'token', app_base_url: 'https://example.com' }),
+    ...overrides,
+  })
 
 const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): WorkflowRunDetail => ({
   id: 'run-1',
@@ -259,7 +239,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
     })
 
     it('should render failure status correctly', () => {
@@ -273,7 +253,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Failure'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.failed'))!.toBeInTheDocument()
     })
 
     it('should render stopped status correctly', () => {
@@ -287,7 +267,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Stop'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.stopped'))!.toBeInTheDocument()
     })
 
     it('should render running status correctly', () => {
@@ -301,14 +281,42 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Running'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.running'))!.toBeInTheDocument()
+    })
+
+    it('should render paused status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: 'paused' }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('appLog.status.paused'))!.toBeInTheDocument()
+    })
+
+    it('should render scheduled status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: 'scheduled' }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('appLog.status.scheduled'))!.toBeInTheDocument()
     })
 
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
-            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+            status: 'partial-succeeded',
           }),
         }),
       ])
@@ -317,7 +325,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.partial-succeeded'))!.toBeInTheDocument()
     })
   })
 

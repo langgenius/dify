@@ -21,11 +21,14 @@ from dify_agent.runtime_backend.profile import (
 
 @pytest.fixture(autouse=True)
 def _isolated_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    # RuntimeBackendSettings reads the process environment, so a developer's
-    # exported DIFY_AGENT_* / E2B_* values must not leak into these tests.
+    # RuntimeBackendSettings reads both the process environment and a dotenv file
+    # resolved against the current directory, so neither a developer's exported
+    # DIFY_AGENT_* / E2B_* values nor their local dify-agent/.env may leak in.
+    # Every case here states the settings it exercises.
     for name in list(os.environ):
         if name.startswith("DIFY_AGENT_") or name in ("E2B_API_KEY", "E2B_API_TOKEN"):
             monkeypatch.delenv(name)
+    monkeypatch.setitem(RuntimeBackendSettings.model_config, "env_file", None)
 
 
 def test_e2b_backend_uses_prepared_dify_template_and_one_hour_lease_by_default() -> None:

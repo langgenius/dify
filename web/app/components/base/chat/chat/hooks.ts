@@ -198,7 +198,7 @@ export const useChat = (
   initialConversationId?: string,
   options: UseChatOptions = {},
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')

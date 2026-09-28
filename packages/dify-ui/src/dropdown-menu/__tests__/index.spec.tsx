@@ -398,3 +398,25 @@ describe('dropdown-menu wrapper', () => {
     })
   })
 })
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <DropdownMenu open>
+      <DropdownMenuTrigger>Open audit menu</DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuSub open>
+          <DropdownMenuSubTrigger>More audit actions</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}
+          >
+            <DropdownMenuItem>Audit action</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  )
+
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
+})

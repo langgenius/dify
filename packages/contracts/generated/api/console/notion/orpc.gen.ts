@@ -8,7 +8,7 @@ import {
   zGetNotionPagesByPageIdByPageTypePreviewResponse,
   zGetNotionPreImportPagesQuery,
   zGetNotionPreImportPagesResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

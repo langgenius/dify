@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const { data, isLoading } = useAutoDisabledDocuments(datasetId)
   const invalidDisabledDocument = useInvalidDisabledDocument()
   const documentIds = data?.document_ids

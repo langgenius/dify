@@ -23,3 +23,8 @@ Run direct Python commands through `uv run --project api`. Docker-backed integra
 - Use Pydantic v2 for request and response models. Reuse domain-specific exceptions and translate them at the controller boundary.
 - Use existing Celery task and queue owners for asynchronous work; do not route unrelated jobs through workflow-specific services.
 - Celery tasks that may be retried or redelivered must keep side effects idempotent and log affected resource identifiers.
+
+## Typing Best Practises
+
+- Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
+- Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.

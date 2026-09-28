@@ -35,9 +35,9 @@ export function useDeploymentConfigurationForm({
   onClose: () => void
   onDeploymentStarted?: (operationId: string) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t: tDeployments } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tDeployments } = useTranslation(['deployments'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const deployMutation = useDeployWorkflow({
     appId,
     invalidateAppEnvironmentsOnSuccess,

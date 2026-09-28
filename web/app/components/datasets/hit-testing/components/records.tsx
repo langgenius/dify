@@ -13,7 +13,7 @@ type RecordsProps = {
 }
 
 const Records = ({ records, onClickRecord }: RecordsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const { formatTime } = useTimestamp()
 
   const [sortTimeOrder, setTimeOrder] = useState<'asc' | 'desc'>('desc')

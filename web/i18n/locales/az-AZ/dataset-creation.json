@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Faylı və ya qovluğu sürükləyib buraxın və ya",
   "stepOne.uploader.buttonSingleFile": "Faylı sürükləyib buraxın və ya",
   "stepOne.uploader.change": "Dəyiş",
+  "stepOne.uploader.completed": "Yükləmə tamamlandı",
   "stepOne.uploader.failed": "Yükləmək mümkün olmadı",
   "stepOne.uploader.tip": "{{supportTypes}} dəstəklənir. Bir dəfəyə ən çox {{batchCount}} fayl, hər biri ən çox {{size}} MB.",
   "stepOne.uploader.tipWithTotalLimit": "{{supportTypes}} dəstəklənir. Bir dəfəyə ən çox {{batchCount}} fayl, hər biri ən çox {{size}} MB. Ümumilikdə ən çox {{totalCount}} fayl.",

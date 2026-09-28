@@ -69,8 +69,8 @@ function AgentSkillPackageUploader({
   onChange: (file?: File) => void
   showWarning: boolean
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { skillSizeLimit } = useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -181,7 +181,7 @@ function AgentSkillPackageUploader({
       {file && (
         <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
-            <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
+            <span aria-hidden className="i-ri-file-zip-line size-6 shrink-0 text-text-tertiary" />
           </div>
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
@@ -250,8 +250,8 @@ export function AgentSkillUploadDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadAgentSkillMutation = useMutation(
     consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions(),

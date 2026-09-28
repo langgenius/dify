@@ -321,7 +321,7 @@ describe('Menu', () => {
         />,
       )
 
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
 
     it('should hide export and delete options when not rag pipeline and not deletable', () => {
@@ -400,7 +400,7 @@ describe('Menu', () => {
         />,
       )
 
-      await user.click(screen.getByText('common.settings.resourceAccess'))
+      await user.click(screen.getByText('navigation.settings.resourceAccess'))
 
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
@@ -461,7 +461,7 @@ describe('Dropdown', () => {
       await openMenu(user)
 
       // Assert
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
@@ -481,7 +481,7 @@ describe('Dropdown', () => {
 
       // Assert
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
@@ -566,7 +566,7 @@ describe('Dropdown', () => {
 
       // Act
       await openMenu(user)
-      await user.click(screen.getByText('common.settings.resourceAccess'))
+      await user.click(screen.getByText('navigation.settings.resourceAccess'))
 
       // Assert
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')

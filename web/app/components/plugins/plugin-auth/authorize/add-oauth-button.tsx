@@ -59,7 +59,7 @@ const AddOAuthButton = ({
   renderTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)

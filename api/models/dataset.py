@@ -29,7 +29,6 @@ from libs.uuid_utils import uuidv7
 
 from .account import Account
 from .base import Base, TypeBase
-from .engine import db
 from .enums import (
     CollectionBindingType,
     CreatorUserRole,
@@ -224,10 +223,9 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def available_segment_count(self):
+    def get_available_segment_count(self, *, session: Session) -> int:
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(DocumentSegment.id)).where(
                     DocumentSegment.dataset_id == self.id,
                     DocumentSegment.status == "completed",

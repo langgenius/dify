@@ -22,7 +22,7 @@ type TagItemEditorProps = {
   onTagsChange?: () => void
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
   const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
@@ -102,7 +102,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                   {tag.binding_count}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>{t(($) => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['tag.boundItems'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"

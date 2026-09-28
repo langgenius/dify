@@ -188,8 +188,7 @@ function DynamicFormFieldDemo() {
   return (
     <Field name="generation_mode" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
-        This mirrors Dify dynamic form fields where radio options are controlled by schema and
-        persisted as a single value.
+        Choose one generation mode.
       </FieldDescription>
       <Fieldset
         render={
@@ -222,7 +221,7 @@ export const DynamicFormField: Story = {
     docs: {
       description: {
         story:
-          'Matches Dify form composition: Field and Fieldset provide group labeling while `RadioGroup` owns controlled single-selection state.',
+          '`Field` integrates the selection with a form field, and `Fieldset` provides group labeling. The example controls `RadioGroup` with a single selected value in React state.',
       },
     },
   },

@@ -18,13 +18,13 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
@@ -134,7 +134,7 @@ class CheckRBACPermission(Requirement):
         if not dify_config.RBAC_ENABLED:
             return
         enforce_rbac_checks(
-            tenant_id=str(load_workspace(ctx).id),
+            tenant_id=load_workspace(ctx).id,
             account_id=str(subject.account_id),
             checks=self.checks,
             path_args=dict(ctx.view_args),
@@ -170,7 +170,7 @@ class CheckAppAccess(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
-        access_mode = self._access_mode(str(load_app(ctx).id))
+        access_mode = self._access_mode(load_app(ctx).id)
         if SystemFeatureService.get_public_system_features().webapp_auth.enabled:
             self._assert_mode_allowed(subject, access_mode)
         if access_mode == WebAppAccessMode.PRIVATE:

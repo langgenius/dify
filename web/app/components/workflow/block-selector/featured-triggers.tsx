@@ -1,4 +1,5 @@
 'use client'
+
 import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
@@ -56,7 +57,7 @@ const FeaturedTriggers = ({
   isLoading = false,
   onInstallSuccess,
 }: FeaturedTriggersProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() =>
     createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
@@ -240,7 +241,7 @@ type FeaturedTriggerUninstalledItemProps = {
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedTriggerUninstalledItem({

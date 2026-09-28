@@ -969,6 +969,57 @@ class TestModelProviderServiceListingsAndDefaults:
         else:
             provider_configuration.get_model_schema.assert_not_called()
 
+    def test_get_default_model_selection_uses_saved_workspace_choice(self, sqlite_session: Session) -> None:
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id="tenant-1",
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+        service, manager = _create_service_with_mocked_manager()
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result == ("langgenius/openai/openai", "gpt-4o")
+        manager.get_configurations.assert_not_called()
+
+    def test_get_default_model_selection_uses_first_active_model_without_writing(self, sqlite_session: Session) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        configurations = manager.get_configurations.return_value
+        configurations.get_models.return_value = [
+            SimpleNamespace(model="gpt-4o", provider=SimpleNamespace(provider="langgenius/openai/openai"))
+        ]
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result == ("langgenius/openai/openai", "gpt-4o")
+        configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
+        assert sqlite_session.query(TenantDefaultModel).filter_by(tenant_id="tenant-1").first() is None
+
+    def test_get_default_model_selection_returns_none_when_provider_discovery_fails(
+        self, sqlite_session: Session
+    ) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_configurations.side_effect = RuntimeError("provider unavailable")
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result is None
+
+    def test_get_default_model_selection_returns_none_when_no_active_models(self, sqlite_session: Session) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_configurations.return_value.get_models.return_value = []
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result is None
+        manager.get_configurations.return_value.get_models.assert_called_once_with(
+            model_type=ModelType.LLM, only_active=True
+        )
+
     def test_get_default_model_of_model_type_should_return_response_when_manager_returns_model(self) -> None:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.return_value = SimpleNamespace(

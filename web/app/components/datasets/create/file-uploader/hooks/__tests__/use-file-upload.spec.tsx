@@ -1,8 +1,13 @@
 import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
@@ -18,7 +23,9 @@ vi.mock('@/app/notifications', () => ({
 
 // Mock upload service
 const mockUpload = vi.fn()
+const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
 vi.mock('@/service/base', () => ({
+  request,
   upload: (...args: unknown[]) => mockUpload(...args),
 }))
 
@@ -30,13 +37,12 @@ const mockFileUploadConfig = {
   file_upload_limit: 10,
 }
 
-const mockSupportTypes = {
+const supportedFormats = {
   allowed_extensions: ['pdf', 'docx', 'txt', 'md'],
 }
 
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
-  useFileSupportTypes: () => ({ data: mockSupportTypes }),
 }))
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
@@ -47,10 +53,24 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: (_e: unknown, defaultMsg: string) => defaultMsg,
 }))
 
+const createQueryClient = () => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.supportType.get.queryOptions().queryKey,
+    supportedFormats,
+  )
+  return queryClient
+}
 const createWrapper = () =>
-  createConsoleQueryWrapper({ systemFeatures: { deployment_edition: 'CLOUD' } }).wrapper
+  createConsoleQueryWrapper({
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  }).wrapper
 const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+  renderWithConsoleQuery(ui, {
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
 
 describe('useFileUpload', () => {
   const defaultOptions = {
@@ -132,6 +152,66 @@ describe('useFileUpload', () => {
       expect(result.current.fileUploadConfig.file_upload_limit).toBe(1)
     })
   })
+
+  it.each([
+    { allowedExtensions: ['csv'], expectedAccept: '.csv', uploadCount: 1 },
+    { allowedExtensions: [], expectedAccept: '', uploadCount: 0 },
+  ])(
+    'keeps the explicit $allowedExtensions override while subscribing to supported formats',
+    async ({ allowedExtensions, expectedAccept, uploadCount }) => {
+      const queryClient = createConsoleQueryClient()
+      request.mockImplementation(async () => Response.json(supportedFormats))
+      const Uploader = () => {
+        const { fileUploaderRef, fileChangeHandle, acceptTypes } = useFileUpload({
+          ...defaultOptions,
+          allowedExtensions,
+        })
+        return (
+          <input
+            aria-label="Upload file"
+            type="file"
+            ref={fileUploaderRef}
+            accept={acceptTypes.join(',')}
+            onChange={fileChangeHandle}
+          />
+        )
+      }
+      renderWithConsoleQuery(<Uploader />, {
+        queryClient,
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      })
+      const input = screen.getByLabelText('Upload file')
+      expect(input).toHaveAttribute('accept', expectedAccept)
+
+      await waitFor(() =>
+        expect(
+          queryClient.getQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey),
+        ).toEqual(supportedFormats),
+      )
+
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(input).toHaveAttribute('accept', expectedAccept)
+      fireEvent.change(input, {
+        target: { files: [new File(['row'], 'data.csv', { type: 'text/csv' })] },
+      })
+      await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(uploadCount))
+      if (uploadCount === 0) {
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'datasetCreation.stepOne.uploader.validation.typeError',
+        })
+        expect(defaultOptions.prepareFileList).not.toHaveBeenCalled()
+      } else {
+        expect(defaultOptions.prepareFileList).toHaveBeenCalledOnce()
+        expect(defaultOptions.onFileUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ file: { id: 'default-id' } }),
+          PROGRESS_COMPLETE,
+          expect.any(Array),
+        )
+        expect(mockNotify).not.toHaveBeenCalled()
+      }
+    },
+  )
 
   describe('selectHandle', () => {
     it('should trigger click on file input', () => {

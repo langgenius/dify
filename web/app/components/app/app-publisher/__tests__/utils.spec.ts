@@ -28,7 +28,7 @@ describe('app-publisher utils', () => {
   })
 
   describe('getDisabledFunctionTooltip', () => {
-    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction
+    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction<['app']>
 
     it('should prioritize the unpublished hint', () => {
       expect(

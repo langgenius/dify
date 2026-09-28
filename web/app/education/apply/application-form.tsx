@@ -40,7 +40,7 @@ type EducationApplyPageProps = {
 }
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')

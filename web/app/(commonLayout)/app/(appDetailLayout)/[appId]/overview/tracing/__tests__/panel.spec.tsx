@@ -49,20 +49,6 @@ vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: { status: string }) => <span data-testid="status-dot">{status}</span>,
 }))
 
-vi.mock('@/app/components/base/icons/src/public/tracing', () => ({
-  AliyunIcon: () => <span data-testid="aliyun-icon" />,
-  ArizeIcon: () => <span data-testid="arize-icon" />,
-  DatabricksIcon: () => <span data-testid="databricks-icon" />,
-  LangfuseIcon: () => <span data-testid="langfuse-icon" />,
-  LangsmithIcon: () => <span data-testid="langsmith-icon" />,
-  MlflowIcon: () => <span data-testid="mlflow-icon" />,
-  OpikIcon: () => <span data-testid="opik-icon" />,
-  PhoenixIcon: () => <span data-testid="phoenix-icon" />,
-  TencentIcon: () => <span data-testid="tencent-icon" />,
-  TracingIcon: () => <span data-testid="tracing-icon" />,
-  WeaveIcon: () => <span data-testid="weave-icon" />,
-}))
-
 vi.mock('../config-button', () => ({
   default: ({
     children,

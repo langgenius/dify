@@ -1,11 +1,13 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useCallback, useState } from 'react'
+import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
+import { useMutation } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
+import { consoleClient } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
@@ -13,32 +15,46 @@ import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
-  const [exporting, setExporting] = useState(false)
   const workflowStore = useWorkflowStore()
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
-  const handleExportDSL = useCallback(
-    async (include = false) => {
+  const { mutateAsync: exportPipeline, isPending: isExporting } = useMutation({
+    mutationFn: async (include: boolean) => {
       const { pipelineId, knowledgeName } = workflowStore.getState()
-      if (!pipelineId) return
-      if (exporting) return
+      if (!pipelineId) return false
+
+      let syncFailed = false
+      await doSyncWorkflowDraft(undefined, {
+        onError: () => {
+          syncFailed = true
+        },
+      })
+      if (syncFailed) {
+        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        return false
+      }
+
+      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get(
+        { params: { pipeline_id: pipelineId }, query: { include_secret: String(include) } },
+        { context: { silent: true } },
+      )
+      const file = new Blob([data], { type: 'application/yaml' })
+      downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
+      return true
+    },
+  })
+  const handleExportDSL = useCallback(
+    async (include = false): Promise<boolean> => {
+      if (isExporting) return false
+
       try {
-        setExporting(true)
-        await doSyncWorkflowDraft()
-        const { data } = await exportPipelineConfig({
-          pipelineId,
-          include,
-        })
-        const file = new Blob([data], { type: 'application/yaml' })
-        downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
+        return await exportPipeline(include)
       } catch {
         toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-      } finally {
-        setExporting(false)
+        return false
       }
     },
-    [t, doSyncWorkflowDraft, exporting, exportPipelineConfig, workflowStore],
+    [t, isExporting, exportPipeline],
   )
   const exportCheck = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
@@ -49,7 +65,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         (env) => env.value_type === 'secret',
       )
       if (list.length === 0) {
-        handleExportDSL()
+        await handleExportDSL()
         return
       }
       eventEmitter?.emit({
@@ -57,7 +73,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         payload: {
           data: list,
         },
-      } as any)
+      } satisfies ExportSecretEnvironmentEvent)
     } catch {
       toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
@@ -65,6 +81,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   return {
     exportCheck,
     handleExportDSL,
+    isExporting,
   }
 }
 
