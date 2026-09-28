@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from sqlalchemy import event, select
@@ -27,7 +27,9 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
         name="Batch import dataset",
         data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=user_id,
-        indexing_technique=IndexTechniqueType.ECONOMY,
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        embedding_model_provider="test-provider",
+        embedding_model="test-model",
     )
     document = Document(
         id=str(uuid4()),
@@ -77,6 +79,11 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     def mock_download(_key: str, file_path: str) -> None:
         Path(file_path).write_text("content\nfirst\nsecond\nthird\n", encoding="utf-8")
 
+    embedding_model = MagicMock()
+    embedding_model.get_text_embedding_num_tokens.side_effect = lambda *, texts: [len(text) for text in texts]
+    model_manager = MagicMock()
+    model_manager.get_model_instance.return_value = embedding_model
+
     max_position_queries: list[str] = []
 
     def count_max_position_query(
@@ -94,8 +101,10 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     event.listen(sqlite_engine, "before_cursor_execute", count_max_position_query)
     try:
         with (
+            patch("tasks.batch_create_segment_to_index_task.SEGMENT_BATCH_SIZE", 2),
             patch("tasks.batch_create_segment_to_index_task.storage.download", side_effect=mock_download),
-            patch("tasks.batch_create_segment_to_index_task.VectorService.create_segments_vector"),
+            patch("tasks.batch_create_segment_to_index_task.ModelManager.for_tenant", return_value=model_manager),
+            patch("tasks.batch_create_segment_to_index_task.VectorService.create_segments_vector") as create_vectors,
         ):
             batch_create_segment_to_index_task(
                 job_id=str(uuid4()),
@@ -115,3 +124,11 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     ).all()
     assert positions == [7, 8, 9, 10]
     assert len(max_position_queries) == 1
+    assert [call.kwargs["texts"] for call in embedding_model.get_text_embedding_num_tokens.call_args_list] == [
+        ["first", "second"],
+        ["third"],
+    ]
+    assert [[segment.content for segment in call.args[1]] for call in create_vectors.call_args_list] == [
+        ["first", "second"],
+        ["third"],
+    ]

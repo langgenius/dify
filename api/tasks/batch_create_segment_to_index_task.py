@@ -1,9 +1,12 @@
+import csv
 import logging
 import tempfile
 import time
 import uuid
+from collections.abc import Iterator
+from itertools import islice
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import click
 import pandas as pd
@@ -26,6 +29,14 @@ from models.model import UploadFile
 from services.vector_service import VectorService
 
 logger = logging.getLogger(__name__)
+
+SEGMENT_BATCH_SIZE = 1000
+
+
+def _iter_segment_id_batches(segment_ids_path: Path) -> Iterator[list[str]]:
+    with segment_ids_path.open(encoding="utf-8") as segment_ids_file:
+        while lines := list(islice(segment_ids_file, SEGMENT_BATCH_SIZE)):
+            yield [line.rstrip("\n") for line in lines]
 
 
 @shared_task(queue="dataset")
@@ -112,81 +123,117 @@ def batch_create_segment_to_index_task(
         file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
         storage.download(upload_file_key, file_path)
 
-        df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
-        content = []
-        for _, row in df.iterrows():
-            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
-                data = {"content": row.iloc[0], "answer": row.iloc[1]}
-            else:
-                data = {"content": row.iloc[0]}
-            content.append(data)
-        if len(content) == 0:
+        embedding_model = None
+        if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
+            model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
+            embedding_model = model_manager.get_model_instance(
+                tenant_id=dataset_config["tenant_id"],
+                provider=dataset_config["embedding_model_provider"],
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=dataset_config["embedding_model"],
+            )
+
+        normalized_segments_path = Path(temp_dir) / "normalized_segments.csv"
+        segment_count = 0
+        with (
+            normalized_segments_path.open("w", encoding="utf-8", newline="") as normalized_segments_file,
+            pd.read_csv(
+                file_path,
+                dtype=str,
+                keep_default_na=False,
+                chunksize=SEGMENT_BATCH_SIZE,
+            ) as csv_reader,
+        ):
+            normalized_segments_writer = csv.writer(normalized_segments_file)
+            for csv_chunk in csv_reader:
+                rows = list(csv_chunk.itertuples(index=False, name=None))
+                if not rows:
+                    continue
+
+                texts = [row[0] for row in rows]
+                if embedding_model:
+                    tokens_list = embedding_model.get_text_embedding_num_tokens(texts=texts)
+                else:
+                    tokens_list = [0] * len(rows)
+                if len(tokens_list) != len(rows):
+                    raise ValueError("Token counter returned an unexpected number of results.")
+
+                for row, token_count in zip(rows, tokens_list):
+                    answer = row[1] if document_config["doc_form"] == IndexStructureType.QA_INDEX else ""
+                    normalized_segments_writer.writerow((row[0], answer, token_count))
+                segment_count += len(rows)
+
+        if segment_count == 0:
             raise ValueError("The CSV file is empty.")
 
-    document_segments = []
-    embedding_model = None
-    if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
-        model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=dataset_config["tenant_id"],
-            provider=dataset_config["embedding_model_provider"],
-            model_type=ModelType.TEXT_EMBEDDING,
-            model=dataset_config["embedding_model"],
-        )
-
-    word_count_change = 0
-    if embedding_model:
-        tokens_list = embedding_model.get_text_embedding_num_tokens(texts=[segment["content"] for segment in content])
-    else:
-        tokens_list = [0] * len(content)
-
-    with session_factory.create_session() as session, session.begin():
-        max_position = (
-            session.scalar(
-                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
+        segment_ids_path = Path(temp_dir) / "segment_ids"
+        word_count_change = 0
+        with (
+            segment_ids_path.open("w", encoding="utf-8") as segment_ids_file,
+            normalized_segments_path.open(encoding="utf-8", newline="") as normalized_segments_file,
+            session_factory.create_session() as session,
+            session.begin(),
+        ):
+            max_position = (
+                session.scalar(
+                    select(func.max(DocumentSegment.position)).where(
+                        DocumentSegment.document_id == document_config["id"]
+                    )
+                )
+                or 0
             )
-            or 0
-        )
-        for segment, tokens in zip(content, tokens_list):
-            content = segment["content"]
-            doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)
-            max_position += 1
-            segment_document = DocumentSegment(
-                tenant_id=tenant_id,
-                dataset_id=dataset_id,
-                document_id=document_id,
-                index_node_id=doc_id,
-                index_node_hash=segment_hash,
-                position=max_position,
-                content=content,
-                word_count=len(content),
-                tokens=tokens,
-                created_by=user_id,
-                indexing_at=naive_utc_now(),
-                status=SegmentStatus.COMPLETED,
-                completed_at=naive_utc_now(),
-            )
-            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
-                segment_document.answer = segment["answer"]
-                segment_document.word_count += len(segment["answer"])
-            word_count_change += segment_document.word_count
-            session.add(segment_document)
-            document_segments.append(segment_document)
+            normalized_segments_reader = cast(Iterator[list[str]], csv.reader(normalized_segments_file))
+            while serialized_rows := list(islice(normalized_segments_reader, SEGMENT_BATCH_SIZE)):
+                document_segments: list[DocumentSegment] = []
+                for content, answer, serialized_token_count in serialized_rows:
+                    index_node_id = str(uuid.uuid4())
+                    max_position += 1
+                    segment_document = DocumentSegment(
+                        tenant_id=tenant_id,
+                        dataset_id=dataset_id,
+                        document_id=document_id,
+                        index_node_id=index_node_id,
+                        index_node_hash=helper.generate_text_hash(content),
+                        position=max_position,
+                        content=content,
+                        word_count=len(content),
+                        tokens=int(serialized_token_count),
+                        created_by=user_id,
+                        indexing_at=naive_utc_now(),
+                        status=SegmentStatus.COMPLETED,
+                        completed_at=naive_utc_now(),
+                    )
+                    if document_config["doc_form"] == IndexStructureType.QA_INDEX:
+                        segment_document.answer = answer
+                        segment_document.word_count += len(answer)
 
-    with session_factory.create_session() as session, session.begin():
-        dataset_document = session.get(Document, document_id)
-        if dataset_document:
-            assert dataset_document.word_count is not None
-            dataset_document.word_count += word_count_change
-            session.add(dataset_document)
+                    word_count_change += segment_document.word_count
+                    document_segments.append(segment_document)
 
-    with session_factory.create_session() as session, session.begin():
-        dataset = session.get(Dataset, dataset_id)
-        if dataset:
-            VectorService.create_segments_vector(
-                None, document_segments, dataset, document_config["doc_form"], session=session
-            )
+                session.add_all(document_segments)
+                session.flush()
+                for segment_document in document_segments:
+                    segment_ids_file.write(f"{segment_document.id}\n")
+                    session.expunge(segment_document)
+
+            dataset_document = session.get(Document, document_id)
+            if dataset_document:
+                assert dataset_document.word_count is not None
+                dataset_document.word_count += word_count_change
+                session.add(dataset_document)
+
+        for segment_ids in _iter_segment_id_batches(segment_ids_path):
+            with session_factory.create_session() as session, session.begin():
+                dataset = session.get(Dataset, dataset_id)
+                if not dataset:
+                    continue
+
+                segments = session.scalars(select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))).all()
+                segments_by_id = {segment.id: segment for segment in segments}
+                document_segments = [segments_by_id[segment_id] for segment_id in segment_ids]
+                VectorService.create_segments_vector(
+                    None, document_segments, dataset, document_config["doc_form"], session=session
+                )
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()
