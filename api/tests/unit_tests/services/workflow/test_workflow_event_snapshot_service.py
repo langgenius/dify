@@ -11,7 +11,6 @@ from typing import Any, cast, override
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import event as orm_event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -495,33 +494,17 @@ def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup(
     assert result.answer == "newest answer"
 
 
-def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    # Arrange
-    _persist_message(sqlite_session_factory)
+def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
+    session_maker = MagicMock()
+    session_maker.return_value.__enter__.return_value.scalar.return_value = Message(
+        id="msg-1", conversation_id="conv-1", answer="answer", created_at=None
+    )
 
-    def clear_created_at(message: Message, _context: Any) -> None:
-        # A load hook preserves coverage for legacy rows without replacing the real ORM query.
-        message.created_at = None
+    result = service_module._get_message_context_by_conversation(
+        session_maker, conversation_id="conv-1", workflow_run_id="run-1"
+    )
 
-    # Act
-    orm_event.listen(Message, "load", clear_created_at)
-    try:
-        result = service_module._get_message_context_by_conversation(
-            sqlite_session_factory,
-            conversation_id="conv-1",
-            workflow_run_id="run-1",
-        )
-    finally:
-        orm_event.remove(Message, "load", clear_created_at)
-
-    # Assert
-    assert result is not None
-    assert result.created_at == 0
-    assert result.message_id == "msg-1"
-    assert result.conversation_id == "conv-1"
-    assert result.answer == "answer"
+    assert result == MessageContext(conversation_id="conv-1", message_id="msg-1", created_at=0, answer="answer")
 
 
 def test_load_resumption_context_should_return_none_when_pause_entity_missing() -> None:

@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 }
 
 export function GotoAnything() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
@@ -446,7 +446,7 @@ export function GotoAnything() {
 
   function getCommandOptionDescription(option: CommandOption) {
     if (option.shortcut === '/models')
-      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })
+      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
 
     const descriptionKey = isSlashMode
       ? slashCommandDescriptionKeys[option.shortcut as keyof typeof slashCommandDescriptionKeys]
@@ -459,7 +459,7 @@ export function GotoAnything() {
 
   function getGroupLabel(type: string) {
     if (type === 'skill') return t(($) => $['skillManagement.title'], { ns: 'skill' })
-    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentV2' })
+    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentRoster' })
 
     return t(($) => $[groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`], {
       ns: 'app',
@@ -522,6 +522,7 @@ export function GotoAnything() {
               open
               inline
               autoHighlight="always"
+              highlightItemOnHover={false}
               keepHighlight
               loopFocus
             >
@@ -540,8 +541,8 @@ export function GotoAnything() {
                   />
                 </div>
                 <KbdGroup>
-                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-                    <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
                   ))}
                 </KbdGroup>
               </AutocompleteInputGroup>
@@ -607,7 +608,7 @@ export function GotoAnything() {
                                   <AutocompleteItem
                                     key={option.shortcut}
                                     value={option}
-                                    className="group m-0 min-h-18 items-start gap-3 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg/90 p-3 shadow-xs shadow-shadow-shadow-3 backdrop-blur-sm hover:border-divider-regular hover:bg-state-base-hover-alt data-highlighted:border-state-accent-solid data-highlighted:bg-state-base-hover"
+                                    className="group m-0 min-h-18 items-start gap-3 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg/90 p-3 shadow-xs shadow-shadow-shadow-3 backdrop-blur-sm hover:text-text-primary not-data-highlighted:hover:border-divider-regular not-data-highlighted:hover:bg-state-base-hover-alt data-highlighted:border-state-accent-solid data-highlighted:bg-state-base-hover"
                                     onClick={() => selectOption(option)}
                                   >
                                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default text-text-tertiary group-data-highlighted:text-text-accent">
@@ -643,7 +644,7 @@ export function GotoAnything() {
                                 <AutocompleteItem
                                   key={`${result.type}-${result.id}`}
                                   value={result}
-                                  className="mx-2 gap-3 p-3"
+                                  className="mx-2 gap-3 p-3 hover:text-text-primary not-data-highlighted:hover:bg-state-base-hover-alt"
                                   onClick={() => selectOption(result)}
                                 >
                                   {result.icon}

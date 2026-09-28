@@ -22,7 +22,7 @@ import useBeforeRunForm from './hooks/use-before-run-form'
 
 const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
   const { nodeId, payload, onCancel } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const dataSourceStore = useDataSourceStore()
 
   const {

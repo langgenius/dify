@@ -45,7 +45,7 @@ const Installed: FC<Props> = ({
   onInstalled,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const toInstallVersion = payload.version || payload.latest_version
   const pluginId = (payload as Plugin).plugin_id
   const { installedInfo, isLoading } = useCheckInstalled({
@@ -152,7 +152,8 @@ const Installed: FC<Props> = ({
             <p className="system-md-regular text-text-warning">
               {t(($) => $.difyVersionNotCompatible, {
                 ns: 'plugin',
-                minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version,
+                minimalDifyVersion:
+                  pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
               })}
             </p>
           )}

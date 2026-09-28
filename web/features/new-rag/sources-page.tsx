@@ -23,12 +23,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -100,8 +100,8 @@ function SourceActions({
   pendingAction?: SourceAction
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const sourceUri = getOpenableSourceUri(source.uri)
 
@@ -226,8 +226,8 @@ function SourceRow({
   onSourceChange: (source: Source) => void
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
   const providerName = metadataString(source.metadata, 'providerName')
@@ -402,7 +402,7 @@ function SourcesEmpty({
   canAddSource: boolean
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
@@ -437,8 +437,8 @@ function SourcesEmpty({
 }
 
 export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')
@@ -557,7 +557,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       </header>
       {sourcesQuery.isPending ? (
         <div className="flex min-h-64 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : sourcesQuery.error && !sourcesQuery.data ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
@@ -724,7 +724,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               )}
             {!filteredSources.length && completingFilteredResults && (
               <div className="flex min-h-40 items-center justify-center">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
           </div>

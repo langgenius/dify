@@ -4,6 +4,7 @@ const config: StorybookConfig = {
   stories: [
     '../app/components/**/*.stories.@(js|jsx|mjs|ts|tsx)',
     '../features/**/*.stories.@(js|jsx|mjs|ts|tsx)',
+    '../app/notifications/**/*.stories.@(js|jsx|mjs|ts|tsx)',
   ],
   addons: [
     // Not working with Storybook Vite framework

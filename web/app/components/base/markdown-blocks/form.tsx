@@ -54,14 +54,7 @@ type SupportedType = (typeof SUPPORTED_TYPES)[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = (() => {
-  try {
-    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_-]*$', 'u')
-  } catch {
-    // Fallback for browsers without Unicode property escape support.
-    return /^[a-z][\w-]*$/i
-  }
-})()
+const SAFE_NAME_RE = /^\p{L}[\p{L}\p{M}\p{N}_-]*$/u
 // Treat operator-provided characters literally instead of interpolating them into a regular expression.
 const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])

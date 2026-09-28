@@ -1,6 +1,8 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -202,7 +204,36 @@ describe('IndexingModeSection', () => {
   })
 
   describe('Index Type Switching', () => {
-    it('should call onIndexTypeChange when switching to qualified', () => {
+    it('exposes mutually exclusive indexing choices and switches them with arrow keys', async () => {
+      const user = userEvent.setup()
+      const Harness = () => {
+        const [indexType, setIndexType] = useState<IndexingType>(IndexingType.QUALIFIED)
+        return (
+          <IndexingModeSection
+            {...defaultProps}
+            indexType={indexType}
+            onIndexTypeChange={setIndexType}
+          />
+        )
+      }
+      render(<Harness />)
+      const group = screen.getByRole('radiogroup', { name: `${ns}.stepTwo.indexMode` })
+      const qualified = within(group).getByRole('radio', { name: /stepTwo.qualified/ })
+      const economical = within(group).getByRole('radio', { name: `${ns}.stepTwo.economical` })
+      expect(qualified).toBeChecked()
+      qualified.focus()
+      await user.keyboard('{ArrowDown}')
+      expect(economical).toBeChecked()
+      expect(qualified).not.toBeChecked()
+      await user.keyboard(' ')
+      expect(economical).toBeChecked()
+      await user.keyboard('{ArrowUp}')
+      expect(qualified).toBeChecked()
+      expect(economical).not.toBeChecked()
+      expect(qualified).not.toContainElement(screen.getByRole('button', { name: 'Select Model' }))
+    })
+
+    it('should call onIndexTypeChange when switching to qualified', async () => {
       const onIndexTypeChange = vi.fn()
       render(
         <IndexingModeSection
@@ -211,19 +242,20 @@ describe('IndexingModeSection', () => {
           onIndexTypeChange={onIndexTypeChange}
         />,
       )
-      const qualifiedCard = screen
-        .getByText(`${ns}.stepTwo.qualified`)
-        .closest('[class*="rounded-xl"]')!
-      fireEvent.click(qualifiedCard)
-      expect(onIndexTypeChange).toHaveBeenCalledWith(IndexingType.QUALIFIED)
+      const user = userEvent.setup()
+      const qualifiedCard = screen.getByRole('radio', {
+        name: /datasetCreation.stepTwo.qualified/,
+      })
+      qualifiedCard.focus()
+      await user.keyboard(' ')
+      expect(onIndexTypeChange).toHaveBeenCalledWith(IndexingType.QUALIFIED, expect.anything())
     })
 
     it('should disable economical when docForm is QA', () => {
       render(<IndexingModeSection {...defaultProps} docForm={ChunkingMode.qa} />)
       // The economical option card should have disabled styling
-      const economicalText = screen.getByText(`${ns}.stepTwo.economical`)
-      const card = economicalText.closest('[class*="rounded-xl"]')
-      expect(card)!.toHaveClass('pointer-events-none')
+      const card = screen.getByRole('radio', { name: `${ns}.stepTwo.economical` })
+      expect(card).toBeDisabled()
       expect(screen.getByText(`${ns}.stepTwo.notAvailableForQA`))!.toBeInTheDocument()
     })
 

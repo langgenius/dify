@@ -12,7 +12,7 @@ import { MarketplaceLogo } from '../marketplace-logo'
 type CreatorProfileHeaderProps = {
   actions?: React.ReactNode
   locale: string
-  onSuggestionSelect: (selection: MarketplaceSearchSelection) => void
+  onSuggestionSelect: (selection: MarketplaceSearchSelection) => { preserveQuery: boolean } | void
 }
 
 export default function CreatorProfileHeader({
@@ -20,7 +20,7 @@ export default function CreatorProfileHeader({
   locale,
   onSuggestionSelect,
 }: CreatorProfileHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [searchValue, setSearchValue] = useState('')
 
   return (

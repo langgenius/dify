@@ -22,9 +22,9 @@ import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { AuthType } from '@/app/components/tools/types'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { testAPIAvailable } from '@/service/tools'
 import ConfigCredentials from './config-credentials'
 
@@ -36,10 +36,10 @@ type Props = Readonly<{
 }>
 
 const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const parameterId = useId()
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(
     customCollection.credentials,
@@ -195,7 +195,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       </div>
                       <div className="h-px w-0 grow"></div>
                     </div>
-                    <div className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
+                    <div
+                      role="status"
+                      className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary"
+                    >
                       {result || (
                         <span className="text-text-quaternary">
                           {t(($) => $['test.testResultPlaceholder'], { ns: 'tools' })}

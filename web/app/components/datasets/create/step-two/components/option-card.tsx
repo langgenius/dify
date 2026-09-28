@@ -1,5 +1,7 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useId } from 'react'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = (props) => (
   <svg
@@ -25,19 +27,31 @@ type OptionCardHeaderProps = {
   activeClassName?: string
   effectImg?: string
   disabled?: boolean
+  titleId?: string
+  descriptionId?: string
 }
 
 const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
-  const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
+  const {
+    icon,
+    title,
+    description,
+    isActive,
+    activeClassName,
+    effectImg,
+    disabled,
+    titleId,
+    descriptionId,
+  } = props
   return (
     <div
       className={cn(
-        'relative flex flex-1 overflow-hidden rounded-t-xl',
+        'relative flex min-w-0 flex-1 overflow-hidden rounded-t-xl',
         isActive && activeClassName,
         !disabled && 'cursor-pointer',
       )}
     >
-      <div className="relative flex size-14 items-center justify-center overflow-hidden">
+      <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden">
         {isActive && effectImg && (
           <img
             src={effectImg}
@@ -59,15 +73,20 @@ const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
           isActive && 'text-components-panel-bg',
         )}
       />
-      <div className="flex-1 space-y-0.5 py-3 pr-4">
-        <div className="system-md-semibold text-text-secondary">{title}</div>
-        <div className="system-xs-regular text-text-tertiary">{description}</div>
+      <div className="min-w-0 flex-1 space-y-0.5 py-3 pr-4">
+        <div id={titleId} className="system-md-semibold text-text-secondary">
+          {title}
+        </div>
+        <div id={descriptionId} className="system-xs-regular text-text-tertiary">
+          {description}
+        </div>
       </div>
     </div>
   )
 }
 
-type OptionCardProps = {
+type OptionCardProps<Value> = {
+  value: Value
   icon: ReactNode
   className?: string
   activeHeaderClassName?: string
@@ -76,12 +95,11 @@ type OptionCardProps = {
   isActive?: boolean
   actions?: ReactNode
   effectImg?: string
-  onSwitched?: () => void
   noHighlight?: boolean
   disabled?: boolean
 } & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
-export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
+export const OptionCard = <Value,>({ ref, ...props }: OptionCardProps<Value>) => {
   const {
     icon,
     className,
@@ -93,44 +111,62 @@ export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
     activeHeaderClassName,
     style,
     effectImg,
-    onSwitched,
+    value,
     noHighlight,
     disabled,
     ...rest
   } = props
+  const titleId = useId()
+  const descriptionId = useId()
   return (
     <div
       className={cn(
-        'flex flex-col rounded-xl bg-components-option-card-option-bg shadow-xs',
+        'flex min-w-0 flex-col rounded-xl bg-components-option-card-option-bg shadow-xs',
         isActive && !noHighlight
           ? 'border-[1.5px] border-components-option-card-option-selected-border'
           : 'border border-components-option-card-option-border',
-        disabled && 'pointer-events-none opacity-50',
+        disabled && 'opacity-50',
         className,
       )}
       style={{
         ...style,
       }}
-      onClick={() => {
-        if (!isActive && !disabled) onSwitched?.()
-      }}
       {...rest}
       ref={ref}
     >
-      <OptionCardHeader
-        icon={icon}
-        title={title}
-        description={description}
-        isActive={isActive && !noHighlight}
-        activeClassName={activeHeaderClassName}
-        effectImg={effectImg}
+      <RadioItem<Value>
+        value={value}
+        nativeButton
+        render={<button type="button" />}
         disabled={disabled}
-      />
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="flex w-full min-w-0 rounded-t-xl border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+      >
+        <OptionCardHeader
+          titleId={titleId}
+          descriptionId={descriptionId}
+          icon={icon}
+          title={title}
+          description={description}
+          isActive={isActive && !noHighlight}
+          activeClassName={activeHeaderClassName}
+          effectImg={effectImg}
+          disabled={disabled}
+        />
+      </RadioItem>
       {/** Body */}
       {!!(isActive && (children || actions)) && (
-        <div className="rounded-b-xl bg-components-panel-bg px-4 py-3">
+        <div
+          role="presentation"
+          className="rounded-b-xl bg-components-panel-bg px-4 py-3"
+          onKeyDown={(event) => {
+            // Keep parameter arrow keys from navigating the enclosing radio group.
+            if (event.key.startsWith('Arrow')) event.stopPropagation()
+          }}
+        >
           {children}
-          {!!actions && <div className="mt-4 flex gap-2">{actions}</div>}
+          {!!actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
         </div>
       )}
     </div>

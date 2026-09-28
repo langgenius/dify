@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from unittest.mock import PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -14,23 +15,11 @@ from controllers.console.app import conversation_variables as conversation_varia
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from models import App, AppMode, ConversationVariable
-from models.model import IconType
+from tests.unit_tests.model_factories import make_app
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Conversation variables app",
-        description="",
-        mode=AppMode.ADVANCED_CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(name="Conversation variables app", mode=AppMode.ADVANCED_CHAT)
 
 
 def test_get_conversation_variables_returns_paginated_response(
@@ -79,7 +68,9 @@ def test_get_conversation_variables_returns_paginated_response(
     assert response["limit"] == 100
     assert response["total"] == 1
     assert response["has_more"] is False
-    assert response["data"][0]["id"] == "var-1"
+    assert response["data"][0]["id"] == row.id
+    UUID(response["data"][0]["id"])
+    assert row.to_variable().id == "var-1"
     assert response["data"][0]["created_at"] == expected_created_at
     assert response["data"][0]["updated_at"] == expected_updated_at
 

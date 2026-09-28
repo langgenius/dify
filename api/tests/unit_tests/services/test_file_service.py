@@ -22,12 +22,11 @@ from services.errors.file import (
     UnsupportedFileTypeError,
 )
 from services.file_service import FileService
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Test Account", email="test@example.com")
-    account.id = "user_id"
-    return account
+    return make_account(account_id="user_id", name="Test Account", email="test@example.com")
 
 
 class TestFileService:
@@ -236,6 +235,8 @@ class TestFileService:
         # Default
         assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
         assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+        assert FileService.is_file_size_within_limit(extension="txt", file_size=0, default_file_size_limit=0) is True
+        assert FileService.is_file_size_within_limit(extension="txt", file_size=1, default_file_size_limit=0) is False
         assert (
             FileService.is_file_size_within_limit(
                 extension="pdf",
@@ -275,6 +276,9 @@ class TestFileService:
         assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
         assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
         assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt", default_file_size_limit=None) == 5 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt", default_file_size_limit=0) == 0
+        assert FileService.file_size_limit(extension="jpg", default_file_size_limit=0) == 10 * 1024 * 1024
         assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):

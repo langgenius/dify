@@ -2,9 +2,10 @@
 
 import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
-import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import { iconButtonVariants } from './variants'
 
 type AccessibleName =
@@ -17,14 +18,10 @@ type AccessibleName =
       'aria-labelledby': string
     }
 
-type IconButtonProps = Omit<
-  BaseButtonNS.Props,
-  'aria-label' | 'aria-labelledby' | 'children' | 'className'
-> &
+type IconButtonProps = Omit<BaseButtonNS.Props, 'aria-label' | 'aria-labelledby' | 'children'> &
   AccessibleName &
   VariantProps<typeof iconButtonVariants> & {
     children: React.ReactElement
-    className?: string
   }
 
 function IconButton({
@@ -39,7 +36,9 @@ function IconButton({
   return (
     <BaseButton
       type={type}
-      className={cn(iconButtonVariants({ variant, tone, size }), className)}
+      className={(state) =>
+        cn(iconButtonVariants({ variant, tone, size }), resolveClassName(className, state))
+      }
       {...props}
     >
       {children}
@@ -47,6 +46,6 @@ function IconButton({
   )
 }
 
-export { IconButton }
+export { IconButton, iconButtonVariants }
 
 export type { IconButtonProps }

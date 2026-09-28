@@ -7,7 +7,8 @@ from flask import Flask
 from flask.views import MethodView
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.oauth_device import DeviceApproveApi, DeviceDenyApi
+from controllers.openapi.oauth_device import DeviceApproveApi, DeviceDenyApi, _error_response
+from services.oauth_device_contracts import ApprovalOutcomeUnknownError
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -50,3 +51,10 @@ def test_approve_and_deny_methods(openapi_app: Flask):
     deny = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
     assert "POST" in approve.methods
     assert "POST" in deny.methods
+
+
+def test_unknown_approval_outcome_is_retryable() -> None:
+    body, status = _error_response(ApprovalOutcomeUnknownError())
+
+    assert status == 503
+    assert body == {"error": "approval_outcome_unknown"}

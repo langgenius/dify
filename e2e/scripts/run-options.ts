@@ -1,4 +1,4 @@
-import type { SeedOptions } from './seed-runner'
+import type { SeedOptions } from './seed-runner.ts'
 
 export type RunOptions = {
   forwardArgs: string[]

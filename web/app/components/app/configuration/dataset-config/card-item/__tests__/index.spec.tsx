@@ -218,7 +218,7 @@ describe('dataset-config/card-item', () => {
     const iconElement = nameElement.parentElement?.firstElementChild as HTMLElement
 
     expect(iconElement)!.toHaveStyle({ background: '#FFF4ED' })
-    expect(iconElement.querySelector('em-emoji'))!.toHaveAttribute('id', '📙')
+    expect(iconElement).toHaveTextContent('📙')
   })
 
   it('should apply mask overlay on mobile when drawer is open', async () => {

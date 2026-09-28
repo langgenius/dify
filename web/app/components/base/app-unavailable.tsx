@@ -17,7 +17,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   unknownReason,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   return (
     <div className={cn('flex h-screen w-screen items-center justify-center', className)}>

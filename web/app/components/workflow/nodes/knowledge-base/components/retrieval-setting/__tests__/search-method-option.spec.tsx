@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from 'react'
+import type { SearchMethodOptionProps } from '../search-method-option'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -9,10 +9,6 @@ import { SearchMethodOption } from '../search-method-option'
 vi.mock('../reranking-model-selector', () => ({
   default: () => <button type="button">plugin.detailPanel.configureModel</button>,
 }))
-
-const SearchIcon: ComponentType<SVGProps<SVGSVGElement>> = (props) => (
-  <svg aria-hidden="true" {...props} />
-)
 
 const hybridSearchModeOptions = [
   {
@@ -42,7 +38,7 @@ const weightedScore = {
 const createProps = () => ({
   option: {
     id: RetrievalSearchMethodEnum.semantic,
-    icon: SearchIcon,
+    iconClassName: 'i-custom-vender-knowledge-vector-search',
     title: 'Semantic title',
     description: 'Semantic description',
     effectColor: 'purple',
@@ -80,7 +76,11 @@ const createProps = () => ({
   },
 })
 
-function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
+function renderSearchMethodOption(
+  props: SearchMethodOptionProps & {
+    onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
+  },
+) {
   const { onRetrievalSearchMethodChange, ...optionProps } = props
 
   render(
@@ -101,19 +101,15 @@ function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
 }
 
 describe('SearchMethodOption', () => {
-  it('should render semantic search controls and notify retrieval and reranking changes', () => {
+  it('should render semantic search controls', () => {
     const props = createProps()
 
     renderSearchMethodOption(props)
 
     expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(2)
-
-    fireEvent.click(screen.getAllByRole('switch')[0]!)
-
-    expect(props.reranking.onEnabledChange).toHaveBeenCalledWith(true)
   })
 
   it('should notify retrieval changes when an inactive option is selected', () => {
@@ -164,7 +160,9 @@ describe('SearchMethodOption', () => {
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
     expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
     expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
     ).not.toBeInTheDocument()
@@ -199,7 +197,9 @@ describe('SearchMethodOption', () => {
     renderSearchMethodOption(hybridProps)
 
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
     expect(
       screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),

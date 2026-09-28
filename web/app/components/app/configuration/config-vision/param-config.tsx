@@ -3,16 +3,15 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiSettings2Line } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamConfigContent from './param-config-content'
 
 const ParamsConfig: FC = () => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['appDebug', 'fileUpload'])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         render={
           <Button variant="ghost" size="small">
@@ -28,7 +27,7 @@ const ParamsConfig: FC = () => {
       >
         <div className="w-80 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-103">
           <PopoverTitle className="text-base/6 font-semibold text-text-primary">
-            {t(($) => $['vision.visionSettings.title'], { ns: 'appDebug' })}
+            {t(($) => $['vision.visionSettings.title'], { ns: 'fileUpload' })}
           </PopoverTitle>
           <ParamConfigContent />
         </div>

@@ -1,8 +1,11 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
+import { matchDataSource } from '@/app/components/workflow/utils/plugin-install-check'
+import { consoleQuery } from '@/service/console'
 import DatasourceIcon from './datasource-icon'
-import { useDatasourceIcon } from './hooks'
 
 type OptionCardProps = {
   label: string
@@ -12,7 +15,11 @@ type OptionCardProps = {
 }
 
 const OptionCard = ({ label, selected, nodeData, onClick }: OptionCardProps) => {
-  const iconUrl = useDatasourceIcon(nodeData) as string
+  const { data: dataSourceList } = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions(),
+  )
+  const provider = dataSourceList && matchDataSource(dataSourceList, nodeData)
+  const iconUrl = provider && resolveDatasourceIcon(provider.declaration.identity.icon)
 
   return (
     <div

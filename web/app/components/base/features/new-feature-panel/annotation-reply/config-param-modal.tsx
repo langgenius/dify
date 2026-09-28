@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
@@ -35,7 +35,7 @@ const ConfigParamModal: FC<Props> = ({
   isInit,
   annotationConfig: oldAnnotationConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common', 'modelProvider'])
   const {
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
@@ -65,7 +65,7 @@ const ConfigParamModal: FC<Props> = ({
       !embeddingModel.modelName ||
       (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)
     ) {
-      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'modelProvider' }))
       return
     }
     setLoading(true)
@@ -110,7 +110,7 @@ const ConfigParamModal: FC<Props> = ({
           </Item>
 
           <Item
-            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
             tooltip={t(($) => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}
           >
             <div className="pt-1">

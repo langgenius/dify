@@ -1,9 +1,9 @@
 import type { AgentWorkingDirectorySource } from '../working-directory-panel'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { AgentWorkingDirectoryPanel } from '../working-directory-panel'
 
 type QueryOptionsInput = {
@@ -182,7 +182,7 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mocks.toastSuccess,
   },
@@ -475,14 +475,14 @@ describe('AgentWorkingDirectoryPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: persistentFilesTooltip,
+        name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
       }),
     )
     expect(await screen.findByText(persistentFilesTooltip)).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: temporaryFilesTooltip,
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
       }),
     )
     expect(await screen.findByText(temporaryFilesTooltip)).toBeInTheDocument()

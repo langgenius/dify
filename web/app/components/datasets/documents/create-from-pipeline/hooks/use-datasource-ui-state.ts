@@ -34,7 +34,7 @@ export const useDatasourceUIState = ({
   currentWorkspacePagesLength,
   fileUploadConfig,
 }: DatasourceUIStateParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const datasourceType = datasource?.nodeData.provider_type
 
   const isShowVectorSpaceFull = useMemo(() => {

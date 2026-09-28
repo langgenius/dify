@@ -1,11 +1,11 @@
 import type { DataTable } from '@cucumber/cucumber'
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world'
+import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { zDeclaredOutputConfig } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
 import * as z from 'zod'
-import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow'
+import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow.ts'
 
 const taskOutputName = 'e2e_report'
 const renamedTaskOutputName = 'e2e_final_report'

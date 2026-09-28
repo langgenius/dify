@@ -8,7 +8,7 @@ type MoreProps = {
   more: ChatItem['more']
 }
 const More: FC<MoreProps> = ({ more }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
 
   return (
     <div

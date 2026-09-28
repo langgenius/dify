@@ -525,7 +525,7 @@ import {
   zPutWorkspacesCurrentSkillsBySkillIdFilesResponse,
   zPutWorkspacesCurrentToolProviderMcpBody,
   zPutWorkspacesCurrentToolProviderMcpResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get specific agent provider details

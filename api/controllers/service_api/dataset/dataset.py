@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
@@ -34,6 +35,7 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailPrefetch,
@@ -44,6 +46,7 @@ from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResp
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import clamp_pagination
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -416,20 +419,20 @@ class DatasetListApi(DatasetApiResource):
         description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
         tags=["Knowledge Bases"],
         responses={
-            200: "List of knowledge bases.",
+            HTTPStatus.OK: "List of knowledge bases.",
         },
     )
     @service_api_ns.doc("list_datasets")
     @service_api_ns.doc(description="List all datasets")
     @service_api_ns.doc(
         responses={
-            200: "Datasets retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Datasets retrieved successfully",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.doc(params=query_params_from_model(DatasetListQuery))
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
@@ -441,10 +444,10 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
-        effective_limit = min(query.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
-            query.page,
+            effective_page,
             effective_limit,
             session,
             tenant_id,
@@ -452,6 +455,7 @@ class DatasetListApi(DatasetApiResource):
             query.keyword,
             query.tag_ids,
             query.include_all,
+            tags=application_services().tags,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -480,12 +484,12 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": query.page * effective_limit < total,
+            "has_more": effective_page * effective_limit < total,
             "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
-        return _dump_service_dataset_list(response), 200
+        return _dump_service_dataset_list(response), HTTPStatus.OK
 
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",

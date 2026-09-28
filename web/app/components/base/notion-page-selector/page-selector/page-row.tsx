@@ -35,7 +35,7 @@ const NotionPageRow = ({
   showPreview,
   style,
 }: NotionPageRowProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pageId = row.page.page_id
   const breadcrumbs = row.ancestors.length
     ? [...row.ancestors, row.page.page_name]

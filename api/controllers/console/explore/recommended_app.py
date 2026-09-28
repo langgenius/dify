@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any
 from uuid import UUID
 
@@ -96,7 +97,7 @@ register_response_schema_models(
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppListResponse.__name__])
     @console_account_admission()
     @model_validate(RecommendedAppsQuery)
     def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
@@ -111,7 +112,7 @@ class RecommendedAppListApi(Resource):
 @console_ns.route("/explore/apps/learn-dify")
 class LearnDifyAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
     @console_account_admission()
     @model_validate(RecommendedAppsQuery)
     def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
@@ -125,8 +126,8 @@ class LearnDifyAppListApi(Resource):
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
-    @console_ns.response(404, "Recommended app not found")
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Recommended app not found")
     @console_account_admission()
     def get(self, _request_context: RequestContext, app_id: UUID):
         try:

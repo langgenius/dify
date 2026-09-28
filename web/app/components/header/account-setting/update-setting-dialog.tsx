@@ -15,7 +15,6 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +29,7 @@ import {
   dayjsToTimeOfDay,
   timeOfDayToDayjs,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,
@@ -43,7 +43,7 @@ type Props = {
 }
 
 const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { data: timezone } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone || 'UTC',
@@ -209,7 +209,7 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     setIsOpen(false)
   }, [autoUpgrade, saveAutoUpgrade])
   const renderTimePickerTrigger = useCallback<NonNullable<TimePickerProps['renderTrigger']>>(
-    (props, state, { inputElem, onClick }: TriggerParams) => {
+    (props, state, { displayText, onClick }: TriggerParams) => {
       return (
         <button
           {...props}
@@ -230,8 +230,9 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
               state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
             )}
           />
+          <span className="sr-only">{t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}</span>
           <span className="min-w-0 flex-1 p-1 system-sm-regular text-components-input-text-filled">
-            {inputElem}
+            {displayText}
           </span>
           <span className="shrink-0 pr-0.5 system-sm-regular text-text-tertiary">
             {convertTimezoneToOffsetStr(timezone)}
@@ -239,7 +240,7 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
         </button>
       )
     },
-    [timezone],
+    [t, timezone],
   )
 
   return (

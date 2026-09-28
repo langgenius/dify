@@ -22,6 +22,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,10 +32,9 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
@@ -77,7 +77,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   showUseGPT4Confirm,
   setShowUseGPT4Confirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
   const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
@@ -88,6 +88,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
       draft.agentConfig.tools.forEach((tool) => {
         if (
           'provider_id' in tool &&
+          typeof tool.provider_id === 'string' &&
           tool.isDeleted &&
           installedPluginNames.includes(tool.provider_id)
         ) {
@@ -101,7 +102,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   if (showLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -149,7 +150,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-3.5" />
+                        <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (

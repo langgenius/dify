@@ -38,7 +38,7 @@ const ScoreThresholdItem: FC<Props> = ({
   onSwitchChange,
   disabled = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const handleParamChange = (key: string, nextValue: number) => {
     onChange(key, normalizeScoreThreshold(nextValue))
   }

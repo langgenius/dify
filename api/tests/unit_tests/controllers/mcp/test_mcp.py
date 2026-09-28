@@ -18,6 +18,7 @@ from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 @pytest.fixture
@@ -127,14 +128,13 @@ def _app(
 
 
 def _end_user() -> EndUser:
-    end_user = EndUser(
+    return make_end_user(
+        end_user_id=str(uuid4()),
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
-        type=EndUserType.MCP,
+        end_user_type=EndUserType.MCP,
         session_id=_SERVER_ID,
     )
-    end_user.id = str(uuid4())
-    return end_user
 
 
 class DummyResult:

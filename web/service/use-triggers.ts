@@ -91,6 +91,7 @@ const normalizeI18nObject = (value: GeneratedI18nObject | null | undefined, fall
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 
@@ -129,6 +130,7 @@ const normalizeUnknownI18nObject = (value: unknown, fallback = '') => {
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 

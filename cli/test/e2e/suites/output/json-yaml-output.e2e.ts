@@ -168,7 +168,6 @@ describe('E2E / JSON & YAML output format (spec 5.2)', () => {
     // the JSON error envelope always has the same top-level structure.
     const unauthTmp = await withTempConfig()
     let envelope1: ReturnType<typeof assertErrorEnvelope>
-    let envelope2: ReturnType<typeof assertErrorEnvelope>
     try {
       // Scenario A: unauthenticated → not_logged_in (error in stderr)
       const { run: runFn } = await import('../../helpers/cli.js')
@@ -181,7 +180,7 @@ describe('E2E / JSON & YAML output format (spec 5.2)', () => {
     // Scenario B: non-existent app → server error (error in stderr when -o json)
     const r2 = await fx.r(['get', 'app', 'nonexistent-app-id-00000000', '-o', 'json'])
     assertNonZeroExit(r2)
-    envelope2 = assertErrorEnvelope(r2)
+    const envelope2 = assertErrorEnvelope(r2)
 
     // Both envelopes must share the same schema structure
     expect(envelope1.error).toHaveProperty('code')

@@ -22,9 +22,7 @@ describe('CopyFeedback', () => {
     const user = userEvent.setup()
     render(<CopyFeedback content="test content" />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(mockCopy).toHaveBeenCalledWith('test content')
   })
@@ -34,8 +32,6 @@ describe('CopyFeedback', () => {
 
     render(<CopyFeedback content="test content" />)
 
-    expect(
-      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copied' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copied' })).toBeInTheDocument()
   })
 })

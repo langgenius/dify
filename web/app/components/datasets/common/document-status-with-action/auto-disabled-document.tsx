@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   useAutoDisabledDocuments,
   useDocumentEnable,
@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const { data, isLoading } = useAutoDisabledDocuments(datasetId)
   const invalidDisabledDocument = useInvalidDisabledDocument()
   const documentIds = data?.document_ids

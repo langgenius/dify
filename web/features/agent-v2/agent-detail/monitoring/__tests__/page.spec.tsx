@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
     mocks.chartOptions.push(option)
 
@@ -39,7 +39,8 @@ vi.mock('echarts-for-react', () => ({
   },
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 

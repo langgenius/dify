@@ -1,4 +1,4 @@
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -6,12 +6,12 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import { toast } from '@/app/notifications'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
@@ -20,10 +20,10 @@ type EditPipelineInfoProps = {
 }
 
 const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const [name, setName] = useState(pipeline.name)
   const iconInfo = pipeline.icon
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+  const [appIcon, setAppIcon] = useState<IconPickerValue>(
     iconInfo.icon_type === 'image'
       ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
       : {
@@ -33,7 +33,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
         },
   )
   const [description, setDescription] = useState(pipeline.description)
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
@@ -41,10 +41,10 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
   }, [])
 
   const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
+    setShowIconPicker(true)
   }, [])
 
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     setAppIcon(icon)
   }, [])
 
@@ -114,9 +114,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       <div className="flex flex-col gap-y-5 px-6 py-3">
         <div className="flex items-end gap-x-3 self-stretch">
           <Field className="grow pb-1" name="name">
-            <FieldLabel className="flex h-6 items-center py-0">
-              {t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}
-            </FieldLabel>
+            <FieldLabel>{t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}</FieldLabel>
             <Input
               autoComplete="off"
               onChange={handleAppNameChange}
@@ -128,9 +126,10 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
             type="button"
             aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
             onClick={handleOpenAppIconPicker}
-            className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="group/edit-icon shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <AppIcon
+              decorative
               size="xxl"
               iconType={appIcon.type}
               icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
@@ -141,9 +140,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
           </button>
         </div>
         <Field name="description">
-          <FieldLabel className="flex h-6 items-center py-0">
-            {t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}
-          </FieldLabel>
+          <FieldLabel>{t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}</FieldLabel>
           <Textarea
             autoComplete="off"
             onValueChange={handleDescriptionChange}
@@ -161,18 +158,12 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={handleSelectAppIcon}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={handleSelectAppIcon}
+      />
     </form>
   )
 }

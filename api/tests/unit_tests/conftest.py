@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import os
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -42,6 +45,10 @@ from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from tests.unit_tests.config_override import apply_config_overrides
+
+if TYPE_CHECKING:
+    from extensions.application_services.app import AppServices
+    from services.tag_application_service import TagApplicationService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -241,18 +248,21 @@ def persist_service_api_dataset_owner(
     session.commit()
 
 
-def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: object, mock_owner: object) -> None:
-    """Stub the legacy owner query; SQLite-backed tests use ``persist_service_api_tenant_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
+@pytest.fixture
+def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+    from extensions.application_services.app import build_app_services
+    from extensions.ext_application_services import _build_oauth_server_service
+    from extensions.ext_redis import redis_client
 
-
-def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
-    mock_tenant: object,
-    mock_tenant_account_join: object,
-) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
-        mock_tenant,
-        mock_tenant_account_join,
+    return build_app_services(
+        database_client=sqlite_session_factory,
+        oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
     )
+
+
+@pytest.fixture
+def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplicationService:
+    from repositories.tag_repository import TagRepository
+    from services.tag_application_service import TagApplicationService
+
+    return TagApplicationService(tags=TagRepository(sqlite_session_factory))

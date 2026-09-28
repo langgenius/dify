@@ -1,6 +1,6 @@
 import json
-from types import SimpleNamespace
 
+from models.account import Account
 from models.workflow import Workflow
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
@@ -61,13 +61,15 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
         version="2026-03-19T00:00:00",
         features=LEGACY_FEATURES,
     )
+    account = Account(name="Workflow Restorer", email="restorer@example.com")
+    account.id = "account-id"
 
     draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
         tenant_id="tenant-id",
         app_id="app-id",
         source_workflow=source_workflow,
         draft_workflow=None,
-        account=SimpleNamespace(id="account-id"),
+        account=account,
         updated_at_factory=lambda: source_workflow.updated_at,
     )
 

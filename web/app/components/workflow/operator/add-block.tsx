@@ -33,7 +33,7 @@ const AddBlock = ({
   onClose,
   isolateKeyboardEvents,
 }: AddBlockProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()

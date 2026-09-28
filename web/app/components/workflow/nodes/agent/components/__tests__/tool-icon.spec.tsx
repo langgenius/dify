@@ -33,10 +33,6 @@ vi.mock('@/app/components/base/app-icon', () => ({
   }) => <div className={className}>{`app-icon:${background}:${icon}`}</div>,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: ({ className }: { className?: string }) => <div className={className}>group-icon</div>,
-}))
-
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
 }))
@@ -74,7 +70,7 @@ describe('agent/tool-icon', () => {
     expect(screen.queryByText('workflow.nodes.agent.toolNotInstallTooltip')).not.toBeInTheDocument()
 
     fireEvent.error(icon)
-    expect(screen.getByText('group-icon')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
   })
 
   it('should render authorization and installation warnings with the correct icon sources', () => {
@@ -108,12 +104,12 @@ describe('agent/tool-icon', () => {
     ).toBeInTheDocument()
   })
 
-  it('should fall back to the group icon while tool data is still loading', () => {
+  it('does not show a broken image or authorization warning while tool data is loading', () => {
     mockBuiltInTools = undefined
 
     render(<ToolIcon id="tool-4" providerName="author/tool-d" />)
 
-    expect(screen.getByText('group-icon')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
     expect(screen.queryByText(/indicator:/)).not.toBeInTheDocument()
   })
 })

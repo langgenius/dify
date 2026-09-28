@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
   },
@@ -23,7 +23,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/utils/download', () => ({
+vi.mock('@/utils/download', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/download')>()),
   downloadUrl: (...args: Parameters<typeof mocks.downloadUrl>) => mocks.downloadUrl(...args),
 }))
 
@@ -81,7 +82,11 @@ describe('ImagePreview', () => {
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob | Promise<Blob>>) {}
+      public readonly data: Record<string, Blob | Promise<Blob>>
+
+      constructor(data: Record<string, Blob | Promise<Blob>>) {
+        this.data = data
+      }
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
@@ -106,12 +111,19 @@ describe('ImagePreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
       expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
       expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
         'src',
         'https://example.com/image.png',
       )
+    })
+
+    it.each(['', '   '])('names the dialog when the image title is %j', (title) => {
+      render(<ImagePreview url={dataImage} title={title} onCancel={vi.fn()} />)
+
+      expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     })
 
     it('should convert plain base64 string into data image src', () => {
@@ -137,12 +149,32 @@ describe('ImagePreview', () => {
       )
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(document, { key: 'ArrowLeft', code: 'ArrowLeft' })
-      fireEvent.keyDown(document, { key: 'ArrowRight', code: 'ArrowRight' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft', code: 'ArrowLeft' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight', code: 'ArrowRight' })
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
       expect(onNext).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves outside arrows and unavailable image navigation unclaimed', () => {
+      render(
+        <ImagePreview url="https://example.com/image.png" title="Preview" onCancel={vi.fn()} />,
+      )
+      const outside = new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(document.body, outside)
+      expect(outside.defaultPrevented).toBe(false)
+      const unavailable = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(screen.getByRole('dialog'), unavailable)
+      expect(unavailable.defaultPrevented).toBe(false)
     })
 
     it('should zoom in and out from keyboard up/down hotkeys', async () => {
@@ -155,12 +187,12 @@ describe('ImagePreview', () => {
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
 
-      fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
       })
 
-      fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })
@@ -478,33 +510,64 @@ describe('ImagePreview', () => {
       )
     })
 
-    it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
-      'should download valid url %s',
-      async (url) => {
-        const user = userEvent.setup()
-        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
-        const downloadButton = getDownloadButton()
-        await user.click(downloadButton)
+    it.each([
+      ['https://example.com/image.png', 'Preview Image'],
+      ['/image-proxy/github/example', ''],
+      [dataImage, 'Screenshot.png'],
+    ])('downloads image bytes without opening a tab for %s', async (url, title) => {
+      const user = userEvent.setup()
+      const createObjectURL = vi
+        .spyOn(window.URL, 'createObjectURL')
+        .mockReturnValue('blob:download-image')
+      const revokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
+      const downloads: { href: string; name: string; target: string }[] = []
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, name: this.download, target: this.target })
+      })
+      render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
+      await user.click(getDownloadButton())
 
-        expect(mocks.downloadUrl).toHaveBeenCalledWith({
-          url,
-          fileName: 'Preview Image',
-          target: '_blank',
-        })
+      await waitFor(() =>
+        expect(downloads).toEqual([
+          {
+            href: 'blob:download-image',
+            name: title || 'image.png',
+            target: '',
+          },
+        ]),
+      )
+      const blob = createObjectURL.mock.calls[0]?.[0] as Blob
+      expect(blob.type).toBe('image/png')
+      expect(await blob.text()).toBe('image')
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:download-image')
+      expect(mocks.windowOpen).not.toHaveBeenCalled()
+      expect(getOverlay()).toBeInTheDocument()
+    })
+
+    it.each(['network', 'http'])(
+      'keeps the preview open when a download fails: %s',
+      async (failure) => {
+        const user = userEvent.setup()
+        if (failure === 'network')
+          vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+        else vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 403 }))
+        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+        render(<ImagePreview url="https://example.com/image.png" title="" onCancel={vi.fn()} />)
+        await user.click(getDownloadButton())
+
+        await waitFor(() =>
+          expect(mocks.notify).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'common.operation.downloadFailed',
+          }),
+        )
+        expect(click).not.toHaveBeenCalled()
+        expect(mocks.windowOpen).not.toHaveBeenCalled()
+        expect(getOverlay()).toBeInTheDocument()
       },
     )
-
-    it('should show error toast for invalid download url', async () => {
-      const user = userEvent.setup()
-      render(<ImagePreview url="invalid://image.png" title="Preview Image" onCancel={vi.fn()} />)
-      const downloadButton = getDownloadButton()
-      await user.click(downloadButton)
-
-      expect(mocks.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Unable to open image: invalid://image.png',
-      })
-    })
 
     it('should zoom with dedicated zoom buttons', async () => {
       const user = userEvent.setup()

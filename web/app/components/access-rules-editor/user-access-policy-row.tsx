@@ -51,7 +51,7 @@ function UserAccessPolicyRow({
   onChange,
   onRemove,
 }: UserAccessPolicyRowProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const accountId = setting.account.account_id
   const accountName = setting.account.account_name || setting.account.email || accountId
   const selectedPolicy = setting.access_policies?.[0]

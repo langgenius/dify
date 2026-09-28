@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
@@ -94,7 +94,9 @@ export type IConfigVarProps = {
 }
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -313,13 +315,15 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={
         <div className="flex items-center">
-          <h2 className="mr-1">{t(($) => $.variableTitle, { ns: 'appDebug' })}</h2>
+          <h2 id={titleId} className="mr-1">
+            {t(($) => $.variableTitle, { ns: 'appDebug' })}
+          </h2>
           {!readonly && (
-            <Infotip
-              aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $.variableTip, { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} />
+              <InfotipContent aria-labelledby={titleId} className="w-45">
+                {t(($) => $.variableTip, { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
@@ -331,7 +335,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
           <div className="pt-2 pb-1 text-xs text-text-tertiary">
-            {t(($) => $.notSetVar, { ns: 'appDebug' })}
+            {t(($) => $.notSetVar, { ns: 'appDebug', input: '{{input}}' })}
           </div>
         </div>
       )}
@@ -400,7 +404,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
-                varName: promptVariables[removeIndex as number]?.name,
+                varName: promptVariables[removeIndex as number]?.name ?? '',
               })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
