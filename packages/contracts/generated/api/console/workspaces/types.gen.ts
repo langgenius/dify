@@ -851,6 +851,7 @@ export type SkillVersionUpdatePayload = {
 export type CurrentWorkspaceSummaryResponse = {
   credits: number | null
   id: string
+  model_billing_migration_status?: 'active' | 'none' | 'preparing' | 'processing'
   model_billing_source?: 'legacy_message_credits' | 'tokener'
   name: string
   plan: CloudPlan | null
@@ -2079,6 +2080,7 @@ export type TenantInfoResponse = {
   custom_config?: WorkspaceCustomConfigResponse | null
   id: string
   in_trial?: boolean | null
+  model_billing_migration_status?: 'active' | 'none' | 'preparing' | 'processing'
   model_billing_source?: 'legacy_message_credits' | 'tokener'
   name?: string | null
   next_credit_reset_date?: number | null

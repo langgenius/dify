@@ -17964,8 +17964,9 @@ Model class for credential form schema.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| credits | integer | Remaining legacy credits; -1 means unlimited, null means unavailable or not managed by legacy credits. | Yes |
 | id | string |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
 | model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
@@ -24200,6 +24201,7 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
 | model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |

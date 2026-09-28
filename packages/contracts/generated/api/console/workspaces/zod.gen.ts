@@ -1625,6 +1625,10 @@ export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor',
 export const zCurrentWorkspaceSummaryResponse = z.object({
   credits: z.int().nullable(),
   id: z.string(),
+  model_billing_migration_status: z
+    .enum(['active', 'none', 'preparing', 'processing'])
+    .optional()
+    .default('none'),
   model_billing_source: z
     .enum(['legacy_message_credits', 'tokener'])
     .optional()
@@ -1961,6 +1965,10 @@ export const zTenantInfoResponse = z.object({
   custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
+  model_billing_migration_status: z
+    .enum(['active', 'none', 'preparing', 'processing'])
+    .optional()
+    .default('none'),
   model_billing_source: z
     .enum(['legacy_message_credits', 'tokener'])
     .optional()

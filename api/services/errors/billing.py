@@ -14,5 +14,9 @@ class BillingUpstreamUnavailableError(BillingError):
     pass
 
 
+class LegacyCreditPoolManagedByTokenerError(BillingError):
+    """A legacy balance read crossed the irreversible Tokener cutover fence."""
+
+
 class TokenerEducationCheckoutUnsupportedError(BillingError):
     pass

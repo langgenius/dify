@@ -13,7 +13,7 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.tokener import TenantTokenerIntegrationStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, TokenerTenantMeteringResponse
-from services.errors.billing import BillingError
+from services.errors.billing import BillingError, LegacyCreditPoolManagedByTokenerError
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,10 @@ class EffectiveCreditPool:
 
     @property
     def is_exhausted(self) -> bool:
-        if self.model_billing_source == ModelBillingSource.TOKENER:
+        if (
+            self.model_billing_source == ModelBillingSource.TOKENER
+            or self.model_billing_migration_status == "processing"
+        ):
             return False
         remaining_credits = self.remaining_credits
         return not self.is_unlimited and (remaining_credits is None or remaining_credits <= 0)
@@ -64,47 +67,91 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
+        """Read display credits without crossing an already claimed legacy fence."""
+        from core.model_invocation_routing import migration_display_status
+
+        migration_status = migration_display_status(tenant_id)
         model_billing = ModelBillingProfileService.resolve(tenant_id, session=session)
+        display_source = (
+            ModelBillingSource.TOKENER if migration_status == "active" else model_billing.model_billing_source
+        )
         tokener_bootstrap_status = (
             model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
         )
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool(
-                model_billing_source=model_billing.model_billing_source,
+                model_billing_source=display_source,
+                model_billing_migration_status=migration_status,
                 tokener_bootstrap_status=tokener_bootstrap_status,
             )
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
 
-        if model_billing.uses_tokener:
+        if migration_status in {"processing", "active"} or model_billing.uses_tokener:
+            # Claim irrevocably fences legacy GetBalance before profile
+            # publication. Null means unavailable/transitioning, never zero.
+            # The authoritative active state also wins over a stale legacy cache.
             return EffectiveCreditPool(
-                model_billing_source=model_billing.model_billing_source,
+                model_billing_source=display_source,
+                model_billing_migration_status=migration_status,
                 tokener_bootstrap_status=tokener_bootstrap_status,
                 plan=subscription_plan,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
 
+        return cls._read_legacy_display_pool(
+            tenant_id,
+            context=EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                model_billing_migration_status=migration_status,
+                tokener_bootstrap_status=tokener_bootstrap_status,
+                plan=subscription_plan,
+                next_credit_reset_date=billing_info.get("next_credit_reset_date"),
+            ),
+            session=session,
+        )
+
+    @classmethod
+    def _read_legacy_display_pool(
+        cls,
+        tenant_id: str,
+        *,
+        context: EffectiveCreditPool,
+        session: Session,
+    ) -> EffectiveCreditPool:
+        """Preserve the financial denial if trusted migration state cannot explain it."""
+        from core.model_invocation_routing import migration_display_status
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
         effective_pool = None
         effective_pool_type: Literal["paid", "trial"] = "trial"
-        if subscription_plan != CloudPlan.SANDBOX:
-            paid_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="paid", session=session)
-            if paid_pool is not None and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used):
-                effective_pool = paid_pool
-                effective_pool_type = "paid"
-
-        if effective_pool is None:
-            effective_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="trial", session=session)
-
-        if effective_pool is None:
-            return EffectiveCreditPool(
-                model_billing_source=model_billing.model_billing_source,
-                tokener_bootstrap_status=tokener_bootstrap_status,
-                plan=subscription_plan,
-                next_credit_reset_date=billing_info.get("next_credit_reset_date"),
+        try:
+            if context.plan != CloudPlan.SANDBOX:
+                paid_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="paid", session=session)
+                if paid_pool is not None and (
+                    paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used
+                ):
+                    effective_pool = paid_pool
+                    effective_pool_type = "paid"
+            if effective_pool is None:
+                effective_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="trial", session=session)
+        except LegacyCreditPoolManagedByTokenerError:
+            # Claim can win after the initial display-state read. Refresh Core
+            # authority only for this exact fence; never mask another 409/outage
+            # or consult local/stale legacy balances as a fallback.
+            current_status = migration_display_status(tenant_id)
+            if current_status not in {"processing", "active"}:
+                raise
+            return replace(
+                context,
+                model_billing_migration_status=current_status,
+                model_billing_source=ModelBillingSource.TOKENER
+                if current_status == "active"
+                else context.model_billing_source,
             )
+        if effective_pool is None:
+            return context
 
         exhausted_at = effective_pool.exhausted_at if isinstance(effective_pool, CreditPoolBalance) else None
         if not (
@@ -115,15 +162,12 @@ class WorkspaceService:
         ):
             exhausted_at = None
 
-        return EffectiveCreditPool(
-            model_billing_source=model_billing.model_billing_source,
-            tokener_bootstrap_status=tokener_bootstrap_status,
-            plan=subscription_plan,
+        return replace(
+            context,
             pool_type=effective_pool_type,
             quota_limit=effective_pool.quota_limit,
             quota_used=effective_pool.quota_used,
             exhausted_at=exhausted_at,
-            next_credit_reset_date=billing_info.get("next_credit_reset_date"),
         )
 
     @classmethod
@@ -136,10 +180,11 @@ class WorkspaceService:
             # No old-credit zero/remaining value masquerading as the new wallet.
             return EffectiveCreditPool(model_billing_migration_status="processing")
         credit_pool = cls.get_effective_credit_pool(tenant_id, session=session)
-        if migration_status != credit_pool.model_billing_migration_status:
-            credit_pool = replace(credit_pool, model_billing_migration_status=migration_status)
+        # The nested read may observe a later claim/activation. Never overwrite
+        # that newer authority with the initial display snapshot.
         if (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            or credit_pool.model_billing_migration_status == "processing"
             or credit_pool.model_billing_source != ModelBillingSource.TOKENER
             or credit_pool.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
         ):
@@ -170,6 +215,7 @@ class WorkspaceService:
             "plan": effective_pool.plan,
             "credits": effective_pool.remaining_credits,
             "model_billing_source": effective_pool.model_billing_source.value,
+            "model_billing_migration_status": effective_pool.model_billing_migration_status,
             "tokener_bootstrap_status": effective_pool.tokener_bootstrap_status,
         }
 
@@ -200,7 +246,13 @@ class WorkspaceService:
             feature.billing.subscription.plan if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD else None
         )
         model_billing = ModelBillingProfileService.resolve(tenant.id, session=session)
-        tenant_info["model_billing_source"] = model_billing.model_billing_source.value
+        migration_status = feature.model_billing_migration_status
+        tenant_info["model_billing_source"] = (
+            ModelBillingSource.TOKENER.value
+            if migration_status == "active"
+            else model_billing.model_billing_source.value
+        )
+        tenant_info["model_billing_migration_status"] = migration_status
         tenant_info["tokener_bootstrap_status"] = (
             model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
         )
@@ -221,34 +273,31 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and model_billing.uses_legacy_message_credits:
-            tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
-
-            from services.credit_pool_service import CreditPoolBalance, CreditPoolService
-
-            paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid", session=session)
-            # if the tenant is not on the sandbox plan and the paid pool is not full, use the paid pool
-            if (
-                feature.billing.subscription.plan != CloudPlan.SANDBOX
-                and paid_pool is not None
-                and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
-            ):
-                exhausted_at = paid_pool.exhausted_at if isinstance(paid_pool, CreditPoolBalance) else None
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and model_billing.uses_legacy_message_credits
+            and migration_status not in {"processing", "active"}
+        ):
+            pool = cls._read_legacy_display_pool(
+                tenant.id,
+                session=session,
+                context=EffectiveCreditPool(
+                    model_billing_source=model_billing.model_billing_source,
+                    model_billing_migration_status=migration_status,
+                    plan=feature.billing.subscription.plan,
+                    next_credit_reset_date=feature.next_credit_reset_date,
+                ),
+            )
+            tenant_info["model_billing_migration_status"] = pool.model_billing_migration_status
+            tenant_info["model_billing_source"] = pool.model_billing_source.value
+            if pool.model_billing_migration_status not in {"processing", "active"}:
+                tenant_info["next_credit_reset_date"] = pool.next_credit_reset_date
+            if pool.quota_limit is not None and pool.quota_used is not None:
                 _set_credit_pool_info(
                     tenant_info,
-                    quota_limit=paid_pool.quota_limit,
-                    quota_used=paid_pool.quota_used,
-                    exhausted_at=exhausted_at,
+                    quota_limit=pool.quota_limit,
+                    quota_used=pool.quota_used,
+                    exhausted_at=pool.exhausted_at,
                 )
-            else:
-                trial_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial", session=session)
-                if trial_pool:
-                    exhausted_at = trial_pool.exhausted_at if isinstance(trial_pool, CreditPoolBalance) else None
-                    _set_credit_pool_info(
-                        tenant_info,
-                        quota_limit=trial_pool.quota_limit,
-                        quota_used=trial_pool.quota_used,
-                        exhausted_at=exhausted_at,
-                    )
 
         return tenant_info

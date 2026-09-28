@@ -30,6 +30,7 @@ from services.billing_service import BillingService, TokenerBootstrapUpstreamErr
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    LegacyCreditPoolManagedByTokenerError,
     TokenerEducationCheckoutUnsupportedError,
 )
 from tests.unit_tests.config_override import config_overrides_context
@@ -160,6 +161,21 @@ class TestBillingServiceSendRequest:
 
         assert exc_info.value.upstream_error_code == "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
         assert "upstream detail" not in str(exc_info.value)
+
+    @pytest.mark.parametrize("code", ["CREDIT_MANAGED_BY_TOKENER", "UNRECOGNIZED_CODE"])
+    def test_get_request_retains_only_supported_credit_fence_code(
+        self, mock_httpx_request, mock_billing_config, code
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.CONFLICT
+        mock_response.json.return_value = {"reason": code, "message": "private upstream detail"}
+        mock_httpx_request.return_value = mock_response
+
+        with pytest.raises(_BillingHTTPStatusError) as exc_info:
+            BillingService._send_request("GET", "/quota/balance")
+
+        assert exc_info.value.upstream_error_code == (code if code == "CREDIT_MANAGED_BY_TOKENER" else None)
+        assert "private upstream detail" not in str(exc_info.value)
 
     def test_subscription_payment_link_maps_tokener_education_conflict(self) -> None:
         error = _BillingHTTPStatusError(
@@ -935,6 +951,31 @@ class TestBillingServiceSubscriptionInfo:
             "/quota/balance",
             params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
         )
+
+    def test_quota_credit_balance_classifies_exact_tokener_fence(self):
+        error = _BillingHTTPStatusError("sanitized", 409, "CREDIT_MANAGED_BY_TOKENER")
+        with (
+            patch.object(BillingService, "_send_quota_request", side_effect=error),
+            pytest.raises(LegacyCreditPoolManagedByTokenerError),
+        ):
+            BillingService.quota_get_balance(TENANT_ID, "credit_pool", bucket="paid")
+
+    @pytest.mark.parametrize(
+        ("feature_key", "status", "code"),
+        [
+            ("other_feature", 409, "CREDIT_MANAGED_BY_TOKENER"),
+            ("credit_pool", 500, "CREDIT_MANAGED_BY_TOKENER"),
+            ("credit_pool", 409, "OTHER_CONFLICT"),
+        ],
+    )
+    def test_quota_balance_preserves_other_failures(self, feature_key, status, code):
+        error = _BillingHTTPStatusError("sanitized", status, code)
+        with (
+            patch.object(BillingService, "_send_quota_request", side_effect=error),
+            pytest.raises(_BillingHTTPStatusError) as exc_info,
+        ):
+            BillingService.quota_get_balance(TENANT_ID, feature_key)
+        assert exc_info.value is error
 
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
         """Test knowledge rate limit retrieval with default values."""

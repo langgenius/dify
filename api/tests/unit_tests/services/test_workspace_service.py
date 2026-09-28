@@ -13,15 +13,18 @@ from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.tokener import TenantTokenerIntegrationStatus
 from services.credit_pool_service import CreditPoolBalance
-from services.errors.billing import BillingUpstreamUnavailableError
+from services.errors.billing import BillingUpstreamUnavailableError, LegacyCreditPoolManagedByTokenerError
 from services.workspace_service import EffectiveCreditPool, WorkspaceService
 
 
 @pytest.fixture(autouse=True)
 def _legacy_model_billing_profile() -> Iterator[None]:
-    with patch(
-        "services.workspace_service.ModelBillingProfileService.resolve",
-        return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+    with (
+        patch(
+            "services.workspace_service.ModelBillingProfileService.resolve",
+            return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+        ),
+        patch("core.model_invocation_routing.migration_display_status", return_value="none"),
     ):
         yield
 
@@ -50,6 +53,7 @@ def test_migration_processing_is_not_displayed_as_zero_or_old_credit_balance(moc
     result = WorkspaceService.get_model_provider_credits("tenant-1", session=MagicMock())
     assert result.model_billing_migration_status == "processing"
     assert result.remaining_credits is None
+    assert result.is_exhausted is False
     assert result.tokener_metering is None
     get_pool.assert_not_called()
     get_metering.assert_not_called()
@@ -97,6 +101,7 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only(sqlite_session: S
         "plan": CloudPlan.SANDBOX,
         "credits": 180,
         "model_billing_source": "legacy_message_credits",
+        "model_billing_migration_status": "none",
         "tokener_bootstrap_status": None,
     }
     get_info.assert_called_once_with(tenant.id, exclude_vector_space=True)
@@ -159,6 +164,7 @@ def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits(sqlit
         "plan": None,
         "credits": None,
         "model_billing_source": "legacy_message_credits",
+        "model_billing_migration_status": "none",
         "tokener_bootstrap_status": None,
     }
     get_info.assert_not_called()
@@ -284,6 +290,7 @@ def test_get_tenant_info_uses_authoritative_legacy_profile_for_cloud_credits() -
             subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
         ),
         can_replace_logo=False,
+        model_billing_migration_status="none",
         next_credit_reset_date=1775001600,
     )
     resolution = TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
@@ -328,6 +335,7 @@ def test_get_tenant_info_tokener_profile_skips_legacy_credit_pool() -> None:
             subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
         ),
         can_replace_logo=False,
+        model_billing_migration_status="none",
         next_credit_reset_date=1775001600,
     )
     resolution = TenantModelBillingResolution(
@@ -358,3 +366,133 @@ def test_get_tenant_info_tokener_profile_skips_legacy_credit_pool() -> None:
     assert "trial_credits_used" not in result
     resolve.assert_called_once_with(tenant.id, session=session)
     get_pool.assert_not_called()
+
+
+@pytest.mark.parametrize("migration_status", ["processing", "active"])
+def test_workspace_summary_preserves_plan_without_reading_fenced_legacy_balance(mocker, migration_status):
+    tenant = Tenant(name="Migrating workspace")
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(role="owner")
+    mocker.patch("core.model_invocation_routing.migration_display_status", return_value=migration_status)
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.BillingService.get_info",
+        return_value={"subscription": {"plan": "professional"}},
+    )
+    get_pool = mocker.patch("services.credit_pool_service.CreditPoolService.get_pool")
+    get_metering = mocker.patch("services.workspace_service.BillingService.get_tokener_metering")
+
+    result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=session)
+
+    assert result["plan"] == CloudPlan.PROFESSIONAL
+    assert result["credits"] is None
+    assert result["model_billing_migration_status"] == migration_status
+    assert result["model_billing_source"] == ("tokener" if migration_status == "active" else "legacy_message_credits")
+    get_pool.assert_not_called()
+    get_metering.assert_not_called()
+
+
+@pytest.mark.parametrize("migration_status", ["processing", "active"])
+def test_tenant_info_preserves_plan_without_reading_fenced_legacy_balance(mocker, migration_status):
+    tenant = Tenant(name="Migrating workspace")
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(role="owner")
+    mocker.patch("services.workspace_service.current_user", SimpleNamespace(id="account-1"))
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.FeatureService.get_features",
+        return_value=SimpleNamespace(
+            billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL)),
+            can_replace_logo=False,
+            model_billing_migration_status=migration_status,
+        ),
+    )
+    get_pool = mocker.patch("services.credit_pool_service.CreditPoolService.get_pool")
+
+    result = WorkspaceService.get_tenant_info(tenant, session)
+
+    assert result is not None
+    assert result["plan"] == CloudPlan.PROFESSIONAL
+    assert result["model_billing_migration_status"] == migration_status
+    assert result["model_billing_source"] == ("tokener" if migration_status == "active" else "legacy_message_credits")
+    assert "trial_credits" not in result
+    assert "trial_credits_used" not in result
+    assert "next_credit_reset_date" not in result
+    get_pool.assert_not_called()
+
+
+def test_preparation_still_displays_legacy_balance(mocker):
+    mocker.patch("core.model_invocation_routing.migration_display_status", return_value="preparing")
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.BillingService.get_info", return_value={"subscription": {"plan": "professional"}}
+    )
+    get_pool = mocker.patch(
+        "services.credit_pool_service.CreditPoolService.get_pool",
+        return_value=CreditPoolBalance(tenant_id="tenant-1", pool_type="paid", quota_limit=100, quota_used=20),
+    )
+
+    result = WorkspaceService.get_effective_credit_pool("tenant-1", session=MagicMock())
+
+    assert result.remaining_credits == 80
+    assert result.model_billing_migration_status == "preparing"
+    assert get_pool.call_args.kwargs["pool_type"] == "paid"
+
+
+@pytest.mark.parametrize("latest_status", ["processing", "active"])
+def test_balance_read_claim_race_uses_refreshed_authority_without_trial_fallback(mocker, latest_status):
+    # Provider display reads first, effective summary reads second, and only the
+    # exact Billing denial triggers a third authoritative read after claim wins.
+    status = mocker.patch(
+        "core.model_invocation_routing.migration_display_status", side_effect=["preparing", "preparing", latest_status]
+    )
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.BillingService.get_info", return_value={"subscription": {"plan": "professional"}}
+    )
+    get_pool = mocker.patch(
+        "services.credit_pool_service.CreditPoolService.get_pool", side_effect=LegacyCreditPoolManagedByTokenerError
+    )
+    get_metering = mocker.patch("services.workspace_service.BillingService.get_tokener_metering")
+
+    result = WorkspaceService.get_model_provider_credits("tenant-1", session=MagicMock())
+
+    assert result.model_billing_migration_status == latest_status
+    assert result.model_billing_source == (
+        ModelBillingSource.TOKENER if latest_status == "active" else ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    )
+    assert result.plan == CloudPlan.PROFESSIONAL
+    assert result.remaining_credits is None
+    assert not result.is_exhausted
+    assert status.call_count == 3
+    get_pool.assert_called_once()
+    get_metering.assert_not_called()
+
+
+@pytest.mark.parametrize("latest_status", ["none", "preparing"])
+def test_unconfirmed_billing_fence_is_not_masked(mocker, latest_status):
+    mocker.patch("core.model_invocation_routing.migration_display_status", return_value=latest_status)
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.BillingService.get_info", return_value={"subscription": {"plan": "professional"}}
+    )
+    get_pool = mocker.patch(
+        "services.credit_pool_service.CreditPoolService.get_pool", side_effect=LegacyCreditPoolManagedByTokenerError
+    )
+
+    with pytest.raises(LegacyCreditPoolManagedByTokenerError):
+        WorkspaceService.get_effective_credit_pool("tenant-1", session=MagicMock())
+    get_pool.assert_called_once()
+
+
+def test_unrelated_billing_outage_is_not_masked(mocker):
+    status = mocker.patch("core.model_invocation_routing.migration_display_status", return_value="preparing")
+    mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch(
+        "services.workspace_service.BillingService.get_info", return_value={"subscription": {"plan": "professional"}}
+    )
+    mocker.patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=BillingUpstreamUnavailableError)
+
+    with pytest.raises(BillingUpstreamUnavailableError):
+        WorkspaceService.get_effective_credit_pool("tenant-1", session=MagicMock())
+    status.assert_called_once()
