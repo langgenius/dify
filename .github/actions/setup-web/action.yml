@@ -20,9 +20,7 @@ runs:
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
         node-manager: false
-        # pnpm-managed Node does not bundle npm/npx; retain the runner's tools.
         package-manager: |
-          npm: false
           pnpm: false
           npm: false
         cache: true
