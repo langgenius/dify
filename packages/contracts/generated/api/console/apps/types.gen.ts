@@ -5294,7 +5294,11 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
   404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
