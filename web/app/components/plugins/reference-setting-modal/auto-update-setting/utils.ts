@@ -25,11 +25,6 @@ export const convertLocalSecondsToUTCDaySeconds = (
   return secondsFromUTCMidnight
 }
 
-export const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if (!date) return 0
-  return date.hour() * 3600 + date.minute() * 60
-}
-
 export const convertUTCDaySecondsToLocalSeconds = (
   utcDaySeconds: number,
   localTimezone: string,

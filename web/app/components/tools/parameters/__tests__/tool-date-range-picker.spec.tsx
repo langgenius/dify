@@ -9,8 +9,6 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock({
-      'time.dateFormats.display': 'MMMM D, YYYY',
-      'time.defaultPlaceholder': 'Select date',
       'common.operation.clear': 'Clear',
       'workflow.nodes.tool.dateRange.start': 'Start',
       'workflow.nodes.tool.dateRange.end': 'End',

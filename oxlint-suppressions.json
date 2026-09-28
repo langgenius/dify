@@ -1080,7 +1080,7 @@
   },
   "web/app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "web/app/components/base/markdown-blocks/link.tsx": {

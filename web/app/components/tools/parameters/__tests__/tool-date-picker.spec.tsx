@@ -9,7 +9,6 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock({
-      'time.dateFormats.display': 'MMMM D, YYYY',
       'time.operation.pickDate': 'Select date',
       'common.operation.clear': 'Clear',
     }),
