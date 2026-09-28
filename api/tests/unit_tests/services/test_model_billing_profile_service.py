@@ -280,6 +280,7 @@ def test_resolution_mode_properties() -> None:
 
 
 def test_resolve_without_supplied_session_uses_owned_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.model_invocation_routing.migration_routing_state", lambda _tenant_id: None)
     cache = MagicMock()
     cache.get.return_value = None
     owned_session = MagicMock()
@@ -304,6 +305,7 @@ def test_resolve_without_supplied_session_uses_owned_session(monkeypatch: pytest
 def test_tokener_cache_hit_without_supplied_session_uses_owned_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("core.model_invocation_routing.migration_routing_state", lambda _tenant_id: None)
     cache = MagicMock()
     cache.get.return_value = "tokener"
     owned_session = MagicMock()
