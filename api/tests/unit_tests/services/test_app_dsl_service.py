@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from pydantic import ValidationError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -657,6 +658,11 @@ def test_load_export_data_includes_site_presentation_settings(
         }
         & data["site"].keys()
     )
+
+
+def test_site_dsl_import_rejects_unsupported_language() -> None:
+    with pytest.raises(ValidationError, match="en is not a valid language"):
+        SiteDsl.model_validate({"default_language": "en"})
 
 
 def test_create_or_update_app_flushes_new_model_config_before_signal(
