@@ -4,6 +4,7 @@ import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { InputVar as WorkflowInputVar } from '@/app/components/workflow/types'
 import type { SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -88,6 +89,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   const [selectedTab, setSelectedTab] = useState<string | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const inputPanelRef = useRef<HTMLDivElement>(null)
+  const isInitialMountRef = useRef(true)
 
   const inputs = inputOverrides ?? initialInputs
   const hasInputTab = showInputsPanel && previewFields.length > 0
@@ -153,6 +155,9 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   }, [resize, stopResizing])
 
   useEffect(() => {
+    if (!isInitialMountRef.current) return
+    isInitialMountRef.current = false
+
     if (currentTab !== 'INPUT' || !hasInputTab || !shouldFocusFirstInput) return
 
     inputPanelRef.current?.querySelector<HTMLElement>('input, textarea')?.focus()
@@ -177,14 +182,12 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <button
-          type="button"
+        <IconButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={handleCancelDebugAndPreviewPanel}
         >
-          <span aria-hidden className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </button>
+          <span aria-hidden className="i-ri-close-line h-4 w-4" />
+        </IconButton>
       </div>
       <Tabs
         value={currentTab}

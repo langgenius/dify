@@ -169,6 +169,10 @@ describe('SnippetRunPanel', () => {
     await user.keyboard('{ArrowRight}')
     expect(detailTab).toHaveFocus()
     expect(detailTab).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(inputTab).toHaveFocus()
+    expect(inputTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox', { name: 'Topic' })).not.toHaveFocus()
   })
 
   it('disables result tabs until a workflow run is available', async () => {
