@@ -99,6 +99,7 @@ function TryApp({
       onOpenChange={(open) => {
         if (!open) onClose()
       }}
+      disablePointerDismissal
     >
       <DialogContent
         initialFocus={detailTabRef}
