@@ -85,6 +85,25 @@ describe('README code highlighting', () => {
     expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
   })
 
+  it.each(['\n', '\r\n'])(
+    'preserves indentation and blank lines with %j line endings',
+    async (lineEnding) => {
+      const lines = ['', '  <custom>example</custom>', '', '\tindented', '']
+      const result = renderToStaticMarkup(
+        await highlightCode({
+          code: lines.join(lineEnding),
+          language: 'text',
+          theme: 'github-light',
+        }),
+      )
+      const document = new DOMParser().parseFromString(result, 'text/html')
+
+      expect(document.querySelector('code')?.textContent).toBe(lines.join('\n'))
+      expect(document.querySelector('custom')).toBeNull()
+      expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
+    },
+  )
+
   it('renders an unsupported language as escaped plain text without loading the WASM engine', async () => {
     const code = 'function hello() { return 42 }'
     const result = renderToStaticMarkup(

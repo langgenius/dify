@@ -56,7 +56,16 @@ export const highlightCode = async ({
               type: 'element',
               tagName: 'code',
               properties: {},
-              children: [{ type: 'text', value: code }],
+              // The code-block gutter uses .line::before for its line numbers.
+              children: code.split(/\r?\n/).flatMap((line, index) => [
+                { type: 'text' as const, value: index === 0 ? '' : '\n' },
+                {
+                  type: 'element' as const,
+                  tagName: 'span',
+                  properties: { className: ['line'] },
+                  children: [{ type: 'text' as const, value: line }],
+                },
+              ]),
             },
           ],
         },
