@@ -418,7 +418,11 @@ def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: py
     ]
     monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
     monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
-    monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
+    monkeypatch.setattr(
+        service,
+        "serialize_log_message",
+        lambda message, feedbacks=(), session=None: webapp_row,
+    )
     monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
 
     payload = service.list_log_messages(

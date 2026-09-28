@@ -70,7 +70,7 @@ from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLay
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppMode, Message, MessageAgentThought, MessageFile
 from models.tools import ToolFile
 
@@ -1175,7 +1175,7 @@ def test_tool_return_metadata_persists_assistant_message_files(sqlite_session: S
     message_files = list(sqlite_session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)).all())
     assert len(message_files) == 1
     assert message_files[0].upload_file_id == "tool-file-1"
-    assert message_files[0].belongs_to.value == "assistant"
+    assert message_files[0].belongs_to == MessageFileBelongsTo.ASSISTANT
     assert any(isinstance(event, QueueMessageFileEvent) for event in qm.events)
 
 
