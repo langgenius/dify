@@ -102,6 +102,7 @@ export function AgentSkillItem({
     void downloadSkill().catch(noop)
   }, [downloadSkill])
   const onDownloadSkill = canDownload ? handleDownload : undefined
+  const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove
   const handleOpenPreview = useCallback(() => {
     if (skill.isMissing) return
 
@@ -144,7 +145,8 @@ export function AgentSkillItem({
           ) : (
             <span
               className={cn(
-                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:opacity-0 group-hover:opacity-0',
+                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
+                hasActions && 'group-focus-within:opacity-0 group-hover:opacity-0',
                 isActionsOpen && 'opacity-0',
               )}
             >
@@ -158,7 +160,7 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {((!skill.isMissing && onDownloadSkill) || canRemove) && (
+        {hasActions && (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {

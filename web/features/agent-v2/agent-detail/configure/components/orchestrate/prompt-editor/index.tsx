@@ -1241,7 +1241,7 @@ export function AgentTemplatePromptEditor() {
         }}
         disableSlashPicker
         disableBracePicker
-        wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3 pt-1"
+        wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3 pt-2 pb-9"
         className="min-h-26 text-text-primary"
       />
     </section>
