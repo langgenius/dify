@@ -208,7 +208,7 @@ catalog:
   js-cookie: 3.0.8
   js-yaml: 5.4.2
   jsonschema: 1.5.0
-  katex: 0.17.0
+  katex: 0.18.9
   knip: 6.38.0
   ky: 2.1.0
   lexical: 0.47.0
