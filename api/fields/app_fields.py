@@ -1,12 +1,14 @@
 """Shared Console app response schemas for materialized application results."""
 
 from datetime import datetime
+from typing import Self
 
-from pydantic import AliasChoices, Field, computed_field, field_validator
+from pydantic import AliasChoices, Field, computed_field, field_validator, model_validator
 
 from enums import WebAppAccessMode
 from fields.app_model_config_response import AppModelConfigResponse, AppModelSelectionResponse
 from fields.base import ResponseModel
+from libs.emoji_normalization import ensure_model_emoji_icon_normalized
 from libs.helper import build_icon_url, to_timestamp
 from models.enums import CustomizeTokenStrategy
 from models.model import AppMode, IconType
@@ -95,6 +97,10 @@ class AppDetailSiteResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
+
 
 class DeletedTool(ResponseModel):
     type: str
@@ -145,6 +151,10 @@ class AppPartial(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
+
 
 class RecentAppResponse(ResponseModel):
     id: str
@@ -167,6 +177,10 @@ class RecentAppResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int) -> int:
         return to_timestamp(value)
+
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
 
 
 class RecentAppListResponse(ResponseModel):
@@ -202,6 +216,10 @@ class AppDetail(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
 
 
 class AppDetailWithSite(AppDetail):

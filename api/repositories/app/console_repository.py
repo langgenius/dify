@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from libs.datetime_utils import naive_utc_now
+from libs.emoji_normalization import normalize_icon_for_storage
 from libs.pagination import PaginatedResult, paginate_query
 from machinery.context import RequestContext
 from models.account import Account, Tenant
@@ -745,7 +746,7 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             resolved_icon_type = IconType(icon_type)
 
         app.icon_type = resolved_icon_type
-        app.icon = args["icon"]
+        app.icon = normalize_icon_for_storage(resolved_icon_type, args["icon"])
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")
@@ -810,10 +811,10 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
         :param icon_type: new icon type
         :return: App instance
         """
-        app.icon = icon
-        app.icon_background = icon_background
         if icon_type is not None:
             app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
+        app.icon = normalize_icon_for_storage(app.icon_type, icon)
+        app.icon_background = icon_background
         app.updated_by = account_id
         app.updated_at = naive_utc_now()
         cls._sync_backing_agent_identity(

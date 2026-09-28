@@ -10,6 +10,7 @@ from constants.model_template import default_app_templates
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
+from libs.emoji_normalization import normalize_icon_for_storage
 from libs.helper import to_timestamp
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -335,7 +336,7 @@ class AgentRosterService:
             description=payload.description,
             role=payload.role,
             icon_type=payload.icon_type,
-            icon=payload.icon,
+            icon=normalize_icon_for_storage(payload.icon_type, payload.icon),
             icon_background=payload.icon_background,
             agent_kind=AgentKind.DIFY_AGENT,
             scope=AgentScope.ROSTER,
@@ -406,7 +407,7 @@ class AgentRosterService:
             description=description,
             role=role,
             icon_type=icon_type,
-            icon=icon,
+            icon=normalize_icon_for_storage(icon_type, icon),
             icon_background=icon_background,
             agent_kind=AgentKind.DIFY_AGENT,
             scope=AgentScope.ROSTER,
@@ -477,7 +478,7 @@ class AgentRosterService:
         app.mode = AppMode.AGENT
         normalized_icon_type = self._normalize_app_icon_type(icon_type)
         app.icon_type = IconType(normalized_icon_type) if normalized_icon_type else IconType.EMOJI
-        app.icon = icon
+        app.icon = normalize_icon_for_storage(app.icon_type, icon)
         app.icon_background = icon_background
         app.tenant_id = tenant_id
         app.enable_site = False

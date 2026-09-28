@@ -419,7 +419,9 @@ class SnippetDslService:
         except ValueError:
             snippet_type = SnippetType.NODE
 
-        icon_info = snippet_data.get("icon_info", {})
+        from libs.emoji_normalization import normalize_icon_info_dict
+
+        icon_info = normalize_icon_info_dict(snippet_data.get("icon_info", {})) or {}
         input_fields = snippet_data.get("input_fields", [])
 
         # Create or update snippet

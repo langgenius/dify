@@ -270,6 +270,9 @@ class RagPipelineDslService:
                 icon = data.get("rag_pipeline", {}).get("icon")
                 icon_background = data.get("rag_pipeline", {}).get("icon_background")
                 icon_url = data.get("rag_pipeline", {}).get("icon_url")
+            from libs.emoji_normalization import normalize_icon_for_storage
+
+            icon = normalize_icon_for_storage(icon_type, icon)
             workflow = data.get("workflow", {})
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])

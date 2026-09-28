@@ -1,9 +1,5 @@
-import legacyEmojis from './emoji-legacy.json'
-
-/** Resolve persisted emoji-mart IDs (including aliases) without loading picker data. */
+/** Render persisted emoji icons; legacy Emoji Mart ids are normalized by the API. */
 export function resolveEmoji(value?: string | null): string {
   if (!value) return '🤖'
-  const id = value.replace(/^:|:$/g, '')
-  if (Object.hasOwn(legacyEmojis, id)) return legacyEmojis[id as keyof typeof legacyEmojis]
   return value
 }

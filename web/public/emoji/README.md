@@ -9,8 +9,6 @@ The URL includes the deployment base path and never falls back to a CDN.
 To update, extract these files and LICENSE from the corresponding npm tarball,
 use a new versioned directory, and update the picker URL together.
 
-`web/utils/emoji-legacy.json` is the frozen compatibility map generated from
-`@emoji-mart/data@1.2.1/sets/15/native.json`: each `emojis` key maps to its first
-skin's `native` value, followed by every `aliases` key mapped through its target.
-It is retained independently of picker data updates so persisted IDs keep working.
+Legacy Emoji Mart ids are normalized to Unicode in the API (`api/libs/emoji_legacy.json`).
+The web app renders persisted emoji values directly.
 Emoji Mart data is MIT licensed: https://github.com/missive/emoji-mart.
