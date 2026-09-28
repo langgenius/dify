@@ -34,6 +34,7 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
+  - why-is-node-running@3.2.2
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -144,8 +145,8 @@ catalog:
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.1
   '@vitejs/plugin-rsc': 0.5.35
-  '@vitest/browser-playwright': 5.0.1
-  '@vitest/coverage-v8': 5.0.1
+  '@vitest/browser-playwright': 5.0.2
+  '@vitest/coverage-v8': 5.0.2
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.1
   agentation: 3.1.2
@@ -267,7 +268,7 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.0.0-rc.1
   vite-plugin-inspect: 12.0.2
   vite-plus: 1.0.0-rc.1
-  vitest: 5.0.1
+  vitest: 5.0.2
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
   zod: 4.6.5
