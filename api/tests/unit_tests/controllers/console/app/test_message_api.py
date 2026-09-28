@@ -11,10 +11,16 @@ from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
 from fields.conversation_fields import MessageResponseSource
-from models.enums import WorkflowRunTriggeredFrom
+from graphon.enums import WorkflowExecutionStatus
+from models.account import Account
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -26,7 +32,6 @@ from models.model import (
     MessageFeedback,
 )
 from models.workflow import WorkflowRun, WorkflowType
-from graphon.enums import WorkflowExecutionStatus
 
 
 def _account() -> Account:
@@ -387,7 +392,9 @@ def test_batch_workflow_run_elapsed_times_returns_mapping(sqlite_session: Sessio
     sqlite_session.add(workflow_run)
     sqlite_session.commit()
 
-    elapsed_times = message_module._batch_workflow_run_elapsed_times(sqlite_session, [message])
+    from services.message_service import get_workflow_run_elapsed_times_for_messages
+
+    elapsed_times = get_workflow_run_elapsed_times_for_messages(sqlite_session, [message])
 
     assert elapsed_times == {"workflow-run-1": 12.5}
 
