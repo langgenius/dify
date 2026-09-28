@@ -187,25 +187,34 @@ it('keeps new Agent templates out of the App selector and its legacy Agent filte
   expect(screen.getByTitle('Legacy Agent')).toBeInTheDocument()
 })
 
-it('shows only new Agent templates in the Agent roster template picker', () => {
+it('filters new Agent templates by catalog category in the Agent roster template picker', async () => {
+  const user = userEvent.setup()
   renderApps(
     {
       recommended_apps: [
-        createEntry('New Agent', 0, 'agent'),
-        createEntry('Legacy Agent', 1, 'agent-chat'),
+        createEntry('Assistant Agent', 0, 'agent'),
+        createEntry('Writing Agent', 1, 'agent', 'Writing'),
+        createEntry('Legacy Agent', 2, 'agent-chat', 'Legacy'),
       ],
-      categories: ['Assistant'],
+      categories: ['Assistant', 'Writing', 'Legacy'],
     },
     [],
     'agent',
   )
 
-  expect(screen.getByTitle('New Agent')).toBeInTheDocument()
+  expect(screen.getByTitle('Assistant Agent')).toBeInTheDocument()
+  expect(screen.getByTitle('Writing Agent')).toBeInTheDocument()
   expect(screen.queryByTitle('Legacy Agent')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'app.typeSelector.all' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument()
-  expect(screen.queryByText('app.newAppFromTemplate.byCategories')).not.toBeInTheDocument()
-  expect(screen.queryByText('app.newAppFromTemplate.sidebar.Recommended')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Assistant' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Writing' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Legacy' })).not.toBeInTheDocument()
+  expect(screen.queryByText('app.newApp.startFromBlank')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Writing' }))
+  expect(screen.queryByTitle('Assistant Agent')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Writing Agent')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Writing' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 it('fetches fresh detail by canonical app_id and submits the actual form with an empty initial description', async () => {
