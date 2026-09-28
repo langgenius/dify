@@ -126,8 +126,8 @@ class ExternalSsoSubject(Subject):
             raise Unauthorized("missing context for external user resolution")
         return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
             EndUserType.OPENAPI,
-            tenant_id=str(load_workspace(ctx).id),
-            app_id=str(load_app(ctx).id),
+            tenant_id=load_workspace(ctx).id,
+            app_id=load_app(ctx).id,
             user_id=identity.email,
         )
 
@@ -144,7 +144,7 @@ class ExternalSsoSubject(Subject):
         if identity is None:
             return None
         account = AccountService.get_account_by_email(identity.email, session=session)
-        return str(account.id) if account is not None else None
+        return account.id if account is not None else None
 
 
 def subject_from_auth(auth: AuthContext) -> Subject:
