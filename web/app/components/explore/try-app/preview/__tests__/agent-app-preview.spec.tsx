@@ -2,10 +2,14 @@ import type {
   AgentAppComposerResponse,
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterAll, describe, expect, it, vi } from 'vite-plus/test'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import AgentAppPreview from '../agent-app-preview'
 
 const appDetail = {
@@ -62,37 +66,66 @@ const builtInTools = [
   },
 ]
 
-describe('AgentAppPreview', () => {
-  afterEach(() => vi.unstubAllGlobals())
+const workspaceSummary = {
+  id: 'workspace-id',
+  name: 'Test workspace',
+  plan: null,
+  credits: null,
+  role: 'normal',
+} satisfies CurrentWorkspaceSummaryResponse
 
-  it('shows published Agent configuration and chat introduction without editing actions', async () => {
+describe('AgentAppPreview', () => {
+  afterAll(() => vi.unstubAllGlobals())
+
+  it('shows a read-only Agent configuration alongside the template introduction', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const requests: string[] = []
+    client.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
+    const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: Request | string) => {
         const url = input instanceof Request ? input.url : input
-        requests.push(url)
         if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
+        if (url.endsWith('/workspaces/current/summary')) return Response.json(workspaceSummary)
         throw new Error(`Unexpected request: ${url}`)
       }),
     )
     render(
-      <QueryClientProvider client={client}>
+      <QueryClientTestProvider queryClient={client}>
         <AgentAppPreview appDetail={appDetail} composer={composer} />
-      </QueryClientProvider>,
+      </QueryClientTestProvider>,
     )
 
-    expect(screen.getByText('agentV2.agentDetail.configure.model.label')).toBeInTheDocument()
-    expect(screen.getByText('GPT-4o')).toBeInTheDocument()
-    expect(screen.getByText('Tender Analyzer')).toBeInTheDocument()
-    expect(screen.getByText('README.md')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tender Analyst' })).toBeInTheDocument()
+    const model = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+    expect(within(model).getByText('GPT-4o')).toBeInTheDocument()
+    expect(within(model).queryByRole('button')).not.toBeInTheDocument()
+    const prompt = screen.getByRole('textbox', {
+      name: 'agentV2.agentDetail.configure.prompt.label',
+    })
+    expect(prompt).toHaveAttribute('contenteditable', 'false')
+    expect(prompt).toHaveTextContent('Review the tender files.')
+    expect(screen.getByRole('button', { name: 'Tender Analyzer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'README.md' })).toBeInTheDocument()
     expect(screen.getByText('Web Search')).toBeInTheDocument()
     expect(screen.getByText('How can I help?')).toBeInTheDocument()
     expect(screen.getByText('Summarize the requirements')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /copy|edit|auth/i })).not.toBeInTheDocument()
-    await waitFor(() => expect(client.isFetching()).toBe(0))
-    expect(requests).toEqual(['http://localhost:5001/console/api/workspaces/current/tools/builtin'])
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }),
+    ).not.toBeInTheDocument()
+
+    for (const field of ['prompt', 'skills', 'files', 'tools']) {
+      const label = `agentV2.agentDetail.configure.${field}.label`
+      const infoTrigger = screen.getByRole('button', { name: label, expanded: false })
+      await user.click(infoTrigger)
+      expect(await screen.findByRole('dialog', { name: label })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+    }
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
@@ -105,6 +138,7 @@ describe('AgentAppPreview', () => {
         const url = input instanceof Request ? input.url : input
         requests.push(url)
         if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
+        if (url.endsWith('/workspaces/current/summary')) return Response.json(workspaceSummary)
         if (url.endsWith('/agent/config/skills/Tender%20Analyzer/inspect')) {
           return Response.json({
             id: 'skill-id',

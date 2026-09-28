@@ -3,6 +3,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from datetime import datetime
 from functools import wraps
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
@@ -465,7 +466,7 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 )
 class TrialAppFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
-    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @cloud_edition_billing_resource_check("documents")
@@ -475,7 +476,7 @@ class TrialAppFileUploadApi(Resource):
             request_context=request_context,
             resource_tenant_id=trial_app.tenant_id,
         )
-        return dump_response(FileResponse, upload_file), 201
+        return dump_response(FileResponse, upload_file), HTTPStatus.CREATED
 
 
 @console_ns.route(
@@ -484,7 +485,9 @@ class TrialAppFileUploadApi(Resource):
 )
 class TrialAppRemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
-    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__]
+    )
     @console_account_admission()
     @get_trial_app
     @cloud_edition_billing_resource_check("documents")
@@ -498,7 +501,7 @@ class TrialAppRemoteFileUploadApi(Resource):
             current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
             resource_tenant_id=trial_app.tenant_id,
         )
-        return dump_response(FileWithSignedUrl, remote_file), 201
+        return dump_response(FileWithSignedUrl, remote_file), HTTPStatus.CREATED
 
 
 @console_ns.route(
@@ -507,7 +510,7 @@ class TrialAppRemoteFileUploadApi(Resource):
 )
 class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(WorkflowRunRequest)
@@ -516,7 +519,7 @@ class TrialAppWorkflowRunApi(Resource):
         Run workflow
         """
         try:
-            response = application_services().trial_app_generation.generate_workflow(
+            response = application_services().trial_apps.generation.generate_workflow(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),
@@ -550,7 +553,7 @@ class TrialAppWorkflowRunApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class TrialAppWorkflowTaskStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app
     def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str) -> dict[str, object]:
@@ -571,7 +574,7 @@ class TrialAppWorkflowTaskStopApi(Resource):
 )
 class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(ChatRequest)
@@ -585,7 +588,7 @@ class TrialChatApi(Resource):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
         try:
-            response = application_services().trial_app_generation.generate_chat(
+            response = application_services().trial_apps.generation.generate_chat(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=args,
@@ -650,7 +653,7 @@ class TrialChatTaskStopApi(Resource):
     endpoint="trial_app_suggested_question",
 )
 class TrialMessageSuggestedQuestionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_trial_app
     def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
@@ -729,7 +732,7 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="trial_app_audio",
 )
 class TrialChatAudioApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @_trial_audio_errors
@@ -740,7 +743,7 @@ class TrialChatAudioApi(Resource):
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
             audio=audio,
         )
-        application_services().trial_app_usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
+        application_services().trial_apps.usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
         return dump_response(AudioTranscriptResponse, transcript)
 
 
@@ -750,7 +753,7 @@ class TrialChatAudioApi(Resource):
 )
 class TrialChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @model_validate(TextToSpeechRequest)
@@ -769,7 +772,7 @@ class TrialChatTextApi(Resource):
         try:
             # Preserve usage after MIME inspection, including a missing message's
             # null response. Early provider/MIME failures do not consume a trial.
-            application_services().trial_app_usage.record(
+            application_services().trial_apps.usage.record(
                 app_id=trial_app.app_id, account_id=request_context.account_id
             )
         except BaseException:
@@ -786,13 +789,13 @@ class TrialChatTextApi(Resource):
 )
 class TrialCompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(CompletionRequest)
     def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         try:
-            response = application_services().trial_app_generation.generate_completion(
+            response = application_services().trial_apps.generation.generate_completion(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),
@@ -833,7 +836,7 @@ class TrialCompletionApi(Resource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
-    @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SiteResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
@@ -856,7 +859,7 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
-    @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ParametersResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
@@ -871,7 +874,7 @@ class TrialAppParameterApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
     @get_preview_app
     def get(self, app: AppPreviewRef, request_context: RequestContext) -> dict[str, object]:
@@ -917,7 +920,7 @@ class TrialAgentComposerApi(Resource):
     endpoint="trial_app_workflow",
 )
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Get a detached workflow definition after catalog preview admission."""
@@ -936,7 +939,7 @@ class AppWorkflowApi(Resource):
 )
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         # These legacy fields are response metadata: the query returns all

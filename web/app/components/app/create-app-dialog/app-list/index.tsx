@@ -2,7 +2,6 @@
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -256,7 +255,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
         <div className="h-8 w-45"></div>
       </div>
       <div className="relative flex flex-1 overflow-y-auto">
-        {!templateMode && !searchKeywords && (
+        {!searchKeywords && (
           <div className="h-full w-50 p-4">
             <Sidebar
               current={activeCategory}
@@ -268,39 +267,31 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div
-          className={cn(
-            'h-full flex-1 shrink-0 grow overflow-auto p-6 pt-2',
-            !templateMode && 'border-l border-divider-burn',
-            templateMode && !searchKeywords && 'pt-6',
-          )}
-        >
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
-              {(!templateMode || searchKeywords) && (
-                <div className="pt-4 pb-1">
-                  {searchKeywords ? (
-                    <p className="title-md-semi-bold text-text-tertiary">
-                      {searchFilteredList.length > 1
-                        ? t(($) => $['newApp.foundResults'], {
-                            ns: 'app',
-                            count: searchFilteredList.length,
-                          })
-                        : t(($) => $['newApp.foundResult'], {
-                            ns: 'app',
-                            count: searchFilteredList.length,
-                          })}
-                    </p>
-                  ) : (
-                    <div className="flex h-5.5 items-center">
-                      <AppCategoryLabel
-                        category={activeCategory}
-                        className="title-md-semi-bold text-text-primary"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="pt-4 pb-1">
+                {searchKeywords ? (
+                  <p className="title-md-semi-bold text-text-tertiary">
+                    {searchFilteredList.length > 1
+                      ? t(($) => $['newApp.foundResults'], {
+                          ns: 'app',
+                          count: searchFilteredList.length,
+                        })
+                      : t(($) => $['newApp.foundResult'], {
+                          ns: 'app',
+                          count: searchFilteredList.length,
+                        })}
+                  </p>
+                ) : (
+                  <div className="flex h-5.5 items-center">
+                    <AppCategoryLabel
+                      category={activeCategory}
+                      className="title-md-semi-bold text-text-primary"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3">
                 {searchFilteredList.map((app) => (
                   <AppCard

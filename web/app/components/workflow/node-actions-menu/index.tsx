@@ -2,14 +2,13 @@ import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeActionsDropdownContent } from './dropdown-content'
-import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from './shared'
 
 type NodeActionsDropdownProps = {
   id: string
@@ -55,14 +54,14 @@ export function NodeActionsDropdown({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}>
+      <DropdownMenuPortal>
         <NodeActionsDropdownContent
           id={id}
           data={data}
           onClose={closeMenu}
           showHelpLink={showHelpLink}
         />
-      </DropdownMenuContent>
+      </DropdownMenuPortal>
     </DropdownMenu>
   )
 }
