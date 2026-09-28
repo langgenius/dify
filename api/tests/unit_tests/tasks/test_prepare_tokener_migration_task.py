@@ -337,6 +337,41 @@ def test_fresh_platform_binding_rejects_ciphertext_edit_before_ready(
     )
 
 
+def test_credential_and_trusted_binding_roll_back_together_before_commit(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    tenant = Tenant(name="Atomic credential publication")
+    sqlite_session.add(tenant)
+    sqlite_session.commit()
+    migration_id = add_migration_records(sqlite_session, tenant.id)
+    service = MagicMock()
+    service._get_provider_configuration.return_value.validate_provider_credentials.side_effect = (
+        lambda *_args, **_kwargs: {
+            "api_key": "PLATFORM_ENCRYPTED",
+        }
+    )
+    monkeypatch.setattr(module, "ModelProviderService", lambda: service)
+    original_flush = Session.flush
+
+    def fail_after_credential_flush(session, *args, **kwargs):
+        contains_credential = any(isinstance(item, ProviderCredential) for item in session.new)
+        original_flush(session, *args, **kwargs)
+        if contains_credential:
+            raise RuntimeError("simulated interruption before binding commit")
+
+    monkeypatch.setattr(Session, "flush", fail_after_credential_flush)
+    assert module._persist_key(tenant.id, migration_id, "PLATFORM_TEST_KEY") is None
+    monkeypatch.setattr(Session, "flush", original_flush)
+    sqlite_session.expire_all()
+    assert sqlite_session.scalar(select(ProviderCredential).where(ProviderCredential.tenant_id == tenant.id)) is None
+    assert module._find_bound_credential(tenant.id) is None
+    assert "provisioned_binding" not in sqlite_session.get(TenantModelBillingMigration, tenant.id).state
+    credential_id = module._persist_key(tenant.id, migration_id, "PLATFORM_TEST_KEY")
+    assert credential_id is not None
+    assert module._find_bound_credential(tenant.id) == credential_id
+
+
 def test_sweeper_alerts_and_recovers_financial_work_but_stops_initial_30_minute_retries(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
