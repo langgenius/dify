@@ -112,7 +112,9 @@ describe('FormInputDynamicTreeSelect', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.dynamicSelect.selected:{"count":3}' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.dynamicSelect.selected:{"count":3}' }),
+    )
     expect(onPanelOpenChange).toHaveBeenCalledWith(true)
   })
 

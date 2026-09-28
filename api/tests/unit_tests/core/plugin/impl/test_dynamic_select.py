@@ -1,9 +1,16 @@
+from collections.abc import Mapping
+
 from pytest_mock import MockerFixture
 
+from core.plugin.entities.plugin_daemon import PluginDynamicSelectOptionsResponse
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 
 
-def _fetch(client: DynamicSelectClient, **kwargs):
+def _fetch(
+    client: DynamicSelectClient,
+    *,
+    parameter_values: Mapping[str, str] | None = None,
+) -> PluginDynamicSelectOptionsResponse:
     return client.fetch_dynamic_select_options(
         "tenant-1",
         "user-1",
@@ -13,7 +20,7 @@ def _fetch(client: DynamicSelectClient, **kwargs):
         {"api_key": "secret"},
         "api-key",
         "region",
-        **kwargs,
+        parameter_values=parameter_values,
     )
 
 
