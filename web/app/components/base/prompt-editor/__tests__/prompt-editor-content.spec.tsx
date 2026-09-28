@@ -438,7 +438,7 @@ describe('PromptEditorContent', () => {
       const { container } = render(
         <PromptEditorContentHarness
           captures={captures}
-          shortcutPopups={[{ hotkey: 'ctrl+/', Popup }]}
+          shortcutPopups={[{ hotkey: 'Control+/', Popup }]}
           initialText="seed prompt"
           floatingAnchorElem={document.createElement('div')}
           onEditorChange={onEditorChange}
@@ -479,7 +479,7 @@ describe('PromptEditorContent', () => {
       editable.focus()
       setSelectionOnEditable(editable)
 
-      fireEvent.keyDown(document, { key: '/', ctrlKey: true })
+      fireEvent.keyDown(editable, { key: '/', ctrlKey: true })
 
       const insertButton = await screen.findByRole('button', { name: 'Insert shortcut' })
       fireEvent.click(insertButton)
