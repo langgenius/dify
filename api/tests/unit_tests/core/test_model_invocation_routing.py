@@ -611,7 +611,7 @@ def test_migration_lookup_failure_is_sanitized_and_never_opens_legacy(mocker):
     from core.model_invocation_routing import migration_routing_state
 
     mocker.patch(
-        "services.model_billing_migration_service.ModelBillingMigrationService.get_routing_state",
+        "core.model_invocation_routing.get_routing_state",
         side_effect=RuntimeError("SQL connection TEST_SECRET"),
     )
     with pytest.raises(ModelRouteUnavailable) as caught:

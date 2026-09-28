@@ -1077,6 +1077,7 @@ def test_routing_projection_does_not_materialize_control_status(
     tenant_id, _ = prepared
     row = sqlite_session.get(TenantModelBillingMigration, tenant_id)
     row.state = {**row.state, "large_control_journal": "not-runtime-state" * 100000}
+    row.claimed_at = datetime(2026, 10, 1, 12, 34, 56, 123456)
     sqlite_session.commit()
 
     def forbidden_status(*_args, **_kwargs):
@@ -1084,6 +1085,11 @@ def test_routing_projection_does_not_materialize_control_status(
 
     monkeypatch.setattr(Service, "_status", forbidden_status)
     state = Service.get_routing_state(tenant_id)
+    from core.repositories.model_billing_migration_repository import get_routing_state
+
+    assert state == get_routing_state(tenant_id)
+    assert get_routing_state(str(uuid4())) is None
+    assert state["claimed_at"] == "2026-10-01T12:34:56Z"
     assert set(state) == {
         "tenant_id",
         "migration_id",

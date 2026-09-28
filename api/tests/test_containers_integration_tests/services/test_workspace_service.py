@@ -783,18 +783,18 @@ class TestWorkspaceService:
         feature.billing.subscription.plan = CloudPlan.SANDBOX
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
-        paid_pool = MagicMock(quota_limit=1000, quota_used=0)
         trial_pool = MagicMock(quota_limit=200, quota_used=20)
 
         with (
             patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
+            patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=trial_pool) as get_pool,
         ):
             result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == 200
         assert result["trial_credits_used"] == 20
+        get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="trial", session=db_session_with_containers)
 
     def test_get_tenant_info_cloud_both_pools_none(
         self, db_session_with_containers: Session, mock_external_service_dependencies

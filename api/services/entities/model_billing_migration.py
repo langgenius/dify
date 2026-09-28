@@ -1,11 +1,11 @@
 """Versioned, strict input contracts shared by inner API and migration workers."""
 
-import hashlib
-import json
 from datetime import datetime
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from core.model_billing_migration_protocol import canonical_hash
 
 UUIDString = Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
 Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -13,30 +13,6 @@ Reference = Annotated[str, Field(min_length=1, max_length=512)]
 Revision = Annotated[int, Field(strict=True, ge=0, le=9007199254740991)]
 Timestamp = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")]
 Boundary = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T00:00:00Z$")]
-
-
-def canonical_hash(value: Any) -> str:
-    """Hash the protocol's constrained canonical JSON (money is never a float)."""
-
-    def check(item: Any) -> None:
-        if isinstance(item, float) or item is None:
-            raise ValueError("canonical payload cannot contain float or null")
-        if isinstance(item, dict):
-            for key, child in item.items():
-                if not isinstance(key, str) or not key.isascii():
-                    raise ValueError("canonical object keys must be ASCII strings")
-                check(child)
-        elif isinstance(item, list):
-            for child in item:
-                check(child)
-
-    check(value)
-    return (
-        "sha256:"
-        + hashlib.sha256(
-            json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
-        ).hexdigest()
-    )
 
 
 class StrictPayload(BaseModel):
