@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from graphon.enums import NodeExecutionType
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
@@ -69,6 +69,7 @@ class DifyResponseStreamFilter(ResponseStreamFilter):
         super().__init__(pass_unmatched_chunks=pass_unmatched_chunks)
         self._registration_graph: Graph | None = None
 
+    @override
     def initialize(self, context: GraphEventFilterContext) -> None:
         graph = context.graph
         self._registration_graph = graph
@@ -84,6 +85,7 @@ class DifyResponseStreamFilter(ResponseStreamFilter):
         finally:
             self._registration_graph = None
 
+    @override
     def _register(self, response_node_id: NodeID) -> None:
         graph = self._registration_graph
         if graph is not None and is_response_node_inside_loop_or_iteration(graph, response_node_id):
