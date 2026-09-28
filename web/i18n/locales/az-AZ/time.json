@@ -27,5 +27,18 @@
   "operation.now": "İndi",
   "operation.ok": "Təsdiqlə",
   "operation.pickDate": "Tarix seç",
+  "picker.chooseMonthAndYear": "Ay və il seçin",
+  "picker.endDate": "Bitmə tarixi",
+  "picker.hour": "Saat",
+  "picker.minute": "Dəqiqə",
+  "picker.month": "Ay",
+  "picker.nextMonth": "Növbəti ay",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Əvvəlki ay",
+  "picker.required": "Dəyər seçin.",
+  "picker.requiredLabel": "Tələb olunur",
+  "picker.startDate": "Başlanğıc tarixi",
+  "picker.unavailable": "Bu tarix və ya vaxt əlçatan deyil.",
+  "picker.year": "İl",
   "title.pickTime": "Vaxt seçimi"
 }

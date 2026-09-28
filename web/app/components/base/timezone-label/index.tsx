@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import { convertTimezoneToOffsetStr } from '@/utils/timezone'
 
 type TimezoneLabelProps = {
   /** IANA timezone identifier (e.g., 'Asia/Shanghai', 'America/New_York') */

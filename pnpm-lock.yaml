@@ -185,6 +185,12 @@ catalogs:
     '@cucumber/cucumber':
       specifier: 13.2.1
       version: 13.2.1
+    '@date-fns/tz':
+      specifier: 1.4.1
+      version: 1.4.1
+    '@daypicker/react':
+      specifier: 10.0.1
+      version: 10.0.1
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
@@ -443,6 +449,9 @@ catalogs:
     cron-parser:
       specifier: 5.10.1
       version: 5.10.1
+    date-fns:
+      specifier: 4.1.0
+      version: 4.1.0
     dayjs:
       specifier: 1.11.23
       version: 1.11.23
@@ -1120,13 +1129,22 @@ importers:
       '@base-ui/utils':
         specifier: 'catalog:'
         version: 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@date-fns/tz':
+        specifier: 'catalog:'
+        version: 1.4.1
+      '@daypicker/react':
+        specifier: 'catalog:'
+        version: 10.0.1(@types/react@19.3.0)(react@19.3.0)
       cn:
         specifier: 'catalog:'
         version: 0.4.0
+      date-fns:
+        specifier: 'catalog:'
+        version: 4.1.0
     devDependencies:
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.8.0(@date-fns/tz@1.4.1)(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.3.1(storybook@10.6.0(@types/react@19.3.0)(react@19.3.0)(vite-plus@1.0.0-rc.1(@types/node@25.9.8)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(esbuild@0.28.2)(happy-dom@20.14.5)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)))
@@ -1406,7 +1424,10 @@ importers:
         version: 1.35.4(@amplitude/rrweb@2.1.1)
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.8.0(@date-fns/tz@1.4.1)(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@daypicker/react':
+        specifier: 'catalog:'
+        version: 10.0.1(@types/react@19.3.0)(react@19.3.0)
       '@floating-ui/react':
         specifier: 'catalog:'
         version: 0.27.20(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1503,6 +1524,9 @@ importers:
       cron-parser:
         specifier: 'catalog:'
         version: 5.10.1
+      date-fns:
+        specifier: 'catalog:'
+        version: 4.1.0
       dayjs:
         specifier: 'catalog:'
         version: 1.11.23
@@ -2177,6 +2201,19 @@ packages:
 
   '@cucumber/tag-expressions@11.0.0':
     resolution: {integrity: sha512-7Uo6dYST8xZbHwwemXCt7Kv80Yh/SE85DyOed1/FTwxRXs3NYVOCm6e/h8DxlhTGIpD6rYXfpY3nHnIXAFMBlw==}
+
+  '@date-fns/tz@1.4.1':
+    resolution: {integrity: sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA==}
+
+  '@daypicker/react@10.0.1':
+    resolution: {integrity: sha512-lH4YQz4iMBWP8hsI1bD9Eg0T7t503IkSUR/WDGGkV5mKZvwVv+ukCkJz7yN+uVFBv7vHTK+ww7a5EvlkeFwPYQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@devframes/hub@0.6.2':
     resolution: {integrity: sha512-UAlfCYRP2LYmv3D/eiltJGUMiZIRtimNHUfBnx9CRL3FqEGbPUyA9yDaXdnFu9isg5kXkWoE3pQ78xYEW8Mu5Q==}
@@ -6398,6 +6435,9 @@ packages:
   dagre-d3-es@7.0.14:
     resolution: {integrity: sha512-P4rFMVq9ESWqmOgK+dlXvOtLwYg0i7u0HBGJER0LZDJT2VHIPAMZ/riPxqJceWMStH5+E61QxFra9kIS3AqdMg==}
 
+  date-fns@4.1.0:
+    resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+
   dayjs@1.11.23:
     resolution: {integrity: sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==}
 
@@ -8623,6 +8663,16 @@ packages:
       react: ^16.13.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.13.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  react-day-picker@10.0.1:
+    resolution: {integrity: sha512-eNh6BlwcYInWaJtRv18mXQ06Ys/H6rdTZAnTaSdOYJuTpwP1JMCHNd1FDRadA+gbeinq+psdULN5Xnowy9mV8w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
     peerDependencies:
@@ -10094,7 +10144,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@base-ui/react@1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@base-ui/react@1.8.0(@date-fns/tz@1.4.1)(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@base-ui/utils': 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -10104,7 +10154,9 @@ snapshots:
       react-dom: 19.3.0(react@19.3.0)
       use-sync-external-store: 1.6.0(react@19.3.0)
     optionalDependencies:
+      '@date-fns/tz': 1.4.1
       '@types/react': 19.3.0
+      date-fns: 4.1.0
 
   '@base-ui/utils@0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -10299,6 +10351,15 @@ snapshots:
       lodash.sortby: 4.7.0
 
   '@cucumber/tag-expressions@11.0.0': {}
+
+  '@date-fns/tz@1.4.1': {}
+
+  '@daypicker/react@10.0.1(@types/react@19.3.0)(react@19.3.0)':
+    dependencies:
+      react: 19.3.0
+      react-day-picker: 10.0.1(@types/react@19.3.0)(react@19.3.0)
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   '@devframes/hub@0.6.2(devframe@0.6.2(@typescript/typescript6@6.0.2)(srvx@0.12.5))':
     dependencies:
@@ -13975,6 +14036,8 @@ snapshots:
       d3: 7.9.0
       lodash-es: 4.18.1
 
+  date-fns@4.1.0: {}
+
   dayjs@1.11.23: {}
 
   debug@2.6.9(supports-color@11.0.0):
@@ -16632,6 +16695,14 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
+  react-day-picker@10.0.1(@types/react@19.3.0)(react@19.3.0):
+    dependencies:
+      '@date-fns/tz': 1.4.1
+      date-fns: 4.1.0
+      react: 19.3.0
+    optionalDependencies:
+      '@types/react': 19.3.0
+
   react-docgen-typescript@2.4.0(@typescript/typescript6@6.0.2):
     dependencies:
       typescript: '@typescript/typescript6@6.0.2'
@@ -18054,6 +18125,8 @@ time:
   '@base-ui/utils@0.4.0': '2026-09-04T08:49:31.070Z'
   '@chromatic-com/storybook@5.3.1': '2026-09-02T13:43:27.595Z'
   '@cucumber/cucumber@13.2.1': '2026-08-04T07:20:28.681Z'
+  '@date-fns/tz@1.4.1': '2025-08-12T12:16:20.094Z'
+  '@daypicker/react@10.0.1': '2026-05-15T09:47:16.146Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'
   '@eslint-community/eslint-plugin-eslint-comments@4.8.1': '2026-09-12T22:48:47.148Z'
   '@eslint-react/eslint-plugin@5.21.0': '2026-09-27T20:42:15.063Z'
@@ -18141,6 +18214,7 @@ time:
   concurrently@10.0.5: '2026-08-15T03:33:20.323Z'
   copy-to-clipboard@4.0.2: '2026-04-24T22:15:18.933Z'
   cron-parser@5.10.1: '2026-09-12T19:11:21.465Z'
+  date-fns@4.1.0: '2024-09-17T04:37:03.810Z'
   dayjs@1.11.23: '2026-08-17T11:52:35.217Z'
   decimal.js@10.6.0: '2025-07-06T22:50:38.844Z'
   dompurify@3.4.16: '2026-09-23T15:29:57.247Z'

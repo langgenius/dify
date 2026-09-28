@@ -27,5 +27,18 @@
   "operation.now": "Teraz",
   "operation.ok": "OK",
   "operation.pickDate": "Wybierz datę",
+  "picker.chooseMonthAndYear": "Wybierz miesiąc i rok",
+  "picker.endDate": "Data zakończenia",
+  "picker.hour": "Godzina",
+  "picker.minute": "Minuta",
+  "picker.month": "Miesiąc",
+  "picker.nextMonth": "Następny miesiąc",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Poprzedni miesiąc",
+  "picker.required": "Wybierz wartość.",
+  "picker.requiredLabel": "Wymagane",
+  "picker.startDate": "Data rozpoczęcia",
+  "picker.unavailable": "Ta data lub godzina jest niedostępna.",
+  "picker.year": "Rok",
   "title.pickTime": "Wybierz czas"
 }
