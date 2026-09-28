@@ -85,6 +85,37 @@ describe('FormInputDynamicTreeSelect', () => {
     expect(screen.getByRole('button', { name: 'Parent B' })).toBeInTheDocument()
   })
 
+  it('should show a loading label and a count when more than two nodes are selected', () => {
+    const onPanelOpenChange = vi.fn()
+    const { rerender } = render(
+      <FormInputDynamicTreeSelect
+        language="en_US"
+        options={treeOptions}
+        value={['missing', '']}
+        onChange={vi.fn()}
+        onPanelOpenChange={onPanelOpenChange}
+        placeholder="Pick one"
+        isLoading
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'common.dynamicSelect.loading' })).toBeDisabled()
+
+    rerender(
+      <FormInputDynamicTreeSelect
+        language="en_US"
+        options={treeOptions}
+        value={['parent-a', 'parent-b', 'child-a1', '']}
+        onChange={vi.fn()}
+        onPanelOpenChange={onPanelOpenChange}
+        placeholder="Pick one"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.dynamicSelect.selected:{"count":3}' }))
+    expect(onPanelOpenChange).toHaveBeenCalledWith(true)
+  })
+
   it('should collapse and expand a parent via the dedicated toggle button', () => {
     render(<StatefulTreeSelect />)
 

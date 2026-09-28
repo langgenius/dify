@@ -160,4 +160,122 @@ describe('VarReferencePickerTrigger', () => {
     fireEvent.click(buttons[buttons.length - 1]!)
     expect(onRemove).toHaveBeenCalledTimes(1)
   })
+
+  const treeOptions = [
+    {
+      value: 'parent-a',
+      label: { en_US: 'Parent A', zh_Hans: 'Parent A' },
+      show_on: [],
+      children: [
+        {
+          value: 'child-a1',
+          label: { en_US: 'Child A1', zh_Hans: 'Child A1' },
+          show_on: [],
+        },
+      ],
+    },
+    {
+      value: 'parent-b',
+      label: { en_US: 'Parent B', zh_Hans: 'Parent B' },
+      show_on: [],
+    },
+  ]
+
+  it('should select one tree node and report when the panel opens', () => {
+    const onChange = vi.fn()
+    const onConstantFieldOpenChange = vi.fn()
+
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      onChange,
+      onConstantFieldOpenChange,
+      schemaWithDynamicSelect: {
+        options: treeOptions,
+        type: 'dynamic-tree-select',
+        variable: 'field',
+      } as never,
+      value: 'child-a1',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Child A1' }))
+    expect(onConstantFieldOpenChange).toHaveBeenCalledWith(true)
+    fireEvent.click(screen.getByRole('option', { name: 'Parent B' }))
+    expect(onChange).toHaveBeenCalledWith('parent-b', VarKindType.constant)
+  })
+
+  it('should keep multiple tree selections when the schema flag is truthy', () => {
+    const onChange = vi.fn()
+
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      onChange,
+      schemaWithDynamicSelect: {
+        multiple: 'true',
+        options: treeOptions,
+        type: 'dynamic-tree-select',
+        variable: 'field',
+      } as never,
+      value: ['parent-a', 1] as never,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Parent A' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent B' }))
+    expect(onChange).toHaveBeenCalledWith(['parent-a', 'parent-b'], VarKindType.constant)
+  })
+
+  it('should treat a false multiple flag as a single tree selection', () => {
+    const onChange = vi.fn()
+
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      onChange,
+      schemaWithDynamicSelect: {
+        multiple: 'false',
+        options: treeOptions,
+        type: 'dynamic-tree-select',
+        variable: 'field',
+      } as never,
+      value: '',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.placeholder.select' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent B' }))
+    expect(onChange).toHaveBeenCalledWith('parent-b', VarKindType.constant)
+  })
+
+  it('should treat numeric multiple flags as multi-select and ignore non-string number values', () => {
+    const onChange = vi.fn()
+
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      onChange,
+      schemaWithDynamicSelect: {
+        multiple: 1,
+        options: treeOptions,
+        type: 'dynamic-tree-select',
+        variable: 'field',
+      } as never,
+      value: [],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.placeholder.select' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent A' }))
+    expect(onChange).toHaveBeenCalledWith(['parent-a'], VarKindType.constant)
+  })
+
+  it('should clear a number constant when the stored value is not text', () => {
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      schemaWithDynamicSelect: {
+        type: 'number-input',
+      } as never,
+      value: ['not-a-number'],
+    })
+
+    expect(document.querySelector('input[type="number"]')).toHaveProperty('value', '')
+  })
 })
