@@ -22,12 +22,6 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => String(args.filter(Boolean).join(' ')),
 }))
 
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  TooltipContent: () => null,
-  TooltipTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
   Variable02: () => null,
 }))
