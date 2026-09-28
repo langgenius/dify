@@ -985,7 +985,7 @@ class TestFixedRecursiveCharacterTextSplitter:
     def test_character_level_splitting_keeps_variable_length_chunks_within_limit(self):
         """Trim overlap further when the next character has a larger custom length."""
         text = "abcdefghij"
-        character_lengths = dict.fromkeys(text, 2)
+        character_lengths: dict[str, int] = dict.fromkeys(text, 2)
         character_lengths["f"] = 5
 
         def variable_character_length(texts: list[str]) -> list[int]:
