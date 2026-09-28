@@ -625,6 +625,7 @@ export function AgentTemplateTools() {
     <ConfigureSection
       label={t(($) => $['agentDetail.configure.tools.label'])}
       labelId={labelId}
+      tip={<AgentConfigureTipContent type="tools" />}
       rootClassName="border-b border-divider-subtle pt-4"
       panelContentClassName="flex flex-col gap-1 pb-4"
     >

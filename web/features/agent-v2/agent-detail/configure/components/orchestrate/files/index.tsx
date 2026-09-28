@@ -599,6 +599,7 @@ export function AgentTemplateFiles() {
     <ConfigureSection
       label={t(($) => $['agentDetail.configure.files.label'])}
       labelId={labelId}
+      tip={<AgentConfigureTipContent type="files" />}
       rootClassName="border-b border-divider-subtle pt-4"
       panelContentClassName="pb-4"
     >
