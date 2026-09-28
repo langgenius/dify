@@ -23,11 +23,13 @@ import { useAgentSkillDetail } from './use-skill-detail'
 
 export function AgentSkillItem({
   apiContext,
+  canDownload,
   canRemove,
   skill,
   onRemove,
 }: {
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   canRemove: boolean
   skill: AgentSkill
   onRemove: (skillId: string) => void
@@ -99,6 +101,7 @@ export function AgentSkillItem({
   const handleDownload = useCallback(() => {
     void downloadSkill().catch(noop)
   }, [downloadSkill])
+  const onDownloadSkill = canDownload ? handleDownload : undefined
   const handleOpenPreview = useCallback(() => {
     if (skill.isMissing) return
 
@@ -106,6 +109,7 @@ export function AgentSkillItem({
   }, [skill.isMissing])
   const detail = useAgentSkillDetail({
     apiContext,
+    canDownload,
     description: skill.description ?? t(($) => $['agentDetail.configure.skills.tip']),
     isOpen: isPreviewOpen,
     skill,
@@ -154,7 +158,7 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {!apiContext.trialAppId && (!skill.isMissing || canRemove) && (
+        {((!skill.isMissing && onDownloadSkill) || canRemove) && (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {
@@ -176,8 +180,8 @@ export function AgentSkillItem({
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
-              {!skill.isMissing && (
-                <DropdownMenuItem className="gap-2" onClick={handleDownload}>
+              {!skill.isMissing && onDownloadSkill && (
+                <DropdownMenuItem className="gap-2" onClick={onDownloadSkill}>
                   <span
                     aria-hidden
                     className="i-ri-download-line size-4 shrink-0 text-text-tertiary"
@@ -185,7 +189,7 @@ export function AgentSkillItem({
                   <span>{tCommon(($) => $['operation.download'])}</span>
                 </DropdownMenuItem>
               )}
-              {!skill.isMissing && canRemove && <DropdownMenuSeparator />}
+              {!skill.isMissing && onDownloadSkill && canRemove && <DropdownMenuSeparator />}
               {canRemove && (
                 <DropdownMenuItem
                   data-agent-skill-remove-button

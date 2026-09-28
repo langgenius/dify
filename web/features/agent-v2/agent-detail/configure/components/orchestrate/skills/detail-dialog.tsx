@@ -267,38 +267,40 @@ function AgentFilePreviewContent({
         <span className="system-sm-regular text-text-tertiary">
           {t(($) => $['agentDetail.configure.files.preview.unsupported'])}
         </span>
-        <a
-          href={downloadUrl || '#'}
-          aria-disabled={isPreviewDownloadLoading}
-          onClick={(event) => {
-            if (isPreviewDownloadLoading) {
-              event.preventDefault()
-              return
-            }
-            if (!downloadUrl) {
-              event.preventDefault()
-              onDownloadFile?.('preview')
-            }
-          }}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        >
-          <span
-            aria-hidden
-            className={cn(
-              'size-4 shrink-0',
-              isPreviewDownloadLoading
-                ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                : 'i-ri-download-2-line',
-            )}
-          />
-          <span className="shrink-0">
-            {isPreviewDownloadLoading
-              ? tCommon(($) => $['operation.downloading'])
-              : tCommon(($) => $['operation.download'])}
-          </span>
-        </a>
+        {onDownloadFile && (
+          <a
+            href={downloadUrl || '#'}
+            aria-disabled={isPreviewDownloadLoading}
+            onClick={(event) => {
+              if (isPreviewDownloadLoading) {
+                event.preventDefault()
+                return
+              }
+              if (!downloadUrl) {
+                event.preventDefault()
+                onDownloadFile?.('preview')
+              }
+            }}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-4 shrink-0',
+                isPreviewDownloadLoading
+                  ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                  : 'i-ri-download-2-line',
+              )}
+            />
+            <span className="shrink-0">
+              {isPreviewDownloadLoading
+                ? tCommon(($) => $['operation.downloading'])
+                : tCommon(($) => $['operation.download'])}
+            </span>
+          </a>
+        )}
       </div>
     )
   }

@@ -798,6 +798,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
+                canDownload
                 canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
@@ -838,6 +839,7 @@ export function AgentTemplateSkills() {
             <li key={skill.id}>
               <AgentSkillItem
                 apiContext={apiContext}
+                canDownload={false}
                 canRemove={false}
                 skill={skill}
                 onRemove={noop}
