@@ -1,7 +1,7 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ActionItem, AppSearchResult, SearchResult } from './types'
 import type { AppIconType, AppModeEnum as AppMode } from '@/types/app'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'

@@ -19,7 +19,7 @@ const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
@@ -112,7 +112,7 @@ describe('HydrateQueryClient', () => {
     expect(state.queries[0]?.queryKey).toEqual([
       'marketplace',
       'collections',
-      { input: { query: { limit: 20 } } },
+      { input: { query: {} } },
     ])
   })
 

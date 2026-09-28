@@ -12,6 +12,7 @@ from services.account_ports import AccountRepository
 from services.entities.account_entities import AccountSnapshot
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context(*, workspace_id: str = "workspace-1") -> RequestContext:
@@ -55,21 +56,7 @@ class StateRepositoryStub:
 
 
 def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=started_at,
-        created_at=started_at,
-    )
+    return make_account_snapshot(initialized_at=started_at, created_at=started_at)
 
 
 def _accounts(account: AccountSnapshot | None) -> Mock:

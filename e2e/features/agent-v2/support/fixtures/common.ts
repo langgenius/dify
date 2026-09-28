@@ -1,4 +1,4 @@
-import type { DifyWorld } from '../../../support/world'
+import type { DifyWorld } from '../../../support/world.ts'
 
 export type PreseededResource = NonNullable<
   DifyWorld['agentBuilder']['fixtures']['preseededResources'][string]

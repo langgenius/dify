@@ -78,7 +78,7 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -242,10 +242,6 @@ vi.mock('../common/batch-action', () => ({
       </button>
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <hr data-testid="divider" />,
 }))
 
 const createMockSegmentDetail = (
@@ -477,12 +473,6 @@ describe('Completed Component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
-    })
-
-    it('should render Divider component', () => {
-      render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByTestId('divider'))!.toBeInTheDocument()
     })
 
     it('should render DrawerGroup when docForm is available', () => {

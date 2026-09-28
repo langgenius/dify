@@ -748,37 +748,42 @@ class TestMyPermissions:
         assert out.workspace.permission_keys == ["workspace.member.manage"]
 
     @pytest.mark.parametrize(
-        ("role", "workspace_keys", "app_keys", "dataset_keys"),
+        ("role", "workspace_keys", "app_keys", "dataset_keys", "agent_keys"),
         [
             (
                 "owner",
                 svc._LEGACY_WORKSPACE_OWNER_KEYS,
                 svc._LEGACY_APP_OWNER_KEYS,
                 svc._LEGACY_DATASET_OWNER_KEYS,
+                svc._LEGACY_AGENT_FULL_ACCESS_KEYS,
             ),
             (
                 "admin",
                 svc._LEGACY_WORKSPACE_ADMIN_KEYS,
                 svc._LEGACY_APP_ADMIN_KEYS,
                 svc._LEGACY_DATASET_ADMIN_KEYS,
+                svc._LEGACY_AGENT_FULL_ACCESS_KEYS,
             ),
             (
                 "editor",
                 svc._LEGACY_WORKSPACE_EDITOR_KEYS,
                 svc._LEGACY_APP_EDITOR_KEYS,
                 svc._LEGACY_DATASET_EDITOR_KEYS,
+                svc._LEGACY_AGENT_FULL_ACCESS_KEYS,
             ),
             (
                 "normal",
                 svc._LEGACY_WORKSPACE_NORMAL_KEYS,
                 svc._LEGACY_APP_NORMAL_KEYS,
                 [],
+                svc._LEGACY_AGENT_PREVIEW_KEYS,
             ),
             (
                 "dataset_operator",
                 svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
                 svc._LEGACY_APP_DATASET_OPERATOR_KEYS,
                 svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
+                svc._LEGACY_AGENT_PREVIEW_KEYS,
             ),
         ],
     )
@@ -789,6 +794,7 @@ class TestMyPermissions:
         workspace_keys: list[str],
         app_keys: list[str],
         dataset_keys: list[str],
+        agent_keys: list[str],
         sqlite_session: Session,
         config_overrides,
     ):
@@ -804,8 +810,10 @@ class TestMyPermissions:
         assert len(out.workspace.permission_keys) == len(set(out.workspace.permission_keys))
         assert out.app.default_permission_keys == app_keys
         assert out.dataset.default_permission_keys == dataset_keys
+        assert out.agent.default_permission_keys == agent_keys
         assert out.app.overrides == []
         assert out.dataset.overrides == []
+        assert out.agent.overrides == []
         if role == "owner":
             assert "snippets.management" in out.workspace.permission_keys
             assert "app.acl.preview" in out.workspace.permission_keys
@@ -859,6 +867,7 @@ class TestMyPermissions:
         assert out.workspace.permission_keys == []
         assert out.app.default_permission_keys == []
         assert out.dataset.default_permission_keys == []
+        assert out.agent.default_permission_keys == []
 
     def test_get_with_single_resource_filters(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
@@ -877,6 +886,27 @@ class TestMyPermissions:
         assert call.endpoint == "/rbac/my-permissions"
         assert call.params == {"app_id": "app-1"}
         assert out.app.overrides[0].resource_id == "app-1"
+
+    def test_get_forwards_agent_id_and_parses_agent_snapshot(self, mock_send: MagicMock, sqlite_session: Session):
+        mock_send.return_value = {
+            "workspace": {"permission_keys": []},
+            "app": {"default_permission_keys": [], "overrides": []},
+            "dataset": {"default_permission_keys": [], "overrides": []},
+            "agent": {
+                "default_permission_keys": ["agent.acl.preview"],
+                "overrides": [{"resource_id": "agent-1", "permission_keys": ["agent.acl.edit"]}],
+            },
+        }
+
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", agent_id="agent-1", session=sqlite_session)
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/my-permissions"
+        assert call.params == {"agent_id": "agent-1"}
+        assert out.agent.default_permission_keys == ["agent.acl.preview"]
+        assert out.agent.overrides[0].resource_id == "agent-1"
+        assert out.agent.overrides[0].permission_keys == ["agent.acl.edit"]
 
 
 @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
@@ -924,6 +954,7 @@ class TestMemberRoles:
                     *svc._LEGACY_WORKSPACE_EDITOR_KEYS,
                     *svc._LEGACY_APP_EDITOR_KEYS,
                     *svc._LEGACY_DATASET_EDITOR_KEYS,
+                    *svc._LEGACY_AGENT_FULL_ACCESS_KEYS,
                 ]
             )
         )
@@ -1126,9 +1157,8 @@ class TestListOption:
         }
 
 
-class TestLegacyAgentManageKey:
-    def test_legacy_agent_manage_key_membership(self):
-        # Preserve Agent access for every legacy role while external RBAC is disabled.
+class TestLegacyAgentKeys:
+    def test_legacy_workspace_keys_no_longer_carry_agent_manage(self):
         for keys in (
             svc._LEGACY_WORKSPACE_OWNER_KEYS,
             svc._LEGACY_WORKSPACE_ADMIN_KEYS,
@@ -1136,4 +1166,5 @@ class TestLegacyAgentManageKey:
             svc._LEGACY_WORKSPACE_NORMAL_KEYS,
             svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
         ):
-            assert "agent.manage" in keys
+            assert "agent.manage" not in keys
+            assert {"agent.acl.preview", "agent.acl.access_point_view"} <= set(keys)

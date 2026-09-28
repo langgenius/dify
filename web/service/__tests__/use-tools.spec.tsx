@@ -17,7 +17,7 @@ vi.mock('@/service/base', () => ({
   put: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {

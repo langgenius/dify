@@ -20,8 +20,8 @@ class ProviderTokenNotInitError(ValueError):
 
     description = "Provider Token Not Init"
 
-    def __init__(self, *args, **kwargs):
-        self.description = args[0] if args else self.description
+    def __init__(self, *args: object, **kwargs: object):
+        self.description = str(args[0]) if args else self.description
 
 
 class QuotaExceededError(ValueError):

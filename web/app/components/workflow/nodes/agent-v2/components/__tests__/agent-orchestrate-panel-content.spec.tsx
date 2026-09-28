@@ -32,10 +32,10 @@ const mocks = vi.hoisted(() => ({
   uploadWorkflowSandboxFile: vi.fn(),
 }))
 
-const permission = vi.hoisted(() => ({ canManageAgents: true }))
+const permission = vi.hoisted(() => ({ canCreateAgents: true }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => permission.canManageAgents,
+  useCanCreateAgents: () => permission.canCreateAgents,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -203,7 +203,7 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
   return {
     consoleClient: {
@@ -496,7 +496,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     vi.clearAllMocks()
     useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
-    permission.canManageAgents = true
+    permission.canCreateAgents = true
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
@@ -579,7 +579,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       />,
     )
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
   })
@@ -904,8 +904,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the save-to-roster menu when the user cannot manage agents', async () => {
-      permission.canManageAgents = false
+    it('should hide the save-to-roster menu when the user cannot create agents', async () => {
+      permission.canCreateAgents = false
 
       renderWorkspace({
         onSaveInlineToRoster: vi.fn(),

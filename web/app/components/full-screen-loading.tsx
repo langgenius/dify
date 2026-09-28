@@ -1,9 +1,5 @@
-import Loading from './base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 
 export function FullScreenLoading() {
-  return (
-    <div className="flex min-h-dvh w-full flex-1 items-center justify-center bg-background-body">
-      <Loading />
-    </div>
-  )
+  return <LoadingPlaceholder className="min-h-dvh flex-1 bg-background-body" />
 }

@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import UsageCountResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
@@ -22,7 +23,6 @@ from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -35,6 +35,7 @@ from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from libs.helper import dump_response
 from libs.login import login_required
+from libs.pagination import clamp_pagination
 from models import Account
 from models.dataset import ExternalKnowledgeApis
 from services.dataset_service import DatasetService
@@ -168,15 +169,16 @@ class ExternalApiTemplateListApi(Resource):
     @model_validate(ExternalApiTemplateListQuery)
     def get(self, req_data: ExternalApiTemplateListQuery, session: Session, current_tenant_id: str):
 
+        effective_page, effective_limit = clamp_pagination(req_data.page, req_data.limit, 100)
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            req_data.page, req_data.limit, current_tenant_id, req_data.keyword, session=session
+            effective_page, effective_limit, current_tenant_id, req_data.keyword, session=session
         )
         return ExternalKnowledgeApiListResponse(
             data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=len(external_knowledge_apis) == req_data.limit,
-            limit=req_data.limit,
+            has_more=effective_page * effective_limit < total,
+            limit=effective_limit,
             total=total,
-            page=req_data.page,
+            page=effective_page,
         ).model_dump(mode="json"), 200
 
     @console_ns.doc("create_external_api_template")
@@ -350,9 +352,7 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -411,7 +411,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
     @model_validate(ExternalHitTestingPayload)
     def post(self, req_data: ExternalHitTestingPayload, session: Session, current_user: Account, dataset_id: UUID):

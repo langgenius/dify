@@ -4,10 +4,17 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
+const permissions = vi.hoisted(() => ({ canCreate: true, canImport: true }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => permissions.canCreate,
+  useCanImportAgents: () => permissions.canImport,
+}))
+
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
-      <div role="dialog" aria-label="agentV2.roster.importDSL">
+      <div role="dialog" aria-label="agentRoster.roster.importDSL">
         <button onClick={onSuccess}>Complete agent import</button>
       </div>
     ) : null,
@@ -39,7 +46,39 @@ const renderToolbar = ({
 }
 
 describe('RosterToolbar', () => {
-  it('opens the shared create menu for blank Agent creation and DSL import', async () => {
+  beforeEach(() => {
+    permissions.canCreate = true
+    permissions.canImport = true
+  })
+
+  it.each([
+    { canCreate: true, canImport: false },
+    { canCreate: true, canImport: true },
+  ])('shows the permitted create and import actions: %o', async (grants) => {
+    Object.assign(permissions, grants)
+    renderToolbar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    expect(Boolean(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }))).toBe(
+      grants.canCreate,
+    )
+    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importApp/ }))).toBe(
+      grants.canImport,
+    )
+  })
+
+  it('hides the create menu when neither action is permitted', () => {
+    permissions.canCreate = false
+    permissions.canImport = false
+    renderToolbar()
+
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.create' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('opens the shared create menu for blank Agent creation and App import', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderToolbar()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -47,12 +86,12 @@ describe('RosterToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /app\.importDSL/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /app\.importApp/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: /app\.importDSL/ }))
+    await user.click(screen.getByRole('menuitem', { name: /app\.importApp/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.importDSL' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.importDSL' }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Complete agent import' }))
@@ -65,9 +104,9 @@ describe('RosterToolbar', () => {
     const { onUrlUpdate } = renderToolbar()
 
     const publishedFilter = screen.getByRole('radio', {
-      name: /agentV2\.roster\.filters\.published/,
+      name: /agentRoster\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })
 
     expect(publishedFilter).toBeEnabled()
     expect(draftsFilter).toBeEnabled()
@@ -84,11 +123,11 @@ describe('RosterToolbar', () => {
   it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    const allFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.all/ })
+    const allFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.all/ })
     const publishedFilter = screen.getByRole('radio', {
-      name: /agentV2\.roster\.filters\.published/,
+      name: /agentRoster\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })
 
     expect(allFilter).not.toHaveTextContent('3')
     expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
@@ -99,15 +138,15 @@ describe('RosterToolbar', () => {
     renderToolbar({ publicationCounts: { drafts: 0, published: 0 } })
 
     expect(
-      screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ }),
+      screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ })).getByText(
-        '0',
-      ),
+      within(
+        screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
+      ).getByText('0'),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })).getByText(
+      within(screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })).getByText(
         '0',
       ),
     ).toBeInTheDocument()
@@ -118,7 +157,7 @@ describe('RosterToolbar', () => {
     const { onUrlUpdate } = renderToolbar()
 
     const createdByMeFilter = screen.getByRole('checkbox', {
-      name: 'agentV2.roster.filters.createdByMe',
+      name: 'agentRoster.roster.filters.createdByMe',
     })
 
     expect(createdByMeFilter).toHaveAttribute('aria-checked', 'false')
@@ -136,13 +175,13 @@ describe('RosterToolbar', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()
 
-    const sortSelect = screen.getByRole('combobox', { name: 'agentV2.roster.sort.label' })
+    const sortSelect = screen.getByRole('combobox', { name: 'agentRoster.roster.sort.label' })
 
-    expect(screen.getByText('agentV2.roster.sort.lastModified')).toBeInTheDocument()
+    expect(screen.getByText('agentRoster.roster.sort.lastModified')).toBeInTheDocument()
 
     await user.click(sortSelect)
     await user.click(
-      await screen.findByRole('option', { name: 'agentV2.roster.sort.recentlyCreated' }),
+      await screen.findByRole('option', { name: 'agentRoster.roster.sort.recentlyCreated' }),
     )
 
     expect(onUrlUpdate).toHaveBeenCalledWith(

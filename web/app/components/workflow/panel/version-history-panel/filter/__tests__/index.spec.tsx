@@ -18,7 +18,7 @@ describe('VersionHistory Filter Components', () => {
       render(<FilterSwitch enabled={false} handleSwitch={handleSwitch} />)
 
       expect(
-        screen.getByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+        screen.getByText('workflowHistory.versionHistory.filter.onlyShowNamedVersions'),
       ).toBeInTheDocument()
       expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
 
@@ -49,11 +49,13 @@ describe('VersionHistory Filter Components', () => {
 
       await user.click(trigger)
 
-      expect(screen.getByText('workflow.versionHistory.filter.all')).toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.filter.onlyYours')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.filter.all')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowHistory.versionHistory.filter.onlyYours'),
+      ).toBeInTheDocument()
 
       await user.click(
-        screen.getByRole('button', { name: 'workflow.versionHistory.filter.onlyYours' }),
+        screen.getByRole('button', { name: 'workflowHistory.versionHistory.filter.onlyYours' }),
       )
       expect(onClickFilterItem).toHaveBeenCalledWith(WorkflowVersionFilterOptions.onlyYours)
 

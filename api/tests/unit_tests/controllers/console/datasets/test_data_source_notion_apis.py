@@ -10,6 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import DatasetId
 from controllers.console.datasets.data_source import (
     DataSourceNotionDatasetSyncApi,
     DataSourceNotionDocumentSyncApi,
@@ -18,25 +19,24 @@ from controllers.console.datasets.data_source import (
     DataSourceNotionPreviewQuery,
     NotionEstimatePayload,
 )
+from controllers.console.wraps import RBACPermission
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Dataset, Document
-from models.dataset import DataSourceType, DocumentCreatedFrom
+from models.dataset import DataSourceType
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.unit_tests.model_factories import make_dataset, make_document
 
 
 def _dataset() -> Dataset:
-    return Dataset(id="ds-1", tenant_id="tenant-1", name="Dataset", created_by="u1")
+    return make_dataset(dataset_id="ds-1", created_by="u1")
 
 
 def _document() -> Document:
-    return Document(
-        id="d1",
-        tenant_id="tenant-1",
+    return make_document(
+        document_id="d1",
         dataset_id="ds-1",
-        position=1,
         data_source_type=DataSourceType.NOTION_IMPORT,
-        batch="batch-1",
         name="Notion page",
-        created_from=DocumentCreatedFrom.WEB,
         created_by="u1",
     )
 
@@ -107,6 +107,12 @@ class TestDataSourceNotionIndexingEstimateApi:
 
 
 class TestDataSourceNotionDatasetSyncApi:
+    def test_get_requires_dataset_edit_permission(self) -> None:
+        [check] = rbac_checks(DataSourceNotionDatasetSyncApi.get)
+
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDatasetSyncApi()
@@ -148,6 +154,12 @@ class TestDataSourceNotionDatasetSyncApi:
 
 
 class TestDataSourceNotionDocumentSyncApi:
+    def test_get_requires_dataset_edit_permission(self) -> None:
+        [check] = rbac_checks(DataSourceNotionDocumentSyncApi.get)
+
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDocumentSyncApi()

@@ -3,7 +3,7 @@ import type { MarketplaceSearchParams } from './search-params'
 import { dehydrate, noop } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/app/get-query-client'
-import { marketplaceQuery } from '@/service/client'
+import { marketplaceQuery } from '@/service/marketplace'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 import { getMarketplacePluginsInfiniteQueryOptions } from './query-options'
 import {

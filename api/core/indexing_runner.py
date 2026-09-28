@@ -400,7 +400,8 @@ class IndexingRunner:
             )
             total_segments += len(documents)
             for document in documents:
-                if len(preview_texts) < 10:
+                preview_count = len(qa_preview_texts) if doc_form == "qa_model" else len(preview_texts)
+                if preview_count < 10:
                     if doc_form and doc_form == "qa_model":
                         qa_detail = QAPreviewDetail(
                             question=document.page_content, answer=document.metadata.get("answer") or ""
@@ -540,7 +541,7 @@ class IndexingRunner:
         return text_docs
 
     @staticmethod
-    def filter_string(text):
+    def filter_string(text: str):
         text = re.sub(r"<\|", "<", text)
         text = re.sub(r"\|>", ">", text)
         text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)

@@ -3,29 +3,19 @@ import type { ChatContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import Operation from '../operation'
 
-const { mockSetShowAnnotationFullModal, mockProviderContext, mockT, mockAddAnnotation } =
-  vi.hoisted(() => {
-    return {
-      mockAddAnnotation: vi.fn(),
-      mockSetShowAnnotationFullModal: vi.fn(),
-      mockT: vi.fn((key: string): string => key),
-      mockProviderContext: {
-        plan: {
-          usage: { annotatedResponse: 0 },
-          total: { annotatedResponse: 100 },
-        },
-        enableBilling: false,
-      },
-    }
-  })
+const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(() => {
+  return {
+    mockAddAnnotation: vi.fn(),
+    mockSetShowAnnotationFullModal: vi.fn(),
+    mockT: vi.fn((key: string): string => key),
+  }
+})
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { success: vi.fn() },
 }))
 
@@ -33,10 +23,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAnnotationFullModal: mockSetShowAnnotationFullModal,
   }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
 }))
 
 vi.mock('@/service/annotation', () => ({
@@ -59,13 +45,11 @@ vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({
     isShow,
     onHide,
     onEdited,
-    onAdded,
     onRemove,
   }: {
     isShow: boolean
     onHide: () => void
     onEdited: (q: string, a: string) => void
-    onAdded: (id: string, name: string, q: string, a: string) => void
     onRemove: () => void
   }) =>
     isShow ? (
@@ -75,9 +59,6 @@ vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({
         </button>
         <button data-testid="modal-edit" onClick={() => onEdited('eq', 'ea')}>
           Edit
-        </button>
-        <button data-testid="modal-add" onClick={() => onAdded('a1', 'author', 'eq', 'ea')}>
-          Add
         </button>
         <button data-testid="modal-remove" onClick={onRemove}>
           Remove
@@ -98,13 +79,7 @@ vi.mock(
       onEdit: () => void
       cached: boolean
     }) {
-      const { setShowAnnotationFullModal } = useModalContext()
-      const { plan, enableBilling } = useProviderContext()
       const handleAdd = () => {
-        if (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse) {
-          setShowAnnotationFullModal()
-          return
-        }
         onAdded('ann-new', 'Test User')
       }
       return (
@@ -128,14 +103,6 @@ vi.mock('@/app/components/base/new-audio-button', () => ({
   default: ({ value }: { value: string }) => (
     <button data-testid="audio-btn" data-value={value}>
       Play
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/base/chat/chat/log', () => ({
-  default: () => (
-    <button data-testid="log-btn">
-      <div className="i-ri-file-list-3-line" />
     </button>
   ),
 }))
@@ -202,7 +169,6 @@ type OperationProps = {
   item: ChatItem
   question: string
   index: number
-  showPromptLog?: boolean
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
@@ -266,8 +232,8 @@ describe('Operation', () => {
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
     mockContextValue.showRegenerate = false
-    mockProviderContext.plan.usage.annotatedResponse = 0
-    mockProviderContext.enableBilling = false
+    mockContextValue.onOpenLog = undefined
+
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
   })
 
@@ -369,26 +335,29 @@ describe('Operation', () => {
       expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
 
-    it('should show prompt log when showPromptLog is true', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
-      expect(screen.getByTestId('log-btn'))!.toBeInTheDocument()
+    it('should show the log action when the owner provides it', () => {
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
+      expect(screen.getByRole('button', { name: 'operation.log' }))!.toBeInTheDocument()
     })
 
     it('should keep hover-only controls visible when a descendant popup is open', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
 
       expect(screen.getByTestId('operation-actions')).toHaveClass(
         'group-has-[[data-popup-open]]:flex',
       )
-      expect(screen.getByTestId('log-btn').parentElement).toHaveClass(
-        'group-has-[[data-popup-open]]:block',
-      )
+      expect(
+        screen.getByRole('button', { name: 'operation.log' }).parentElement?.parentElement,
+      ).toHaveClass('group-has-[[data-popup-open]]:block')
     })
 
     it('should not show prompt log for opening statements', () => {
       const item = { ...baseItem, isOpeningStatement: true }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
-      expect(screen.queryByTestId('log-btn')).not.toBeInTheDocument()
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
+      expect(screen.queryByRole('button', { name: 'operation.log' })).not.toBeInTheDocument()
     })
   })
 
@@ -923,7 +892,8 @@ describe('Operation', () => {
         feedback: { rating: 'like' as const },
         adminFeedback: { rating: 'dislike' as const },
       }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
       expect(bar)!.toBeInTheDocument()
     })
@@ -1060,17 +1030,6 @@ describe('Operation', () => {
       )
     })
 
-    it('should show annotation full modal when limit reached', async () => {
-      const user = userEvent.setup()
-      mockProviderContext.enableBilling = true
-      mockProviderContext.plan.usage.annotatedResponse = 100
-      renderOperation()
-      const addBtn = screen.getByTestId('annotation-add-btn')
-      await user.click(addBtn)
-      expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
-      expect(mockAddAnnotation).not.toHaveBeenCalled()
-    })
-
     it('should open edit reply modal when cached annotation exists', async () => {
       const user = userEvent.setup()
       const item = {
@@ -1094,19 +1053,6 @@ describe('Operation', () => {
       await user.click(editBtn)
       await user.click(screen.getByTestId('modal-edit'))
       expect(mockContextValue.onAnnotationEdited).toHaveBeenCalledWith('eq', 'ea', 0)
-    })
-
-    it('should call onAnnotationAdded from edit reply modal', async () => {
-      const user = userEvent.setup()
-      const item = {
-        ...baseItem,
-        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
-      }
-      renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-add'))
-      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith('a1', 'author', 'eq', 'ea', 0)
     })
 
     it('should call onAnnotationRemoved from edit reply modal', async () => {

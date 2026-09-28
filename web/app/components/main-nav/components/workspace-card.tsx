@@ -4,7 +4,6 @@ import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/co
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   noop,
   useMutation,
@@ -18,16 +17,20 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useModalContext } from '@/context/modal-context'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits } from '../utils'
@@ -104,9 +107,9 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation()
-  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
-  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
+  const { t } = useTranslation(['common', 'navigation'])
+  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'navigation' })
+  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'navigation' })
   const isUnlimited = credits === -1
   const formattedCredits = isUnlimited
     ? t(($) => $['license.unlimited'], { ns: 'common' })
@@ -250,7 +253,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 })
 
 export function WorkspaceCard() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'navigation'])
   const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -271,7 +274,7 @@ export function WorkspaceCard() {
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
@@ -325,7 +328,7 @@ export function WorkspaceCard() {
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
           onPrefetchWorkspaces={prefetchWorkspaces}
-          onPlanClick={setShowPricingModal}
+          onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
           placement="bottom-start"
@@ -337,8 +340,10 @@ export function WorkspaceCard() {
             name={currentWorkspace.name}
             status={renderWorkspaceStatus()}
             showInviteMembers={showInviteMembers}
-            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'common' })}
-            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
+            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'navigation' })}
+            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], {
+              ns: 'navigation',
+            })}
             onOpenSettings={() => {
               setOpen(false)
               setSettingsDestination(hasBillingPlan ? 'billing' : 'members')

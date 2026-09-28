@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { OnSend, TextGenerationConfig } from '@/app/components/base/text-generation/types'
+import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
@@ -9,18 +10,21 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useTextGeneration } from '@/app/components/base/text-generation/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
+import { useDebugWithMultipleModelContext } from './context'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) => {
+  const { onOpenLog } = useDebugWithMultipleModelContext()
   const {
     isAdvancedMode,
     modelConfig,
@@ -37,7 +41,12 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
     dataSets,
     datasetConfigs,
   } = useDebugConfigurationContext()
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const features = useFeatures((s) => s.features)
   const postDatasets = dataSets.map(({ id }) => ({
     dataset: {
@@ -75,7 +84,6 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
         datasets: [...postDatasets],
       } as any,
     },
-    system_parameters: modelConfig.system_parameters,
   }
   const { completion, handleSend, isResponding, messageId } = useTextGeneration()
 
@@ -135,6 +143,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
       messageId={messageId}
       isError={false}
       onRetry={noop}
+      onOpenLog={onOpenLog}
       inSidePanel
     />
   )

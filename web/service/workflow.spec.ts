@@ -9,7 +9,7 @@ vi.mock('./base', () => ({
   post: mockPost,
 }))
 
-vi.mock('./client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {},
 }))
 

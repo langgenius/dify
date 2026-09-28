@@ -23,7 +23,7 @@ vi.mock('../../../../../hooks/use-pipeline', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: unknown[]) => mockToastNotify(...args),
   },

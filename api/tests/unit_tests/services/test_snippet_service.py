@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from sqlalchemy import event, select
@@ -37,6 +37,7 @@ from models.workflow import (
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
+from tests.unit_tests.model_factories import make_account
 
 
 def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
@@ -70,9 +71,7 @@ def _snippet(**overrides) -> CustomizedSnippet:
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Test User", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
 
 
 def test_create_snippet_allows_duplicate_names(
@@ -123,19 +122,23 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
-    monkeypatch.setattr("services.snippet_service.TagService.get_target_ids_by_tag_ids", get_target_ids)
+    monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
     service = SnippetService.__new__(SnippetService)
 
-    result = service.get_snippets(tenant_id="tenant-1", session=sqlite_session, tag_ids=["tag-1"])
+    result = service.get_snippets(
+        tenant_id="tenant-1", session=sqlite_session, tag_ids=["tag-1"], tags=application_tags
+    )
 
     assert result == ([], 0, False)
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], sqlite_session, match_all=True)
+    get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
 
 
-def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_get_snippets_applies_filters_and_paginates(
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippets = []
     for index in range(3):
         snippet = CustomizedSnippet(
@@ -153,7 +156,8 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
     service = SnippetService.__new__(SnippetService)
     get_target_ids = Mock(return_value=["snippet-1", "snippet-2", "snippet-3"])
     monkeypatch.setattr(
-        "services.snippet_service.TagService.get_target_ids_by_tag_ids",
+        application_tags,
+        "find_target_ids",
         get_target_ids,
     )
 
@@ -166,13 +170,14 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
         is_published=True,
         creators=["account-1"],
         tag_ids=["tag-1"],
+        tags=application_tags,
     )
 
     assert {snippet.id for snippet in result} <= {snippet.id for snippet in snippets}
     assert len(result) == 1
     assert total == 3
     assert has_more is False
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], sqlite_session, match_all=True)
+    get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
 
 
 def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
@@ -968,6 +973,8 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
     )
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
+    service._session = Mock()
+    service._session_maker = Mock()
     snippet = _snippet()
     expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
     mock_assemble = Mock(return_value=expected_traces)
@@ -998,7 +1005,7 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
         workflow_run_id="run-1",
     )
     mock_assemble.assert_called_once_with(
-        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo
+        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo, session=ANY
     )
     node_execution_repo.get_node_last_execution.assert_called_once_with(
         tenant_id="tenant-1",

@@ -5,13 +5,13 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
   useAppAccessRules,
@@ -35,7 +35,7 @@ type AppAccessConfigContentProps = {
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'navigation'])
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)
@@ -196,13 +196,13 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
       <header className="flex min-h-15.5 shrink-0 flex-col justify-center px-6 py-3">
         <h1 className="system-xl-semibold text-text-primary">
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+          {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
         </h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
           {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}
         </p>
       </header>
-      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
+      <div className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
         <AccessRulesEditor
           className="min-h-0 w-full flex-1"
           rules={appAccessRules}
@@ -227,7 +227,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
           onBatchRemoveAccessPolicyMemberBindings={handleBatchRemoveAccessPolicyMemberBindings}
           onAddAccessSubject={handleAddAccessSubject}
         />
-      </main>
+      </div>
     </div>
   )
 }

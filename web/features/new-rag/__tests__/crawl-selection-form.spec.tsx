@@ -8,8 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
-import { getInitOptions } from '@/i18n-config/settings'
-import datasetTranslations from '@/i18n/en-US/dataset.json'
+import datasetTranslations from '@/i18n/locales/en-US/dataset.json'
+import { getInitOptions } from '@/i18n/settings'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
@@ -37,7 +37,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...original, useQueryClient: () => queryClientMock }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: clientMock.getPolicy,

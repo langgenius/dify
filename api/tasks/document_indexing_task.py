@@ -13,7 +13,7 @@ from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus
@@ -62,9 +62,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
             return
         # check document limit
-        features = FeatureService.get_features(dataset.tenant_id)
-        try:
-            if features.billing.enabled:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            features = FeatureService.get_features(dataset.tenant_id)
+            try:
                 vector_space = features.vector_space
                 assert vector_space is not None
                 count = len(document_ids)
@@ -78,18 +78,18 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                         "Your total number of documents plus the number of uploads have over the limit of "
                         "your subscription."
                     )
-        except Exception as e:
-            for document_id in document_ids:
-                document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                )
-                if document:
-                    document.indexing_status = IndexingStatus.ERROR
-                    document.error = str(e)
-                    document.stopped_at = naive_utc_now()
-                    session.add(document)
-            session.commit()
-            return
+            except Exception as e:
+                for document_id in document_ids:
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    )
+                    if document:
+                        document.indexing_status = IndexingStatus.ERROR
+                        document.error = str(e)
+                        document.stopped_at = naive_utc_now()
+                        session.add(document)
+                session.commit()
+                return
 
     # Phase 1: Persist parsing status before slow extraction and vector operations.
     with session_factory.create_session() as session, session.begin():

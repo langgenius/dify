@@ -27,13 +27,13 @@ function SocialIcon({ platform }: { platform: CreatorSocialPlatform }) {
 }
 
 export default function CreatorSidebar({ profile }: CreatorSidebarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const isOrganization = profile.kind === 'organization'
   const isPartner = profile.badges.includes('partner')
   const isVerified = profile.badges.includes('verified')
 
   return (
-    <aside className="relative flex min-w-0 flex-col gap-4 pt-11 md:w-[234px] md:pt-12">
+    <div className="relative flex min-w-0 flex-col gap-4 pt-11 md:w-[234px] md:pt-12">
       <PublisherAvatar
         avatarUrl={profile.avatarUrl}
         name={profile.displayName}
@@ -109,6 +109,6 @@ export default function CreatorSidebar({ profile }: CreatorSidebarProps) {
           </div>
         </div>
       )}
-    </aside>
+    </div>
   )
 }

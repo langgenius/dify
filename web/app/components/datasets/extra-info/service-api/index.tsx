@@ -14,15 +14,14 @@ type ServiceApiProps = {
 }
 
 export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
-  const { t } = useTranslation()
-  const [popoverOpen, setPopoverOpen] = useState(false)
+  const { t } = useTranslation(['dataset'])
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   return (
     <div className="flex items-center">
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <Popover>
         <PopoverTrigger
           render={(props) => (
             <button

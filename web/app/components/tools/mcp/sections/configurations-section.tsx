@@ -17,7 +17,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
   sseReadTimeout,
   onSseReadTimeoutChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const timeoutInputId = useId()
   const sseReadTimeoutInputId = useId()
 

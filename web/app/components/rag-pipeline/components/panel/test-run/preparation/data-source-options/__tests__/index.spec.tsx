@@ -11,20 +11,8 @@ vi.mock('../../hooks', () => ({
   useDatasourceOptions: () => options,
 }))
 
-vi.mock('../option-card', () => ({
-  default: ({
-    label,
-    value,
-    onClick,
-  }: {
-    label: string
-    value: string
-    onClick: (value: string) => void
-  }) => (
-    <button type="button" onClick={() => onClick(value)}>
-      {label}
-    </button>
-  ),
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
+  useToolIcon: () => undefined,
 }))
 
 describe('DataSourceOptions', () => {
@@ -39,10 +27,19 @@ describe('DataSourceOptions', () => {
   it('selects the datasource chosen by the user', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    render(<DataSourceOptions dataSourceNodeId="website" onSelect={onSelect} />)
+    const { rerender } = render(
+      <DataSourceOptions dataSourceNodeId="website" onSelect={onSelect} />,
+    )
 
-    await user.click(screen.getByRole('button', { name: 'Drive' }))
+    await user.tab()
+    expect(screen.getByRole('radio', { name: 'Website' })).toHaveFocus()
+    expect(screen.getByRole('radio', { name: 'Website' })).toBeChecked()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: 'Drive' })).toHaveFocus()
 
     expect(onSelect).toHaveBeenCalledWith({ nodeId: 'drive', nodeData: options[1]!.data })
+    rerender(<DataSourceOptions dataSourceNodeId="drive" onSelect={onSelect} />)
+    expect(screen.getByRole('radio', { name: 'Drive' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Website' })).not.toBeChecked()
   })
 })

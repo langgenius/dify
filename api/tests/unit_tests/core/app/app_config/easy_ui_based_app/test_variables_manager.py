@@ -285,3 +285,27 @@ class TestValidateAndSetDefaultsIntegration:
         assert "user_input_form" in keys
         assert "external_data_tools" in keys
         assert updated == config
+
+
+class TestBasicVariablesConfigManagerValidateVariables:
+    def test_validate_variables_rejects_trailing_newline(self):
+        # re.match with a "$" anchor still matches just before a trailing
+        # newline, so "name\n" used to pass validation even though "\n" is
+        # not in the allowed character set. fullmatch rejects it.
+        config = {
+            "user_input_form": [
+                {"text-input": {"label": "Name", "variable": "name\n"}},
+            ]
+        }
+        with pytest.raises(ValueError, match="cannot start with a number"):
+            BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
+
+    def test_validate_variables_accepts_valid_name(self):
+        config = {
+            "user_input_form": [
+                {"text-input": {"label": "Name", "variable": "name"}},
+            ]
+        }
+        validated, keys = BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
+        assert keys == ["user_input_form"]
+        assert validated["user_input_form"][0]["text-input"]["required"] is False

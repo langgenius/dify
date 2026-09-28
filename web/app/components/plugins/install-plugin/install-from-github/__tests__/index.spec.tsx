@@ -84,7 +84,7 @@ const createUpdatePayload = (
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((props: { type: string; message: string }) => mockNotify(props), {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -290,11 +290,12 @@ describe('InstallFromGitHub', () => {
   // Rendering Tests
   // ================================
   describe('Rendering', () => {
-    it('should render modal with correct initial state for new installation', () => {
+    it('should render and focus the URL for a new installation', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       expect(getRepoUrlInput()).toBeInTheDocument()
       expect(getRepoUrlInput()).toHaveValue('')
+      await waitFor(() => expect(getRepoUrlInput()).toHaveFocus())
     })
 
     it('should render modal with selectPackage step when updatePayload is provided', () => {
@@ -559,6 +560,7 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(getRepoUrlInput()).toBeInTheDocument()
       })
+      expect(getRepoUrlInput()).not.toHaveFocus()
     })
 
     it('should go back from readyToInstall to selectPackage', async () => {

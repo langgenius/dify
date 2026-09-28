@@ -150,8 +150,8 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
 }))
 
 vi.mock('@/app/components/base/features', () => ({

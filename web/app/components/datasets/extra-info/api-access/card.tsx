@@ -22,7 +22,7 @@ type CardProps = {
 }
 
 const Card = ({ apiEnabled }: CardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'dataset'])
   const datasetId = useDatasetDetailContextWithSelector((state) => state.dataset?.id)
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)

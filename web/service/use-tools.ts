@@ -10,8 +10,8 @@ import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/w
 import type { AppIconType } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+import { consoleClient } from '@/service/console'
 import { del, get, post, put } from './base'
-import { consoleClient } from './client'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'

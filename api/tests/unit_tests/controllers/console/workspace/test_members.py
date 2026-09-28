@@ -150,7 +150,9 @@ class TestMemberInviteEmailApi:
         with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
             yield
 
-    def test_invite_success(self, app: Flask):
+    @pytest.mark.parametrize("role", ["normal", "dataset_operator"])
+    def test_invite_success(self, app: Flask, config_overrides, role: str):
+        config_overrides(DATASET_OPERATOR_ENABLED=True)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -162,7 +164,7 @@ class TestMemberInviteEmailApi:
 
         payload = {
             "emails": ["A@TEST.com", "a@test.com"],
-            "role": "normal",
+            "role": role,
             "language": "en-US",
         }
 
@@ -182,6 +184,7 @@ class TestMemberInviteEmailApi:
         mock_count.assert_not_called()
         mock_invite.assert_called_once()
         assert mock_invite.call_args.kwargs["email"] == "a@test.com"
+        assert mock_invite.call_args.kwargs["role"] == role
 
     def test_invite_limit_exceeded(self, app: Flask, config_overrides):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
@@ -263,18 +266,20 @@ class TestMemberInviteEmailApi:
         assert result["invitation_results"][0]["status"] == "already_member"
         assert result["invitation_results"][0]["message"] == "Account already in workspace."
 
-    def test_invite_invalid_role(self, app: Flask):
+    @pytest.mark.parametrize("role", ["owner", "dataset_operator"])
+    def test_invite_invalid_role(self, app: Flask, config_overrides, role: str):
+        config_overrides(DATASET_OPERATOR_ENABLED=False)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         payload = {
             "emails": ["a@test.com"],
-            "role": "owner",
+            "role": role,
         }
 
         with app.test_request_context("/", json=payload):
             with pytest.raises(InvalidMemberRoleError) as exc_info:
-                method(api, _account())
+                method(api, _account(tenant=_tenant()))
 
         assert exc_info.value.error_code == "invalid_role"
 
@@ -540,14 +545,16 @@ class TestCountNewMemberInvites:
 
 
 class TestMemberUpdateRoleApi:
-    def test_update_invalid_role(self, app: Flask):
+    @pytest.mark.parametrize("role", ["invalid-role", "dataset_operator"])
+    def test_update_invalid_role(self, app: Flask, config_overrides, role: str):
+        config_overrides(DATASET_OPERATOR_ENABLED=False)
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
 
-        payload = {"role": "invalid-role"}
+        payload = {"role": role}
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, _account(), "id")
+            result, status = method(api, _account(tenant=_tenant()), "id")
 
         assert status == 400
 

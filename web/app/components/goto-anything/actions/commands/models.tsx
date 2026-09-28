@@ -23,11 +23,11 @@ export const modelsCommand: SlashCommandHandler<ModelsDeps> = {
       {
         id: 'models',
         title: i18n.t(($) => $['modelProvider.systemModelSettings'], {
-          ns: 'common',
+          ns: 'modelProvider',
           lng: locale,
         }),
         description: i18n.t(($) => $['modelProvider.systemModelSettingsDesc'], {
-          ns: 'common',
+          ns: 'modelProvider',
           lng: locale,
         }),
         type: 'command' as const,

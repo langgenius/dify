@@ -87,8 +87,8 @@ vi.mock('../../store', () => ({
   useStore: <T,>(selector: (state: MockPanelStoreState) => T) => selector(mockPanelStoreState),
 }))
 
-vi.mock('../../nodes', () => ({
-  Panel: ({ id, data }: { id: string; data: MockNodeData }) => (
+vi.mock('../../nodes/panel', () => ({
+  default: ({ id, data }: { id: string; data: MockNodeData }) => (
     <div data-testid="node-panel">{`${id}:${data.title || 'untitled'}`}</div>
   ),
 }))
@@ -103,7 +103,7 @@ vi.mock('@/app/components/workflow/panel/version-history-panel', () => ({
   ),
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {

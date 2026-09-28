@@ -1,14 +1,28 @@
 import type { JSX } from 'react'
-import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment } from 'react'
 import { jsx, jsxs } from 'react/jsx-runtime'
-import { codeToHast } from 'shiki/bundle/web'
+import { createBundledHighlighter, createSingletonShorthands } from 'shiki/core'
+import { createOnigurumaEngine } from 'shiki/engine/oniguruma'
+import { codeLanguages } from './shiki-languages'
+
+const createHighlighter = createBundledHighlighter({
+  langs: codeLanguages,
+  themes: {
+    'github-dark': () => import('shiki/themes/github-dark.mjs'),
+    'github-light': () => import('shiki/themes/github-light.mjs'),
+  },
+  engine: () => createOnigurumaEngine(import('shiki/wasm')),
+})
+
+const { getSingletonHighlighter } = createSingletonShorthands(createHighlighter)
+
+export type CodeTheme = 'github-dark' | 'github-light'
 
 type HighlightCodeOptions = {
   code: string
-  language: BundledLanguage
-  theme: BundledTheme
+  language: string
+  theme: CodeTheme
 }
 
 export const highlightCode = async ({
@@ -16,8 +30,62 @@ export const highlightCode = async ({
   language,
   theme,
 }: HighlightCodeOptions): Promise<JSX.Element> => {
-  const hast = await codeToHast(code, {
-    lang: language,
+  const normalizedLanguage = language.trim().toLowerCase()
+  const lang =
+    normalizedLanguage === 'dotenv' || Object.hasOwn(codeLanguages, normalizedLanguage)
+      ? normalizedLanguage
+      : 'text'
+
+  // Plain text and unsupported languages do not need syntax highlighting, so
+  // skip `getSingletonHighlighter` to avoid loading the WASM engine for them
+  // (see #42943). The shiki engine is still loaded on the first real highlight
+  // call, so subsequent supported-language code blocks render normally.
+  if (lang === 'text') {
+    // Hand-built minimal HAST tree; typed via `toJsxRuntime`'s own parameter
+    // so we don't need a top-level `hast` import (the shipped `@types/hast`
+    // transitively pulls in `hast` module declarations that we cannot resolve).
+    const plainHast: Parameters<typeof toJsxRuntime>[0] = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'pre',
+          properties: {},
+          children: [
+            {
+              type: 'element',
+              tagName: 'code',
+              properties: {},
+              // The code-block gutter uses .line::before for its line numbers.
+              children: code.split(/\r?\n/).flatMap((line, index) => [
+                { type: 'text' as const, value: index === 0 ? '' : '\n' },
+                {
+                  type: 'element' as const,
+                  tagName: 'span',
+                  properties: { className: ['line'] },
+                  children: [{ type: 'text' as const, value: line }],
+                },
+              ]),
+            },
+          ],
+        },
+      ],
+    }
+    return toJsxRuntime(plainHast, {
+      Fragment,
+      jsx,
+      jsxs,
+    }) as JSX.Element
+  }
+
+  // README fences may name languages outside the web bundle. Load dotenv on
+  // demand and keep unknown languages readable without throwing an error.
+  const highlighter = await getSingletonHighlighter({
+    langs: lang === 'dotenv' ? [(await import('shiki/langs/dotenv.mjs')).default] : [lang],
+    themes: [theme],
+  })
+  const hast = highlighter.codeToHast(code, {
+    lang,
     theme,
   })
 

@@ -7,7 +7,7 @@ const { mockStreamEvents } = vi.hoisted(() => ({
   mockStreamEvents: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents: mockStreamEvents,

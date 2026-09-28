@@ -17,12 +17,11 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
-from models import dataset as dataset_module
 from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
@@ -821,59 +820,6 @@ class TestDocumentModelRelationships:
 
         assert document.get_dataset(session=sqlite_session) is dataset
 
-    @pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment)], indirect=True)
-    def test_document_average_segment_length(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        monkeypatch: pytest.MonkeyPatch,
-    ):
-        """Test average_segment_length property calculation."""
-        # Arrange
-        document = Document(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            batch="batch_001",
-            name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
-            created_by=str(uuid4()),
-            word_count=1000,
-        )
-        sqlite_session.add(document)
-        sqlite_session.flush()
-        sqlite_session.add_all(_make_segments(document, [0] * 10))
-        sqlite_session.commit()
-        monkeypatch.setattr(dataset_module.db, "session", scoped_session(sqlite_session_factory))
-
-        # Act
-        result = document.average_segment_length
-
-        # Assert
-        assert result == 100
-
-    def test_document_average_segment_length_zero(self):
-        """Test average_segment_length property when word_count is zero."""
-        # Arrange
-        document = Document(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            batch="batch_001",
-            name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
-            created_by=str(uuid4()),
-            word_count=0,
-        )
-
-        # Act
-        result = document.average_segment_length
-
-        # Assert
-        assert result == 0
-
 
 class TestDocumentSegmentIndexing:
     """Test suite for DocumentSegment model indexing and operations."""
@@ -1573,49 +1519,6 @@ class TestModelIntegration:
         assert document.word_count == 100
         assert segment.status == SegmentStatus.COMPLETED
 
-    @pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment)], indirect=True)
-    def test_document_to_dict_serialization(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        monkeypatch: pytest.MonkeyPatch,
-    ):
-        """Test document to_dict method for serialization."""
-        # Arrange
-        tenant_id = str(uuid4())
-        dataset_id = str(uuid4())
-        created_by = str(uuid4())
-
-        document = Document(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            batch="batch_001",
-            name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
-            created_by=created_by,
-            word_count=100,
-            indexing_status=IndexingStatus.COMPLETED,
-        )
-        sqlite_session.add(document)
-        sqlite_session.flush()
-        sqlite_session.add_all(_make_segments(document, [2, 2, 2, 2, 2]))
-        sqlite_session.commit()
-        monkeypatch.setattr(dataset_module.db, "session", scoped_session(sqlite_session_factory))
-
-        # Act
-        result = document.to_dict()
-
-        # Assert
-        assert result["tenant_id"] == tenant_id
-        assert result["dataset_id"] == dataset_id
-        assert result["name"] == "test.pdf"
-        assert result["word_count"] == 100
-        assert result["indexing_status"] == IndexingStatus.COMPLETED
-        assert result["segment_count"] == 5
-        assert result["hit_count"] == 10
-
 
 class TestChildChunkSessionAccessors:
     """Regression coverage for the ``ChildChunk`` accessors refactored to take a caller-provided session.
@@ -1660,6 +1563,34 @@ class TestChildChunkSessionAccessors:
         assert child_chunk.dataset(session=sqlite_session) is None
         assert child_chunk.document(session=sqlite_session) is None
         assert child_chunk.segment(session=sqlite_session) is None
+
+
+class TestDatasetAvailableDocumentCount:
+    """Regression coverage for ``Dataset.get_available_document_count``.
+
+    The accessor was a ``@property`` reaching for the global ``db.session``; it now takes a
+    caller-provided session, matching the other ``get_*`` accessors on ``Dataset``.
+    """
+
+    def test_counts_only_completed_enabled_documents(self, sqlite_session: Session):
+        dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
+        completed = _make_document(
+            document_id=str(uuid4()),
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            indexing_status=IndexingStatus.COMPLETED,
+        )
+        waiting = _make_document(
+            document_id=str(uuid4()),
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            position=2,
+            indexing_status=IndexingStatus.WAITING,
+        )
+        sqlite_session.add_all([dataset, completed, waiting])
+        sqlite_session.flush()
+
+        assert dataset.get_available_document_count(session=sqlite_session) == 1
 
 
 class TestDocumentSegmentNeighborAccessors:

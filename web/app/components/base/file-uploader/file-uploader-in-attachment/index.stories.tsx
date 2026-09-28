@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { fn } from 'storybook/test'
 import { PreviewMode } from '@/app/components/base/features/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { AppToastHost } from '@/app/notifications/host'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from './index'
 
@@ -86,7 +86,7 @@ const AttachmentDemo = (props: React.ComponentProps<typeof FileUploaderInAttachm
 
   return (
     <>
-      <ToastHost />
+      <AppToastHost />
       <div className="w-[320px] rounded-2xl border border-divider-subtle bg-components-panel-bg p-4 shadow-xs">
         <FileUploaderInAttachmentWrapper {...props} value={files} onChange={setFiles} />
       </div>

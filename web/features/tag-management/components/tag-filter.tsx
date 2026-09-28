@@ -13,8 +13,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['filter']> = (
@@ -44,7 +43,7 @@ export const TagFilter = ({
   triggerClassName,
   portalProps,
 }: TagFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
@@ -159,9 +158,9 @@ export const TagFilter = ({
               onChange([])
             }}
           >
-            <XCircleIcon
-              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+            <span
               aria-hidden="true"
+              className="i-custom-vender-solid-general-x-circle size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
             />
           </IconButton>
         )}

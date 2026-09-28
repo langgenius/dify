@@ -22,7 +22,7 @@ describe('workflow-tool helpers', () => {
   it('builds translated reserved workflow outputs', () => {
     const t = withSelectorKey(
       (key: string, options?: { ns?: string }) => `${options?.ns}:${key}`,
-    ) as TFunction
+    ) as TFunction<['workflow']>
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {

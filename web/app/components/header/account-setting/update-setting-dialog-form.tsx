@@ -88,7 +88,7 @@ const UpdateSettingDialogForm = ({
   onUpdateTimeChange,
   renderTimePickerTrigger,
 }: UpdateSettingDialogFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [previewStrategy, setPreviewStrategy] = useState<AUTO_UPDATE_STRATEGY>()
   const displayedStrategy = previewStrategy ?? autoUpgrade.strategy_setting
   const getStrategyDescription = (strategy: AUTO_UPDATE_STRATEGY) => {
@@ -163,6 +163,7 @@ const UpdateSettingDialogForm = ({
               title={t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               minuteFilter={minuteFilter}
               renderTrigger={renderTimePickerTrigger}
+              triggerNativeButton
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">

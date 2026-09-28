@@ -36,6 +36,11 @@ from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyK
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.user_prompt import (
+    DIFY_USER_PROMPT_LAYER_TYPE_ID,
+    DifyUserPromptFileConfig,
+    DifyUserPromptLayerConfig,
+)
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -246,6 +251,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     execution_context: DifyExecutionContextLayerConfig
     backend_binding_ref: str = Field(min_length=1)
     user_prompt: str
+    user_files: list[DifyUserPromptFileConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
@@ -310,9 +316,9 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=AGENT_APP_USER_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
+                    type=DIFY_USER_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_app_user_prompt"},
-                    config=PromptLayerConfig(user=run_input.user_prompt),
+                    config=DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
@@ -632,7 +638,7 @@ class AgentBackendRunRequestBuilder:
         )
 
 
-_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key")
+_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key", "base64_data")
 
 
 def redact_for_agent_backend_log(value: object) -> object:
@@ -641,9 +647,10 @@ def redact_for_agent_backend_log(value: object) -> object:
         return redact_for_agent_backend_log(value.model_dump(mode="json", warnings=False))
     if isinstance(value, dict):
         redacted: dict[object, object] = {}
+        is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS):
+            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

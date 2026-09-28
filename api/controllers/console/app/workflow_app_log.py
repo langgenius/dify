@@ -5,15 +5,12 @@ from dateutil.parser import isoparse
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    model_validate,
-)
+from controllers.console.wraps import RBACPermission, model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
@@ -27,9 +24,7 @@ from models.model import AppMode
 
 class WorkflowAppLogQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword for filtering logs")
-    status: WorkflowExecutionStatus | None = Field(
-        default=None, description="Execution status filter (succeeded, failed, stopped, partial-succeeded)"
-    )
+    status: WorkflowExecutionStatus | None = Field(default=None, description="Execution status filter")
     created_at__before: datetime | None = Field(default=None, description="Filter logs created before this timestamp")
     created_at__after: datetime | None = Field(default=None, description="Filter logs created after this timestamp")
     created_by_end_user_session_id: str | None = Field(default=None, description="Filter by end user session ID")
@@ -133,8 +128,7 @@ class WorkflowAppLogApi(Resource):
         console_ns.models[WorkflowAppLogPaginationResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_LOG_AND_ANNOTATION,
+        rbac_checks=[RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp())],
     )
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(WorkflowAppLogQuery)

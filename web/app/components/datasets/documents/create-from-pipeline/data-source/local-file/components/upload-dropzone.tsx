@@ -1,7 +1,8 @@
 import type { ChangeEvent, RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 
 type FileUploadConfig = {
   file_size_limit: number
@@ -36,8 +37,8 @@ const UploadDropzone = ({
   onFileChange,
   allowedExtensions,
 }: UploadDropzoneProps) => {
-  const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const { t } = useTranslation(['datasetCreation'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
     <>
@@ -75,7 +76,7 @@ const UploadDropzone = ({
           </span>
         </div>
         <div>
-          {enableBilling
+          {deploymentEdition === 'CLOUD'
             ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,

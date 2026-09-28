@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models import Account
+from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
@@ -119,7 +120,7 @@ def current_user_mock():
     with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
         current_user.id = str(uuid4())
         current_user.current_tenant_id = str(uuid4())
-        current_user.current_role = None
+        current_user.current_role = TenantAccountRole.EDITOR
         yield current_user
 
 
@@ -624,7 +625,12 @@ def test_delete_documents_ignores_empty_input(db_session_with_containers: Sessio
     dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
     with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
-        DocumentService.delete_documents(dataset_ref, [], dataset.doc_form, session=db_session_with_containers)
+        DocumentService.delete_documents(
+            dataset_ref,
+            [],
+            dataset.get_doc_form(session=db_session_with_containers),
+            session=db_session_with_containers,
+        )
 
     delay.assert_not_called()
 
@@ -662,7 +668,7 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
         DocumentService.delete_documents(
             dataset_ref,
             [document_a.id, document_b.id],
-            dataset.doc_form,
+            dataset.get_doc_form(session=db_session_with_containers),
             session=db_session_with_containers,
         )
 

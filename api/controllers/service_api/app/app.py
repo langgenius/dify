@@ -60,7 +60,6 @@ class AppParameterApi(Resource):
         responses={
             200: "Parameters retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(200, "Parameters retrieved successfully", service_api_ns.models[Parameters.__name__])
@@ -88,6 +87,7 @@ class AppMetaApi(Resource):
         tags=["Applications"],
         responses={
             200: "Successfully retrieved application meta information.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
     @service_api_ns.doc("get_app_meta")
@@ -96,7 +96,6 @@ class AppMetaApi(Resource):
         responses={
             200: "Metadata retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(200, "Metadata retrieved successfully", service_api_ns.models[AppMetaResponse.__name__])
@@ -122,6 +121,7 @@ class AppInfoApi(Resource):
         tags=["Applications"],
         responses={
             200: "Basic information of the application.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
     @service_api_ns.doc("get_app_info")
@@ -130,7 +130,6 @@ class AppInfoApi(Resource):
         responses={
             200: "Application info retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(

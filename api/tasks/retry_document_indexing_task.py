@@ -5,9 +5,11 @@ import click
 from celery import shared_task
 from sqlalchemy import delete, select
 
+from configs import dify_config
 from core.db.session_factory import session_factory
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
@@ -48,9 +50,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
             for document_id in document_ids:
                 retry_indexing_cache_key = f"document_{document_id}_is_retried"
                 # check document limit
-                features = FeatureService.get_features(tenant.id)
-                try:
-                    if features.billing.enabled:
+                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                    features = FeatureService.get_features(tenant.id)
+                    try:
                         vector_space = features.vector_space
                         assert vector_space is not None
                         if 0 < vector_space.limit <= vector_space.size:
@@ -58,18 +60,20 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 "Your total number of documents plus the number of uploads have over the limit of "
                                 "your subscription."
                             )
-                except Exception as e:
-                    document = session.scalar(
-                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                    )
-                    if document:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = str(e)
-                        document.stopped_at = naive_utc_now()
-                        session.add(document)
-                        session.commit()
-                    redis_client.delete(retry_indexing_cache_key)
-                    return
+                    except Exception as e:
+                        document = session.scalar(
+                            select(Document)
+                            .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                            .limit(1)
+                        )
+                        if document:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = str(e)
+                            document.stopped_at = naive_utc_now()
+                            session.add(document)
+                            session.commit()
+                        redis_client.delete(retry_indexing_cache_key)
+                        return
 
                 logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
                 document = session.scalar(

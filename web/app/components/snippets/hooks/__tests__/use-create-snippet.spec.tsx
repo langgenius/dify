@@ -30,7 +30,7 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     snippets: {
       bySnippetId: {
@@ -51,7 +51,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),

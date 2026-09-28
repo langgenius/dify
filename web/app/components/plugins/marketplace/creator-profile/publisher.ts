@@ -2,7 +2,7 @@ import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/mar
 import type { CreatorCreation, CreatorSortField, CreatorSortOrder } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { marketplaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/marketplace'
 import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
 import { adaptCreations, toPublisherSortQuery } from './model'
 

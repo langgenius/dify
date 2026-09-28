@@ -1,12 +1,9 @@
-import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { FileTypesRes } from './datasets'
 import type {
-  Model,
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   CodeBasedExtension,
   CommonResponse,
@@ -15,12 +12,14 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { resetUser } from '@/app/components/base/amplitude/utils'
+import { clearPageLeaveGuards, confirmPageLeave } from '@/utils/page-leave-guard'
+import { basePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
-import { consoleQuery } from './client'
+import { consoleQuery } from './console'
 
 const NAME_SPACE = 'common'
 
@@ -32,7 +31,6 @@ export const commonQueryKeys = {
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
-  retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
@@ -108,13 +106,6 @@ export const useMailRegister = () => {
   })
 }
 
-export const useFileSupportTypes = () => {
-  return useQuery<FileTypesRes>({
-    queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
-  })
-}
-
 type MemberResponse = {
   accounts: Member[] | null
 }
@@ -157,23 +148,34 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
-export const useLogout = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
-    onSuccess: () => {
-      discardRegistrationSessionState()
-      // Drop all cached queries so the post-logout /signin probe doesn't read
-      // the previous user's profile (the userProfile queryKey is shared with
-      // the (commonLayout) tree, which keeps observing it during React's
-      // concurrent transition — gcTime: 0 is not enough on its own).
-      // Nuclear over targeted: every new user-scoped query would otherwise
-      // need to be remembered here. systemFeatures (user-agnostic) just
-      // refetches once on the way to /signin, which is cheap.
-      queryClient.clear()
-    },
-  })
+export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = {}) => {
+  return useMutation(
+    consoleQuery.logout.post.mutationOptions({
+      onMutate: () => {
+        // A cancelled native beforeunload prompt would otherwise leave this document
+        // alive after the server has logged out. Obtain consent before ending the session.
+        if (!confirmPageLeave()) throw new Error('Logout cancelled')
+      },
+      onSuccess: () => {
+        // Registration markers and Analytics identity can survive a page reload,
+        // so clear them explicitly after the server has ended the session.
+        discardRegistrationSessionState()
+        resetUser()
+        // Client-side navigation keeps root providers and account-scoped stores alive.
+        // QueryClient.clear() alone is insufficient: atomWithQuery caches observers
+        // that can remain attached to removed Query instances and expose old results
+        // when another account signs in with the same query keys (see #42809).
+        // Replace the document to recreate all stores and observers for the next
+        // session, without maintaining a reset dependency on every account-scoped atom.
+        // Native navigation needs the deployment base path added explicitly; redirectTo
+        // also preserves flow-specific sign-in parameters such as the OAuth return URL.
+        // Consent was obtained before the request. Keep guards on failure, but remove
+        // them on success so the browser cannot cancel the required document reset.
+        clearPageLeaveGuards()
+        window.location.replace(`${basePath}${redirectTo}`)
+      },
+    }),
+  )
 }
 
 type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }
@@ -210,27 +212,6 @@ export const useModelProviderDetails = (enabled = true) => {
   return useQuery({
     ...modelProviderDetailsQueryOptions(),
     enabled,
-  })
-}
-
-export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = true) => {
-  return useQuery<{ data: Model[] }>({
-    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-      input: {
-        params: {
-          model_type: type,
-        },
-      },
-    }),
-    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
-    enabled,
-  })
-}
-
-export const useSupportRetrievalMethods = () => {
-  return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
-    queryKey: commonQueryKeys.retrievalMethods,
-    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
   })
 }
 

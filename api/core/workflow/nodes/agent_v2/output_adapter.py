@@ -53,13 +53,15 @@ class WorkflowAgentOutputAdapter:
         metadata: dict[str, Any],
         declared_outputs: Sequence[DeclaredOutputConfig] | None = None,
         tenant_id: str | None = None,
+        edge_source_handle: str = "source",
     ) -> NodeRunResult:
         """Build the successful node result from one backend terminal event.
 
         For structured runs, ``declared_outputs`` contains the custom-only
         declarations used to scope field and file normalization. Plain runs
         omit custom declarations, and a free-form string is mapped to the
-        system ``text`` output.
+        system ``text`` output. The caller validates and selects the successful
+        ``edge_source_handle`` before invoking this adapter.
 
         Canonical persisted-file mappings (``local_file`` / ``tool_file`` /
         ``datasource_file``) also require ``metadata["tenant_id"]`` so the
@@ -72,6 +74,7 @@ class WorkflowAgentOutputAdapter:
         resolved_tenant_id = tenant_id or (metadata_tenant_id if isinstance(metadata_tenant_id, str) else None)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            edge_source_handle=edge_source_handle,
             inputs=inputs,
             process_data=process_data,
             outputs=self._normalize_outputs(

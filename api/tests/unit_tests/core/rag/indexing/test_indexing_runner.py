@@ -1796,6 +1796,36 @@ class TestIndexingRunnerEstimate:
                 session=mock_dependencies["session"],
             )
 
+    def test_indexing_estimate_limits_qa_preview(self, mock_dependencies, config_overrides):
+        """Test indexing estimate returns no more than ten QA preview items."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        runner = IndexingRunner()
+        mock_processor = MagicMock()
+        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+
+        qa_documents = [
+            Document(
+                page_content=f"Question {index}",
+                metadata={"answer": f"Answer {index}"},
+            )
+            for index in range(11)
+        ]
+        mock_processor.extract.return_value = [Document(page_content="Source content")]
+        mock_processor.transform.return_value = qa_documents
+
+        result = runner.indexing_estimate(
+            tenant_id=str(uuid.uuid4()),
+            extract_settings=[MagicMock()],
+            tmp_processing_rule=create_mock_process_rule(),
+            doc_form=IndexStructureType.QA_INDEX,
+            session=mock_dependencies["session"],
+        )
+
+        assert result.total_segments == 220
+        assert result.qa_preview is not None
+        assert len(result.qa_preview) == 10
+        assert result.qa_preview[-1].question == "Question 9"
+
     def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(
         self, mock_dependencies, config_overrides
     ):

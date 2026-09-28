@@ -53,7 +53,7 @@ function AccessPointContent({
   canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'workflow'])
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -67,7 +67,7 @@ function AccessPointContent({
     environment === selectedEnvironment ? highlightedAccessPoint : null
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-components-panel-bg">
+    <div className="flex h-full min-h-0 flex-col bg-components-panel-bg">
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
           <div className="flex h-6 items-center">
@@ -135,7 +135,6 @@ function AccessPointContent({
                 appId={appId}
                 environmentId={selectedEnvironment}
                 canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
             )}
@@ -145,7 +144,7 @@ function AccessPointContent({
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollArea>
-    </main>
+    </div>
   )
 }
 

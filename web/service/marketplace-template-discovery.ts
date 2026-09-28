@@ -3,7 +3,7 @@ import type {
   MarketplaceTemplateCollection,
 } from '@dify/contracts/marketplace'
 import { SERVER_PREFETCH_BUDGET_MS } from '@/app/components/plugins/marketplace/server-budget'
-import { marketplaceClient } from './client'
+import { marketplaceClient } from '@/service/marketplace'
 
 export type MarketplaceTemplateCollectionsResult = {
   collections: MarketplaceTemplateCollection[]
@@ -31,8 +31,6 @@ const FAILED_COLLECTIONS_RESULT: MarketplaceTemplateCollectionsResult = {
   templatesByCollection: {},
   ok: false,
 }
-
-const COLLECTION_PREVIEW_TEMPLATE_LIMIT = 20
 
 type MarketplaceTemplateListExtras = {
   asset_files?: unknown
@@ -102,7 +100,7 @@ async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollec
               const collectionResponse = await marketplaceClient.templateCollectionTemplates(
                 {
                   params: { collectionName: collection.name },
-                  body: { limit: COLLECTION_PREVIEW_TEMPLATE_LIMIT },
+                  body: {},
                 },
                 { signal: budget },
               )

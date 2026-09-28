@@ -64,10 +64,10 @@ const FileTypesField = ({ label, labelOptions, className }: FileTypesFieldProps)
           key={type}
           type={
             type as
-              | SupportUploadFileTypes.image
-              | SupportUploadFileTypes.document
-              | SupportUploadFileTypes.audio
-              | SupportUploadFileTypes.video
+              | typeof SupportUploadFileTypes.image
+              | typeof SupportUploadFileTypes.document
+              | typeof SupportUploadFileTypes.audio
+              | typeof SupportUploadFileTypes.video
           }
           selected={field.state.value.allowedFileTypes.includes(type)}
           onToggle={handleSupportFileTypeChange}

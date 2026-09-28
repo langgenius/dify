@@ -10,13 +10,13 @@ import {
   ComboboxTrigger,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
@@ -72,7 +72,7 @@ export const TagSelector = ({
   onTagsChange,
   ...rootProps
 }: TagSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
@@ -283,6 +283,7 @@ export const TagSelector = ({
       <ComboboxPortal>
         <ComboboxPositioner placement="bottom-start" sideOffset={4}>
           <ComboboxPopup
+            onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >

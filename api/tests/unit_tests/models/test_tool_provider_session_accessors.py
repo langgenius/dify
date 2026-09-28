@@ -5,6 +5,7 @@ Covers four of `api/models/tools.py`'s legacy `@property` accessors that reached
 ``session: Session`` (per the pattern established in #40370/#40797/#41394, tracked in #40372):
 
 - ``ApiToolProvider.tenant``
+- ``ApiToolProvider.user``
 - ``WorkflowToolProvider.user``
 - ``WorkflowToolProvider.tenant``
 - ``WorkflowToolProvider.app``
@@ -93,6 +94,25 @@ class TestApiToolProviderTenant:
         provider = _api_tool_provider(tenant_id=str(uuid4()))
 
         assert provider.tenant(session=sqlite_session) is None
+
+
+class TestApiToolProviderUser:
+    def test_returns_persisted_user(self, sqlite_session: Session) -> None:
+        account = _persist_account(sqlite_session)
+        provider = _api_tool_provider(tenant_id=str(uuid4()))
+        provider.user_id = account.id
+        sqlite_session.add(provider)
+        sqlite_session.flush()
+
+        result = provider.user(session=sqlite_session)
+
+        assert result is not None
+        assert result.id == account.id
+
+    def test_returns_none_when_user_missing(self, sqlite_session: Session) -> None:
+        provider = _api_tool_provider(tenant_id=str(uuid4()))
+
+        assert provider.user(session=sqlite_session) is None
 
 
 class TestWorkflowToolProviderUser:

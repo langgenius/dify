@@ -26,7 +26,7 @@ const PageSelector = ({
   previewPageId,
   onPreview,
 }: PageSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     currentPreviewPageId,
     effectiveSearchValue,

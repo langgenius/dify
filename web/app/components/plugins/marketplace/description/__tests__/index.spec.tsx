@@ -39,7 +39,7 @@ describe('Description', () => {
     render(<Description />)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('marketplace.empower')
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(
       /^marketplace\.discovercategory\.models,category\.tools,category\.datasources,category\.triggers,category\.agents,category\.extensionsmarketplace\.andcategory\.bundlesoperation\.inmarketplace\.difyMarketplace$/,
     )
   })
@@ -48,7 +48,7 @@ describe('Description', () => {
     locale = 'zh-Hans'
     render(<Description />)
 
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(
       /^operation\.inmarketplace\.difyMarketplacemarketplace\.discovercategory\.models,category\.tools,category\.datasources,category\.triggers,category\.agents,category\.extensionsmarketplace\.andcategory\.bundles$/,
     )
   })

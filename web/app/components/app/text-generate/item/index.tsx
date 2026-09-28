@@ -1,20 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayList2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {
@@ -58,7 +57,7 @@ type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   isShowTextToSpeech?: boolean
-  hideLogAction?: boolean
+  onOpenLog?: (item: IChatItem) => void
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
@@ -87,12 +86,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   isShowTextToSpeech,
-  hideLogAction,
+  onOpenLog,
   hideProcessDetail,
   siteInfo,
   inSidePanel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const params = useParams()
   const isTop = depth === 1
   const [completionRes, setCompletionRes] = useState('')
@@ -101,9 +100,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     rating: null,
   })
   const { config } = useChatContext()
-
-  const setCurrentLogItem = useAppStore((s) => s.setCurrentLogItem)
-  const setShowPromptLogModal = useAppStore((s) => s.setShowPromptLogModal)
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
     await updateFeedback(
@@ -132,7 +128,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
-    hideLogAction,
+    onOpenLog,
     siteInfo,
     taskId,
   }
@@ -168,13 +164,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
-  const handleOpenLogModal = async () => {
+  const handleOpenLog = async () => {
+    if (!onOpenLog) return
     const data = await fetchTextGenerationMessage({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    setCurrentLogItem(buildPromptLogItem(data))
-    setShowPromptLogModal(true)
+    onOpenLog(buildPromptLogItem(data))
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
@@ -205,7 +201,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
             )}
           >
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         )}
         {!isLoading && (
@@ -277,7 +273,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   currentTab={currentTab}
                   depth={depth}
                   feedback={feedback}
-                  hideLogAction={hideLogAction}
                   isError={isError}
                   isInWebApp={isInWebApp}
                   isResponding={isResponding}
@@ -287,7 +282,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   moreLikeThis={moreLikeThis}
                   onFeedback={onFeedback}
                   onMoreLikeThis={handleMoreLikeThis}
-                  onOpenLogModal={handleOpenLogModal}
+                  onOpenLog={onOpenLog ? handleOpenLog : undefined}
                   onRetry={onRetry}
                   onSave={onSave}
                   supportFeedback={supportFeedback}

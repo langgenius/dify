@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, screen, within } from '@testing-library/react'

@@ -2,8 +2,8 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo } from 'react'
-import Divider from '@/app/components/base/divider'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
@@ -20,6 +20,7 @@ type StepOneContentProps = {
   datasourceType: string | undefined
   pipelineNodes: Node<DataSourceNodeType>[]
   supportBatchUpload: boolean
+  showBatchUploadUpgrade: boolean
   isShowVectorSpaceFull: boolean
   isShowVectorSpaceUnavailable: boolean
   isRetryingVectorSpace: boolean
@@ -40,6 +41,7 @@ const StepOneContent = ({
   datasourceType,
   pipelineNodes,
   supportBatchUpload,
+  showBatchUploadUpgrade,
   isShowVectorSpaceFull,
   isShowVectorSpaceUnavailable,
   isRetryingVectorSpace,
@@ -54,7 +56,7 @@ const StepOneContent = ({
   onRetryVectorSpace,
   onNextStep,
 }: StepOneContentProps) => {
-  const showUpgradeCard = !supportBatchUpload && datasourceType === DatasourceType.localFile
+  const showUpgradeCard = showBatchUploadUpgrade && datasourceType === DatasourceType.localFile
 
   return (
     <div className="flex flex-col gap-y-5 pt-4">
@@ -105,7 +107,7 @@ const StepOneContent = ({
       />
       {showUpgradeCard && (
         <>
-          <Divider type="horizontal" className="my-4 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-4 bg-divider-subtle" />
           <UpgradeCard />
         </>
       )}

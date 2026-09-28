@@ -1,6 +1,6 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import { z } from 'zod'
-import { marketplaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/marketplace'
 
 // The banner types live in @dify/contracts/marketplace so the standalone
 // marketplace and the embedded console share one definition; this module owns
@@ -75,6 +75,7 @@ const blogContentSchema = z.object({
   blog_title: z.string().min(1),
   subtitle: lenientOptionalString,
   description: lenientOptionalString,
+  cover_image: lenientNonEmptyString,
   link: z.string().min(1),
   link_target_type: z.enum(['blog', 'github']),
 })

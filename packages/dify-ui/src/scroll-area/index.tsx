@@ -2,14 +2,17 @@
 
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
-type ScrollAreaProps = Omit<BaseScrollArea.Root.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaProps = BaseScrollArea.Root.Props
 
 function ScrollArea({ className, ...props }: ScrollAreaProps) {
   return (
-    <BaseScrollArea.Root {...props} data-dify-scroll-area="" className={cn('isolate', className)} />
+    <BaseScrollArea.Root
+      {...props}
+      data-dify-scroll-area=""
+      className={(state) => cn('isolate', resolveClassName(className, state))}
+    />
   )
 }
 
@@ -33,48 +36,52 @@ const scrollAreaThumbClassName = cn(
   'active:bg-state-base-handle-hover',
 )
 
-type ScrollAreaViewportProps = Omit<BaseScrollArea.Viewport.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaViewportProps = BaseScrollArea.Viewport.Props
 
 function ScrollAreaViewport({ className, ...props }: ScrollAreaViewportProps) {
   return (
     <BaseScrollArea.Viewport
       {...props}
       data-dify-scroll-area-viewport=""
-      className={cn('isolate size-full rounded-[inherit] outline-none', className)}
+      className={(state) =>
+        cn('isolate size-full rounded-[inherit] outline-none', resolveClassName(className, state))
+      }
     />
   )
 }
 
-type ScrollAreaScrollbarProps = Omit<BaseScrollArea.Scrollbar.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaScrollbarProps = BaseScrollArea.Scrollbar.Props
 
 function ScrollAreaScrollbar({ className, ...props }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
       {...props}
       data-dify-scroll-area-scrollbar=""
-      className={cn(scrollAreaScrollbarClassName, className)}
+      className={(state) => cn(scrollAreaScrollbarClassName, resolveClassName(className, state))}
     />
   )
 }
 
-type ScrollAreaThumbProps = Omit<BaseScrollArea.Thumb.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaThumbProps = BaseScrollArea.Thumb.Props
 
 function ScrollAreaThumb({ className, ...props }: ScrollAreaThumbProps) {
-  return <BaseScrollArea.Thumb className={cn(scrollAreaThumbClassName, className)} {...props} />
+  return (
+    <BaseScrollArea.Thumb
+      className={(state) => cn(scrollAreaThumbClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type ScrollAreaCornerProps = Omit<BaseScrollArea.Corner.Props, 'className'> & {
-  className?: string
-}
+type ScrollAreaCornerProps = BaseScrollArea.Corner.Props
 
 function ScrollAreaCorner({ className, ...props }: ScrollAreaCornerProps) {
-  return <BaseScrollArea.Corner className={cn('bg-transparent', className)} {...props} />
+  return (
+    <BaseScrollArea.Corner
+      className={(state) => cn('bg-transparent', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 export {

@@ -68,7 +68,7 @@ describe('DatePicker', () => {
       const initialText = trigger.textContent
 
       await user.click(trigger)
-      await user.click(screen.getByRole('button', { name: '20' }))
+      await user.click(screen.getByRole('button', { name: / 20, \d{4}$/ }))
 
       expect(trigger.textContent).not.toBe(initialText)
       expect(trigger).toHaveAccessibleName(`Select date: ${trigger.textContent}`)
@@ -349,7 +349,7 @@ describe('DatePicker', () => {
       openPicker()
 
       // Click on a day in the calendar - day "20"
-      const dayButton = screen.getByRole('button', { name: '20' })
+      const dayButton = screen.getByRole('button', { name: / 20, \d{4}$/ })
       fireEvent.click(dayButton)
 
       // The date should now appear in the header/display
@@ -365,7 +365,7 @@ describe('DatePicker', () => {
       openPicker()
 
       // Click on a day
-      const dayButton = screen.getByRole('button', { name: '20' })
+      const dayButton = screen.getByRole('button', { name: / 20, \d{4}$/ })
       fireEvent.click(dayButton)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -377,7 +377,7 @@ describe('DatePicker', () => {
       render(<DatePicker {...props} />)
 
       openPicker()
-      fireEvent.click(screen.getByRole('button', { name: '20' }))
+      fireEvent.click(screen.getByRole('button', { name: / 20, \d{4}$/ }))
 
       expect(onChange).toHaveBeenCalledTimes(1)
     })
