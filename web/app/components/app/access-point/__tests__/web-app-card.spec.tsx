@@ -30,10 +30,18 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 let serverAppDetail: AppDetailWithSite
+let delayedAppDetailResponse: Promise<Response> | undefined
+let delayedAppDetailRequestCount = 0
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method === 'GET') return Response.json(serverAppDetail)
+    if (request.method === 'GET') {
+      if (delayedAppDetailResponse) {
+        delayedAppDetailRequestCount += 1
+        return delayedAppDetailResponse
+      }
+      return Response.json(serverAppDetail)
+    }
     if (request.method === 'POST' && new URL(url).pathname.endsWith('/site-enable')) {
       const body = await request.json()
       const response = await mocks.siteEnable({ params: { app_id: 'app-1' }, body })
@@ -247,6 +255,8 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
 describe('WebAppAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    delayedAppDetailResponse = undefined
+    delayedAppDetailRequestCount = 0
     mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.siteEnable.mockResolvedValue({
       enable_site: true,
@@ -438,6 +448,41 @@ describe('WebAppAccessPointCard', () => {
         'href',
         `https://site.example.test${basePath}/chat/new-site-code`,
       )
+    })
+  })
+
+  it('keeps the confirmation open until the new site URL is available', async () => {
+    const user = userEvent.setup()
+    renderCard(AppModeEnum.CHAT)
+    const oldUrl = `https://site.example.test${basePath}/chat/site-code`
+    const newUrl = `https://site.example.test${basePath}/chat/new-site-code`
+    const openLink = await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })
+    expect(openLink).toHaveAttribute('href', oldUrl)
+
+    await user.click(screen.getByRole('button', { name: /overview\.appInfo\.regenerate/ }))
+    const refreshedDetail = createDeferredPromise<Response>()
+    delayedAppDetailResponse = refreshedDetail.promise
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+
+    await waitFor(() => expect(delayedAppDetailRequestCount).toBe(1))
+    expect(screen.getByRole('button', { name: /operation\.confirm/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /operation\.cancel/ })).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: /studio\.accessPoint\.open/, hidden: true }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /operation\.copy/, hidden: true }),
+    ).not.toBeInTheDocument()
+
+    refreshedDetail.resolve(Response.json(serverAppDetail))
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+        'href',
+        newUrl,
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /operation\.confirm/ })).not.toBeInTheDocument()
     })
   })
 

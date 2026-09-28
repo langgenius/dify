@@ -679,19 +679,21 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
-  it('keeps site reset pending until active detail readers refresh without replacing detail with a partial response', async () => {
+  it('updates the site token from the reset response while the detail refresh is pending', async () => {
     let resolveRefreshed!: (response: Response) => void
     const refreshed = new Promise<Response>((resolve) => {
       resolveRefreshed = resolve
     })
     const request = vi.fn((url: string) => {
       if (url.endsWith('/site/access-token-reset'))
-        return Promise.resolve(Response.json({ access_token: 'new-token' }))
+        return Promise.resolve(Response.json({ code: 'new-token' }))
       return refreshed
     })
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
-    const original = createAppDetailFixture()
+    const original = createAppDetailFixture({
+      site: createAppSiteFixture({ access_token: 'old-token' }),
+    })
     const options = consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: original.id } },
     })
@@ -712,15 +714,48 @@ describe('consoleQuery app mutation defaults', () => {
       await vi.waitFor(() => expect(reader.getCurrentResult().isFetching).toBe(true))
       expect(onSuccess).toHaveBeenCalledOnce()
       expect(mutation.getCurrentResult().isPending).toBe(true)
-      expect(reader.getCurrentResult().data).toEqual(original)
       const updated = createAppDetailFixture({
         site: createAppSiteFixture({ access_token: 'new-token' }),
       })
+      expect(reader.getCurrentResult().data).toEqual(updated)
       resolveRefreshed(Response.json(updated))
       await saved
       expect(reader.getCurrentResult().data).toEqual(updated)
       expect(mutation.getCurrentResult().isSuccess).toBe(true)
       expect(client.getQueryState(otherOptions.queryKey)?.isInvalidated).toBe(false)
+    } finally {
+      stop()
+      client.clear()
+    }
+  })
+
+  it('keeps the new site token when the detail refresh fails after a successful reset', async () => {
+    const request = vi.fn((url: string) =>
+      url.endsWith('/site/access-token-reset')
+        ? Promise.resolve(Response.json({ code: 'new-token' }))
+        : Promise.resolve(Response.json({ message: 'Refresh failed' }, { status: 500 })),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    })
+    const original = createAppDetailFixture({
+      site: createAppSiteFixture({ access_token: 'old-token' }),
+    })
+    const options = consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: original.id } },
+    })
+    client.setQueryData(options.queryKey, original)
+    const reader = new QueryObserver(client, options)
+    const stop = reader.subscribe(() => {})
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions(),
+    )
+    try {
+      await mutation.mutate({ params: { app_id: original.id } })
+      expect(reader.getCurrentResult().data?.site?.access_token).toBe('new-token')
+      expect(mutation.getCurrentResult().isSuccess).toBe(true)
     } finally {
       stop()
       client.clear()

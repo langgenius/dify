@@ -3,6 +3,7 @@ import type {
   AgentAppPagination,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
@@ -452,12 +453,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             accessTokenReset: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, variables, _result, context) => {
-                    if (error) return
+                  onSettled: (data, error, variables, _result, context) => {
+                    if (error || !data) return
+                    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    })
+                    context.client.setQueryData<AppDetailWithSite>(queryKey, (detail) =>
+                      detail?.site
+                        ? {
+                            ...detail,
+                            site: { ...detail.site, access_token: data.code ?? null },
+                          }
+                        : detail,
+                    )
                     return context.client.invalidateQueries({
-                      queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                        input: { params: variables.params },
-                      }),
+                      queryKey,
                     })
                   },
                 },
