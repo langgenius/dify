@@ -151,7 +151,7 @@ catalog:
   agentation: 3.1.2
   ahooks: 3.10.0
   bowser: 2.14.1
-  c12: 4.0.0-rc.1
+  c12: 4.0.0-rc.2
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cli-table3: 0.6.5
