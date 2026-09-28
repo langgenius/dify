@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -32,6 +31,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
+import { getAgentIconProps } from '@/features/agent-v2/agent-icon'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
 
@@ -43,16 +43,11 @@ type AgentRosterDisplayData = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  icon_url?: string | null
   id: string
   name: string
   permission_keys?: string[]
   role?: string | null
-}
-
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
 }
 
 function AgentRosterAvatar({
@@ -65,14 +60,15 @@ function AgentRosterAvatar({
   className?: string
 }) {
   const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
+  const { iconType, imageUrl } = getAgentIconProps(agent)
 
   return (
     <AppIcon
       size={iconSize}
-      iconType={getAppIconType(agent.icon_type)}
+      iconType={iconType}
       icon={agent.icon ?? undefined}
       background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
+      imageUrl={imageUrl}
       className={className}
     />
   )

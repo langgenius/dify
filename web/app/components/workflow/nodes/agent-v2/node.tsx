@@ -1,20 +1,14 @@
 import type { NodeProps } from '../../types'
 import type { AgentV2NodeType } from './types'
-import type { AppIconType } from '@/types/app'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
 import AppIcon from '@/app/components/base/app-icon'
+import { getAgentIconProps } from '@/features/agent-v2/agent-icon'
 import { NodeBranches } from '../_base/components/branch-list/node-branches'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
-
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
-}
 
 function AgentNodeAvatar({
   agent,
@@ -34,13 +28,15 @@ function AgentNodeAvatar({
   if (!agent)
     return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
 
+  const { iconType, imageUrl } = getAgentIconProps(agent)
+
   return (
     <AppIcon
       size="small"
-      iconType={getAppIconType(agent.icon_type)}
+      iconType={iconType}
       icon={agent.icon ?? undefined}
       background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
+      imageUrl={imageUrl}
     />
   )
 }

@@ -61,6 +61,36 @@ function renderInlineRosterField() {
 }
 
 describe('AgentRosterField', () => {
+  it('loads an uploaded Agent image icon from its signed icon_url', () => {
+    function Harness() {
+      const portalContainerRef = useRef<HTMLDivElement>(null)
+
+      return (
+        <div ref={portalContainerRef}>
+          <AgentRosterField
+            agent={{
+              id: 'roster-agent-1',
+              name: 'Roster Agent',
+              icon: 'upload-file-id',
+              icon_type: 'image',
+              icon_url: 'https://files.example.com/upload-file-id?sign=abc',
+              role: 'Shared roster agent',
+            }}
+            portalContainerRef={portalContainerRef}
+            onChange={vi.fn()}
+          />
+        </div>
+      )
+    }
+
+    render(<Harness />)
+
+    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
+      'src',
+      'https://files.example.com/upload-file-id?sign=abc',
+    )
+  })
+
   it('shows Make Copy in the roster detail panel', async () => {
     const user = userEvent.setup()
     renderDetailRosterField()

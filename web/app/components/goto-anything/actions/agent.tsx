@@ -1,14 +1,13 @@
-import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { ActionItem, AgentSearchResult } from './types'
 import { getI18n } from 'react-i18next'
+import { getAgentIconProps } from '@/features/agent-v2/agent-icon'
 import { consoleQuery } from '@/service/console'
 import AppIcon from '../../base/app-icon'
 
 function getAgentResults(agents: AgentAppPartial[]): AgentSearchResult[] {
   return agents.map((agent) => {
-    const imageUrl =
-      agent.icon_type === 'image' || agent.icon_type === 'link' ? agent.icon : undefined
-    const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
+    const { iconType, imageUrl } = getAgentIconProps(agent)
 
     return {
       id: agent.id,

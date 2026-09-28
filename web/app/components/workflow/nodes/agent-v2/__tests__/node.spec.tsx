@@ -119,6 +119,28 @@ describe('agent/node', () => {
     expect(container.querySelector('.h-1.px-3')).not.toBeInTheDocument()
   })
 
+  it('loads an uploaded roster agent image icon from its signed icon_url', () => {
+    mockUseAgentRosterDetail.mockReturnValue({
+      isPending: false,
+      data: {
+        id: 'agent-1',
+        name: 'Nadia',
+        description: 'Clarification Drafter',
+        icon: 'upload-file-id',
+        icon_background: null,
+        icon_type: 'image',
+        icon_url: 'https://files.example.com/upload-file-id?sign=abc',
+      },
+    })
+
+    render(<AgentV2Node id="agent-node" data={createData()} />)
+
+    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
+      'src',
+      'https://files.example.com/upload-file-id?sign=abc',
+    )
+  })
+
   it('renders a stable roster placeholder while agent detail is loading', () => {
     mockUseAgentRosterDetail.mockReturnValue({ data: undefined })
 
