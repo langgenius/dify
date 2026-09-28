@@ -26,10 +26,10 @@ import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
-import { getFileIconType } from './file-icon'
 
 function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {

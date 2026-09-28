@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Çalışma alanı becerileri güncellenemedi.",
   "agentDetail.configure.skills.workspaceSelector.search": "Beceri ara...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Önizleme moduna geçilsin mi?",
+  "agentDetail.configure.templatePreview.agentUI": "Ajan arayüzü",
   "agentDetail.configure.title": "Yapılandır",
   "agentDetail.configure.tools.add": "Araç ekle",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Geliştiriciler için",

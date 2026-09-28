@@ -849,7 +849,8 @@ describe('Agent access surface cards', () => {
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.settings.title',
       })
-      expect(within(dialog).getByAltText('app icon')).toHaveAttribute(
+      const iconTrigger = within(dialog).getByRole('button', { name: 'app.iconPicker.title' })
+      expect(iconTrigger.querySelector('img')).toHaveAttribute(
         'src',
         'https://files.example.test/agent-icon.png',
       )

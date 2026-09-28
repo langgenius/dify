@@ -3,7 +3,6 @@ import type { ChatProps } from '../index'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { createTheme } from '../../embedded-chatbot/theme/theme'
 import Chat from '../index'
 
@@ -14,9 +13,6 @@ import Chat from '../index'
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
 // ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
 //                 and the VoiceInput / FileContextProvider chains.
-// PromptLogModal– pulls CopyFeedback and deep modal dep chain.
-// AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
-//                 from ahooks, and AgentLogDetail (workflow graph renderer).
 // es-toolkit/compat – debounce must return a fn with .cancel() or the cleanup
 //                 effect throws on unmount.
 //
@@ -80,26 +76,6 @@ vi.mock('../chat-input-area', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/prompt-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="prompt-log-modal">
-      <button data-testid="prompt-log-cancel" onClick={onCancel}>
-        cancel
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="agent-log-modal">
-      <button data-testid="agent-log-cancel" onClick={onCancel}>
-        cancel
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('es-toolkit/compat', () => ({
   debounce: (fn: (...args: unknown[]) => void) => {
     const debounced = (...args: unknown[]) => fn(...args)
@@ -130,19 +106,6 @@ const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
   ...overrides,
 })
 
-const mockSetCurrentLogItem = vi.fn()
-const mockSetShowPromptLogModal = vi.fn()
-const mockSetShowAgentLogModal = vi.fn()
-
-const baseStoreState = {
-  currentLogItem: undefined,
-  setCurrentLogItem: mockSetCurrentLogItem,
-  showPromptLogModal: false,
-  setShowPromptLogModal: mockSetShowPromptLogModal,
-  showAgentLogModal: false,
-  setShowAgentLogModal: mockSetShowAgentLogModal,
-}
-
 const renderChat = (props: Partial<ChatProps> = {}) => render(<Chat chatList={[]} {...props} />)
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
@@ -171,8 +134,6 @@ describe('Chat', () => {
         disconnect() {}
       },
     )
-
-    useAppStore.setState(baseStoreState)
   })
 
   afterEach(() => {
@@ -476,68 +437,6 @@ describe('Chat', () => {
     })
   })
 
-  describe('PromptLogModal', () => {
-    it('should render when showPromptLogModal=true and hideLogModal is falsy', () => {
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true })
-      renderChat({ hideLogModal: false })
-      expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
-    })
-
-    it('should not render when showPromptLogModal=false', () => {
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: false })
-      renderChat()
-      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-    })
-
-    it('should not render when hideLogModal=true even if showPromptLogModal=true', () => {
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true })
-      renderChat({ hideLogModal: true })
-      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call setCurrentLogItem and setShowPromptLogModal(false) on cancel', async () => {
-      const user = userEvent.setup()
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true })
-      renderChat({ hideLogModal: false })
-
-      await user.click(screen.getByTestId('prompt-log-cancel'))
-
-      expect(mockSetCurrentLogItem).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
-    })
-  })
-
-  describe('AgentLogModal', () => {
-    it('should render when showAgentLogModal=true and hideLogModal is falsy', () => {
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: true })
-      renderChat({ hideLogModal: false })
-      expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
-    })
-
-    it('should not render when showAgentLogModal=false', () => {
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: false })
-      renderChat()
-      expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
-    })
-
-    it('should not render when hideLogModal=true even if showAgentLogModal=true', () => {
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: true })
-      renderChat({ hideLogModal: true })
-      expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call setCurrentLogItem and setShowAgentLogModal(false) on cancel', async () => {
-      const user = userEvent.setup()
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: true })
-      renderChat({ hideLogModal: false })
-
-      await user.click(screen.getByTestId('agent-log-cancel'))
-
-      expect(mockSetCurrentLogItem).toHaveBeenCalledTimes(1)
-      expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(false)
-    })
-  })
-
   describe('Window Resize', () => {
     it('should register a resize listener on mount', () => {
       const addSpy = vi.spyOn(window, 'addEventListener')
@@ -677,26 +576,6 @@ describe('Chat', () => {
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should render no modals when both modal flags are false', () => {
-      useAppStore.setState({
-        ...baseStoreState,
-        showPromptLogModal: false,
-        showAgentLogModal: false,
-      })
-      renderChat()
-      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
-    })
-
-    it('should render both modals when both flags are true and hideLogModal is false', () => {
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true, showAgentLogModal: true })
-      renderChat({ hideLogModal: false })
-      expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
-    })
-  })
-
   describe('Question Rendering with Config', () => {
     it('should pass questionEditEnable from config to Question component', () => {
       renderChat({
@@ -770,17 +649,6 @@ describe('Chat', () => {
     it('should pass answerIcon to Answer component', () => {
       renderChat({
         answerIcon: <div data-testid="test-answer-icon">Icon</div>,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass showPromptLog to Answer component', () => {
-      renderChat({
-        showPromptLog: true,
         chatList: [
           makeChatItem({ id: 'q1', isAnswer: false }),
           makeChatItem({ id: 'a1', isAnswer: true }),
@@ -1200,52 +1068,6 @@ describe('Chat', () => {
       renderChat()
       Object.defineProperty(document.body, 'clientWidth', { value: 1920, configurable: true })
       expect(() => window.dispatchEvent(new Event('resize'))).not.toThrow()
-    })
-  })
-
-  describe('Modal Interaction Paths', () => {
-    it('should handle prompt log cancel and subsequent reopen', async () => {
-      const user = userEvent.setup()
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true })
-      const { rerender } = renderChat({ hideLogModal: false })
-
-      await user.click(screen.getByTestId('prompt-log-cancel'))
-
-      expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
-
-      // Reopen modal
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: true })
-      rerender(<Chat chatList={[]} hideLogModal={false} />)
-
-      expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
-    })
-
-    it('should handle agent log cancel and subsequent reopen', async () => {
-      const user = userEvent.setup()
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: true })
-      const { rerender } = renderChat({ hideLogModal: false })
-
-      await user.click(screen.getByTestId('agent-log-cancel'))
-
-      expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(false)
-
-      // Reopen modal
-      useAppStore.setState({ ...baseStoreState, showAgentLogModal: true })
-      rerender(<Chat chatList={[]} hideLogModal={false} />)
-
-      expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
-    })
-
-    it('should handle hideLogModal preventing both modals from showing', () => {
-      useAppStore.setState({
-        ...baseStoreState,
-        showPromptLogModal: true,
-        showAgentLogModal: true,
-      })
-      renderChat({ hideLogModal: true })
-
-      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
     })
   })
 })
