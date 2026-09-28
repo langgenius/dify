@@ -300,6 +300,21 @@ def test_verified_receipts_activate_profile_atomically_and_publish_managed_provi
 
 
 @pytest.mark.parametrize(
+    "field", ["intent_revision", "manifest_hash", "funding_receipt_hash", "preparation_binding_hash"]
+)
+def test_activation_checks_every_explicit_binding(prepared, sqlite_session: Session, field: str):
+    tenant_id, migration_id = prepared
+    claim(tenant_id, migration_id)
+    ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
+    request = activation(tenant_id, migration_id, ready)
+    tampered = request.model_copy(update={field: 999 if field == "intent_revision" else "sha256:" + "f" * 64})
+    with pytest.raises(MigrationError, match="manifest_conflict"):
+        Service.activate(tenant_id, migration_id, tampered)
+    assert Service.status(tenant_id)["revision"] == ready["revision"]
+    assert sqlite_session.get(TenantModelBillingProfile, tenant_id) is None
+
+
+@pytest.mark.parametrize(
     "remote_state", ["registered", "dispatched", "accepted", "outcome_unknown", "failed_definitive"]
 )
 def test_nonverified_funding_cannot_activate(prepared, remote_state: str):
@@ -432,6 +447,14 @@ def test_manifest_validation_rejects_invalid_intervals(change: str):
     else:
         data["windows"][1]["ordinal"] = 0
     with pytest.raises(ValidationError):
+        WindowManifest.model_validate(data)
+
+
+@pytest.mark.parametrize("field", ["window_id", "ordinal", "cycle_key"])
+def test_manifest_rejects_each_duplicate_identity(field: str):
+    data = manifest(str(uuid4()), str(uuid4()))
+    data["windows"][1][field] = data["windows"][0][field]
+    with pytest.raises(ValidationError, match="duplicate window identity"):
         WindowManifest.model_validate(data)
 
 

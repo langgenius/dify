@@ -97,9 +97,12 @@ class WindowManifest(StrictPayload):
             raise ValueError("invalid paid period")
         if self.windows != sorted(self.windows, key=lambda window: (window.starts_at, window.window_id)):
             raise ValueError("windows must be canonical ordered")
-        for identity in ("window_id", "ordinal", "cycle_key"):
-            if len({getattr(window, identity) for window in self.windows}) != len(self.windows):
-                raise ValueError("duplicate window identity")
+        if (
+            len({window.window_id for window in self.windows}) != len(self.windows)
+            or len({window.ordinal for window in self.windows}) != len(self.windows)
+            or len({window.cycle_key for window in self.windows}) != len(self.windows)
+        ):
+            raise ValueError("duplicate window identity")
         for index, window in enumerate(self.windows):
             if datetime.fromisoformat(window.starts_at) < paid_start.replace(hour=0, minute=0, second=0):
                 raise ValueError("window precedes paid start")

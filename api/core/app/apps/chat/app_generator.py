@@ -303,7 +303,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
-                if worker_failed and getattr(queue_manager, "execution_state", None) != AppExecutionState.TERMINAL:
+                if worker_failed and queue_manager.execution_state != AppExecutionState.TERMINAL:
                     from core.app.llm.message_billing import release_message_billing
 
                     release_message_billing(application_generate_entity)

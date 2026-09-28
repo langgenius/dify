@@ -764,8 +764,14 @@ class ModelBillingMigrationService:
                     raise MigrationError("contract_event_pending")
             elif row.phase != "activating":
                 raise MigrationError("contract_event_pending")
-            for key in ("intent_revision", "manifest_hash", "funding_receipt_hash", "preparation_binding_hash"):
-                if getattr(payload, key) != row.state.get(key):
+            activation_bindings = {
+                "intent_revision": payload.intent_revision,
+                "manifest_hash": payload.manifest_hash,
+                "funding_receipt_hash": payload.funding_receipt_hash,
+                "preparation_binding_hash": payload.preparation_binding_hash,
+            }
+            for key, value in activation_bindings.items():
+                if value != row.state.get(key):
                     raise MigrationError("manifest_conflict")
             if canonical_hash(cls._binding(session, row)) != payload.preparation_binding_hash:
                 raise MigrationError("readiness_changed")

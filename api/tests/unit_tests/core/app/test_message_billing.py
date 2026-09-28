@@ -5,7 +5,11 @@ from unittest.mock import Mock
 import pytest
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AgentAppGenerateEntity,
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+)
 from core.app.llm.message_billing import begin_message_billing, release_message_billing, require_message_billing
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from core.model_invocation_routing import (
@@ -150,6 +154,24 @@ def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_i
     billing.per_call.assert_not_called()
     billing.capped_event.assert_not_called()
     billing.profile.assert_not_called()
+
+
+@pytest.mark.parametrize("gateway_enabled", [False, True])
+def test_only_enabled_agent_app_gateway_bypasses_message_reservation(billing, gateway_enabled):
+    classic = entity()
+    app = AgentAppGenerateEntity.model_construct(
+        task_id=classic.task_id,
+        app_config=classic.app_config,
+        model_conf=classic.model_conf,
+        agent_id="fixture-agent",
+        agent_config_snapshot_id="fixture-snapshot",
+        agent_llm_gateway_enabled=gateway_enabled,
+    )
+    owner = begin_message_billing(app, MESSAGE)
+    assert owner.backend == ("custom" if gateway_enabled else "legacy_reserved")
+    assert require_message_billing(app) is owner
+    assert billing.reserve.call_count == (0 if gateway_enabled else 1)
+    release_message_billing(app)
 
 
 def test_non_cloud_legacy_keeps_post_message_capped_accounting(billing, mocker, config_overrides):
