@@ -1,5 +1,7 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import datetime
 from typing import cast
 
 from sqlalchemy import select
@@ -11,7 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_a
 from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
-from core.model_manager import ModelManager
+from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
@@ -63,6 +65,23 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
     for index, message in enumerate(messages):
         contents = extra_contents_lists[index] if index < len(extra_contents_lists) else []
         message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
+
+
+@dataclass(frozen=True, slots=True)
+class SuggestedQuestionsContext:
+    """Validated configuration and loaded conversation for the legacy history reader.
+
+    The conversation's scalar fields remain usable after the preparation session
+    closes. History loading must use an explicit session, never ORM properties.
+    """
+
+    app_id: str
+    tenant_id: str
+    app_mode: str
+    message_id: str
+    conversation: Conversation
+    instruction_prompt: str | None
+    model_config: object | None
 
 
 class MessageService:
@@ -336,7 +355,7 @@ class MessageService:
         return message
 
     @classmethod
-    def get_suggested_questions_after_answer(
+    def prepare_suggested_questions_after_answer(
         cls,
         app_model: App,
         user: Account | EndUser | None,
@@ -344,7 +363,8 @@ class MessageService:
         invoke_from: InvokeFrom,
         *,
         session: Session,
-    ) -> list[str]:
+    ) -> SuggestedQuestionsContext | None:
+        """Read authorization and feature configuration; None means no published workflow."""
         if not user:
             raise ValueError("user cannot be None")
 
@@ -354,7 +374,6 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user, session=session
         )
 
-        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
         suggested_questions_after_answer_config: SuggestedQuestionsAfterAnswerConfig = {"enabled": False}
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
@@ -365,7 +384,7 @@ class MessageService:
                 workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
 
             if workflow is None:
-                return []
+                return None
 
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
@@ -411,46 +430,80 @@ class MessageService:
             if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-        try:
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=app_model.tenant_id,
-                model_type=ModelType.LLM,
-            )
-        except Exception:
-            logger.exception("Failed to resolve the history model for suggested questions")
-            return []
-
-        # get memory of conversation (read-only)
-        memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
-
-        histories = memory.get_history_prompt_text(
-            max_token_limit=3000,
-            message_limit=3,
-        )
-
         instruction_prompt = suggested_questions_after_answer_config.get("prompt")
         if not isinstance(instruction_prompt, str) or not instruction_prompt.strip():
             instruction_prompt = None
-
-        configured_model = suggested_questions_after_answer_config.get("model")
-        with (
-            measure_time() as timer,
-            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
-        ):
-            questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
-                tenant_id=app_model.tenant_id,
-                histories=histories,
-                instruction_prompt=instruction_prompt,
-                model_config=configured_model,
-            )
-            questions: list[str] = list(questions_sequence)
-
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id=message_id, suggested_question=questions, timer=timer
-            )
+        return SuggestedQuestionsContext(
+            app_id=app_model.id,
+            tenant_id=app_model.tenant_id,
+            app_mode=app_model.mode,
+            message_id=message_id,
+            conversation=conversation,
+            instruction_prompt=instruction_prompt,
+            model_config=suggested_questions_after_answer_config.get("model"),
         )
 
+    @staticmethod
+    def get_suggested_questions_history_model(*, tenant_id: str) -> ModelInstance | None:
+        """Resolve the history token counter; None preserves the no-model fallback."""
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        try:
+            return model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
+        except Exception:
+            logger.exception("Failed to resolve the history model for suggested questions")
+            return None
+
+    @classmethod
+    def get_suggested_questions_after_answer(
+        cls,
+        app_model: App,
+        user: Account | EndUser | None,
+        message_id: str,
+        invoke_from: InvokeFrom,
+        *,
+        session: Session,
+    ) -> list[str]:
+        """Compatibility entry point; the caller still owns its request session.
+
+        Admitted callers use MessageSuggestedQuestionsRuntime to release query
+        and model-resolution sessions before attachment and provider I/O.
+        """
+        context = cls.prepare_suggested_questions_after_answer(
+            app_model=app_model, user=user, message_id=message_id, invoke_from=invoke_from, session=session
+        )
+        if context is None:
+            return []
+        model_instance = cls.get_suggested_questions_history_model(tenant_id=context.tenant_id)
+        if model_instance is None:
+            return []
+        memory = TokenBufferMemory(conversation=context.conversation, model_instance=model_instance)
+        histories = memory.get_history_prompt_text(max_token_limit=3000, message_limit=3)
+
+        with (
+            measure_time() as timer,
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(context.app_mode)}),
+        ):
+            questions = list(
+                LLMGenerator.generate_suggested_questions_after_answer(
+                    tenant_id=context.tenant_id,
+                    histories=histories,
+                    instruction_prompt=context.instruction_prompt,
+                    model_config=context.model_config,
+                )
+            )
+        cls.trace_suggested_questions(context=context, questions=questions, timer=timer)
         return questions
+
+    @staticmethod
+    def trace_suggested_questions(
+        *, context: SuggestedQuestionsContext, questions: list[str], timer: Mapping[str, datetime | None]
+    ) -> None:
+        trace_manager = TraceQueueManager(app_id=context.app_id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                message_id=context.message_id,
+                suggested_question=questions,
+                timer=timer,
+            )
+        )
