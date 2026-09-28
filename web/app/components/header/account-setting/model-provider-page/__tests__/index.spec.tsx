@@ -548,7 +548,9 @@ describe('ModelProviderPage', () => {
       screen.getByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' }),
     ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /plugin\.autoUpdate\.updateTime/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.changeTimezone')).toBeInTheDocument()
     expect(
       screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' }),
@@ -604,12 +606,12 @@ describe('ModelProviderPage', () => {
     renderModelProviderPage()
 
     openUpdateSettings()
-    fireEvent.click(screen.getByDisplayValue('12:00 AM'))
+    fireEvent.click(screen.getByRole('button', { name: /12:00 AM/ }))
     fireEvent.click(screen.getByRole('button', { name: '01' }))
     fireEvent.click(screen.getByRole('button', { name: '15' }))
     fireEvent.click(screen.getByRole('button', { name: 'time.operation.ok' }))
 
-    expect(screen.getByDisplayValue('01:15 AM')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /01:15 AM/ })).toBeInTheDocument()
 
     saveUpdateSettings()
 
