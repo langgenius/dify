@@ -40,6 +40,10 @@ class SchedulerStoppingError(RuntimeError):
     """Raised when a create-run request arrives after shutdown has started."""
 
 
+class SchedulerOverloadedError(RuntimeError):
+    """Raised when a create-run request arrives at the process-local run limit."""
+
+
 class RunCancellationConflictError(RuntimeError):
     """Raised when a run exists but a different terminal state already won."""
 
@@ -110,6 +114,7 @@ class RunScheduler:
 
     store: RunStore
     shutdown_grace_seconds: float
+    max_active_runs: int | None
     run_timeout_seconds: float
     stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
@@ -130,6 +135,7 @@ class RunScheduler:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
+        max_active_runs: int | None = None,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
         stream_text_delta_coalescing_enabled: bool = True,
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
@@ -140,6 +146,7 @@ class RunScheduler:
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.max_active_runs = max_active_runs
         self.run_timeout_seconds = run_timeout_seconds
         self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
@@ -164,6 +171,12 @@ class RunScheduler:
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
+            if self.max_active_runs is not None:
+                # A task can be done while its callback is still queued; count
+                # only work that still occupies scheduler capacity.
+                active_count = sum(not task.done() for task in self.active_tasks.values())
+                if active_count >= self.max_active_runs:
+                    raise SchedulerOverloadedError("active run limit reached")
             record = await self.store.create_run()
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task

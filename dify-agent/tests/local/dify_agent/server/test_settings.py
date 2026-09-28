@@ -89,6 +89,25 @@ def test_server_settings_run_and_e2b_timeouts_default_align_and_override_indepen
     assert e2b_override_settings.e2b_active_timeout_seconds == 900
 
 
+def test_server_settings_defaults_to_unbounded_active_runs() -> None:
+    settings = ServerSettings()
+
+    assert settings.max_active_runs is None
+
+
+def test_server_settings_reads_active_run_limit_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_MAX_ACTIVE_RUNS", "12")
+
+    settings = ServerSettings()
+
+    assert settings.max_active_runs == 12
+
+
+def test_server_settings_rejects_non_positive_active_runs() -> None:
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        _ = ServerSettings(max_active_runs=0)
+
+
 def test_server_settings_rejects_non_positive_run_timeout() -> None:
     with pytest.raises(ValidationError, match="greater than 0"):
         _ = ServerSettings(run_timeout_seconds=0)
