@@ -177,7 +177,6 @@ dev = [
     "import-linter>=2.15",
     "types-redis>=4.6.0.20241004",
     "celery-types>=0.23.0",
-    "mypy>=2.3.1",
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
