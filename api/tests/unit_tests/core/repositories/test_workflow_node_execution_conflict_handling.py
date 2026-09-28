@@ -19,7 +19,8 @@ from graphon.entities.workflow_node_execution import (
 )
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
-from models import Account, Tenant, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,12 @@ def conflict_database(
 
 
 def _account() -> Account:
-    tenant = Tenant(name="Conflict Tenant")
-    tenant.id = "test-tenant-id"
-    account = Account(name="Conflict User", email="conflict@example.com")
-    account.id = "test-user-id"
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id="test-user-id",
+        name="Conflict User",
+        email="conflict@example.com",
+        tenant=make_tenant(tenant_id="test-tenant-id", name="Conflict Tenant"),
+    )
 
 
 @pytest.fixture

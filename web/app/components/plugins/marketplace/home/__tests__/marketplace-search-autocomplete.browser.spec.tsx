@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
@@ -113,6 +113,60 @@ describe('Marketplace search autocomplete layout', () => {
     mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
   })
 
+  it('preserves the keyboard activation target while the pointer visits another suggestion', async () => {
+    mockTemplateSearch.mockResolvedValue({
+      data: {
+        templates: ['First', 'Second'].map((name) => ({
+          id: name.toLowerCase(),
+          template_name: `${name} template`,
+          overview: '',
+          publisher_handle: 'dify',
+          usage_count: 1,
+          categories: [],
+          icon: '📄',
+          icon_background: '#FFFFFF',
+          icon_file_key: '',
+        })),
+        total: 2,
+      },
+    })
+    const onSelect = vi.fn()
+    function Search() {
+      const [value, setValue] = useState('')
+      return (
+        <MarketplaceSearchAutocomplete
+          locale="en-US"
+          onValueChange={setValue}
+          onSuggestionSelect={onSelect}
+          placeholder="Search templates"
+          scope="templates"
+          value={value}
+        />
+      )
+    }
+    const screen = await render(
+      <Wrapper>
+        <Search />
+      </Wrapper>,
+    )
+    const input = screen.getByRole('combobox', { name: 'Search templates' })
+    await input.fill('template')
+    const first = screen.getByRole('option', { name: /First template/ })
+    const second = screen.getByRole('option', { name: /Second template/ })
+    await expect.element(first).toBeVisible()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect.element(input).toHaveAttribute('aria-activedescendant', first.element().id)
+    await second.hover()
+    await expect.element(input).toHaveAttribute('aria-activedescendant', first.element().id)
+    await userEvent.keyboard('{Enter}')
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'template',
+        template: expect.objectContaining({ id: 'first' }),
+      }),
+    )
+  })
+
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {
     await page.viewport(1280, 720)
 
@@ -150,7 +204,7 @@ describe('Marketplace search autocomplete layout', () => {
     await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
 
     const catalogNavigation = screen
-      .getByRole('region', { name: 'common.mainNav.marketplace' })
+      .getByRole('region', { name: 'navigation.mainNav.marketplace' })
       .element()
     const scrollTopBefore = scrollContainer.scrollTop
     const inputTopBefore = input.element().getBoundingClientRect().top

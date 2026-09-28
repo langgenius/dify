@@ -1,6 +1,6 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -166,12 +166,12 @@ describe('assigner path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      expect(screen.getByText('workflow.nodes.assigner.operations.clear'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.set'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.+='))!.toBeInTheDocument()
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+      expect(screen.getByText('workflowLogic.nodes.assigner.operations.clear'))!.toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.assigner.operations.set'))!.toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.assigner.operations.+='))!.toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.+='))
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.+='))
       expect(onSelect).toHaveBeenCalledWith({
         value: WriteMode.increment,
         name: WriteMode.increment,
@@ -191,8 +191,10 @@ describe('assigner path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      expect(screen.queryByText('workflow.nodes.assigner.operations.title')).not.toBeInTheDocument()
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+      expect(
+        screen.queryByText('workflowLogic.nodes.assigner.operations.title'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render empty and populated variable lists across constant editors', async () => {
@@ -203,7 +205,7 @@ describe('assigner path', () => {
         <VarList readonly={false} nodeId="node-1" list={[]} onChange={onChange} />,
       )
 
-      expect(screen.getByText('workflow.nodes.assigner.noVarTip'))!.toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip'))!.toBeInTheDocument()
 
       rerender(
         <VarList
@@ -222,7 +224,7 @@ describe('assigner path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.assigner.selectAssignedVariable'))
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.selectAssignedVariable'))
       expect(onOpen).toHaveBeenCalledWith(0)
       expect(onChange).toHaveBeenLastCalledWith(
         [
@@ -254,8 +256,8 @@ describe('assigner path', () => {
       )
 
       expect(screen.getByText('filter:false:true'))!.toBeInTheDocument()
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.set'))
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.set'))
       expect(onChange).toHaveBeenLastCalledWith([
         createOperation({
           operation: WriteMode.set,
@@ -265,7 +267,7 @@ describe('assigner path', () => {
       ])
 
       onChange.mockClear()
-      await user.click(screen.getByText('workflow.nodes.assigner.setParameter'))
+      await user.click(screen.getByText('workflowLogic.nodes.assigner.setParameter'))
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.overwrite, value: ['node-2', 'result'] })],
         ['node-2', 'result'],
@@ -288,10 +290,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated text' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('updated text')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: 'updated text' })],
-        'updated text',
+        undefined,
       )
 
       onChange.mockClear()
@@ -311,10 +315,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('3'), { target: { value: '5' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('5')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: 5 })],
-        5,
+        undefined,
       )
 
       onChange.mockClear()
@@ -337,7 +343,7 @@ describe('assigner path', () => {
       await user.click(screen.getByRole('button', { name: 'bool:false' }))
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: true })],
-        true,
+        undefined,
       )
 
       onChange.mockClear()
@@ -357,10 +363,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{"a":2}' } })
+      await user.click(screen.getByRole('textbox', { name: 'code-editor' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('{"a":2}')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: '{"a":2}' })],
-        '{"a":2}',
+        undefined,
       )
 
       onChange.mockClear()
@@ -380,10 +388,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('2'), { target: { value: '4' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('4')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.increment, value: 4 })],
-        4,
+        undefined,
       )
 
       const buttons = screen.getAllByRole('button')
@@ -416,7 +426,7 @@ describe('assigner path', () => {
         },
       )
 
-      expect(screen.getByText('workflow.nodes.assigner.varNotSet'))!.toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.assigner.varNotSet'))!.toBeInTheDocument()
 
       rerender(
         <Node
@@ -429,7 +439,9 @@ describe('assigner path', () => {
 
       expect(screen.getByText('Answer'))!.toBeInTheDocument()
       expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.over-write'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('workflowLogic.nodes.assigner.operations.over-write'),
+      )!.toBeInTheDocument()
 
       rerender(
         <Node
@@ -448,7 +460,9 @@ describe('assigner path', () => {
 
       expect(screen.getByText('Start'))!.toBeInTheDocument()
       expect(screen.getByText('sys.query'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('workflowLogic.nodes.assigner.operations.append'),
+      )!.toBeInTheDocument()
     })
 
     it('should skip empty version 2 items and resolve system variables without an operation badge', () => {
@@ -485,7 +499,7 @@ describe('assigner path', () => {
       expect(screen.getByText('Start'))!.toBeInTheDocument()
       expect(screen.getByText('sys.query'))!.toBeInTheDocument()
       expect(
-        screen.queryByText('workflow.nodes.assigner.operations.over-write'),
+        screen.queryByText('workflowLogic.nodes.assigner.operations.over-write'),
       ).not.toBeInTheDocument()
     })
 
@@ -521,7 +535,7 @@ describe('assigner path', () => {
       )
 
       expect(
-        screen.queryByText('workflow.nodes.assigner.operations.append'),
+        screen.queryByText('workflowLogic.nodes.assigner.operations.append'),
       ).not.toBeInTheDocument()
       expect(screen.queryByText('node-1.count')).not.toBeInTheDocument()
 
@@ -542,7 +556,9 @@ describe('assigner path', () => {
 
       expect(screen.getByText('Answer'))!.toBeInTheDocument()
       expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('workflowLogic.nodes.assigner.operations.append'),
+      )!.toBeInTheDocument()
     })
 
     it('should add panel operations with the real variable list inside the panel', async () => {
@@ -562,7 +578,7 @@ describe('assigner path', () => {
         createOperation({ variable_selector: [] }),
       ])
 
-      expect(screen.getByText('workflow.nodes.assigner.variables'))!.toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.assigner.variables'))!.toBeInTheDocument()
       expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
     })
   })

@@ -16,7 +16,6 @@ import {
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
-import { VariableX } from '../../../icons/src/vender/workflow'
 import InputField from './input-field'
 import VariableBlock from './variable-block'
 
@@ -53,7 +52,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const resolvedFormInput = formInput || createDefaultParagraphFormInput(varName)
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default
@@ -124,7 +123,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
     if (isSelectFormInput(resolvedFormInput)) {
       if (resolvedFormInput.option_source.type === 'variable')
-        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
+        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflowHumanInput' })
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
@@ -136,7 +135,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       <div className="absolute -top-3 left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
-          <VariableX className="size-3" />
+          <span aria-hidden className="i-custom-vender-workflow-variable-x size-3" />
           <div className="system-xs-medium">{varName}</div>
         </div>
       </div>

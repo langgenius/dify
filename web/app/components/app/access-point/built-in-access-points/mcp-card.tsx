@@ -1,6 +1,7 @@
 'use client'
 
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -11,7 +12,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,7 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateMCPServerDetail,
@@ -30,7 +31,7 @@ import { useAccessPointStatusLabel } from '../shared/use-access-point-status-lab
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   canManageAccessPoint: boolean
   highlighted?: boolean
   triggerModeDisabled: boolean
@@ -46,7 +47,7 @@ export function MCPAccessPointCard({
   workflow,
   workflowLoading,
 }: MCPAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW

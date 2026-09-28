@@ -55,11 +55,21 @@ const FieldListContainer = ({
     [isSorting, inputFields, onListSortChange],
   )
 
+  const moveField = (index: number, direction: -1 | 1) => {
+    if (readonly || isSorting) return
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= list.length) return
+    const reordered = [...list]
+    const [field] = reordered.splice(index, 1)
+    reordered.splice(nextIndex, 0, field!)
+    onListSortChange(reordered)
+  }
+
   return (
     <>
       {announcement}
       <ReactSortable<SortableItem>
-        className={cn(className)}
+        className={cn('nokey', className)}
         list={list}
         setList={handleListSortChange}
         handle=".handle"
@@ -69,13 +79,17 @@ const FieldListContainer = ({
       >
         {items.map((item, index) => (
           <FieldItem
-            key={getItemKey(index)}
+            key={item.variable}
             dragHandleProps={getHandleProps(index)}
             index={getItemKey(index)}
             readonly={readonly}
             payload={item}
             onRemove={onRemoveField}
             onClickEdit={onEditField}
+            onMoveUp={!isSorting && index > 0 ? () => moveField(index, -1) : undefined}
+            onMoveDown={
+              !isSorting && index < items.length - 1 ? () => moveField(index, 1) : undefined
+            }
           />
         ))}
       </ReactSortable>

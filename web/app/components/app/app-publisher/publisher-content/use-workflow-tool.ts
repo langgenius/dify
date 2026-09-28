@@ -49,7 +49,7 @@ export function useWorkflowTool({
   toolPublished,
   workflowToolAvailable,
 }: UseWorkflowToolParams) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const canManageTools = useCanManageTools()
   const visible = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode

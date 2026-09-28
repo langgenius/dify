@@ -5,9 +5,9 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { agentV2SystemTextOutput } from '../../../output-variables'
 import { AgentOutputVariables } from '../index'
 
-const editorLabel = 'workflow.nodes.agent.outputVars.editorLabel'
-const nameLabel = 'workflow.nodes.agent.outputVars.nameLabel'
-const confirmLabel = 'workflow.nodes.agent.outputVars.confirm'
+const editorLabel = 'workflowAgent.nodes.agent.outputVars.editorLabel'
+const nameLabel = 'workflowAgent.nodes.agent.outputVars.nameLabel'
+const confirmLabel = 'workflowAgent.nodes.agent.outputVars.confirm'
 
 async function expandOutputVars(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
@@ -19,13 +19,13 @@ function getAddButton(name: string) {
 
 function getEditButton(name: string) {
   return screen.getByRole('button', {
-    name: `workflow.nodes.agent.outputVars.edit:{"name":"${name}"}`,
+    name: `workflowAgent.nodes.agent.outputVars.edit:{"name":"${name}"}`,
   })
 }
 
 function getDeleteButton(name: string) {
   return screen.getByRole('button', {
-    name: `workflow.nodes.agent.outputVars.delete:{"name":"${name}"}`,
+    name: `workflowAgent.nodes.agent.outputVars.delete:{"name":"${name}"}`,
   })
 }
 
@@ -56,12 +56,12 @@ describe('AgentOutputVariables', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: 'workflow.nodes.agent.outputVars.edit:{"name":"text"}',
+        name: 'workflowAgent.nodes.agent.outputVars.edit:{"name":"text"}',
       }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'workflow.nodes.agent.outputVars.delete:{"name":"text"}',
+        name: 'workflowAgent.nodes.agent.outputVars.delete:{"name":"text"}',
       }),
     ).not.toBeInTheDocument()
     expect(getEditButton('summary')).toBeInTheDocument()
@@ -269,7 +269,7 @@ describe('AgentOutputVariables', () => {
     await user.click(getEditButton('summary'))
     await confirmEditorName(user, 'report.summary')
 
-    expect(screen.getByText('workflow.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -281,11 +281,11 @@ describe('AgentOutputVariables', () => {
 
     await expandOutputVars(user)
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.outputVars.newOutput' }),
     )
     await confirmEditorName(user, name)
 
-    expect(screen.getByText('workflow.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

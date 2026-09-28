@@ -1,13 +1,13 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
+import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
-} from '../../agent-v2/support/agent-builder-resources'
-import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
-import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
+} from '../../agent-v2/support/agent-builder-resources.ts'
+import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse.ts'
+import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers.ts'
 
 const API_KEY_DIALOG_NAME = /^API Key$/i
 

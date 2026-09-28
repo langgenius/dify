@@ -16,15 +16,17 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
+import { handleShortcutMenuKeyDown, OptionRow, SingleOptionTrigger } from './test-run-menu-helpers'
 
-export enum TriggerType {
-  UserInput = 'user_input',
-  Schedule = 'schedule',
-  Webhook = 'webhook',
-  Plugin = 'plugin',
-  All = 'all',
-}
+export const TriggerType = {
+  UserInput: 'user_input',
+  Schedule: 'schedule',
+  Webhook: 'webhook',
+  Plugin: 'plugin',
+  All: 'all',
+} as const
+
+export type TriggerType = (typeof TriggerType)[keyof typeof TriggerType]
 
 export type TriggerOption = {
   id: string
@@ -82,7 +84,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
     mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
 
   options.triggers.forEach((trigger) => {
-    if (trigger.enabled !== false)
+    if (trigger.enabled !== false && numericShortcut < 10)
       mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
   })
 
@@ -92,7 +94,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
 // oxlint-disable-next-line eslint-react/no-forward-ref
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
   ({ options, onSelect, children }, ref) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const [open, setOpen] = useState(false)
     const shortcutMappings = useMemo(() => buildShortcutMappings(options), [options])
     const shortcutKeyById = useMemo(() => {
@@ -119,12 +121,6 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
     const runSoleOption = useCallback(() => {
       if (soleEnabledOption) handleSelect(soleEnabledOption)
     }, [handleSelect, soleEnabledOption])
-
-    useShortcutMenu({
-      open,
-      shortcutMappings,
-      handleSelect,
-    })
 
     useImperativeHandle(
       ref,
@@ -169,6 +165,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
           <DropdownMenuTrigger style={{ userSelect: 'none' }}>{children}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent
+          onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
           placement="bottom-start"
           sideOffset={8}
           alignOffset={-4}

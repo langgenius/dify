@@ -1,19 +1,30 @@
 import type { JSX } from 'react'
-import type { BundledTheme } from 'shiki/bundle/web'
+import type { CodeTheme } from './shiki-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
-import ReactEcharts from 'echarts-for-react'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
-import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import useTheme from '@/hooks/use-theme'
-import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+// React.lazy preserves the chart adapter's ref and loads each runtime only when rendered.
+const ReactEcharts = lazy(() => import('echarts-for-react'))
+const MarkdownMusic = lazy(() => import('./music'))
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -68,7 +79,7 @@ const ShikiCodeBlock = memo(
   }: {
     code: string
     language: string
-    theme: BundledTheme
+    theme: CodeTheme
     initial?: JSX.Element
   }) => {
     const [nodes, setNodes] = useState(initial)
@@ -561,7 +572,17 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
           <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
-      {renderCodeContent}
+      <Suspense
+        fallback={
+          <div
+            aria-busy="true"
+            className="animate-pulse rounded-b-[10px] bg-components-input-bg-normal"
+            style={{ minHeight: language === 'echarts' ? 350 : 96 }}
+          />
+        }
+      >
+        {renderCodeContent}
+      </Suspense>
     </div>
   )
 })

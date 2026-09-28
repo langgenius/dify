@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.gen'
+import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.gen.ts'
 
 /**
  * Generate code rules using LLM

@@ -14,7 +14,7 @@ const { mockAppQuota, toastErrorMock } = vi.hoisted(() => ({
   toastErrorMock: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
   },
@@ -28,20 +28,23 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({
+vi.mock('@/app/components/base/icon-picker', () => ({
+  IconPickerDialog: ({
+    open,
     onOpenChange,
-    onSelect,
+    onConfirm,
   }: {
+    open: boolean
     onOpenChange: (open: boolean) => void
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
   }) => {
+    if (!open) return null
     let selectedBackground = '#FFEAD5'
     return (
       <div>
         <input placeholder="Search emojis..." />
         <button type="button" onClick={() => {}}>
-          <em-emoji />
+          <span>😀</span>
         </button>
         <button
           type="button"
@@ -53,7 +56,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
         <button
           type="button"
           onClick={() => {
-            onSelect({ type: 'emoji', icon: '🤖', background: selectedBackground })
+            onConfirm({ type: 'emoji', icon: '🤖', background: selectedBackground })
             onOpenChange(false)
           }}
         >
@@ -256,7 +259,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    const emojiButton = screen.getByText('😀').closest('button')
     expect(emojiButton).toBeTruthy()
     await user.click(emojiButton!)
     await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))

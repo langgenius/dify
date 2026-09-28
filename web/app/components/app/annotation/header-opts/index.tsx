@@ -15,8 +15,8 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
@@ -68,7 +68,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   onClearAll,
   onExportJsonl,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const locale = useLocale()
   const annotationUnavailable = list.length === 0
 
@@ -132,7 +132,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 }
 
 const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
 

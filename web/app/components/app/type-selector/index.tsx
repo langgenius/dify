@@ -7,14 +7,7 @@ import {
   RiFilter3Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  BubbleTextMod,
-  ChatBot,
-  ListSparkle,
-  Logic,
-} from '@/app/components/base/icons/src/vender/solid/communication'
 import { AppModeEnum } from '@/types/app'
 
 type AppSelectorProps = {
@@ -31,15 +24,14 @@ const allTypes: AppModeEnum[] = [
 ]
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
-  const [open, setOpen] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const triggerLabel =
     value.length === 0
       ? t(($) => $['typeSelector.all'], { ns: 'app' })
       : value.map((type) => getAppTypeLabel(type, t)).join(', ')
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           aria-label={triggerLabel}
@@ -70,10 +62,10 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
               <AppTypeSelectorItem
                 key={mode}
                 type={mode}
-                checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
+                checked={value.includes(mode)}
                 onClick={() => {
-                  if (value?.indexOf(mode) !== -1) onChange(value?.filter((v) => v !== mode) ?? [])
-                  else onChange([...(value || []), mode])
+                  if (value.includes(mode)) onChange(value.filter((v) => v !== mode))
+                  else onChange([...value, mode])
                 }}
               />
             ))}
@@ -103,14 +95,23 @@ export const AppTypeIcon = React.memo(
     if (type === AppModeEnum.CHAT) {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
-          <ChatBot className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-chat-bot h-3 w-3.25',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
     if (type === AppModeEnum.AGENT_CHAT) {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
-          <Logic className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn('i-custom-vender-solid-communication-logic h-6 w-6', iconClassNames)}
+          />
         </div>
       )
     }
@@ -120,7 +121,13 @@ export const AppTypeIcon = React.memo(
           style={style}
           className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}
         >
-          <BubbleTextMod className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-bubble-text-mod h-6 w-6',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
@@ -134,7 +141,13 @@ export const AppTypeIcon = React.memo(
     if (type === AppModeEnum.COMPLETION) {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
-          <ListSparkle className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-list-sparkle h-6 w-6',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
@@ -143,7 +156,7 @@ export const AppTypeIcon = React.memo(
 )
 
 function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['value'] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   if (!values || values.length === 0) {
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
@@ -231,7 +244,7 @@ type AppTypeLabelProps = {
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return <span className={className}>{getAppTypeLabel(type, t)}</span>
 }

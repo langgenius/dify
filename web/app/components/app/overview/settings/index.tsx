@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,9 +25,9 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -36,15 +36,15 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Divider from '@/app/components/base/divider'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
@@ -79,7 +79,7 @@ type SettingsSiteInfo = Pick<
 >
 
 type SettingsAppIconSelection =
-  | AppIconSelection
+  | IconPickerValue
   | {
       type: 'link'
       icon: string
@@ -89,7 +89,6 @@ type SettingsAppIconSelection =
 export type SettingsAppInfo = {
   id: string
   mode: AppModeEnum
-  enable_sso?: boolean
   site: SettingsSiteInfo
 }
 
@@ -109,7 +108,6 @@ export type ConfigParams = {
   icon_background?: string
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
-  enable_sso?: boolean
 }
 
 const INPUT_PLACEHOLDER_MAX_LENGTH = 64
@@ -153,7 +151,6 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
-    enable_sso: appInfo.enable_sso,
   }
 }
 
@@ -170,7 +167,6 @@ const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIcon
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
   JSON.stringify([
     appInfo.id,
-    appInfo.enable_sso,
     appInfo.site.title,
     appInfo.site.description,
     appInfo.site.chat_color_theme,
@@ -204,9 +200,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [inputInfo, setInputInfo] = useState(nextInputInfo)
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
@@ -348,7 +344,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
-      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -449,7 +444,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <AppIcon
                       size="xxl"
                       onClick={() => {
-                        setShowAppIconPicker(true)
+                        setShowIconPicker(true)
                       }}
                       className="mt-2 cursor-pointer"
                       iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
@@ -476,7 +471,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   {/* answer icon */}
                   {isChat && (
                     <Field name="use_icon_as_answer_icon" className="w-full">
@@ -587,7 +582,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   <div className="space-y-5">
                     {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
                       <div className="w-full">
@@ -606,7 +601,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                   <span
                                     aria-hidden="true"
-                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                   />
                                   <div className="system-xs-medium">
                                     <span className="p-1">
@@ -658,7 +653,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span
                                   aria-hidden="true"
-                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                 />
                                 <div className="system-xs-medium">
                                   <span className="p-1">
@@ -808,15 +803,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </Form>
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={showAppIconPicker}
-        initialEmoji={
-          appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined
-        }
-        onOpenChange={setShowAppIconPicker}
-        onSelect={setAppIcon}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon.type === 'link' ? undefined : appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setAppIcon}
       />
     </>
   )

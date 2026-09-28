@@ -1,5 +1,6 @@
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
+import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -210,7 +211,7 @@ describe('RetrievalSection', () => {
   const t = withSelectorKey((key: string, options?: { ns?: string }) => {
     const prefix = options?.ns ? `${options.ns}.` : ''
     return `${prefix}${key}`
-  }, 'datasetSettings')
+  }, 'datasetSettings') as TFunction<['datasetSettings']>
   const rowClass = 'row'
   const labelClass = 'label'
 
@@ -264,6 +265,7 @@ describe('RetrievalSection', () => {
     expect(screen.getByText('External API'))!.toBeInTheDocument()
     expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
     expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
+    expect(screen.getAllByRole('separator')).toHaveLength(2)
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 

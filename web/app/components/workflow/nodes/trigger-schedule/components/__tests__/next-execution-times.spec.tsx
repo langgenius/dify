@@ -24,7 +24,7 @@ describe('trigger-schedule/next-execution-times', () => {
     render(<NextExecutionTimes data={createData()} />)
 
     expect(
-      screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTimes'),
+      screen.getByText('workflowIntegrations.nodes.triggerSchedule.nextExecutionTimes'),
     ).toBeInTheDocument()
     expect(screen.getAllByText(/^\d{2}$/).length).toBeGreaterThan(0)
   })

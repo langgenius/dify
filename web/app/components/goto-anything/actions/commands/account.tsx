@@ -23,7 +23,7 @@ export const accountCommand: SlashCommandHandler<AccountDeps> = {
     return [
       {
         id: 'account',
-        title: i18n.t(($) => $['account.account'], { ns: 'common', lng: locale }),
+        title: i18n.t(($) => $['account.account'], { ns: 'accountSettings', lng: locale }),
         description: i18n.t(($) => $['gotoAnything.actions.accountDesc'], {
           ns: 'app',
           lng: locale,

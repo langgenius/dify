@@ -141,7 +141,7 @@ Dify pozdravlja vse vrste prispevkov:
 
 - **Koda**: preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), nato pa preglejte [naloge za nove sodelavce](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideje in povratne informacije**: začnite ali se pridružite [razpravi na GitHubu](https://github.com/langgenius/dify/discussions).
-- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md), da dodate ali posodobite jezik.
+- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n/README.md), da dodate ali posodobite jezik.
 - **Skupnost**: delite ustvarjene aplikacije, pomagajte drugim uporabnikom in razširite glas o Difyju.
 
 ### Sodelavci

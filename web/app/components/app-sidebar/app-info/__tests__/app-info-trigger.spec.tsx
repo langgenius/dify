@@ -1,4 +1,4 @@
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -54,7 +54,7 @@ const defaultAppPermissionKeys = [
   AppACLPermission.Delete,
 ]
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
+const createAppDetail = (overrides: Partial<App> = {}): App =>
   ({
     id: 'app-1',
     name: 'Test App',
@@ -68,7 +68,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
     permission_keys: defaultAppPermissionKeys,
     maintainer: 'user-1',
     ...overrides,
-  }) as App & Partial<AppSSO>
+  }) as App
 
 const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({
   appDetail: createAppDetail(),
@@ -124,7 +124,7 @@ describe('AppInfoTrigger', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'app.editApp',
       'app.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
       'app.switch',
     ])
@@ -142,10 +142,10 @@ describe('AppInfoTrigger', () => {
 
     await user.click(getOperationsTrigger())
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'app.importApp' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
     expect(props.openModal).toHaveBeenCalledWith('importDSL')
   })
 
@@ -155,14 +155,14 @@ describe('AppInfoTrigger', () => {
     const { rerender } = render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
 
     const readyProps = createProps()
     rerender(<AppInfoTrigger {...readyProps} />)
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })

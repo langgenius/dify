@@ -2,9 +2,9 @@ import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
 import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { toast } from '@/app/notifications'
 import {
   addAnnotation,
   delAnnotation,

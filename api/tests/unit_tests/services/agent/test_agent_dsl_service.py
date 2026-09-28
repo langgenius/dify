@@ -1,5 +1,6 @@
 import json
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -26,6 +27,7 @@ from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSk
 from models.dataset import Dataset
 from models.enums import AppStatus
 from models.model import App, AppMode
+from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
@@ -36,6 +38,7 @@ from services.agent.dsl_entities import (
 )
 from services.agent.dsl_service import AgentDslService, AgentPackageImportResult, is_agent_v2_graph
 from services.entities.dsl_entities import DslImportWarning
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _agent(
@@ -124,7 +127,8 @@ def _agent_node(node_id: str, binding: object | None = None) -> dict:
     return {"id": node_id, "data": data}
 
 
-def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -> None:
+@pytest.mark.parametrize("include_assets", [False, True])
+def test_make_portable_agent_package_strips_workspace_credentials_and_assets(include_assets: bool) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -164,8 +168,10 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
                 ],
             },
             "env": {"secret_refs": [{"name": "GLOBAL_TOKEN", "value": "plain-secret", "id": "secret-1"}]},
-            "config_skills": [{"name": "research", "file_kind": "tool_file", "file_id": "skill-file"}],
-            "config_files": [{"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file"}],
+            "config_skills": [{"name": "research", "file_id": "skill-file"}, {"name": "missing", "is_missing": True}],
+            "config_files": [
+                {"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file", "mime_type": "text/markdown"}
+            ],
             "human": {
                 "contacts": [
                     {
@@ -179,7 +185,9 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
         }
     )
 
-    package = make_portable_agent_package(_agent(), soul)
+    original = soul.model_dump(mode="json")
+    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
+    assert soul.model_dump(mode="json") == original
     serialized = package.model_dump(mode="json")
 
     assert package.soul.model is not None
@@ -189,19 +197,31 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
     assert package.soul.config_skills[0].name == "research"
-    assert package.soul.config_skills[0].file_id == ""
-    assert package.soul.config_skills[0].is_missing is True
+    assert package.soul.config_skills[0].file_id == ("skill-file" if include_assets else "")
+    assert package.soul.config_skills[0].is_missing is (not include_assets)
     assert package.soul.config_files[0].name == "guide.md"
-    assert package.soul.config_files[0].file_id == ""
-    assert package.soul.config_files[0].is_missing is True
-    assert [asset.kind for asset in package.omitted_assets] == ["skill", "file"]
+    assert package.soul.config_files[0].file_id == ("config-file" if include_assets else "")
+    assert package.soul.config_files[0].is_missing is (not include_assets)
+    assert package.soul.config_skills[1].is_missing
+    assert package.soul.config_files[0].mime_type == "text/markdown"
+    assert [asset.kind for asset in package.omitted_assets] == (
+        ["skill"] if include_assets else ["skill", "skill", "file"]
+    )
+    assert [asset.name for asset in package.omitted_assets] == (
+        ["missing"] if include_assets else ["research", "missing", "guide.md"]
+    )
     assert "plain-secret" not in str(serialized)
     assert "model-secret" not in str(serialized)
     assert "tool-secret" not in str(serialized)
-    assert "skill-file" not in str(serialized)
-    assert "config-file" not in str(serialized)
+    assert ("skill-file" in str(serialized)) is include_assets
+    assert ("config-file" in str(serialized)) is include_assets
     assert package.soul.human.contacts[0].id is None
     assert package.soul.human.contacts[0].name == "Reviewer"
+
+    package.soul.config_skills[0].description = "Changed"
+    package.soul.config_files[0].name = "changed.md"
+    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
+    assert soul.model_dump(mode="json") == original
 
 
 def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
@@ -271,7 +291,7 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
     )
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", Mock(return_value={}))
 
-    _, warnings = AgentDslService(unbound_session)._resolve_package_soul(
+    _, warnings = AgentDslService(unbound_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
@@ -293,7 +313,7 @@ def test_agent_package_rejects_unknown_schema_version() -> None:
 
 def test_export_agent_app_requires_backing_agent(sqlite_session: Session) -> None:
     with pytest.raises(ValueError, match="no active backing Agent"):
-        AgentDslService(sqlite_session).export_agent_app(app=_app())
+        AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
 
 
 @pytest.mark.parametrize("use_draft", [True, False])
@@ -317,7 +337,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
     sqlite_session.add_all(rows)
     sqlite_session.commit()
 
-    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app())
+    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
 
     assert package_ref == "agent_1"
     assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")
@@ -397,8 +417,8 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
-    service._unique_roster_name = Mock(return_value="Portable Agent import")
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.unique_roster_name = Mock(return_value="Portable Agent import")
     agent = _agent()
     agent.active_config_snapshot_id = "snapshot-1"
     agent.active_config_is_published = True
@@ -590,22 +610,28 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
     assert create_kwargs["source"] == AgentSource.WORKFLOW
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(
+def test_extract_package_dependencies_covers_models_features_tools_and_knowledge(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         model_dependency,
     )
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_tool_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_tool_dependency",
         tool_dependency,
     )
     soul = AgentSoulConfig.model_validate(
         {
             "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
+            "app_features": {
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "model": {"provider": "provider/follow-up", "name": "follow-up-model"},
+                }
+            },
             "tools": {
                 "dify_tools": [
                     {
@@ -631,9 +657,49 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
                         "retrieval": {
                             "mode": "single",
                             "model": {"provider": "provider/retrieval", "name": "embed", "mode": "embedding"},
+                        },
+                        "metadata_filtering": {
+                            "mode": "automatic",
+                            "model_config": {
+                                "provider": "provider/metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    },
+                    {
+                        "id": "set-2",
+                        "name": "Reranked Set",
+                        "datasets": [{"id": "dataset-2", "name": "Reranked Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "reranking_model",
                             "reranking_model": {"provider": "provider/rerank", "model": "rerank"},
                         },
-                    }
+                    },
+                    {
+                        "id": "set-3",
+                        "name": "Weighted Set",
+                        "datasets": [{"id": "dataset-3", "name": "Weighted Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "weighted_score",
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/embedding",
+                                    "embedding_model_name": "embedding-model",
+                                    "vector_weight": 0.7,
+                                },
+                                "keyword_setting": {"keyword_weight": 0.3},
+                            },
+                        },
+                    },
                 ]
             },
         }
@@ -645,18 +711,77 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
 
     assert dependencies == [
         "model:provider/model",
+        "model:provider/follow-up",
         "tool:provider/tool",
         "tool:plugin-id/fallback-provider",
         "model:provider/retrieval",
+        "model:provider/metadata",
         "model:provider/rerank",
+        "model:provider/embedding",
     ]
+
+
+def test_extract_package_dependencies_ignores_inactive_knowledge_models(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        model_dependency,
+    )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [{"id": "dataset-1", "name": "Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": False,
+                            "reranking_mode": "weighted_score",
+                            "reranking_model": {"provider": "provider/inactive-rerank", "model": "rerank"},
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/inactive-embedding",
+                                }
+                            },
+                            "model": {
+                                "provider": "provider/inactive-retrieval",
+                                "name": "retrieval-model",
+                                "mode": "chat",
+                            },
+                        },
+                        "metadata_filtering": {
+                            "mode": "disabled",
+                            "model_config": {
+                                "provider": "provider/inactive-metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == []
+    model_dependency.assert_not_called()
 
 
 def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Session) -> None:
     service = AgentDslService(unbound_session)
     soul = AgentSoulConfig(config_note="inline")
     warning = DslImportWarning(code="setup", path="agent", message="setup")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
     service._create_workflow_only_agent = Mock(return_value=(_agent(), _snapshot(soul=soul)))
     workflow = _workflow()
 
@@ -743,7 +868,7 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
     get_dataset_rows = Mock(return_value={"existing": existing_dataset})
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", get_dataset_rows)
 
-    resolved, warnings = AgentDslService(sqlite_session)._resolve_package_soul(
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
@@ -782,6 +907,56 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
         "agent_file_omitted",
         "agent_knowledge_unresolved",
     }
+
+
+@pytest.mark.parametrize(
+    ("field", "file_kind"),
+    [("config_skills", "tool_file"), ("config_files", "tool_file"), ("config_files", "upload_file")],
+)
+@pytest.mark.parametrize("availability", ["local", "foreign", "deleted", "invalid_id"])
+def test_resolve_legacy_package_asset_references(
+    sqlite_session: Session, field: str, file_kind: str, availability: str
+) -> None:
+    tenant_id = "tenant-2" if availability == "foreign" else "tenant-1"
+    file_id = "legacy-file-id" if availability == "invalid_id" else str(uuid4())
+    if availability in {"local", "foreign"}:
+        if file_kind == "upload_file":
+            row = make_upload_file(file_id=file_id, tenant_id=tenant_id)
+        else:
+            row = ToolFile(
+                tenant_id=tenant_id,
+                user_id="account-1",
+                conversation_id=None,
+                file_key="tools/asset.zip",
+                mimetype="application/zip",
+            )
+            row.id = file_id
+        sqlite_session.add(row)
+        sqlite_session.flush()
+    package = AgentPackage.model_validate(
+        {
+            "metadata": {"name": "Legacy Agent"},
+            "soul": {field: [{"name": "asset", "file_kind": file_kind, "file_id": file_id, "size": 42}]},
+        }
+    )
+
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
+        tenant_id="tenant-1", package=package, package_path="agent_packages.agent_1"
+    )
+
+    ref = (resolved.config_skills if field == "config_skills" else resolved.config_files)[0]
+    assert ref.is_missing is (availability != "local")
+    assert ref.file_id == (file_id if availability == "local" else "")
+    assert ref.name == "asset"
+    assert ref.size == 42
+    original_ref = (package.soul.config_skills if field == "config_skills" else package.soul.config_files)[0]
+    assert original_ref.file_id == file_id
+    if availability == "local":
+        assert warnings == []
+    else:
+        kind = "skill" if field == "config_skills" else "file"
+        assert [warning.code for warning in warnings] == [f"agent_{kind}_missing"]
+        assert warnings[0].path == f"agent_packages.agent_1.soul.{field}.0"
 
 
 def test_create_snapshot_increments_version_and_records_revision(sqlite_session: Session) -> None:
@@ -824,7 +999,7 @@ def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session)
     )
     sqlite_session.commit()
 
-    result = AgentDslService(sqlite_session)._unique_roster_name(tenant_id="tenant-1", requested="Agent")
+    result = AgentDslService(sqlite_session).unique_roster_name(tenant_id="tenant-1", requested="Agent")
 
     assert result == "Agent import 2"
 

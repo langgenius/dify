@@ -16,14 +16,13 @@ from core.workflow.file_reference import build_file_reference
 from models.account import Account, Tenant
 from services.file_request_service import DownloadFileRequestResult
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_tenant
 
 MODULE = "controllers.inner_api.agent.files"
 
 
 def _tenant() -> Tenant:
-    tenant = Tenant(name="Test Workspace")
-    tenant.id = "tenant-1"
-    return tenant
+    return make_tenant(name="Test Workspace")
 
 
 def _raw[R](method: Callable[..., R]) -> Callable[..., R]:

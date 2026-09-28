@@ -1,10 +1,7 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type {
-  QuestionClassifierNodeType,
-  Topic,
-} from '@/app/components/workflow/nodes/question-classifier/types'
+import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cloneDeep } from 'es-toolkit/object'
 import {
@@ -12,6 +9,7 @@ import {
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
 } from '@/app/components/workflow/constants'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -303,9 +301,11 @@ const sortQuestionClassifierOutEdges = (classifierNode: Node, outEdges: Edge[]):
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
-      const classes = (classifierNode.data as QuestionClassifierNodeType).classes || []
-      const indexA = classes.findIndex((t: Topic) => t.id === handleA)
-      const indexB = classes.findIndex((t: Topic) => t.id === handleB)
+      const classes = hasAgentV2OutputRoutes(classifierNode.data)
+        ? (classifierNode.data.agent_output_routes?.routes ?? [])
+        : (classifierNode.data as QuestionClassifierNodeType).classes || []
+      const indexA = classes.findIndex((t) => t.id === handleA)
+      const indexB = classes.findIndex((t) => t.id === handleB)
 
       if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
@@ -382,7 +382,7 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
     let outEdges = outEdgesByNode.get(node.id) || []
 
     if (node.data.type === BlockEnum.IfElse) outEdges = sortIfElseOutEdges(node, outEdges)
-    else if (node.data.type === BlockEnum.QuestionClassifier)
+    else if (node.data.type === BlockEnum.QuestionClassifier || hasAgentV2OutputRoutes(node.data))
       outEdges = sortQuestionClassifierOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.HumanInput)
       outEdges = sortHumanInputOutEdges(node, outEdges)

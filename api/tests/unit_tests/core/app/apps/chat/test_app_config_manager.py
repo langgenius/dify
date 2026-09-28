@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from models.model import App, AppMode, AppModelConfig
+from tests.unit_tests.model_factories import make_app
 
 
 def _app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Chat App", mode=AppMode.CHAT)
+    return make_app(name="Chat App", icon_type=None)
 
 
 def _app_model_config() -> AppModelConfig:
@@ -90,7 +91,7 @@ class TestChatAppConfigManager:
         config = {"extra": 1}
 
         def _add_key(key, value):
-            def _inner(*args, **kwargs):
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
                 config = args[-1]
                 config = {**config, key: value}
                 return config, [key]

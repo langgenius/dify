@@ -58,3 +58,20 @@ describe('Switch', () => {
     })
   })
 })
+
+describe('Switch change cancellation', () => {
+  it('lets event details cancel an uncontrolled change', async () => {
+    const screen = await render(
+      <Switch
+        aria-label="Notifications"
+        defaultChecked={false}
+        onCheckedChange={(checked, details) => {
+          if (checked) details.cancel()
+        }}
+      />,
+    )
+
+    await screen.getByRole('switch').click()
+    await expect.element(screen.getByRole('switch')).not.toBeChecked()
+  })
+})

@@ -17,7 +17,7 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 
 type DebugWithSingleModelProps = {
@@ -161,7 +161,7 @@ const DebugWithSingleModel = ({
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
       icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons

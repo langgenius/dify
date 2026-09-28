@@ -1,6 +1,6 @@
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import Link from '@/next/link'
 
 const websiteLocalePaths: Partial<Record<Locale, string>> = {
@@ -13,7 +13,7 @@ export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' 
   const locale = useLocale()
   const comparisonPage = category === 'cloud' ? 'dify-cloud' : 'dify-enterprise'
   const pricingPageURL = `https://dify.ai${websiteLocalePaths[locale] ?? ''}/pricing/${comparisonPage}#compare`
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <div className="flex min-h-16 w-full justify-center border-t border-divider-accent px-10">

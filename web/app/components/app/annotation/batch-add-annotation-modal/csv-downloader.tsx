@@ -3,9 +3,8 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -19,7 +18,7 @@ const CSV_TEMPLATE_QA_CN = [
 ]
 
 const CSVDownload: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'share'])
 
   const locale = useLocale()
   const { CSVDownloader, Type } = useCSVDownloader()
@@ -73,7 +72,7 @@ const CSVDownload: FC = () => {
         data={getTemplate()}
       >
         <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="mr-1 size-3" />
+          <span aria-hidden className="mr-1 i-custom-vender-solid-general-download-02 size-3" />
           {t(($) => $['batchModal.template'], { ns: 'appAnnotation' })}
         </div>
       </CSVDownloader>

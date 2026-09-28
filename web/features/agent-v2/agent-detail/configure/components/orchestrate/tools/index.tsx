@@ -272,7 +272,7 @@ function AddToolMenu({
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const { providerById } = useAgentToolProviderCatalog()
@@ -382,7 +382,7 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
@@ -512,7 +512,7 @@ export function AgentTools() {
     'cli',
     ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => {},
   )
-  const toolsTip = t(($) => $['agentDetail.configure.tools.tip'])
+
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetTool = settingTarget
     ? tools.find((tool) => tool.kind === 'provider' && tool.id === settingTarget.toolId)
@@ -529,7 +529,6 @@ export function AgentTools() {
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
-        tipAriaLabel={toolsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

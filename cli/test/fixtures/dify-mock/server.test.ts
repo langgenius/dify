@@ -56,7 +56,7 @@ describe('dify-mock fixture server', () => {
     })
     expect(r.status).toBe(200)
     const body = (await r.json()) as {
-      workspaces: Array<{
+      data: Array<{
         id: string
         name: string
         role: string
@@ -64,11 +64,11 @@ describe('dify-mock fixture server', () => {
         current: boolean
       }>
     }
-    expect(body.workspaces).toHaveLength(2)
-    expect(body.workspaces[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
-    expect(body.workspaces[0]?.status).toBe('normal')
-    expect(body.workspaces[0]?.current).toBe(true)
-    expect(body.workspaces[1]?.current).toBe(false)
+    expect(body.data).toHaveLength(2)
+    expect(body.data[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
+    expect(body.data[0]?.status).toBe('normal')
+    expect(body.data[0]?.current).toBe(true)
+    expect(body.data[1]?.current).toBe(false)
   })
 
   it('GET /openapi/v1/workspaces returns empty list under sso scenario', async () => {
@@ -77,8 +77,8 @@ describe('dify-mock fixture server', () => {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
-    const body = (await r.json()) as { workspaces: unknown[] }
-    expect(body.workspaces).toHaveLength(0)
+    const body = (await r.json()) as { data: unknown[] }
+    expect(body.data).toHaveLength(0)
   })
 
   it('GET /openapi/v1/account returns the seeded account envelope', async () => {

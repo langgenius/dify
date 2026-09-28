@@ -20,7 +20,7 @@ type Props = Readonly<{
 const i18nPrefix = 'common.effectVarConfirm'
 
 const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })
   const content = t(($) => $[`${i18nPrefix}.content`], { ns: 'workflow' })
 

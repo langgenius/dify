@@ -13,8 +13,139 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      rag: {
+        pipelines: {
+          datasourcePlugins: {
+            get: {
+              queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+        },
+      },
       workspaces: {
         current: {
+          plugin: {
+            readme: {
+              get: {
+                queryOptions: {
+                  context: { silent: true },
+                  retry: false,
+                },
+              },
+            },
+            asset: {
+              get: {
+                queryOptions: { context: { silent: true } },
+              },
+            },
+          },
+          endpoints: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, _error, _variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                    }),
+                  ])
+                },
+              },
+            },
+            byId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            enable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            disable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
+          skills: {
+            bySkillId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
           rbac: {
             accessPolicies: {
               post: {
@@ -165,7 +296,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-                if (!variables.body.app_id) {
+                if (!('app_id' in variables.body) || !variables.body.app_id) {
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.features.get.key(),
                   })
@@ -583,22 +714,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 if (error instanceof Response && error.status === 404) return false
 
                 return failureCount < 3
-              },
-            },
-          },
-          delete: {
-            mutationOptions: {
-              onSuccess: (_response, variables, _onMutateResult, context) => {
-                context.client.removeQueries({
-                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
-                    input: {
-                      params: variables.params,
-                    },
-                  }),
-                })
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.installedApps.get.key(),
-                })
               },
             },
           },

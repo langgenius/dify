@@ -7,7 +7,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from configs import dify_config
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.manager import GraphEngineManager
 
@@ -31,11 +31,12 @@ def app_task_stop_flag_key(task_id: str) -> str:
     return f"generate_task_stopped:{task_id}"
 
 
-def set_app_task_stop_flag(task_id: str) -> None:
+def set_app_task_stop_flag(task_id: str, *, redis: RedisClientWrapper | None = None) -> None:
     if not task_id:
         return
 
-    redis_client.setex(app_task_stop_flag_key(task_id), 600, 1)
+    client = redis if redis is not None else redis_client
+    client.setex(app_task_stop_flag_key(task_id), 600, 1)
 
 
 def is_app_task_stop_flag_set(task_id: str) -> bool:

@@ -1,60 +1,138 @@
-import type { ComponentProps } from 'react'
-import type { StrategyDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import StrategyItem from '../strategy-item'
+import type {
+  AgentProviderResponse,
+  AgentStrategyEntity,
+  AgentStrategyProviderIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import AgentStrategyList from '../agent-strategy-list'
 
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: Record<string, string>) => value.en_US || '',
+const { request } = vi.hoisted(() => ({ request: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => 'zh-Hans',
 }))
 
-vi.mock('../strategy-detail', () => ({
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="strategy-detail-panel">
-      <button onClick={onHide}>Close details</button>
-    </div>
-  ),
-}))
-
-const provider = {
+const provider: AgentStrategyProviderIdentity = {
   author: 'test-author',
   name: 'test-provider',
-  description: { en_US: 'Provider description' },
-  tenant_id: 'tenant-1',
+  description: { en_US: 'Provider description', zh_Hans: null },
   icon: 'icon.png',
-  label: { en_US: 'Test Provider' },
-  tags: [],
-} as unknown as ComponentProps<typeof StrategyItem>['provider']
+  label: { en_US: 'Test Provider', zh_Hans: null },
+  tags: null,
+}
 
-const detail = {
+const strategy: AgentStrategyEntity = {
   identity: {
     author: 'author-1',
     name: 'strategy-1',
-    icon: 'icon.png',
-    label: { en_US: 'Strategy Label' },
+    label: { en_US: 'Strategy Label', zh_Hans: null },
     provider: 'provider-1',
   },
-  parameters: [],
-  description: { en_US: 'Strategy description' },
-  output_schema: {},
-  features: [],
-} as unknown as StrategyDetail
+  description: { en_US: 'Strategy description', zh_Hans: null },
+  parameters: [
+    { name: 'query', type: 'string', label: { en_US: 'Query' }, help: { en_US: 'Search text' } },
+  ],
+}
 
-describe('StrategyItem', () => {
-  it('shows the localized strategy summary', () => {
-    render(<StrategyItem provider={provider} detail={detail} />)
+const plugin = normalizeInstalledPluginDetail({
+  id: 'test-id',
+  created_at: '2024-01-01',
+  updated_at: '2024-01-02',
+  plugin_id: 'test-plugin',
+  plugin_unique_identifier: 'test-uid',
+  tenant_id: 'tenant-1',
+  endpoints_setups: 0,
+  endpoints_active: 0,
+  version: '1.0.0',
+  source: 'marketplace',
+  runtime_type: 'local',
+  checksum: 'checksum',
+  meta: {},
+  declaration: {
+    version: '1.0.0',
+    author: 'Dify',
+    name: 'Test Plugin',
+    category: 'agent-strategy',
+    created_at: '2024-01-01',
+    icon: 'plugin.svg',
+    label: { en_US: 'Test Plugin' },
+    description: { en_US: 'Strategy plugin' },
+    resource: {},
+    plugins: {},
+    meta: {},
+    agent_strategy: { identity: provider },
+  },
+})
 
-    expect(screen.getByText('Strategy Label')).toBeInTheDocument()
-    expect(screen.getByText('Strategy description')).toBeInTheDocument()
+const createResponse = (): AgentProviderResponse => ({
+  declaration: {
+    identity: { ...provider, name: 'test-plugin/test-provider' },
+    strategies: [
+      { ...strategy, identity: { ...strategy.identity, provider: 'test-plugin/test-provider' } },
+    ],
+  },
+  meta: {},
+  plugin_id: 'test-plugin',
+  plugin_unique_identifier: 'test-uid',
+  provider: 'test-provider',
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  request.mockImplementation(async () => Response.json(createResponse()))
+})
+
+describe('Plugin agent strategies', () => {
+  it('loads the provider and opens and closes its real strategy drawer with localized fallback', async () => {
+    const user = userEvent.setup()
+    const requests: string[] = []
+    request.mockImplementation(async (url: string) => {
+      requests.push(decodeURIComponent(new URL(url).pathname))
+      return Response.json(createResponse())
+    })
+    render(<AgentStrategyList detail={plugin} />)
+
+    await user.click(await screen.findByText('Strategy Label'))
+    const drawer = await screen.findByRole('dialog', { name: 'Strategy Label' })
+    expect(within(drawer).getByText('Test Provider')).toBeInTheDocument()
+    expect(within(drawer).getByText('Query')).toBeInTheDocument()
+    expect(within(drawer).getByText('Search text')).toBeInTheDocument()
+    expect(requests).toEqual([
+      expect.stringMatching(/\/workspaces\/current\/agent-provider\/test-plugin\/test-provider$/),
+    ])
+
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByText('Strategy Label'))
+    await user.click(screen.getByText('BACK'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('opens and closes the strategy details', () => {
-    render(<StrategyItem provider={provider} detail={detail} />)
+  it('allows an empty provider declaration without fabricating strategies', async () => {
+    const response = createResponse()
+    response.declaration.strategies = undefined
+    request.mockImplementation(async () => Response.json(response))
+    render(<AgentStrategyList detail={plugin} />)
 
-    fireEvent.click(screen.getByText('Strategy Label'))
-    expect(screen.getByTestId('strategy-detail-panel')).toBeInTheDocument()
+    expect(
+      await screen.findByText('plugin.detailPanel.strategyNum:{"num":0,"strategy":"strategy"}'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Strategy Label')).not.toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close details' }))
-    expect(screen.queryByTestId('strategy-detail-panel')).not.toBeInTheDocument()
+  it('does not request a provider when the plugin has no strategy declaration', () => {
+    render(
+      <AgentStrategyList
+        detail={{ ...plugin, declaration: { ...plugin.declaration, agent_strategy: null } }}
+      />,
+    )
+
+    expect(request).not.toHaveBeenCalled()
+    expect(screen.queryByText(/plugin.detailPanel.strategyNum/)).not.toBeInTheDocument()
   })
 })

@@ -19,7 +19,7 @@ type CreatedApiKeyDialogProps = {
 }
 
 export function CreatedApiKeyDialog({ open, onOpenChange, value }: CreatedApiKeyDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

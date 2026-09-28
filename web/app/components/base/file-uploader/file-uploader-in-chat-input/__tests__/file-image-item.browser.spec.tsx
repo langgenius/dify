@@ -3,10 +3,6 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import FileImageItem from '../file-image-item'
 
-vi.mock('@/utils/download', () => ({
-  downloadUrl: vi.fn(),
-}))
-
 const file: FileEntity = {
   id: 'file-1',
   name: 'photo.png',

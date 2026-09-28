@@ -114,7 +114,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList />)
 
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
       expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
     })
 

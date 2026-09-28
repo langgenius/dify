@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -21,7 +21,7 @@ export type ViewHistoryProps = {
   historyUrl?: string
 }
 const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const isChatMode = useIsChatMode()
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -105,7 +105,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
           </div>
           {isLoading && (
             <div className="flex h-10 items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!isLoading && (
@@ -118,56 +118,59 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                   </div>
                 </div>
               )}
-              {data?.data.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
-                    item.id === historyWorkflowData?.id &&
-                      'bg-state-accent-hover hover:bg-state-accent-hover',
-                  )}
-                  onClick={() => {
-                    workflowStore.setState({
-                      historyWorkflowData: item,
-                      showInputsPanel: false,
-                      showEnvPanel: false,
-                    })
-                    closeAllInputFieldPanels()
-                    handleBackupDraft()
-                    setOpen(false)
-                    handleNodesCancelSelected()
-                    handleCancelDebugAndPreviewPanel()
-                    setControlMode(ControlMode.Hand)
-                  }}
-                >
-                  {!isChatMode &&
-                    [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(
-                      item.status,
-                    ) && (
+              {data?.data.map((item) => {
+                const interruptedStatuses: readonly WorkflowRunningStatus[] = [
+                  WorkflowRunningStatus.Stopped,
+                  WorkflowRunningStatus.Paused,
+                ]
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
+                      item.id === historyWorkflowData?.id &&
+                        'bg-state-accent-hover hover:bg-state-accent-hover',
+                    )}
+                    onClick={() => {
+                      workflowStore.setState({
+                        historyWorkflowData: item,
+                        showInputsPanel: false,
+                        showEnvPanel: false,
+                      })
+                      closeAllInputFieldPanels()
+                      handleBackupDraft()
+                      setOpen(false)
+                      handleNodesCancelSelected()
+                      handleCancelDebugAndPreviewPanel()
+                      setControlMode(ControlMode.Hand)
+                    }}
+                  >
+                    {!isChatMode && interruptedStatuses.includes(item.status) && (
                       <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                     )}
-                  {!isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                    <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
-                  )}
-                  {!isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                    <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
-                  )}
-                  <div>
-                    <div
-                      className={cn(
-                        'flex items-center text-[13px] leading-4.5 font-medium text-text-primary',
-                        item.id === historyWorkflowData?.id && 'text-text-accent',
-                      )}
-                    >
-                      {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
-                    </div>
-                    <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
-                      {item.created_by_account?.name} ·
-                      {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
+                    {!isChatMode && item.status === WorkflowRunningStatus.Failed && (
+                      <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
+                    )}
+                    {!isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
+                      <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
+                    )}
+                    <div>
+                      <div
+                        className={cn(
+                          'flex items-center text-[13px] leading-4.5 font-medium text-text-primary',
+                          item.id === historyWorkflowData?.id && 'text-text-accent',
+                        )}
+                      >
+                        {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
+                      </div>
+                      <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
+                        {item.created_by_account?.name} ·
+                        {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

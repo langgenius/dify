@@ -9,8 +9,7 @@ import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { formatToLocalTime } from '@/utils/format'
 import DatePicker from './date-picker'
 import RangeSelector from './range-selector'
@@ -76,7 +75,10 @@ const TimeRangePicker: FC<Props> = ({ ranges, onSelect, queryDateFormat }) => {
   return (
     <div className="flex items-center">
       <RangeSelector isCustomRange={isCustomRange} ranges={ranges} onSelect={handleRangeChange} />
-      <HourglassShape className="h-3.5 w-2 text-components-input-bg-normal" />
+      <span
+        aria-hidden
+        className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal"
+      />
       <DatePicker
         start={start}
         end={end}

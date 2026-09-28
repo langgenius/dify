@@ -10,7 +10,7 @@ import { useTranslation } from '#i18n'
 import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const options = [
     {
       value: 'install_count',

@@ -1,6 +1,6 @@
 import time
 import uuid
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -26,26 +26,16 @@ class TestWebAppAuthService:
             patch("services.webapp_auth_service.PassportService") as mock_passport_service,
             patch("services.webapp_auth_service.TokenManager") as mock_token_manager,
             patch("services.webapp_auth_service.send_email_code_login_mail_task") as mock_mail_task,
-            patch("services.webapp_auth_service.AppService") as mock_app_service,
-            patch("services.webapp_auth_service.EnterpriseService") as mock_enterprise_service,
         ):
             # Setup default mock returns
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
             mock_token_manager.generate_token.return_value = "mock_token"
             mock_token_manager.get_token_data.return_value = {"code": "123456"}
             mock_mail_task.delay.return_value = None
-            mock_app_service.get_app_id_by_code.return_value = "mock_app_id"
-            mock_enterprise_service.WebAppAuth.get_app_access_mode_by_id.return_value = type(
-                "MockWebAppAuth", (), {"access_mode": "private"}
-            )()
-            # Note: get_app_access_mode_by_code method was removed in refactoring
-
             yield {
                 "passport_service": mock_passport_service,
                 "token_manager": mock_token_manager,
                 "mail_task": mock_mail_task,
-                "app_service": mock_app_service,
-                "enterprise_service": mock_enterprise_service,
             }
 
     def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -736,93 +726,3 @@ class TestWebAppAuthService:
             WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
         assert "App not found." in str(exc_info.value)
-
-    def test_is_app_require_permission_check_with_access_mode_private(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test permission check requirement for private access mode.
-
-        This test verifies:
-        - Proper permission check requirement for private mode
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup test with private access mode
-
-        # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(
-            access_mode="private", session=db_session_with_containers
-        )
-
-        # Assert: Verify correct result
-        assert result is True
-
-    def test_is_app_require_permission_check_with_access_mode_public(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test permission check requirement for public access mode.
-
-        This test verifies:
-        - Proper permission check requirement for public mode
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup test with public access mode
-
-        # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(
-            access_mode="public", session=db_session_with_containers
-        )
-
-        # Assert: Verify correct result
-        assert result is False
-
-    def test_is_app_require_permission_check_with_app_code(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test permission check requirement using app code.
-
-        This test verifies:
-        - Proper permission check requirement using app code
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup mock for app service
-        mock_external_service_dependencies["app_service"].get_app_id_by_code.return_value = "mock_app_id"
-
-        # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(
-            app_code="mock_app_code", session=db_session_with_containers
-        )
-
-        # Assert: Verify correct result
-        assert result is True
-
-        # Verify mock service was called correctly
-        mock_external_service_dependencies["app_service"].get_app_id_by_code.assert_called_once_with(
-            "mock_app_code", session=ANY
-        )
-        mock_external_service_dependencies[
-            "enterprise_service"
-        ].WebAppAuth.get_app_access_mode_by_id.assert_called_once_with("mock_app_id")
-
-    def test_is_app_require_permission_check_no_parameters(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test permission check requirement with no parameters.
-
-        This test verifies:
-        - Proper error handling when no parameters provided
-        - Correct exception type and message
-        """
-        # Arrange: No parameters provided
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)
-
-        assert "Either app_code or app_id must be provided." in str(exc_info.value)

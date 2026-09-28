@@ -11,18 +11,16 @@ import {
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Divider from '@/app/components/base/divider'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -30,6 +28,7 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -66,7 +65,8 @@ export function Popup({
   isPublishingAsCustomizedPipeline = false,
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const popupRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['billing', 'common', 'datasetPipeline', 'pipeline', 'workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -196,9 +196,10 @@ export function Popup({
     ],
   )
   useHotkey(RAG_PIPELINE_PUBLISH_HOTKEY, () => void handlePublish(), {
-    enabled: !published && !publishing,
+    target: popupRef,
+    enabled: !published && !publishing && !confirmVisible,
     ignoreInputs: true,
-    preventDefault: true,
+    requireReset: true,
   })
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (isAllowPublishAsCustomKnowledgePipelineTemplate === undefined) return
@@ -218,6 +219,7 @@ export function Popup({
   ])
   return (
     <div
+      ref={popupRef}
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
         isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
@@ -254,9 +256,9 @@ export function Popup({
             <div className="flex gap-1">
               <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
               <KbdGroup>
-                {RAG_PIPELINE_PUBLISH_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(RAG_PIPELINE_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>
@@ -321,7 +323,7 @@ export function Popup({
             <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         )}
-        <Divider className="my-2" />
+        <Separator className="my-2 h-[0.5px]" />
         <Button
           className="w-full hover:bg-state-accent-hover hover:text-text-accent"
           variant="tertiary"
@@ -343,9 +345,9 @@ export function Popup({
             {deploymentEdition === 'CLOUD' &&
               isAllowPublishAsCustomKnowledgePipelineTemplate === false && (
                 <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
-                  <SparklesSoft
+                  <span
                     aria-hidden="true"
-                    className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
+                    className="i-custom-public-common-sparkles-soft flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
                   />
                   <span className="p-0.5 system-2xs-medium">
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}

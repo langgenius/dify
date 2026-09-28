@@ -3,10 +3,11 @@ import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import useGetRequirements from '../use-get-requirements'
 
-const mockUseGetTryAppFlowPreview = vi.fn()
+const mockUseQuery = vi.fn()
 
-vi.mock('@/service/use-try-app', () => ({
-  useGetTryAppFlowPreview: (...args: unknown[]) => mockUseGetTryAppFlowPreview(...args),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }))
 
 vi.mock('@/config', () => ({
@@ -52,7 +53,7 @@ describe('useGetRequirements', () => {
 
   describe('basic app modes (chat, completion, agent-chat)', () => {
     it('returns model provider for chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat')
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
@@ -65,7 +66,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns model provider for completion mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('completion', {
         model_config: {
@@ -87,7 +88,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns model provider and tools for agent-chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -130,7 +131,7 @@ describe('useGetRequirements', () => {
     })
 
     it('filters out disabled tools in agent mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -167,7 +168,7 @@ describe('useGetRequirements', () => {
 
   describe('advanced app modes (workflow, advanced-chat)', () => {
     it('returns requirements from flow data for workflow mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -201,7 +202,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns requirements from flow data for advanced-chat mode', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -227,7 +228,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns empty requirements when flow data has no nodes', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [],
@@ -242,7 +243,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns empty requirements when flow data is null', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: null,
       })
 
@@ -253,7 +254,7 @@ describe('useGetRequirements', () => {
     })
 
     it('extracts multiple LLM nodes from flow data', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -289,7 +290,7 @@ describe('useGetRequirements', () => {
     })
 
     it('extracts multiple tool nodes from flow data', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -323,7 +324,7 @@ describe('useGetRequirements', () => {
 
   describe('deduplication', () => {
     it('removes duplicate requirements by name', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -360,7 +361,7 @@ describe('useGetRequirements', () => {
 
   describe('icon URL generation', () => {
     it('generates correct icon URL for model providers', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -383,7 +384,7 @@ describe('useGetRequirements', () => {
     })
 
     it('maps google model provider to gemini plugin icon URL', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -406,7 +407,7 @@ describe('useGetRequirements', () => {
     })
 
     it('maps special builtin tool providers to *_tool plugin icon URL', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -441,22 +442,22 @@ describe('useGetRequirements', () => {
   })
 
   describe('hook calls', () => {
-    it('calls useGetTryAppFlowPreview with correct parameters for basic apps', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+    it('does not request workflow data for basic apps', () => {
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('chat')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', true)
+      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
     })
 
-    it('calls useGetTryAppFlowPreview with correct parameters for advanced apps', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+    it('requests workflow data for advanced apps', () => {
+      mockUseQuery.mockReturnValue({ data: null })
 
       const appDetail = createMockAppDetail('workflow')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', false)
+      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
     })
   })
 })

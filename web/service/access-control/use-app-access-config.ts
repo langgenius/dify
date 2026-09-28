@@ -1,4 +1,4 @@
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   RemoveAppAccessPolicyMemberBindingsRequest,
   UpdateAppUserAccessSettingsRequest,

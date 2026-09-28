@@ -21,10 +21,7 @@ const Card: FC<CardProps> = ({ log }) => {
             >
               <div className="flex h-8 items-center justify-between">
                 <div className="font-semibold text-indigo-800">{item.role.toUpperCase()}</div>
-                <CopyFeedback
-                  className="hidden size-6 group-hover/card:block"
-                  content={item.text}
-                />
+                <CopyFeedback className="hidden group-hover/card:block" content={item.text} />
               </div>
               <div className="whitespace-pre-line text-text-secondary">{item.text}</div>
             </div>

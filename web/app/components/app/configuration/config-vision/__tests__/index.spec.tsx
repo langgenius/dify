@@ -22,7 +22,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
+  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
 
@@ -93,14 +93,19 @@ describe('ConfigVision', () => {
 
     render(<ConfigVision />)
 
-    expect(screen.queryByText('appDebug.vision.name')).not.toBeInTheDocument()
+    expect(screen.queryByText('fileUpload.vision.name')).not.toBeInTheDocument()
   })
 
   it('should show the toggle and parameter controls when visible', () => {
     render(<ConfigVision />)
 
-    expect(screen.getByText('appDebug.vision.name'))!.toBeInTheDocument()
-    expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'false')
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'fileUpload.vision.name' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'fileUpload.vision.name' }))!.toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 
   it('should enable both image and video uploads when toggled on with video support', async () => {
@@ -114,7 +119,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'fileUpload.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([
@@ -140,7 +145,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'fileUpload.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([])
@@ -161,7 +166,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'fileUpload.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([SupportUploadFileTypes.document])
@@ -178,11 +183,11 @@ describe('ParamConfig', () => {
 
     render(<ParamConfig />)
 
-    expect(screen.queryByText('appDebug.vision.visionSettings.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('fileUpload.vision.visionSettings.title')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'appDebug.voice.settings' }))
 
-    expect(await screen.findByText('appDebug.vision.visionSettings.title'))!.toBeInTheDocument()
+    expect(await screen.findByText('fileUpload.vision.visionSettings.title'))!.toBeInTheDocument()
   })
 })
 
@@ -196,7 +201,7 @@ describe('ParamConfigContent', () => {
 
     render(<ParamConfigContent />)
 
-    await user.click(screen.getByText('appDebug.vision.visionSettings.high'))
+    await user.click(screen.getByText('fileUpload.vision.visionSettings.high'))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.image?.detail).toBe(Resolution.high)
@@ -210,7 +215,7 @@ describe('ParamConfigContent', () => {
 
     render(<ParamConfigContent />)
 
-    await user.click(screen.getByText('appDebug.vision.visionSettings.localUpload'))
+    await user.click(screen.getByText('fileUpload.vision.visionSettings.localUpload'))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_upload_methods).toEqual([TransferMethod.local_file])
