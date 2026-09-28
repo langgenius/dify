@@ -21,6 +21,10 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
 
   const [isLoading, setIsLoading] = useState(false)
 
+  const handleSSOError = () => {
+    toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))
+  }
+
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
@@ -28,6 +32,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -37,6 +42,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oidc-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -46,6 +52,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oauth2-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
