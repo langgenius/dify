@@ -20,6 +20,7 @@ from services.compliance_download_service import ComplianceDownloadLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    LegacyCreditPoolManagedByTokenerError,
     TokenerEducationCheckoutUnsupportedError,
 )
 
@@ -45,6 +46,7 @@ class _BillingHTTPStatusError(ValueError):
 
 
 _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED = "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+_CREDIT_MANAGED_BY_TOKENER = "CREDIT_MANAGED_BY_TOKENER"
 
 
 def _safe_billing_error_code(response: httpx.Response) -> str | None:
@@ -62,6 +64,8 @@ def _safe_billing_error_code(response: httpx.Response) -> str | None:
         candidates.append(nested_error.get("code"))
     if _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED in candidates:
         return _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
+    if _CREDIT_MANAGED_BY_TOKENER in candidates:
+        return _CREDIT_MANAGED_BY_TOKENER
     return None
 
 
@@ -556,7 +560,17 @@ class BillingService:
         params = {"tenant_id": tenant_id, "feature_key": feature_key}
         if bucket:
             params["bucket"] = bucket
-        return _quota_balance_adapter.validate_python(cls._send_quota_request("GET", "/quota/balance", params=params))
+        try:
+            result = cls._send_quota_request("GET", "/quota/balance", params=params)
+        except _BillingHTTPStatusError as error:
+            if (
+                feature_key == "credit_pool"
+                and error.status_code == httpx.codes.CONFLICT
+                and error.upstream_error_code == _CREDIT_MANAGED_BY_TOKENER
+            ):
+                raise LegacyCreditPoolManagedByTokenerError(_CREDIT_MANAGED_BY_TOKENER) from None
+            raise
+        return _quota_balance_adapter.validate_python(result)
 
     @classmethod
     def quota_consume_capped(

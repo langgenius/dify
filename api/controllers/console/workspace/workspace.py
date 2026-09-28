@@ -94,6 +94,7 @@ class TenantInfoResponse(ResponseModel):
     trial_credits_exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     tokener_bootstrap_status: (
         Literal[
             "pending",
@@ -126,8 +127,13 @@ class CurrentWorkspaceSummaryResponse(ResponseModel):
     name: str
     role: TenantAccountRole
     plan: CloudPlan | None
-    credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
+    credits: int | None = Field(
+        description=(
+            "Remaining legacy credits; -1 means unlimited, null means unavailable or not managed by legacy credits."
+        )
+    )
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     tokener_bootstrap_status: (
         Literal[
             "pending",

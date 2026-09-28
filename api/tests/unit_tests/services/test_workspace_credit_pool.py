@@ -12,6 +12,7 @@ from services.workspace_service import WorkspaceService
 
 @pytest.fixture(autouse=True)
 def _legacy_model_billing_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.model_invocation_routing.migration_display_status", Mock(return_value="none"))
     monkeypatch.setattr(
         "services.workspace_service.ModelBillingProfileService",
         SimpleNamespace(
