@@ -312,6 +312,7 @@ class TestCreateMCPErrorResponse:
 
         assert response_json["id"] == 0
         assert response_json["error"]["code"] == -32600
+
     def test_create_error_response_with_complex_data(self):
         """Test creating error response with complex error data."""
         complex_data = {
