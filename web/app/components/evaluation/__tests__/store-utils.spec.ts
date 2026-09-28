@@ -1,6 +1,7 @@
 import type { EvaluationResourceState } from '../types'
 import {
   buildEvaluationConfigPayload,
+  buildEvaluationTemplateConfigPayload,
   createBuiltinMetric,
   createCustomMetric,
   isEvaluationRunnable,
@@ -54,11 +55,26 @@ describe('evaluation store utils', () => {
 
   it('still requires a judge model for builtin metrics', () => {
     const resource = createResource({
-      metrics: [createBuiltinMetric(resolveMetricOption('faithfulness'))],
+      metrics: [
+        createBuiltinMetric(resolveMetricOption('answer-correctness'), [
+          { node_id: 'llm-1', title: 'Answer', type: 'llm' },
+        ]),
+      ],
     })
 
     expect(isEvaluationRunnable(resource)).toBe(false)
     expect(buildEvaluationConfigPayload(resource, 'apps', 'app-1')).toBeNull()
+    expect(buildEvaluationTemplateConfigPayload(resource, 'apps', 'app-1')).toEqual({
+      default_metrics: [
+        {
+          metric: 'answer-correctness',
+          node_info_list: [{ node_id: 'llm-1', title: 'Answer', type: 'llm' }],
+          value_type: 'number',
+        },
+      ],
+      customized_metrics: null,
+      judgment_config: null,
+    })
   })
 
   it('serializes dataset judgments with the dataset id and no node ids', () => {

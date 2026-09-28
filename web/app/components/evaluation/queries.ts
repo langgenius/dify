@@ -92,14 +92,13 @@ export const useEvaluationNodeInfoMutation = () => {
 
 export const useEvaluationTemplateColumns = (
   { resourceType, resourceId }: EvaluationResourceProps,
-  configPayload: EvaluationConfigPayload | null,
-  enabled = true,
+  configPayload: EvaluationConfigPayload,
 ) => {
   return useQuery(
     consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.templateColumns.post.queryOptions(
       {
         input:
-          resourceType !== 'datasets' && resourceId && configPayload && enabled
+          resourceType !== 'datasets' && resourceId
             ? {
                 body: configPayload,
                 params: {

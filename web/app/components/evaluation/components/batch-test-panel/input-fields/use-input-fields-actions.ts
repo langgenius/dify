@@ -8,7 +8,10 @@ import { downloadBlob } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import { useEvaluationActions, useEvaluationTemplateColumns } from '../../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../../store'
-import { buildEvaluationConfigPayload, buildEvaluationRunRequest } from '../../../store-utils'
+import {
+  buildEvaluationRunRequest,
+  buildEvaluationTemplateConfigPayload,
+} from '../../../store-utils'
 import { DATASET_TEMPLATE_FIELDS, getFileExtension } from './input-fields-utils'
 
 type UploadedFileMeta = {
@@ -37,12 +40,11 @@ export const useInputFieldsActions = ({
   const setUploadedFileName = useEvaluationStore((state) => state.setUploadedFileName)
   const evaluationActions = useEvaluationActions({ resourceType, resourceId })
   const templateConfigPayload = useMemo(() => {
-    return isPanelReady ? buildEvaluationConfigPayload(resource, resourceType, resourceId) : null
-  }, [isPanelReady, resource, resourceId, resourceType])
+    return buildEvaluationTemplateConfigPayload(resource, resourceType, resourceId)
+  }, [resource, resourceId, resourceType])
   const templateColumnsQuery = useEvaluationTemplateColumns(
     { resourceType, resourceId },
     templateConfigPayload,
-    isPanelReady,
   )
   const [isUploadPopoverOpen, setIsUploadPopoverOpen] = useState(false)
   const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null)
@@ -79,7 +81,7 @@ export const useInputFieldsActions = ({
 
   const handleDownloadTemplate = async () => {
     try {
-      const file = await evaluationActions.downloadTemplate(templateConfigPayload ?? {})
+      const file = await evaluationActions.downloadTemplate(templateConfigPayload)
       downloadBlob({ data: file, fileName: templateFileName })
     } catch {
       toast.error(t(($) => $['batch.templateDownloadError']))

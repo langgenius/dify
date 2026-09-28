@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   setSelectedRunId: vi.fn(),
   setUploadedFile: vi.fn(),
   setUploadedFileName: vi.fn(),
+  templateColumnsQuery: vi.fn(),
 }))
 
 const configPayload = {
@@ -65,11 +66,7 @@ vi.mock('../../../../queries', () => ({
     isRunning: false,
     runEvaluation: mocks.runEvaluation,
   }),
-  useEvaluationTemplateColumns: () => ({
-    data: { columns: [] },
-    isFetching: false,
-    isPending: false,
-  }),
+  useEvaluationTemplateColumns: (...args: unknown[]) => mocks.templateColumnsQuery(...args),
 }))
 
 vi.mock('../../../../store', () => ({
@@ -92,14 +89,19 @@ vi.mock('../../../../store', () => ({
 }))
 
 vi.mock('../../../../store-utils', () => ({
-  buildEvaluationConfigPayload: () => configPayload,
   buildEvaluationRunRequest: mocks.buildEvaluationRunRequest,
+  buildEvaluationTemplateConfigPayload: () => configPayload,
 }))
 
 describe('useInputFieldsActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.downloadTemplate.mockResolvedValue(new Blob(['template']))
+    mocks.templateColumnsQuery.mockReturnValue({
+      data: { columns: [{ name: 'Answer : expected_output', type: 'string' }] },
+      isFetching: false,
+      isPending: false,
+    })
   })
 
   it('downloads the template with the current evaluation config', async () => {
@@ -122,7 +124,7 @@ describe('useInputFieldsActions', () => {
     })
   })
 
-  it('keeps template download available before evaluation setup', async () => {
+  it('loads and downloads metric-aware template columns before judge-model setup', async () => {
     const { result } = renderHook(() =>
       useInputFieldsActions({
         isPanelReady: false,
@@ -136,6 +138,14 @@ describe('useInputFieldsActions', () => {
     await act(result.current.handleDownloadTemplate)
 
     expect(result.current.canDownloadTemplate).toBe(true)
-    expect(mocks.downloadTemplate).toHaveBeenCalledWith({})
+    expect(result.current.isTemplateColumnsLoading).toBe(false)
+    expect(result.current.templateColumns).toEqual([
+      { name: 'Answer : expected_output', type: 'string' },
+    ])
+    expect(mocks.templateColumnsQuery).toHaveBeenCalledWith(
+      { resourceId: 'app-1', resourceType: 'apps' },
+      configPayload,
+    )
+    expect(mocks.downloadTemplate).toHaveBeenCalledWith(configPayload)
   })
 })
