@@ -9,6 +9,7 @@ import type {
   RequestOptions,
   ResolvedOptions,
 } from './types.js'
+import { fetch as undiciFetch } from 'undici'
 import { isVerbose } from '@/framework/context'
 import { userAgent as defaultUserAgent } from '@/version/info'
 import { buildBody } from './body.js'
@@ -153,6 +154,20 @@ function buildRequest(
   return { request, resolved, effectiveTimeoutMs, userSignal: opts.signal }
 }
 
+type UndiciFetchInit = NonNullable<Parameters<typeof undiciFetch>[1]>
+
+// undici v8 fetch does not accept the global Request object as input (URL parse
+// fails); pass URL + init. Streaming bodies need `duplex: 'half'` per fetch spec.
+async function fetchWithDispatcher(request: Request, init: UndiciFetchInit): Promise<Response> {
+  const hasBody = request.body !== null
+  return undiciFetch(request.url, {
+    method: request.method,
+    headers: request.headers,
+    ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
+    ...init,
+  })
+}
+
 // The shared transport engine: hooks -> fetch -> retry -> error-map. Accepts an
 // already-built Request, so both the path entrypoints (via buildRequest) and the
 // low-level `request` entrypoint (oRPC's pre-built Request) share one retry/timeout
@@ -185,22 +200,28 @@ async function execute(
 
     await runHooks(state.hooks.onRequest, ctx)
 
-    // Two runtimes, two options: Node's fetch reads undici's `dispatcher` (used
-    // below for TLS-skip + proxy routing); Bun's native fetch — what the compiled
-    // difyctl binary actually runs on — ignores `dispatcher` entirely and instead
-    // needs its own `tls` option. Set both; each runtime ignores the one it
-    // doesn't understand.
+    // Proxy routing and TLS-skip use an undici dispatcher. Node's global fetch
+    // must not be mixed with undici v8 dispatchers (handler API mismatch); call
+    // undici's fetch instead. Bun's native fetch ignores `dispatcher` and uses
+    // `tls` when no custom dispatcher is in play.
+    const useUndiciFetch = state.dispatcher !== undefined
     const init: RequestInit & {
       dispatcher?: unknown
       tls?: { rejectUnauthorized: boolean }
       verbose?: boolean
     } = { signal }
-    if (state.dispatcher !== undefined) init.dispatcher = state.dispatcher
-    if (state.insecure) init.tls = { rejectUnauthorized: false }
+    if (useUndiciFetch) init.dispatcher = state.dispatcher
+    else if (state.insecure) init.tls = { rejectUnauthorized: false }
     if (isVerbose()) init.verbose = true
 
     try {
-      ctx.response = await fetch(ctx.request, init)
+      ctx.response = useUndiciFetch
+        ? await fetchWithDispatcher(sendable, {
+            signal,
+            dispatcher: state.dispatcher,
+            ...(isVerbose() ? { verbose: true } : {}),
+          })
+        : await fetch(ctx.request, init)
     } catch (err) {
       ctx.error = err
       // Snapshot the abort cause before onRequestError hooks rewrite ctx.error into BaseError.

@@ -60,6 +60,7 @@ overrides:
   solid-js: 1.9.15
   string-width: ~8.2.2
   tar@<=7.5.15: ^7.5.16
+  undici-types: 8.3.0
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
   ws@>=8.0.0 <8.20.1: ^8.22.0
@@ -262,7 +263,7 @@ catalog:
   tldts: 7.4.16
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
-  undici: 7.30.0
+  undici: 8.11.2
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 14.0.2
