@@ -131,7 +131,7 @@ def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
     caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
         raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(ctx.subject.account_id, workspace.id, session=ctx.session)
+    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), workspace.id, session=ctx.session)
     if role is None:
         raise NotFound("workspace not found")
     return role
