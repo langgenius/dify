@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,6 +13,8 @@ from services.webapp_access_query_service import WebAppAccessUnavailableError
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _TENANT_ID = "22222222-2222-2222-2222-222222222222"
 _END_USER_ID = "33333333-3333-3333-3333-333333333333"
+_OTHER_APP_ID = "44444444-4444-4444-4444-444444444444"
+_OTHER_TENANT_ID = "55555555-5555-5555-5555-555555555555"
 
 
 def _persist_webapp_session(session: Session, *, enable_site: bool = True) -> None:
@@ -107,6 +110,74 @@ def test_find_active_session_rejects_disabled_app(
         )
         is None
     )
+
+
+@pytest.mark.parametrize(
+    ("site_app_id", "end_user_app_id", "end_user_tenant_id"),
+    [
+        pytest.param(_OTHER_APP_ID, _APP_ID, _TENANT_ID, id="site-app-mismatch"),
+        pytest.param(_APP_ID, _OTHER_APP_ID, _TENANT_ID, id="end-user-app-mismatch"),
+        pytest.param(_APP_ID, _APP_ID, _OTHER_TENANT_ID, id="end-user-tenant-mismatch"),
+    ],
+)
+def test_find_active_session_rejects_mismatched_owners(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    site_app_id: str,
+    end_user_app_id: str,
+    end_user_tenant_id: str,
+) -> None:
+    _persist_webapp_session(sqlite_session)
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            App(
+                id=_OTHER_APP_ID,
+                tenant_id=_TENANT_ID,
+                name="Other App",
+                mode=AppMode.CHAT,
+                enable_site=True,
+                enable_api=True,
+            )
+        )
+        site = session.scalar(select(Site).where(Site.code == "site-code"))
+        end_user = session.get(EndUser, _END_USER_ID)
+        assert site is not None
+        assert end_user is not None
+        site.app_id = site_app_id
+        end_user.app_id = end_user_app_id
+        end_user.tenant_id = end_user_tenant_id
+
+    repository = WebAppAccessQueryRepository(session_factory=sqlite_session_factory)
+
+    assert (
+        repository.find_active_session(
+            app_id=_APP_ID,
+            app_code="site-code",
+            end_user_id=_END_USER_ID,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("app_id", "app_code", "end_user_id"),
+    [
+        pytest.param(_OTHER_APP_ID, "site-code", _END_USER_ID, id="missing-app"),
+        pytest.param(_APP_ID, "missing-code", _END_USER_ID, id="missing-site"),
+        pytest.param(_APP_ID, "site-code", "66666666-6666-6666-6666-666666666666", id="missing-end-user"),
+    ],
+)
+def test_find_active_session_rejects_missing_records(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    app_id: str,
+    app_code: str,
+    end_user_id: str,
+) -> None:
+    _persist_webapp_session(sqlite_session)
+    repository = WebAppAccessQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.find_active_session(app_id=app_id, app_code=app_code, end_user_id=end_user_id) is None
 
 
 def test_find_app_id_by_code_maps_database_failures_to_unavailable() -> None:

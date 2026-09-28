@@ -33,13 +33,25 @@ class WebAppAccessQueryRepository(WebAppAccessQuery, WebAppSessionQuery):
         app_code: str,
         end_user_id: str,
     ) -> WebAppSessionRecord | None:
+        stmt = (
+            select(EndUser.session_id)
+            .select_from(Site)
+            .join(App, App.id == Site.app_id)
+            .join(EndUser, EndUser.app_id == App.id)
+            .where(
+                Site.code == app_code,
+                App.id == app_id,
+                App.enable_site.is_(True),
+                EndUser.id == end_user_id,
+                EndUser.tenant_id == App.tenant_id,
+            )
+            .limit(1)
+        )
         try:
             with self._session_factory() as session:
-                app = session.scalar(select(App).where(App.id == app_id).limit(1))
-                site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
-                end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id).limit(1))
-                if app is None or site is None or not app.enable_site or end_user is None:
+                session_id = session.scalar(stmt)
+                if session_id is None:
                     return None
-                return WebAppSessionRecord(end_user_session_id=end_user.session_id)
+                return WebAppSessionRecord(end_user_session_id=session_id)
         except (DBAPIError, TimeoutError) as e:
             raise WebAppAccessUnavailableError from e

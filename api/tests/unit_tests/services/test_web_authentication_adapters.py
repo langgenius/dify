@@ -323,6 +323,17 @@ def test_session_verification_queries_active_session_and_accepts_public_app() ->
     assert sessions.calls == [("app-1", "site-code", "end-user-1")]
 
 
+def test_session_verification_rejects_token_for_different_app_code() -> None:
+    gateway, sessions, _ = passport_session_gateway()
+
+    with patch("services.web_authentication_adapters.PassportService") as passport_service:
+        passport_service.return_value.verify.return_value = valid_session_claims()
+
+        assert gateway.verify(token="passport", app_code="other-site-code", user_id="session-1") is False
+
+    assert sessions.calls == []
+
+
 @pytest.mark.parametrize(
     "claims",
     [
