@@ -60,6 +60,9 @@ export type AppImportPayload = {
   icon_type?: string | null
   mode: string
   name?: string | null
+  package_url?: string | null
+  template_id?: string | null
+  version_id?: string | null
   yaml_content?: string | null
   yaml_url?: string | null
 }
@@ -596,7 +599,7 @@ export type McpServerUpdatePayload = {
   parameters: {
     [key: string]: unknown
   }
-  status?: string | null
+  status?: AppMcpServerStatus | null
 }
 
 export type AppSiteUpdatePayload = {
@@ -5294,7 +5297,11 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
   404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
@@ -5687,6 +5694,7 @@ export type PostAppsByAppIdServerData = {
 
 export type PostAppsByAppIdServerErrors = {
   403: unknown
+  409: unknown
 }
 
 export type PostAppsByAppIdServerResponses = {

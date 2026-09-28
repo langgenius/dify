@@ -663,7 +663,11 @@ Get suggested questions for an Agent App message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
 | 404 | Agent, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
@@ -2510,7 +2514,11 @@ Get suggested questions for a message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 404 | Message or conversation not found |  |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
+| 404 | App, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation
@@ -2891,6 +2899,7 @@ Create MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
+| 409 | MCP server already exists for this app |  |
 
 ### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
@@ -9320,6 +9329,155 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
+### [GET] /trial-apps/{app_id}/agent-composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/octet-stream**: binary<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/inspect
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
 
@@ -9351,6 +9509,20 @@ Remove one or more tag bindings from a target.
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9386,6 +9558,22 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| format | query | Export format; defaults to ifpkg | No | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg |
+| version_id | query | Current published template snapshot ID | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
+| 404 | Published template unavailable |  |
 
 ### [POST] /trial-apps/{app_id}/files/upload
 **Upload a file into the tenant that owns the trial app**
@@ -16238,6 +16426,9 @@ This class is used to store the schema information of an api based tool.
 | icon_type | string |  | No |
 | mode | string | Import mode | Yes |
 | name | string |  | No |
+| package_url | string |  | No |
+| template_id | string |  | No |
+| version_id | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
 
@@ -16414,11 +16605,11 @@ This class is used to store the schema information of an api based tool.
 
 #### AppMCPServerStatus
 
-AppMCPServer Status Enum
+Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+| AppMCPServerStatus | string | Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls. |  |
 
 #### AppMetadataConditionPayload
 
@@ -20296,9 +20487,9 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Server description | No |
-| id | string | Server ID | Yes |
+| id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
-| status | string | Server status | No |
+| status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
 
 #### Marketplace
 
@@ -22483,6 +22674,13 @@ Resource types understood by access policies.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAgentExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| format | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg | Export format; defaults to ifpkg<br>*Enum:* `"ifpkg"`, `"yaml"` | No |
+| version_id | string (uuid) | Current published template snapshot ID | Yes |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -22494,6 +22692,8 @@ Resource types understood by access policies.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+| package_url | string | Download URL for a New Agent .ifpkg template | No |
+| version_id | string | Published version for direct local template creation | No |
 
 #### RecommendedAppInfoResponse
 
@@ -24421,6 +24621,19 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
+
+#### TrialAgentConfigQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Must match the current published template snapshot | No |
+
+#### TrialAgentSkillFileQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| path | string | Normalized member path inside the published Skill package | Yes |
+| version_id | string | Must match the current published template snapshot | No |
 
 #### TrialAppAgentMode
 

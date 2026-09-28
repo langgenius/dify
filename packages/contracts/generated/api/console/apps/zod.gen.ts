@@ -13,6 +13,9 @@ export const zAppImportPayload = z.object({
   icon_type: z.string().nullish(),
   mode: z.string(),
   name: z.string().nullish(),
+  package_url: z.string().nullish(),
+  template_id: z.uuid().nullish(),
+  version_id: z.uuid().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
 })
@@ -341,16 +344,6 @@ export const zRedirectUrlResponse = z.object({
 export const zMcpServerCreatePayload = z.object({
   description: z.string().nullish(),
   parameters: z.record(z.string(), z.unknown()),
-})
-
-/**
- * MCPServerUpdatePayload
- */
-export const zMcpServerUpdatePayload = z.object({
-  description: z.string().nullish(),
-  id: z.string(),
-  parameters: z.record(z.string(), z.unknown()),
-  status: z.string().nullish(),
 })
 
 /**
@@ -1156,7 +1149,7 @@ export const zMessageFile = z.object({
 /**
  * AppMCPServerStatus
  *
- * AppMCPServer Status Enum
+ * Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
  */
 export const zAppMcpServerStatus = z.enum(['active', 'inactive', 'normal'])
 
@@ -1172,6 +1165,16 @@ export const zAppMcpServerResponse = z.object({
   server_code: z.string(),
   status: zAppMcpServerStatus,
   updated_at: z.int().nullish(),
+})
+
+/**
+ * MCPServerUpdatePayload
+ */
+export const zMcpServerUpdatePayload = z.object({
+  description: z.string().nullish(),
+  id: z.uuid(),
+  parameters: z.record(z.string(), z.unknown()),
+  status: zAppMcpServerStatus.nullish(),
 })
 
 /**
