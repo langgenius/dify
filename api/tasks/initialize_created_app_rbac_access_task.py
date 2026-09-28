@@ -35,12 +35,8 @@ def _owner_account_id(tenant_id: str) -> str | None:
 class _WhitelistResourceKind[ItemT]:
     resource_type: enterprise_rbac_service.RBACResourceType
     model: type[App] | type[Dataset] | type[Agent]
-    build_item: Callable[[str, str], ItemT]
+    build_item: Callable[[str, Sequence[str]], ItemT]
     append_members: Callable[[str, str | None, Sequence[ItemT]], None]
-    replace_user_access_policies: Callable[
-        [str, str, str, enterprise_rbac_service.ReplaceUserAccessPolicies],
-        enterprise_rbac_service.ReplaceUserAccessPoliciesResponse,
-    ]
 
     def iter_id_batches(self, tenant_id: str, batch_size: int) -> Iterator[list[str]]:
         last_id: str | None = None
@@ -63,7 +59,20 @@ class _WhitelistResourceKind[ItemT]:
         self.append_members(
             tenant_id,
             actor_account_id,
-            [self.build_item(resource_id, member_account_id) for resource_id in resource_ids],
+            [self.build_item(resource_id, [member_account_id]) for resource_id in resource_ids],
+        )
+
+    def append_member_batch(
+        self,
+        tenant_id: str,
+        actor_account_id: str,
+        resource_id: str,
+        member_account_ids: Sequence[str],
+    ) -> None:
+        self.append_members(
+            tenant_id,
+            actor_account_id,
+            [self.build_item(resource_id, member_account_ids)],
         )
 
 
@@ -71,63 +80,36 @@ _WHITELIST_RESOURCE_KINDS = (
     _WhitelistResourceKind(
         resource_type=enterprise_rbac_service.RBACResourceType.APP,
         model=App,
-        build_item=lambda app_id, member: enterprise_rbac_service.AppendAppWhitelistMembersBatchItem(
-            app_id=app_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        build_item=lambda app_id, account_ids: enterprise_rbac_service.AppendAppWhitelistMembersBatchItem(
+            app_id=app_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
             enterprise_rbac_service.RBACService.AppAccess.append_whitelist_members_batch(
                 tenant_id=tenant_id, account_id=account_id, data=data
             )
         ),
-        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
-            enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                app_id=resource_id,
-                target_account_id=None,
-                payload=payload,
-            )
-        ),
     ),
     _WhitelistResourceKind(
         resource_type=enterprise_rbac_service.RBACResourceType.DATASET,
         model=Dataset,
-        build_item=lambda dataset_id, member: enterprise_rbac_service.AppendDatasetWhitelistMembersBatchItem(
-            dataset_id=dataset_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        build_item=lambda dataset_id, account_ids: enterprise_rbac_service.AppendDatasetWhitelistMembersBatchItem(
+            dataset_id=dataset_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
             enterprise_rbac_service.RBACService.DatasetAccess.append_whitelist_members_batch(
                 tenant_id=tenant_id, account_id=account_id, data=data
             )
         ),
-        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
-            enterprise_rbac_service.RBACService.DatasetAccess.replace_user_access_policies(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                dataset_id=resource_id,
-                target_account_id=None,
-                payload=payload,
-            )
-        ),
     ),
     _WhitelistResourceKind(
         resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
         model=Agent,
-        build_item=lambda agent_id, member: enterprise_rbac_service.AppendAgentWhitelistMembersBatchItem(
-            agent_id=agent_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        build_item=lambda agent_id, account_ids: enterprise_rbac_service.AppendAgentWhitelistMembersBatchItem(
+            agent_id=agent_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
             enterprise_rbac_service.RBACService.AgentAccess.append_whitelist_members_batch(
                 tenant_id=tenant_id, account_id=account_id, data=data
-            )
-        ),
-        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
-            enterprise_rbac_service.RBACService.AgentAccess.replace_user_access_policies(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                agent_id=resource_id,
-                target_account_id=None,
-                payload=payload,
             )
         ),
     ),
@@ -176,9 +158,9 @@ def initialize_created_app_rbac_access_task(
 ) -> None:
     """Grant the default policy on one app, dataset or agent to current workspace members.
 
-    The resource scope is persisted synchronously before this task is queued. Replacing
-    member policies is idempotent, so retrying the whole synchronization is safe
-    when the enterprise RBAC service is temporarily unavailable.
+    The resource scope is persisted synchronously before this task is queued. Member
+    bindings are appended through the whitelist batch endpoint so locked default
+    access-policy bindings remain immutable.
     """
     if not dify_config.RBAC_ENABLED:
         return
@@ -197,14 +179,11 @@ def initialize_created_app_rbac_access_task(
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
             session=db.session(),
         ):
-            kind.replace_user_access_policies(
+            kind.append_member_batch(
                 tenant_id,
                 account_id,
                 resource_id,
-                enterprise_rbac_service.ReplaceUserAccessPolicies(
-                    access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                    account_ids=account_ids,
-                ),
+                account_ids,
             )
     except Exception as exc:
         logger.exception(

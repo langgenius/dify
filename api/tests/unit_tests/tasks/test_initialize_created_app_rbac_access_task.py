@@ -28,12 +28,12 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
         "iter_member_account_id_batches",
         lambda tenant_id, batch_size, session: iter([["acct-1", "acct-2"], ["acct-3"]]),
     )
-    replace_whitelist = MagicMock()
+    append_whitelist_members_batch = MagicMock()
     replace_user_access_policies = MagicMock()
     monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,
-        "replace_whitelist",
-        replace_whitelist,
+        "append_whitelist_members_batch",
+        append_whitelist_members_batch,
     )
     monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,
@@ -43,12 +43,13 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
 
     initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", "app-1")
 
-    replace_whitelist.assert_not_called()
-    assert replace_user_access_policies.call_count == 2
-    assert replace_user_access_policies.call_args_list[0].kwargs["payload"].account_ids == ["acct-1", "acct-2"]
-    assert replace_user_access_policies.call_args_list[1].kwargs["payload"].account_ids == ["acct-3"]
-    for call in replace_user_access_policies.call_args_list:
-        assert call.kwargs["payload"].access_policy_ids == [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
+    replace_user_access_policies.assert_not_called()
+    assert append_whitelist_members_batch.call_count == 2
+    assert append_whitelist_members_batch.call_args_list[0].kwargs["data"][0].account_ids == ["acct-1", "acct-2"]
+    assert append_whitelist_members_batch.call_args_list[1].kwargs["data"][0].account_ids == ["acct-3"]
+    for call in append_whitelist_members_batch.call_args_list:
+        assert call.kwargs["data"][0].app_id == "app-1"
+        assert call.kwargs["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
 
 
 @pytest.mark.parametrize(
@@ -76,22 +77,24 @@ def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_p
         "DatasetAccess": rbac_service.DatasetAccess,
         "AgentAccess": rbac_service.AgentAccess,
     }
+    append_calls = {}
     replace_calls = {}
     for name, client in access_clients.items():
+        append_calls[name] = MagicMock()
+        monkeypatch.setattr(client, "append_whitelist_members_batch", append_calls[name])
         replace_calls[name] = MagicMock()
         monkeypatch.setattr(client, "replace_user_access_policies", replace_calls[name])
 
     initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **{id_kwarg: resource_id})
 
-    for name, mock in replace_calls.items():
-        if name != access_class:
-            mock.assert_not_called()
+    for mock in replace_calls.values():
+        mock.assert_not_called()
 
-    called = replace_calls[access_class]
+    called = append_calls[access_class]
     called.assert_called_once()
-    assert called.call_args.kwargs[id_kwarg] == resource_id
-    assert called.call_args.kwargs["target_account_id"] is None
-    assert called.call_args.kwargs["payload"].account_ids == ["acct-1"]
+    item = called.call_args.kwargs["data"][0]
+    assert item.model_dump()[id_kwarg] == resource_id
+    assert item.account_ids == ["acct-1"]
 
 
 def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
@@ -106,7 +109,7 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch:
     )
     monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,
-        "replace_user_access_policies",
+        "append_whitelist_members_batch",
         MagicMock(side_effect=ConnectionError("RBAC unavailable")),
     )
     retry = MagicMock(return_value=RuntimeError("retry requested"))
