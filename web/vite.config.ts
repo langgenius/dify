@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { devtoolsClientPlugin } from './plugins/vite/devtools.ts'
 import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
@@ -18,6 +19,14 @@ export default defineConfig(({ command, mode, isPreview }) => {
     process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
+    devtools: !isTest && !isStorybook && isPreview !== true ? { apply: 'serve' } : false,
+    // The dev server hosts the viewer; analysis builds only record traces.
+    ...(command === 'build' &&
+    !isTest &&
+    !isStorybook &&
+    process.env.VITE_DEVTOOLS_ROLLDOWN === 'true'
+      ? { build: { rolldownOptions: { devtools: {} } } }
+      : {}),
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
@@ -63,6 +72,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         tailwindcss(),
         react(),
         vinext({ react: false }),
+        isPreview !== true && devtoolsClientPlugin(rootClientInjectTarget),
         {
           name: 'dify-css-asset-alias',
           enforce: 'post',

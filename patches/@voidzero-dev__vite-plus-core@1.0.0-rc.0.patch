@@ -1,0 +1,86 @@
+diff --git a/dist/rolldown/shared/devtools-drain.mjs b/dist/rolldown/shared/devtools-drain.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0885625f0f9455d3967cf796e126bc4c67eb7b2
+--- /dev/null
++++ b/dist/rolldown/shared/devtools-drain.mjs
+@@ -0,0 +1,49 @@
++import { readdir, stat } from "node:fs/promises";
++import { resolve } from "node:path";
++import { setTimeout as sleep } from "node:timers/promises";
++
++// The native writer has a fixed 30s close timeout. Let its queue drain before
++// closing large analysis builds. Native close still performs the final flush
++// and acknowledgement; a quiet file alone is not treated as a completed session.
++export async function waitForDevtoolsDrain(cwd, sessionId, {
++  timeout = 300_000,
++  quietPeriod = 2_000,
++  pollInterval = 250,
++} = {}) {
++  const file = resolve(cwd, "node_modules/.rolldown", sessionId, "logs.json");
++  const started = performance.now();
++  let lastChange = started;
++  let previous;
++  while (performance.now() - started < timeout) {
++    let current;
++    try {
++      const info = await stat(file);
++      current = `${info.size}:${info.mtimeMs}`;
++    } catch (error) {
++      if (error.code !== "ENOENT") throw error;
++    }
++    const now = performance.now();
++    if (current === undefined || current !== previous) {
++      previous = current;
++      lastChange = now;
++    } else if (now - lastChange >= quietPeriod) {
++      return;
++    }
++    await sleep(pollInterval);
++  }
++  throw new Error(`DevTools logs did not settle within ${timeout}ms: ${file}`);
++}
++
++export async function snapshotDevtoolsLogs(cwd) {
++  const root = resolve(cwd, "node_modules/.rolldown");
++  let entries;
++  try { entries = await readdir(root, { withFileTypes: true }); }
++  catch (error) { if (error.code === "ENOENT") return new Map(); throw error; }
++  const files = await Promise.all(entries.filter(entry => entry.isDirectory()).map(async entry => {
++    try {
++      const info = await stat(resolve(root, entry.name, "logs.json"));
++      return [entry.name, `${info.size}:${info.mtimeMs}`];
++    } catch (error) { if (error.code === "ENOENT") return [entry.name, undefined]; throw error; }
++  }));
++  return new Map(files);
++}
+diff --git a/dist/rolldown/shared/rolldown-DZGaRc5R.mjs b/dist/rolldown/shared/rolldown-DZGaRc5R.mjs
+index 64e1fda266cbbc12865e95c2fe7ab88c685caafb..5b61ea16c465f3d68629712fe8168d3718e84630 100644
+--- a/dist/rolldown/shared/rolldown-DZGaRc5R.mjs
++++ b/dist/rolldown/shared/rolldown-DZGaRc5R.mjs
+@@ -1,3 +1,4 @@
++import { waitForDevtoolsDrain, snapshotDevtoolsLogs } from "./devtools-drain.mjs";
+ import { n as __toESM, t as require_binding } from "./binding-BbrDfv1x.mjs";
+ import { f as __decorate, h as PlainObjectLike, m as lazyProp, u as transformToRollupOutput } from "./bindingify-input-options-CbBAjvu6.mjs";
+ import { l as PluginDriver, s as validateOption, t as createBundlerOptions } from "./create-bundler-option-wxuQPB7F.mjs";
+@@ -125,12 +126,20 @@ var RolldownBuild = class {
+ 		validateOption("output", outputOptions);
+ 		await this.#stopWorkers?.();
+ 		const option = await createBundlerOptions(this.#inputOptions, outputOptions, false, true);
++		const input = option.bundlerOptions.inputOptions;
++		const drainDevtools = process.env.VITE_DEVTOOLS_ROLLDOWN === "true" && !!input.devtools;
++		const logsBefore = drainDevtools ? await snapshotDevtoolsLogs(input.cwd) : undefined;
+ 		try {
+ 			this.#stopWorkers = option.stopWorkers;
+ 			let output;
+ 			if (isWrite) output = await this.#bundler.write(option.bundlerOptions);
+ 			else output = await this.#bundler.generate(option.bundlerOptions);
+-			return new RolldownOutputImpl(unwrapBindingResult(output));
++			const result = new RolldownOutputImpl(unwrapBindingResult(output));
++			if (drainDevtools) {
++				const logsAfter = await snapshotDevtoolsLogs(input.cwd);
++				await Promise.all([...logsAfter].filter(([id, stamp]) => !logsBefore.has(id) || logsBefore.get(id) !== stamp).map(([id]) => waitForDevtoolsDrain(input.cwd, id)));
++			}
++			return result;
+ 		} catch (e) {
+ 			await option.stopWorkers?.();
+ 			throw e;
