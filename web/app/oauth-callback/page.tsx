@@ -4,7 +4,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useOAuthCallback } from '@/hooks/use-oauth'
 
 const OAuthCallback = () => {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'oauth'])
   useDocumentTitle(t(($) => $.signBtn, { ns: 'login' }))
   const { hasOpener, finished, error, errorDescription } = useOAuthCallback()
 
