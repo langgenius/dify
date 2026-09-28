@@ -475,8 +475,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
           role="region"
           aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
           tabIndex={-1}
@@ -532,8 +534,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
           role="region"
           aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
           tabIndex={-1}

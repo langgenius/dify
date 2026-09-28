@@ -478,6 +478,37 @@ describe('workflow-panel index', () => {
     },
   )
 
+  it.each([{ view: 'single-run' }, { view: 'special-result' }])(
+    'closes a keyboard opened $view panel with Escape and restores focus to its canvas node',
+    async ({ view }) => {
+      const user = userEvent.setup()
+      if (view === 'single-run') mockLastRunState.isShowSingleRun = true
+      else mockLogsState.showSpecialResultPanel = true
+
+      renderWorkflowFlowComponent(<KeyboardOpenedPanel type={BlockEnum.Tool} />, {
+        nodes: [createNode({ id: 'node-1', data: { type: BlockEnum.Tool } })],
+      })
+
+      const canvasNode = screen.getByRole('button', { name: 'Canvas node' })
+      await user.click(canvasNode)
+      await user.keyboard('{Enter}')
+
+      const panel = screen.getByRole('region', { name: /workflow\.panel\.nodePanel/ })
+      if (view === 'special-result')
+        expect(screen.getByText('special-result-panel')).toBeInTheDocument()
+      else expect(screen.queryByText('panel-child')).not.toBeInTheDocument()
+      expect(panel).toHaveFocus()
+
+      await user.keyboard('{Escape}')
+
+      expect(
+        screen.queryByRole('region', { name: /workflow\.panel\.nodePanel/ }),
+      ).not.toBeInTheDocument()
+      expect(canvasNode).toHaveFocus()
+      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
+    },
+  )
+
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
     renderWorkflowComponent(
       <BasePanel id="node-1" data={createData() as never}>
