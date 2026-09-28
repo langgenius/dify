@@ -158,6 +158,7 @@ from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader,
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
+ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR = "Environment variable names must be unique."
 
 
 def _merge_environment_variable_patch(
@@ -198,7 +199,7 @@ def _merge_environment_variable_patch(
     )
     names = [variable.name for variable in merged_variables]
     if len(set(names)) != len(names):
-        raise ValueError("Environment variable names must be unique.")
+        raise ValueError(ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR)
     return merged_variables
 
 
@@ -269,7 +270,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+    def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Return the app draft while holding its row lock for the caller's transaction."""
         return session.scalar(
             select(Workflow)
@@ -361,9 +362,14 @@ class WorkflowService:
         limit: int,
         user_id: str | None,
         named_only: bool = False,
+        include_draft: bool = True,
     ) -> tuple[Sequence[Workflow], bool]:
         """
         Get published workflow with pagination
+
+        The console lists the draft alongside published versions (``include_draft=True``,
+        the default); callers that only want published versions, where the draft would
+        break restore or ordering, pass ``include_draft=False``.
         """
         if not app_model.workflow_id:
             return [], False
@@ -390,6 +396,9 @@ class WorkflowService:
 
         if named_only:
             stmt = stmt.where(Workflow.marked_name != "")
+
+        if not include_draft:
+            stmt = stmt.where(Workflow.version != Workflow.VERSION_DRAFT)
 
         workflows = session.scalars(stmt).all()
 
@@ -434,7 +443,7 @@ class WorkflowService:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -555,7 +564,7 @@ class WorkflowService:
         variables they do not touch. Existing variables keep their order and new variables are appended.
         The transaction is committed before this method returns.
         """
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not workflow:
             raise ValueError("No draft workflow found.")
 
@@ -764,6 +773,29 @@ class WorkflowService:
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
+        return workflow
+
+    def publish_app_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        workflow = self.publish_workflow(
+            session=session,
+            app_model=app_model,
+            account=account,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+        )
+        app_in_session = session.get(App, app_model.id)
+        if app_in_session:
+            app_in_session.workflow_id = workflow.id
+            app_in_session.updated_by = account.id
+            app_in_session.updated_at = naive_utc_now()
         return workflow
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:

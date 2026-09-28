@@ -4,6 +4,7 @@ import inspect
 import json
 from contextlib import contextmanager, nullcontext
 from datetime import datetime
+from functools import partial
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -23,6 +24,7 @@ from graphon.variables.variables import RAGPipelineVariable
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services import workflow_variable_reference_validator as validator_module
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -166,18 +168,16 @@ def test_publish_workflow_returns_success(
         graph={"clean": "{}", "empty": None, "non-object": "[]", "invalid-json": "{"}.get(advisory, json.dumps(graph)),
     )
     if advisory == "checker-error":
-        monkeypatch.setattr(workflow_module, "validate_variable_references", Mock(side_effect=RuntimeError("checker")))
+        monkeypatch.setattr(validator_module, "validate_variable_references", Mock(side_effect=RuntimeError("checker")))
     elif advisory == "formatter-error":
         monkeypatch.setattr(
-            workflow_module, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
+            validator_module, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
         )
     session = Mock()
     session.get.return_value = app_model
-    monkeypatch.setattr(
-        workflow_module,
-        "WorkflowService",
-        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
-    )
+    service = SimpleNamespace(publish_workflow=Mock(return_value=workflow))
+    service.publish_app_workflow = partial(workflow_module.WorkflowService.publish_app_workflow, service)
+    monkeypatch.setattr(workflow_module, "WorkflowService", Mock(return_value=service))
     monkeypatch.setattr(
         workflow_module,
         "sessionmaker",
