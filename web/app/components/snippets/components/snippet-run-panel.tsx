@@ -99,11 +99,11 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
     !workflowRunningData.resultText &&
     !workflowRunningData.result.files?.length
   const currentTab = selectedTab ?? (shouldShowDetailByDefault ? 'DETAIL' : defaultTab)
-  const shouldFocusFirstInput =
-    previewFields.length > 0 &&
-    [InputVarType.textInput, InputVarType.paragraph, InputVarType.number].includes(
-      previewFields[0].type,
-    )
+  const shouldFocusFirstInput = [
+    InputVarType.textInput,
+    InputVarType.paragraph,
+    InputVarType.number,
+  ].some((type) => type === previewFields[0]?.type)
 
   const handleValueChange = useCallback(
     (variable: string, value: unknown) => {
