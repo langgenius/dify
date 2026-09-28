@@ -33,10 +33,16 @@ export function DocumentTaskRuntimeController() {
   })
 
   const refreshDocuments = useCallback(() => {
-    void queryClient.invalidateQueries({
-      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-    })
+    void Promise.allSettled([
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
+      }),
+    ])
   }, [knowledgeSpaceId, queryClient])
   const notifyTaskFailed = useCallback(
     () => toast.error(t(($) => $.taskFailedNotification, { ns: 'knowledgeTasks' })),
