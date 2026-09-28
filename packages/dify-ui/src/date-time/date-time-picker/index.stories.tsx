@@ -15,7 +15,6 @@ const meta = {
   title: 'Base/Form/Date Time Picker',
   component: DateTimePicker,
   args: {
-    label: 'Meeting time',
     timeZone: 'UTC',
     children: null,
   },
@@ -34,13 +33,8 @@ function DateTimePickerDemo({ timeZone = 'UTC' }: { timeZone?: string }) {
   const [value, setValue] = React.useState<Date | null>(() => new Date('2025-01-15T13:30:00Z'))
   return (
     <div className="grid gap-1">
-      <DateTimePicker
-        label="Meeting time"
-        timeZone={timeZone}
-        value={value}
-        onValueChange={setValue}
-      >
-        <DateTimePickerLabel />
+      <DateTimePicker timeZone={timeZone} value={value} onValueChange={setValue}>
+        <DateTimePickerLabel>Meeting time</DateTimePickerLabel>
         <div className="flex items-center gap-1">
           <DateTimePickerTrigger />
           <DateTimePickerClear label="Clear meeting time" />
@@ -84,13 +78,13 @@ export const RTL: Story = {
   },
   render: () => (
     <DateTimePicker
-      label="Meeting time"
       direction="rtl"
       locale={arTN}
       timeZone="Asia/Shanghai"
       defaultValue={new Date('2025-01-15T13:30:00Z')}
       hourCycle={24}
     >
+      <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
       <DateTimePickerTrigger />
       <DateTimePickerContent />
     </DateTimePicker>
@@ -168,11 +162,8 @@ export const ConstrainedHeight: Story = {
     },
   },
   render: () => (
-    <DateTimePicker
-      label="Meeting time"
-      timeZone="UTC"
-      defaultValue={new Date('2025-01-15T13:30:00Z')}
-    >
+    <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')}>
+      <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
       <DateTimePickerTrigger />
       <DateTimePickerContent style={{ maxHeight: 210 }} />
     </DateTimePicker>
@@ -215,14 +206,13 @@ export const PersianNumbers: Story = {
   render: () => (
     <div dir="rtl" className="grid gap-1">
       <DateTimePicker
-        label="Meeting"
         locale={faIR}
         direction="rtl"
         timeZone="UTC"
         hourCycle={24}
         defaultValue={new Date('2025-01-15T10:05:00Z')}
       >
-        <DateTimePickerLabel />
+        <DateTimePickerLabel>Meeting</DateTimePickerLabel>
         <DateTimePickerTrigger />
         <DateTimePickerContent />
       </DateTimePicker>

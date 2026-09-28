@@ -1,12 +1,13 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { DatePicker, DatePickerContent, DatePickerTrigger } from '../date-picker'
-import { TimePicker, TimePickerContent, TimePickerTrigger } from '../time-picker'
+import { DatePicker, DatePickerContent, DatePickerLabel, DatePickerTrigger } from '../date-picker'
+import { TimePicker, TimePickerContent, TimePickerLabel, TimePickerTrigger } from '../time-picker'
 
 async function openMonthPicker() {
   const changed = vi.fn()
   const screen = await render(
-    <DatePicker label="Date" defaultValue="2025-01-15" onValueChange={changed}>
+    <DatePicker defaultValue="2025-01-15" onValueChange={changed}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent />
     </DatePicker>,
@@ -70,7 +71,8 @@ it('clears an unfinished year prefix when Tab leaves the column', async () => {
 it('preserves repeated digits and starts fresh after returning to a time column', async () => {
   const changed = vi.fn()
   const screen = await render(
-    <TimePicker label="Time" defaultValue="13:30" onValueChange={changed}>
+    <TimePicker defaultValue="13:30" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,

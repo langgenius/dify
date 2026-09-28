@@ -29,7 +29,7 @@ export const ToolDateRangePicker: FC<Props> = ({ label, value, onChange, readOnl
   return (
     <div role="group" aria-label={label} className="flex min-w-0 items-center gap-1">
       <ToolDatePicker
-        label={startLabel}
+        aria-label={startLabel}
         clearLabel={`${startLabel}: ${clearLabel}`}
         value={parsed.start}
         onChange={(start) => patch({ start: start || undefined })}
@@ -39,7 +39,7 @@ export const ToolDateRangePicker: FC<Props> = ({ label, value, onChange, readOnl
       />
       <span aria-hidden="true">–</span>
       <ToolDatePicker
-        label={endLabel}
+        aria-label={endLabel}
         clearLabel={`${endLabel}: ${clearLabel}`}
         value={parsed.end}
         onChange={(end) => patch({ end: end || undefined })}

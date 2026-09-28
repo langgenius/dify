@@ -64,13 +64,14 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                         <TimePicker
                           readOnly={readOnly}
                           timeZone={inputs.timezone}
-                          label={t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
                           value={parseClockTime(inputs.visual_config?.time || '12:00 AM')}
                           onValueChange={(time) => {
                             if (time) handleTimeChange(formatClockTime(time))
                           }}
                         >
-                          <TimePickerLabel className="text-xs" />
+                          <TimePickerLabel className="text-xs">
+                            {t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
+                          </TimePickerLabel>
                           <TimePickerTrigger className="w-full">
                             <TimePickerValue className="flex flex-1 items-center justify-between">
                               {(value) => (

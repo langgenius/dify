@@ -2,12 +2,13 @@ import { zhCN } from '@daypicker/react/locale/zh-CN'
 import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { DatePicker, DatePickerContent, DatePickerTrigger } from '../index'
+import { DatePicker, DatePickerContent, DatePickerLabel, DatePickerTrigger } from '../index'
 
 it('confirms the selected day without clearing it or emitting a duplicate change', async () => {
   const changed = vi.fn()
   const screen = await render(
-    <DatePicker label="Date" defaultValue="2025-01-15" onValueChange={changed}>
+    <DatePicker defaultValue="2025-01-15" onValueChange={changed}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent />
     </DatePicker>,
@@ -25,7 +26,8 @@ it('preserves localized today and selection semantics in the styled day button',
   vi.setSystemTime(new Date('2026-09-28T12:00:00Z'))
   try {
     const screen = await render(
-      <DatePicker label="Date" locale={zhCN} defaultValue="2026-09-28">
+      <DatePicker locale={zhCN} defaultValue="2026-09-28">
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
       </DatePicker>,

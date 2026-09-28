@@ -139,7 +139,6 @@ const UpdateSettingDialogForm = ({
           <div className="flex w-full flex-col items-start gap-1">
             <TimePicker
               timeZone={timezone}
-              label={t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               value={updateTimeValue || null}
               onValueChange={onUpdateTimeChange}
               minuteStep={15}

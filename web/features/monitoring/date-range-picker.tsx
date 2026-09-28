@@ -2,6 +2,7 @@
 import type { Dayjs } from 'dayjs'
 import {
   DatePickerContent,
+  DatePickerLabel,
   DatePickerTrigger,
   DatePickerValue,
 } from '@langgenius/dify-ui/date-picker'
@@ -26,7 +27,6 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
     <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2">
       <span aria-hidden="true" className="i-ri-calendar-line size-3.5 text-text-tertiary" />
       <DatePicker
-        label={t(($) => $['picker.startDate'])}
         value={start.format('YYYY-MM-DD')}
         minDate={end.subtract(30, 'day').format('YYYY-MM-DD')}
         maxDate={startMax}
@@ -34,6 +34,7 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
           if (next) onStartChange(dayjs(next))
         }}
       >
+        <DatePickerLabel className="sr-only">{t(($) => $['picker.startDate'])}</DatePickerLabel>
         <DatePickerTrigger className="h-7 w-auto px-1">
           <DatePickerValue>{formatToLocalTime(start, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>
@@ -41,7 +42,6 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
       </DatePicker>
       <span aria-hidden="true">–</span>
       <DatePicker
-        label={t(($) => $['picker.endDate'])}
         value={end.format('YYYY-MM-DD')}
         minDate={start.format('YYYY-MM-DD')}
         maxDate={endMax}
@@ -49,6 +49,7 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
           if (next) onEndChange(dayjs(next))
         }}
       >
+        <DatePickerLabel className="sr-only">{t(($) => $['picker.endDate'])}</DatePickerLabel>
         <DatePickerTrigger className="h-7 w-auto px-1">
           <DatePickerValue>{formatToLocalTime(end, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>

@@ -16,8 +16,8 @@ import {
 } from '@langgenius/dify-ui/date-picker'
 import { DatePicker } from '@/app/components/base/date-time-picker/date-picker'
 
-;<DatePicker label={fieldTitle} value={date} onValueChange={setDate}>
-  <DatePickerLabel />
+;<DatePicker value={date} onValueChange={setDate}>
+  <DatePickerLabel>{fieldTitle}</DatePickerLabel>
   <DatePickerTrigger />
   <DatePickerContent />
 </DatePicker>
@@ -25,7 +25,8 @@ import { DatePicker } from '@/app/components/base/date-time-picker/date-picker'
 
 Use the picker Label for clickable visible text. Do not point a native label or FieldLabel at
 the trigger: that can activate its button and open the popup. Existing external text can supply
-`labelledBy`; its owner is then responsible for focus forwarding. Keep help actions beside Label
+`aria-labelledby` on Trigger and Content; its owner is responsible for focus forwarding.
+Without a Label, provide an accessible name on each part; Root has no naming props. Keep help actions beside Label
 and Clear beside Trigger. Values and submission behavior follow the [Dify UI picker contract].
 
 ## Business owners

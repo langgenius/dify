@@ -351,8 +351,7 @@ const FormInputItem: FC<Props> = ({
       {isDate && isConstant && (
         <div className="min-w-0 grow">
           <ToolDatePicker
-            label={schema.label?.[language] || schema.label?.en_US || variable}
-            labelledBy={labelId}
+            aria-labelledby={labelId}
             value={varInput?.value}
             onChange={handleValueChange}
             readOnly={readOnly}

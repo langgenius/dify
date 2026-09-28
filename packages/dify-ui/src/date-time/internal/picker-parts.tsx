@@ -16,12 +16,8 @@ type PickerOpenChangeDetails = Omit<
 >
 
 type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
-  /** The field and popup name. Add a Label part for a visible label, or labelledBy for external text. */
-  label: string
   /** Overrides DirectionProvider for this field and its popup; independent of locale. */
   direction?: DirectionProvider.Props['direction']
-  labelledBy?: string
-  describedBy?: string
   placeholder?: string
   disabled?: boolean
   readOnly?: boolean
@@ -40,7 +36,7 @@ type PickerContextValue = Omit<PickerFieldProps, 'children'> & {
   serializedValue: string
   triggerId: string
   valueId: string
-  labelId: string
+  labelId: string | undefined
   setLabelId: React.Dispatch<React.SetStateAction<string | undefined>>
   errorId: string
   requiredId: string
@@ -116,7 +112,7 @@ function PickerRoot({
           serializedValue,
           triggerId: `${id}-trigger`,
           valueId: `${id}-value`,
-          labelId: labelId ?? `${id}-label`,
+          labelId,
           setLabelId,
           errorId: `${id}-error`,
           requiredId: `${id}-required`,
@@ -130,11 +126,6 @@ function PickerRoot({
           close: () => actionsRef.current?.close(),
         }}
       >
-        {!props.labelledBy && !labelId && (
-          <span id={`${id}-label`} className="sr-only">
-            {props.label}
-          </span>
-        )}
         {props.required && (
           <span id={`${id}-required`} className="sr-only">
             {props.requiredLabel ?? 'Required'}
@@ -204,7 +195,7 @@ function isLabelTextInteraction(event: React.SyntheticEvent<HTMLDivElement>) {
 }
 
 function PickerLabel({ children, className, onClick, onPointerDown, ...props }: PickerLabelProps) {
-  const { label, disabled, triggerRef, setLabelId } = usePickerContext()
+  const { disabled, triggerRef, setLabelId } = usePickerContext()
   const id = React.useId()
   React.useLayoutEffect(() => {
     setLabelId(id)
@@ -234,7 +225,7 @@ function PickerLabel({ children, className, onClick, onPointerDown, ...props }: 
         triggerRef.current?.focus({ focusVisible: true })
       }}
     >
-      {children ?? label}
+      {children}
     </div>
   )
 }
@@ -245,22 +236,32 @@ type PickerTriggerProps = Omit<
 > & {
   ref?: React.Ref<HTMLButtonElement>
 }
-function PickerTrigger({ ref, children, className, disabled, ...props }: PickerTriggerProps) {
+function PickerTrigger({
+  ref,
+  children,
+  className,
+  disabled,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  ...props
+}: PickerTriggerProps) {
   const field = usePickerContext()
   const mergedRef = useMergedRefs(field.triggerRef, ref)
+  const labelId = ariaLabelledBy ?? (ariaLabel ? undefined : field.labelId)
   return (
     <PopoverTrigger
       id={field.triggerId}
       dir={field.direction}
-      aria-labelledby={[
-        field.labelledBy ?? field.labelId,
-        field.serializedValue ? field.valueId : undefined,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      aria-label={ariaLabel}
+      aria-labelledby={
+        labelId
+          ? [labelId, field.serializedValue ? field.valueId : undefined].filter(Boolean).join(' ')
+          : undefined
+      }
       aria-describedby={
         [
-          field.describedBy,
+          ariaDescribedBy,
           field.required ? field.requiredId : undefined,
           field.invalid ? field.errorId : undefined,
         ]
@@ -342,16 +343,19 @@ function PickerContent({
   children,
   ref,
   className,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   ...props
 }: PickerContentProps & { children: React.ReactNode }) {
-  const { label } = usePickerContext()
+  const { labelId } = usePickerContext()
   const direction = useDirection()
   const popupRef = React.useRef<HTMLDivElement>(null)
   const mergedRef = useMergedRefs(popupRef, ref)
   return (
     <PopoverContent
       placement="bottom-start"
-      aria-label={label}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy ?? (ariaLabel ? undefined : labelId)}
       dir={direction}
       {...props}
       ref={mergedRef}

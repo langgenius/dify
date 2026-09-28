@@ -5,9 +5,14 @@ import { zhCN } from '@daypicker/react/locale/zh-CN'
 import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { DatePicker, DatePickerContent, DatePickerTrigger } from '../date-picker'
-import { DateTimePicker, DateTimePickerContent, DateTimePickerTrigger } from '../date-time-picker'
-import { TimePicker, TimePickerContent, TimePickerTrigger } from '../time-picker'
+import { DatePicker, DatePickerContent, DatePickerLabel, DatePickerTrigger } from '../date-picker'
+import {
+  DateTimePicker,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+} from '../date-time-picker'
+import { TimePicker, TimePickerContent, TimePickerLabel, TimePickerTrigger } from '../time-picker'
 
 // Vitest's Playwright provider inserts non-US text without keydown; these dispatches test
 // the localized KeyboardEvent contract, not an installed Persian keyboard layout.
@@ -31,12 +36,12 @@ it.each([
   async (locale, day, year, hour, minute) => {
     const screen = await render(
       <DateTimePicker
-        label="Meeting"
         locale={locale}
         timeZone="UTC"
         hourCycle={24}
         defaultValue={new Date('2025-01-15T10:05:00Z')}
       >
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
         <DateTimePickerTrigger />
         <DateTimePickerContent />
       </DateTimePicker>,
@@ -66,13 +71,8 @@ it('locates Persian month/year numbers while preserving canonical civil-date sub
   const changed = vi.fn()
   const screen = await render(
     <form aria-label="Booking">
-      <DatePicker
-        label="Date"
-        locale={faIR}
-        name="date"
-        defaultValue="2025-01-15"
-        onValueChange={changed}
-      >
+      <DatePicker locale={faIR} name="date" defaultValue="2025-01-15" onValueChange={changed}>
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
       </DatePicker>
@@ -106,13 +106,13 @@ it('updates an open locale without committing or discarding the time draft and c
   const view = (locale: string) => (
     <form aria-label="Schedule">
       <TimePicker
-        label="Time"
         locale={locale}
         hourCycle={24}
         name="time"
         defaultValue="10:05"
         onValueChange={changed}
       >
+        <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
         <TimePickerContent />
       </TimePicker>

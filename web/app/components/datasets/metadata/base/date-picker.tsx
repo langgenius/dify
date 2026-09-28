@@ -2,6 +2,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DateTimePickerClear,
   DateTimePickerContent,
+  DateTimePickerLabel,
   DateTimePickerTrigger,
   DateTimePickerValue,
 } from '@langgenius/dify-ui/date-time-picker'
@@ -29,12 +30,12 @@ function WrappedDatePicker({ className, label, value, readOnly, onChange }: Prop
   return (
     <DateTimePicker
       readOnly={readOnly}
-      label={label || placeholder}
       placeholder={placeholder}
       value={value === undefined ? null : new Date(value * 1000)}
       timeZone={timezone}
       onValueChange={(next) => onChange(next ? Math.floor(next.getTime() / 1000) : null)}
     >
+      <DateTimePickerLabel className="sr-only">{label || placeholder}</DateTimePickerLabel>
       <div
         className={cn(
           'flex h-8 w-full items-center rounded-md bg-components-input-bg-normal',

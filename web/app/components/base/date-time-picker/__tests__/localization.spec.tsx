@@ -1,6 +1,14 @@
-import { DatePickerContent, DatePickerTrigger } from '@langgenius/dify-ui/date-picker'
-import { DateTimePickerTrigger } from '@langgenius/dify-ui/date-time-picker'
-import { TimePickerContent, TimePickerTrigger } from '@langgenius/dify-ui/time-picker'
+import {
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+} from '@langgenius/dify-ui/date-picker'
+import { DateTimePickerLabel, DateTimePickerTrigger } from '@langgenius/dify-ui/date-time-picker'
+import {
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+} from '@langgenius/dify-ui/time-picker'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -38,16 +46,20 @@ it('localizes empty picker placeholders and preserves a caller override', async 
   const i18n = await createI18n('zh-Hans')
   render(
     <I18nextProvider i18n={i18n}>
-      <DatePicker label="Date">
+      <DatePicker>
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <DatePickerTrigger />
       </DatePicker>
-      <TimePicker label="Time">
+      <TimePicker>
+        <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
       </TimePicker>
-      <DateTimePicker label="Meeting" timeZone="UTC">
+      <DateTimePicker timeZone="UTC">
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
         <DateTimePickerTrigger />
       </DateTimePicker>
-      <DatePicker label="Billing" placeholder="Choose billing day">
+      <DatePicker placeholder="Choose billing day">
+        <DatePickerLabel className="sr-only">Billing</DatePickerLabel>
         <DatePickerTrigger />
       </DatePicker>
     </I18nextProvider>,
@@ -65,7 +77,8 @@ it('updates time formatting and popup labels from the application language witho
   const i18n = await createI18n()
   render(
     <I18nextProvider i18n={i18n}>
-      <TimePicker label="Time" defaultValue="13:30">
+      <TimePicker defaultValue="13:30">
+        <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
         <TimePickerContent />
       </TimePicker>
@@ -92,11 +105,8 @@ it('owns the application calendar locale and RTL while preserving caller label o
   const i18n = await createI18n('fa-IR')
   render(
     <I18nextProvider i18n={i18n}>
-      <DatePicker
-        label="Date"
-        defaultValue="2025-01-15"
-        labels={{ nextMonth: 'Next billing month' }}
-      >
+      <DatePicker defaultValue="2025-01-15" labels={{ nextMonth: 'Next billing month' }}>
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
       </DatePicker>
@@ -129,10 +139,10 @@ it.each([
     render(
       <I18nextProvider i18n={i18n}>
         <DatePicker
-          label="Date"
           defaultValue="2026-09-28"
           locale={{ labels: { labelNav: 'Calendar navigation' } }}
         >
+          <DatePickerLabel className="sr-only">Date</DatePickerLabel>
           <DatePickerTrigger />
           <DatePickerContent />
         </DatePicker>

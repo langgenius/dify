@@ -14,7 +14,7 @@ import {
 const meta = {
   title: 'Base/Form/Time Picker',
   component: TimePicker,
-  args: { label: 'Start time', children: null },
+  args: { children: null },
   parameters: {
     layout: 'centered',
     docs: { story: { autoplay: false } },
@@ -30,8 +30,8 @@ function TimePickerDemo() {
   const [value, setValue] = React.useState<string | null>('13:30')
   return (
     <div className="grid gap-1">
-      <TimePicker label="Start time" value={value} onValueChange={setValue}>
-        <TimePickerLabel />
+      <TimePicker value={value} onValueChange={setValue}>
+        <TimePickerLabel>Start time</TimePickerLabel>
         <div className="flex items-center gap-1">
           <TimePickerTrigger />
           <TimePickerClear label="Clear start time" />
@@ -139,11 +139,8 @@ export const UnavailableTime: Story = {
     },
   },
   render: () => (
-    <TimePicker
-      label="Start time"
-      defaultValue="09:00"
-      isTimeUnavailable={(time) => time === '10:00'}
-    >
+    <TimePicker defaultValue="09:00" isTimeUnavailable={(time) => time === '10:00'}>
+      <TimePickerLabel className="sr-only">Start time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>
@@ -172,14 +169,8 @@ export const Schedule: Story = {
   },
   render: () => (
     <div className="grid gap-1">
-      <TimePicker
-        label="Update time"
-        defaultValue="13:30"
-        hourCycle={24}
-        minuteStep={15}
-        timeZone="UTC"
-      >
-        <TimePickerLabel />
+      <TimePicker defaultValue="13:30" hourCycle={24} minuteStep={15} timeZone="UTC">
+        <TimePickerLabel>Update time</TimePickerLabel>
         <TimePickerTrigger>
           <TimePickerValue>
             {(value) => (

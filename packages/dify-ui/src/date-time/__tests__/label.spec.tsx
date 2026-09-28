@@ -24,25 +24,21 @@ import { render } from 'vitest-browser-react'
 const pickers = [
   {
     name: 'DatePicker',
-    wrap: (children: React.ReactNode) => <DatePicker label="Date">{children}</DatePicker>,
+    wrap: (children: React.ReactNode) => <DatePicker>{children}</DatePicker>,
     Label: DatePickerLabel,
     Trigger: DatePickerTrigger,
     Content: DatePickerContent,
   },
   {
     name: 'TimePicker',
-    wrap: (children: React.ReactNode) => <TimePicker label="Time">{children}</TimePicker>,
+    wrap: (children: React.ReactNode) => <TimePicker>{children}</TimePicker>,
     Label: TimePickerLabel,
     Trigger: TimePickerTrigger,
     Content: TimePickerContent,
   },
   {
     name: 'DateTimePicker',
-    wrap: (children: React.ReactNode) => (
-      <DateTimePicker label="Meeting" timeZone="UTC">
-        {children}
-      </DateTimePicker>
-    ),
+    wrap: (children: React.ReactNode) => <DateTimePicker timeZone="UTC">{children}</DateTimePicker>,
     Label: DateTimePickerLabel,
     Trigger: DateTimePickerTrigger,
     Content: DateTimePickerContent,
@@ -83,13 +79,13 @@ it.each(pickers)(
     await userEvent.tab()
     await expect.element(trigger).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    await expect.element(screen.getByRole('dialog')).toBeInTheDocument()
+    await expect.element(screen.getByRole('dialog', { name: 'Departure Help' })).toBeInTheDocument()
   },
 )
 
 it('preserves native focus and typing in label children', async () => {
   const screen = await render(
-    <DatePicker label="Date">
+    <DatePicker>
       <DatePickerLabel>
         Departure
         <a href="https://example.com/help" onClick={(event) => event.preventDefault()}>
@@ -114,7 +110,7 @@ it('preserves native focus and typing in label children', async () => {
 
 it('does not forward clicks from portalled label content to the trigger', async () => {
   const screen = await render(
-    <DatePicker label="Date">
+    <DatePicker>
       <DatePickerLabel>
         Departure
         {createPortal(<input aria-label="Help search" />, document.body)}
@@ -133,7 +129,7 @@ it('allows a consumer to cancel label focus forwarding', async () => {
   const screen = await render(
     <>
       <button type="button">Previous control</button>
-      <DatePicker label="Date">
+      <DatePicker>
         <DatePickerLabel onClick={(event) => event.preventDefault()}>Departure</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
@@ -145,4 +141,59 @@ it('allows a consumer to cancel label focus forwarding', async () => {
   await screen.getByText('Departure', { exact: true }).click()
   await expect.element(previous).toHaveFocus()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
+it.each(pickers)(
+  '$name supports explicitly named parts without a Label',
+  async ({ wrap, Trigger, Content }) => {
+    const screen = await render(
+      wrap(
+        <>
+          <Trigger aria-label="Departure" />
+          <Content aria-label="Choose departure" />
+        </>,
+      ),
+    )
+    const trigger = screen.getByRole('button', { name: 'Departure' })
+    await trigger.click()
+    await expect.element(screen.getByRole('dialog', { name: 'Choose departure' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(trigger).toHaveFocus()
+  },
+)
+
+it('combines external label, value and descriptions without losing validation feedback', async () => {
+  const screen = await render(
+    <>
+      <span id="departure-label">Departure</span>
+      <p id="departure-help">Choose a working day.</p>
+      <DatePicker
+        defaultValue="2025-01-15"
+        required
+        invalid
+        validationMessage="This date is unavailable."
+      >
+        <DatePickerTrigger aria-labelledby="departure-label" aria-describedby="departure-help" />
+        <DatePickerContent aria-labelledby="departure-label" />
+      </DatePicker>
+    </>,
+  )
+  const trigger = screen.getByRole('button', { name: 'Departure Jan 15, 2025' })
+  await expect
+    .element(trigger)
+    .toHaveAccessibleDescription('Choose a working day. Required This date is unavailable.')
+  await trigger.click()
+  await expect.element(screen.getByRole('dialog', { name: 'Departure' })).toBeVisible()
+})
+
+it('honors explicit names when a Label is also composed', async () => {
+  const screen = await render(
+    <DatePicker defaultValue="2025-01-15">
+      <DatePickerLabel>Departure</DatePickerLabel>
+      <DatePickerTrigger aria-label="Departure date" />
+      <DatePickerContent aria-label="Choose departure date" />
+    </DatePicker>,
+  )
+  await screen.getByRole('button', { name: 'Departure date' }).click()
+  await expect.element(screen.getByRole('dialog', { name: 'Choose departure date' })).toBeVisible()
 })

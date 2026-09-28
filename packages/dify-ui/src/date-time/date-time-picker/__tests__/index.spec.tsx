@@ -1,7 +1,12 @@
 import * as React from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { DateTimePicker, DateTimePickerContent, DateTimePickerTrigger } from '../index'
+import {
+  DateTimePicker,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+} from '../index'
 
 it('keeps the natural calendar and month-picker height around a centered mobile trigger', async () => {
   const viewport = { width: window.innerWidth, height: window.innerHeight }
@@ -9,11 +14,8 @@ it('keeps the natural calendar and month-picker height around a centered mobile 
   try {
     const screen = await render(
       <div style={{ position: 'fixed', top: 318, left: 40 }}>
-        <DateTimePicker
-          label="Meeting"
-          timeZone="UTC"
-          defaultValue={new Date('2025-01-15T13:30:00Z')}
-        >
+        <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')}>
+          <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
           <DateTimePickerTrigger />
           <DateTimePickerContent />
         </DateTimePicker>
@@ -63,11 +65,11 @@ it.each([
   const changed = vi.fn()
   const screen = await render(
     <DateTimePicker
-      label="Meeting"
       timeZone="UTC"
       defaultValue={new Date('2025-01-15T13:30:00Z')}
       onValueChange={changed}
     >
+      <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
       <DateTimePickerTrigger />
       <DateTimePickerContent />
     </DateTimePicker>,
@@ -97,7 +99,8 @@ it.each([
   'preserves the %s calendar height when toggling month selection',
   async (date, height) => {
     const screen = await render(
-      <DateTimePicker label="Meeting" timeZone="UTC" defaultValue={new Date(`${date}T13:30:00Z`)}>
+      <DateTimePicker timeZone="UTC" defaultValue={new Date(`${date}T13:30:00Z`)}>
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
         <DateTimePickerTrigger />
         <DateTimePickerContent />
       </DateTimePicker>,
@@ -121,11 +124,11 @@ it.each(['ltr', 'rtl'] as const)(
   async (direction) => {
     const screen = await render(
       <DateTimePicker
-        label="Meeting"
         direction={direction}
         timeZone="UTC"
         defaultValue={new Date('2025-01-15T13:30:00Z')}
       >
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
         <DateTimePickerTrigger />
         <DateTimePickerContent style={{ maxHeight: 210 }} />
       </DateTimePicker>,
@@ -169,12 +172,8 @@ describe('DateTimePicker', () => {
     const original = new Date('2024-11-03T06:30:00.000Z')
     const onValueChange = vi.fn()
     const screen = await render(
-      <DateTimePicker
-        label="Meeting time"
-        timeZone="America/New_York"
-        value={original}
-        onValueChange={onValueChange}
-      >
+      <DateTimePicker timeZone="America/New_York" value={original} onValueChange={onValueChange}>
+        <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
         <DateTimePickerTrigger />
         <DateTimePickerContent />
       </DateTimePicker>,
@@ -198,11 +197,11 @@ it('rejects a daylight-saving gap and lets the user repair it before committing'
   const changed = vi.fn()
   const screen = await render(
     <DateTimePicker
-      label="Meeting"
       timeZone="America/New_York"
       defaultValue={new Date('2025-03-09T06:30:00Z')}
       onValueChange={changed}
     >
+      <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
       <DateTimePickerTrigger />
       <DateTimePickerContent />
     </DateTimePicker>,
@@ -237,11 +236,11 @@ it.each([
       const changed = vi.fn()
       const screen = await render(
         <DateTimePicker
-          label="Meeting"
           timeZone={timeZone}
           defaultValue={new Date('2025-01-15T13:30:00Z')}
           onValueChange={changed}
         >
+          <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
           <DateTimePickerTrigger />
           <DateTimePickerContent />
         </DateTimePicker>,

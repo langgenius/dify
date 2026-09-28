@@ -1,17 +1,17 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { DatePicker, DatePickerContent, DatePickerTrigger } from '../index'
+import { DatePicker, DatePickerContent, DatePickerLabel, DatePickerTrigger } from '../index'
 
 async function openMonths() {
   const changed = vi.fn()
   const screen = await render(
     <DatePicker
-      label="Date"
       defaultValue="2025-01-15"
       minDate="2020-01-01"
       maxDate="2030-12-31"
       onValueChange={changed}
     >
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent style={{ maxHeight: 210 }} />
     </DatePicker>,

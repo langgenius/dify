@@ -29,8 +29,8 @@ import {
 } from '@langgenius/dify-ui/date-picker'
 
 ;<form>
-  <DatePicker label="Start date" name="start" defaultValue="2025-01-15">
-    <DatePickerLabel />
+  <DatePicker name="start" defaultValue="2025-01-15">
+    <DatePickerLabel>Start date</DatePickerLabel>
     <div className="flex items-center gap-1">
       <DatePickerTrigger />
       <DatePickerClear label="Clear start date" />
@@ -40,12 +40,27 @@ import {
 </form>
 ```
 
-The root's required `label` names the popup and supplies a fallback field name. Prefer one visible
-Label; its default text is `label`. It renders non-focusable text linked with `aria-labelledby`.
-Clicking plain label text focuses the actual trigger without opening it. Links and controls inside
-a custom label keep their own behavior. Do not use native `label[for]` or `FieldLabel` for the
-trigger: native label activation can click its button. `labelledBy` supports existing external text
-but does not forward clicks. Use `describedBy` for external help text.
+Provide an accessible name at the call site. Root has no labeling props and does not enforce
+Label composition through its types. Prefer one visible Label with its text as children; it names
+both Trigger and Content through `aria-labelledby`. Clicking plain label text focuses the actual
+trigger without opening it. Links and controls inside a custom label keep their own behavior.
+Do not use native `label[for]` or `FieldLabel` for the trigger: native activation can click its button.
+
+For compact layouts, a Label with `className="sr-only"` shares one name without visible text.
+Without a Label, name Trigger and Content explicitly using standard ARIA attributes:
+
+```tsx
+<DatePicker>
+  <DatePickerTrigger aria-label="Start date" aria-describedby="start-help" />
+  <DatePickerContent aria-label="Choose start date" />
+</DatePicker>
+```
+
+External text can name both parts through `aria-labelledby`; click forwarding remains with its
+owner. Explicit names override the automatic Label association. When a Trigger references label
+text, its committed Value is appended to the name. An explicit `aria-label` supplies the whole name.
+Trigger's `aria-describedby` is combined with required and validation feedback. Do not rely on
+placeholder or selected text alone to identify the field.
 
 Trigger is a native button. Its default children contain Value and a decorative icon. If replacing
 those children, include exactly one Value; its render callback receives the formatted committed

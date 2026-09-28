@@ -13,7 +13,12 @@ import {
   DateTimePickerTrigger,
   DateTimePickerValue,
 } from '@langgenius/dify-ui/date-time-picker'
-import { TimePicker, TimePickerTrigger, TimePickerValue } from '@langgenius/dify-ui/time-picker'
+import {
+  TimePicker,
+  TimePickerContent,
+  TimePickerTrigger,
+  TimePickerValue,
+} from '@langgenius/dify-ui/time-picker'
 import { expectTypeOf } from 'vite-plus/test'
 
 export function pickerTypeContracts(
@@ -22,7 +27,6 @@ export function pickerTypeContracts(
 ) {
   const date = (
     <DatePicker
-      label="Date"
       value="2026-09-28"
       onValueChange={(value) => {
         expectTypeOf(value).toEqualTypeOf<string | null>()
@@ -43,7 +47,6 @@ export function pickerTypeContracts(
   )
   const time = (
     <TimePicker
-      label="Time"
       locale="zh-CN"
       value="22:23"
       onValueChange={(value) => {
@@ -58,7 +61,6 @@ export function pickerTypeContracts(
   )
   const instant = (
     <DateTimePicker
-      label="Meeting"
       timeZone="Asia/Shanghai"
       value={new Date()}
       onValueChange={(value) => {
@@ -72,53 +74,45 @@ export function pickerTypeContracts(
   )
   const invalidDate = (
     // @ts-expect-error Civil dates cannot accept instants.
-    <DatePicker label="Date" value={new Date()}>
-      {null}
-    </DatePicker>
+    <DatePicker value={new Date()}>{null}</DatePicker>
   )
   const invalidTime = (
     // @ts-expect-error Wall times cannot accept instants.
-    <TimePicker label="Time" value={new Date()}>
-      {null}
-    </TimePicker>
+    <TimePicker value={new Date()}>{null}</TimePicker>
   )
   const invalidInstant = (
     // @ts-expect-error Date-time values are instants, not wire strings.
-    <DateTimePicker label="Meeting" timeZone="UTC" value="2026-09-28">
+    <DateTimePicker timeZone="UTC" value="2026-09-28">
       {null}
     </DateTimePicker>
   )
   // @ts-expect-error The caller owns the time zone for an instant.
-  const missingZone = <DateTimePicker label="Meeting">{null}</DateTimePicker>
-  // @ts-expect-error Every picker requires an accessible name.
-  const missingLabel = <TimePicker>{null}</TimePicker>
+  const missingZone = <DateTimePicker>{null}</DateTimePicker>
+  const ariaNamedTime = (
+    <TimePicker>
+      <TimePickerTrigger aria-label="Start time" aria-describedby="time-help" />
+      <TimePickerContent aria-label="Choose start time" />
+    </TimePicker>
+  )
+  // @ts-expect-error Naming belongs to Label or the named parts, not Root.
+  const rootLabel = <TimePicker label="Time">{null}</TimePicker>
+  // @ts-expect-error External labels use aria-labelledby on the named parts.
+  const rootLabelledBy = <DatePicker labelledBy="date-label">{null}</DatePicker>
+  // @ts-expect-error Descriptions belong to the trigger.
+  const rootDescribedBy = <DatePicker describedBy="date-help">{null}</DatePicker>
   const invalidCallback = (
     // @ts-expect-error Date callbacks must accept civil strings and clearing.
-    <DatePicker label="Date" onValueChange={(value: Date) => value.getTime()}>
-      {null}
-    </DatePicker>
+    <DatePicker onValueChange={(value: Date) => value.getTime()}>{null}</DatePicker>
   )
   const partialCalendarLocale = (
-    <DatePicker
-      label="Date"
-      locale={{ code: 'en-US', labels: { labelNav: 'Calendar navigation' } }}
-    >
+    <DatePicker locale={{ code: 'en-US', labels: { labelNav: 'Calendar navigation' } }}>
       {null}
     </DatePicker>
   )
-  const intlLocale = (
-    <TimePicker label="Time" locale={new Intl.Locale('zh-CN')}>
-      {null}
-    </TimePicker>
-  )
-  const localeFallbacks = (
-    <TimePicker label="Time" locale={['en-GB', 'en-US']}>
-      {null}
-    </TimePicker>
-  )
+  const intlLocale = <TimePicker locale={new Intl.Locale('zh-CN')}>{null}</TimePicker>
+  const localeFallbacks = <TimePicker locale={['en-GB', 'en-US']}>{null}</TimePicker>
   const openChange = (
     <DatePicker
-      label="Date"
       onOpenChange={(_open, details) => {
         details.cancel()
         // @ts-expect-error The picker owns its animation lifecycle and exposes no unmount action.
@@ -129,7 +123,7 @@ export function pickerTypeContracts(
     </DatePicker>
   )
   // @ts-expect-error The generated selection may be any valid date, not a caller-defined subset.
-  const genericDate = <DatePicker<'2026-09-28'> label="Date">{null}</DatePicker>
+  const genericDate = <DatePicker<'2026-09-28'>>{null}</DatePicker>
   // @ts-expect-error Hover opening is not part of the picker contract.
   const hoverDelay = <DatePickerTrigger delay={100} />
   // @ts-expect-error Picker triggers always render native buttons.
@@ -144,7 +138,6 @@ export function pickerTypeContracts(
   const customInitialFocus = <DatePickerContent initialFocus={false} />
   const readonlyPredicate = (
     <DateTimePicker
-      label="Meeting"
       timeZone="UTC"
       isTimeUnavailable={(wall) => {
         // @ts-expect-error An availability predicate must not mutate the active draft.
@@ -157,7 +150,6 @@ export function pickerTypeContracts(
   )
   const nonNullableChange = (
     <TimePicker
-      label="Time"
       defaultValue="13:30"
       // @ts-expect-error Clearing is part of the callback contract even with an initial value.
       onValueChange={(value: string) => value.toUpperCase()}
@@ -167,24 +159,20 @@ export function pickerTypeContracts(
   )
   const invalidStep = (
     // @ts-expect-error Only steps that divide an hour are supported.
-    <TimePicker label="Time" minuteStep={7}>
-      {null}
-    </TimePicker>
+    <TimePicker minuteStep={7}>{null}</TimePicker>
   )
   const invalidHourCycle = (
     // @ts-expect-error Hour cycle is a numeric display choice, not an Intl option string.
-    <TimePicker label="Time" hourCycle="h23">
-      {null}
-    </TimePicker>
+    <TimePicker hourCycle="h23">{null}</TimePicker>
   )
   const instantStep = (
     // @ts-expect-error Date-time selection has minute precision and does not expose schedule steps.
-    <DateTimePicker label="Meeting" timeZone="UTC" minuteStep={15}>
+    <DateTimePicker timeZone="UTC" minuteStep={15}>
       {null}
     </DateTimePicker>
   )
   const formattedInstant = (
-    <DateTimePicker label="Meeting" timeZone="UTC">
+    <DateTimePicker timeZone="UTC">
       <DateTimePickerTrigger>
         <DateTimePickerValue>
           {(value) => {
@@ -220,7 +208,10 @@ export function pickerTypeContracts(
     invalidTime,
     invalidInstant,
     missingZone,
-    missingLabel,
+    ariaNamedTime,
+    rootLabel,
+    rootLabelledBy,
+    rootDescribedBy,
     invalidCallback,
   }
 }

@@ -31,10 +31,10 @@ describe('DatePicker keyboard and form contract', () => {
           <button type="button" onClick={() => setVisible(!visible)}>
             Toggle label
           </button>
-          <DatePicker label="Date" defaultValue="2025-01-15">
+          <DatePicker defaultValue="2025-01-15">
             {visible && <DatePickerLabel>Departure</DatePickerLabel>}
-            <DatePickerTrigger id="custom-departure" />
-            <DatePickerContent />
+            <DatePickerTrigger id="custom-departure" aria-label={visible ? undefined : 'Date'} />
+            <DatePickerContent aria-label={visible ? undefined : 'Choose date'} />
           </DatePicker>
         </>
       )
@@ -46,15 +46,13 @@ describe('DatePicker keyboard and form contract', () => {
     await expect.element(trigger).toHaveFocus()
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
     await toggle.click()
-    await expect
-      .element(screen.getByRole('button', { name: 'Date Jan 15, 2025' }))
-      .toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Date' })).toBeInTheDocument()
     await toggle.click()
     await userEvent.tab()
     await expect.element(trigger).toHaveFocus()
     await userEvent.keyboard(' ')
     await expect
-      .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
+      .element(screen.getByRole('dialog', { name: 'Departure', exact: true }))
       .toBeInTheDocument()
   })
 
@@ -62,8 +60,8 @@ describe('DatePicker keyboard and form contract', () => {
     'respects %s when activating the label',
     async (state) => {
       const screen = await render(
-        <DatePicker label="Date" {...{ [state]: true }}>
-          <DatePickerLabel />
+        <DatePicker {...{ [state]: true }}>
+          <DatePickerLabel>Date</DatePickerLabel>
           <Parts />
         </DatePicker>,
       )
@@ -80,12 +78,12 @@ describe('DatePicker keyboard and form contract', () => {
     const changed = vi.fn()
     const screen = await render(
       <DatePicker
-        label="Date"
         defaultValue="2025-04-15"
         minDate="2025-03-01"
         maxDate="2025-12-31"
         onValueChange={changed}
       >
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>,
     )
@@ -110,7 +108,8 @@ describe('DatePicker keyboard and form contract', () => {
   it('toggles month selection from the title without applying its draft or resizing the popup', async () => {
     const changed = vi.fn()
     const screen = await render(
-      <DatePicker label="Date" defaultValue="2025-01-15" onValueChange={changed}>
+      <DatePicker defaultValue="2025-01-15" onValueChange={changed}>
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>,
     )
@@ -150,7 +149,8 @@ describe('DatePicker keyboard and form contract', () => {
 
   it('moves into month selection, locates a year numerically, and returns focus to the calendar', async () => {
     const screen = await render(
-      <DatePicker label="Date" defaultValue="2025-01-15">
+      <DatePicker defaultValue="2025-01-15">
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>,
     )
@@ -179,12 +179,12 @@ describe('DatePicker keyboard and form contract', () => {
   it('keeps a single tab stop in the grid and skips unavailable days', async () => {
     const screen = await render(
       <DatePicker
-        label="Date"
         defaultValue="2025-01-15"
         minDate="2025-01-14"
         maxDate="2025-01-31"
         isDateUnavailable={(date) => date === '2025-01-16'}
       >
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>,
     )
@@ -207,7 +207,8 @@ describe('DatePicker keyboard and form contract', () => {
           submitted(new FormData(event.currentTarget).get('date'))
         }}
       >
-        <DatePicker label="Date" name="date" required validationMessage="Choose a date">
+        <DatePicker name="date" required validationMessage="Choose a date">
+          <DatePickerLabel className="sr-only">Date</DatePickerLabel>
           <Parts />
         </DatePicker>
         <button type="submit">Submit</button>
@@ -231,7 +232,8 @@ describe('DatePicker keyboard and form contract', () => {
 
   it('returns focus to the trigger after removing the clear button', async () => {
     const screen = await render(
-      <DatePicker label="Date" defaultValue="2025-01-15">
+      <DatePicker defaultValue="2025-01-15">
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>,
     )
@@ -243,13 +245,8 @@ describe('DatePicker keyboard and form contract', () => {
     const onChange = vi.fn()
     const screen = await render(
       <form id="readonly-form">
-        <DatePicker
-          label="Date"
-          name="date"
-          readOnly
-          defaultValue="2025-01-15"
-          onValueChange={onChange}
-        >
+        <DatePicker name="date" readOnly defaultValue="2025-01-15" onValueChange={onChange}>
+          <DatePickerLabel className="sr-only">Date</DatePickerLabel>
           <Parts />
         </DatePicker>
       </form>,
@@ -268,7 +265,8 @@ describe('DatePicker keyboard and form contract', () => {
 
 it('moves across an adjacent month with the keyboard', async () => {
   const screen = await render(
-    <DatePicker label="Date" defaultValue="2025-01-31">
+    <DatePicker defaultValue="2025-01-31">
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <Parts />
     </DatePicker>,
   )
@@ -289,12 +287,8 @@ it('moves across an adjacent month with the keyboard', async () => {
 
 it('opens on the allowed month and retains a visible focus target if every date is unavailable', async () => {
   const screen = await render(
-    <DatePicker
-      label="Date"
-      minDate="2037-02-01"
-      maxDate="2037-02-28"
-      isDateUnavailable={() => true}
-    >
+    <DatePicker minDate="2037-02-01" maxDate="2037-02-28" isDateUnavailable={() => true}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <Parts />
     </DatePicker>,
   )
@@ -306,7 +300,8 @@ it('opens on the allowed month and retains a visible focus target if every date 
 
 it('keeps adjacent-month dates selectable by pointer', async () => {
   const screen = await render(
-    <DatePicker label="Date" defaultValue="2025-01-15">
+    <DatePicker defaultValue="2025-01-15">
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <Parts />
     </DatePicker>,
   )
@@ -318,7 +313,8 @@ it('keeps adjacent-month dates selectable by pointer', async () => {
 it('supports month/year paging and week endpoints without committing during navigation', async () => {
   const changed = vi.fn()
   const screen = await render(
-    <DatePicker label="Date" defaultValue="2025-01-31" onValueChange={changed}>
+    <DatePicker defaultValue="2025-01-31" onValueChange={changed}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <Parts />
     </DatePicker>,
   )
@@ -345,7 +341,8 @@ it('supports month/year paging and week endpoints without committing during navi
 it('localizes full dates and reverses horizontal calendar navigation in RTL', async () => {
   const screen = await render(
     <DirectionProvider direction="rtl">
-      <DatePicker label="Date" locale={arTN} defaultValue="2025-01-15">
+      <DatePicker locale={arTN} defaultValue="2025-01-15">
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>
     </DirectionProvider>,
@@ -364,10 +361,12 @@ it('focuses the first invalid picker inside a native fieldset', async () => {
     <form>
       <fieldset>
         <legend>Trip</legend>
-        <DatePicker label="Departure" required>
+        <DatePicker required>
+          <DatePickerLabel className="sr-only">Departure</DatePickerLabel>
           <Parts />
         </DatePicker>
-        <DatePicker label="Return" required>
+        <DatePicker required>
+          <DatePickerLabel className="sr-only">Return</DatePickerLabel>
           <Parts />
         </DatePicker>
       </fieldset>
@@ -381,7 +380,8 @@ it('focuses the first invalid picker inside a native fieldset', async () => {
 it('lets a picker override inherited direction independently of its formatting locale', async () => {
   const screen = await render(
     <DirectionProvider direction="rtl">
-      <DatePicker label="Date" direction="ltr" locale={arTN} defaultValue="2025-01-15">
+      <DatePicker direction="ltr" locale={arTN} defaultValue="2025-01-15">
+        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
         <Parts />
       </DatePicker>
     </DirectionProvider>,
@@ -400,7 +400,8 @@ it('lets a picker override inherited direction independently of its formatting l
 it('keeps Persian month labels in the Gregorian calendar used by the value', async () => {
   const changed = vi.fn()
   const screen = await render(
-    <DatePicker label="Date" locale={faIR} defaultValue="2025-01-15" onValueChange={changed}>
+    <DatePicker locale={faIR} defaultValue="2025-01-15" onValueChange={changed}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
       <Parts />
     </DatePicker>,
   )

@@ -300,7 +300,6 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           const hasExternalLabel = Boolean(fieldLabel)
           const pickerLabel = fieldLabel ? getTextContent(fieldLabel) : name
           const pickerProps = {
-            label: pickerLabel,
             name,
             required: Boolean(child.properties.required),
             disabled: Boolean(child.properties.disabled),
@@ -316,11 +315,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 value={(formValues[name] as string | undefined) ?? null}
                 onValueChange={(date) => updateValue(name, date ?? undefined)}
               >
-                {fieldLabel && (
-                  <DatePickerLabel className="my-2 system-md-semibold text-text-secondary">
-                    {pickerLabel}
-                  </DatePickerLabel>
-                )}
+                <DatePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DatePickerLabel>
                 <div className="flex">
                   <DatePickerTrigger id={controlId} />
                   <DatePickerClear label={clearLabel} />
@@ -338,11 +337,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 value={(formValues[name] as Date | undefined) ?? null}
                 onValueChange={(date) => updateValue(name, date ?? undefined)}
               >
-                {fieldLabel && (
-                  <DateTimePickerLabel className="my-2 system-md-semibold text-text-secondary">
-                    {pickerLabel}
-                  </DateTimePickerLabel>
-                )}
+                <DateTimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DateTimePickerLabel>
                 <div className="flex">
                   <DateTimePickerTrigger id={controlId} />
                   <DateTimePickerClear label={clearLabel} />
@@ -359,11 +358,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 value={(formValues[name] as string | undefined) ?? null}
                 onValueChange={(time) => updateValue(name, time ?? undefined)}
               >
-                {fieldLabel && (
-                  <TimePickerLabel className="my-2 system-md-semibold text-text-secondary">
-                    {pickerLabel}
-                  </TimePickerLabel>
-                )}
+                <TimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </TimePickerLabel>
                 <div className="flex">
                   <TimePickerTrigger id={controlId} />
                   <TimePickerClear label={clearLabel} />

@@ -20,7 +20,7 @@ describe('ToolDatePicker', () => {
   it('preserves a stored date-only value when rendering in a negative timezone', () => {
     render(
       <ToolDatePicker
-        label="Select date"
+        aria-label="Select date"
         value="2024-05-01"
         onChange={vi.fn()}
         placeholder="Select date"
@@ -34,7 +34,7 @@ describe('ToolDatePicker', () => {
     const onChange = vi.fn()
     render(
       <ToolDatePicker
-        label="Select date"
+        aria-label="Select date"
         value="2024-05-01"
         onChange={onChange}
         placeholder="Select date"
@@ -49,7 +49,7 @@ describe('ToolDatePicker', () => {
   it('disables interaction and clearing when read only', () => {
     render(
       <ToolDatePicker
-        label="Select date"
+        aria-label="Select date"
         value="2024-05-01"
         onChange={vi.fn()}
         placeholder="Select date"
@@ -66,7 +66,7 @@ describe('ToolDatePicker', () => {
 
   it('opens from the keyboard and restores focus to the date button on dismissal', async () => {
     const user = userEvent.setup()
-    render(<ToolDatePicker label="Select date" value="2024-05-01" onChange={vi.fn()} />)
+    render(<ToolDatePicker aria-label="Select date" value="2024-05-01" onChange={vi.fn()} />)
 
     const trigger = screen.getByRole('button', { name: 'Select date May 1, 2024' })
     expect(within(trigger).queryByRole('button')).not.toBeInTheDocument()
@@ -83,7 +83,7 @@ describe('ToolDatePicker', () => {
   it('lets the keyboard reach and activate clear without opening the calendar', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    render(<ToolDatePicker label="Select date" value="2024-05-01" onChange={onChange} />)
+    render(<ToolDatePicker aria-label="Select date" value="2024-05-01" onChange={onChange} />)
 
     await user.tab()
     await user.tab()

@@ -1,6 +1,7 @@
 import {
   DateTimePickerClear,
   DateTimePickerContent,
+  DateTimePickerLabel,
   DateTimePickerTrigger,
 } from '@langgenius/dify-ui/date-time-picker'
 import { useQuery } from '@tanstack/react-query'
@@ -21,12 +22,12 @@ function ConditionDate({ value, disabled, onChange }: ConditionDateProps) {
   return (
     <DateTimePicker
       disabled={disabled}
-      label={label}
       placeholder={label}
       timeZone={timezone}
       value={value === undefined ? null : new Date(value * 1000)}
       onValueChange={(next) => onChange(next ? Math.floor(next.getTime() / 1000) : undefined)}
     >
+      <DateTimePickerLabel className="sr-only">{label}</DateTimePickerLabel>
       <div className="flex items-center px-2">
         <DateTimePickerTrigger className="min-w-0 flex-1 bg-transparent px-1" />
         <DateTimePickerClear label={t(($) => $['operation.clear'], { ns: 'common' })} />

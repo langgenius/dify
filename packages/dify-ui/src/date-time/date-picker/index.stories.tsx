@@ -22,7 +22,7 @@ import {
 const meta = {
   title: 'Base/Form/Date Picker',
   component: DatePicker,
-  args: { label: 'Start date', children: null },
+  args: { children: null },
   parameters: {
     layout: 'centered',
     docs: { story: { autoplay: false } },
@@ -38,8 +38,8 @@ function DatePickerDemo() {
   const [value, setValue] = React.useState<string | null>('2025-01-15')
   return (
     <div className="grid gap-1">
-      <DatePicker label="Start date" value={value} onValueChange={setValue}>
-        <DatePickerLabel />
+      <DatePicker value={value} onValueChange={setValue}>
+        <DatePickerLabel>Start date</DatePickerLabel>
         <div className="flex items-center gap-1">
           <DatePickerTrigger />
           <DatePickerClear label="Clear start date" />
@@ -84,15 +84,9 @@ function NativeFormDemo() {
       <fieldset className="grid min-w-0 gap-3">
         <legend className="mb-2 system-md-semibold text-text-primary">Schedule</legend>
         <div className="grid gap-1">
-          <DatePicker
-            label="Start date"
-            describedBy={`${id}-date-help`}
-            name="date"
-            required
-            validationMessage="Choose a start date."
-          >
+          <DatePicker name="date" required validationMessage="Choose a start date.">
             <DatePickerLabel>Start date (required)</DatePickerLabel>
-            <DatePickerTrigger />
+            <DatePickerTrigger aria-describedby={`${id}-date-help`} />
             <DatePickerContent />
           </DatePicker>
           <p id={`${id}-date-help`} className="system-xs-regular text-text-secondary">
@@ -100,7 +94,7 @@ function NativeFormDemo() {
           </p>
         </div>
         <div className="grid gap-1">
-          <TimePicker label="Start time" name="time" defaultValue="13:30">
+          <TimePicker name="time" defaultValue="13:30">
             <TimePickerLabel>Start time</TimePickerLabel>
             <TimePickerTrigger />
             <TimePickerContent />
@@ -108,7 +102,6 @@ function NativeFormDemo() {
         </div>
         <div className="grid gap-1">
           <DateTimePicker
-            label="Reminder"
             name="reminder"
             timeZone="UTC"
             defaultValue={new Date('2025-01-15T13:30:00Z')}
@@ -168,7 +161,7 @@ export const NativeForm: Story = {
     }
     await userEvent.click(canvas.getByText('Start date (required)', { exact: true }))
     await userEvent.keyboard('{Enter}')
-    const dialog = await body.findByRole('dialog', { name: 'Start date' })
+    const dialog = await body.findByRole('dialog', { name: 'Start date (required)' })
     await waitFor(() => expect(dialog).toBeVisible())
     await waitFor(() =>
       expect(dialog.contains(canvasElement.ownerDocument.activeElement)).toBe(true),
@@ -192,7 +185,8 @@ export const NativeForm: Story = {
 
 export const Empty: Story = {
   render: () => (
-    <DatePicker label="Start date">
+    <DatePicker>
+      <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent />
     </DatePicker>
@@ -200,7 +194,8 @@ export const Empty: Story = {
 }
 export const Disabled: Story = {
   render: () => (
-    <DatePicker label="Start date" defaultValue="2025-01-15" disabled>
+    <DatePicker defaultValue="2025-01-15" disabled>
+      <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerClear label="Clear start date" />
       <DatePickerContent />
@@ -209,7 +204,8 @@ export const Disabled: Story = {
 }
 export const ReadOnly: Story = {
   render: () => (
-    <DatePicker label="Start date" defaultValue="2025-01-15" readOnly>
+    <DatePicker defaultValue="2025-01-15" readOnly>
+      <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent />
     </DatePicker>
@@ -241,7 +237,8 @@ export const RTL: Story = {
   render: () => (
     <div dir="rtl">
       <DirectionProvider direction="rtl">
-        <DatePicker label="Start date" locale={arTN} defaultValue="2025-01-15">
+        <DatePicker locale={arTN} defaultValue="2025-01-15">
+          <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
           <DatePickerTrigger />
           <DatePickerContent />
         </DatePicker>

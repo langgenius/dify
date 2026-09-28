@@ -1,11 +1,12 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { TimePicker, TimePickerContent, TimePickerTrigger } from '../index'
+import { TimePicker, TimePickerContent, TimePickerLabel, TimePickerTrigger } from '../index'
 
 async function renderPicker() {
   const changed = vi.fn()
   const screen = await render(
-    <TimePicker label="Time" defaultValue="13:30" timeZone="UTC" onValueChange={changed}>
+    <TimePicker defaultValue="13:30" timeZone="UTC" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,

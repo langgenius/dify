@@ -4,17 +4,23 @@ import { render } from 'vitest-browser-react'
 import { Dialog, DialogContent, DialogTitle } from '../../../dialog'
 import { DirectionProvider } from '../../../direction-provider'
 import { Field, FieldLabel } from '../../../field'
-import { TimePicker, TimePickerContent, TimePickerTrigger, TimePickerValue } from '../index'
+import {
+  TimePicker,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+  TimePickerValue,
+} from '../index'
 
 it('allows a valid time to be reached through temporarily unavailable combinations', async () => {
   const changed = vi.fn()
   const screen = await render(
     <TimePicker
-      label="Time"
       defaultValue="09:30"
       onValueChange={changed}
       isTimeUnavailable={(time) => !['09:30', '10:00'].includes(time)}
     >
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -36,7 +42,8 @@ it('allows a valid time to be reached through temporarily unavailable combinatio
 it('starts a fresh draft when controlled open changes without an open request', async () => {
   const changed = vi.fn()
   const view = (open: boolean, value: string) => (
-    <TimePicker label="Time" value={value} open={open} onValueChange={changed}>
+    <TimePicker value={value} open={open} onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>
@@ -61,13 +68,13 @@ it('honors canceled close requests without discarding the active draft', async (
   const changed = vi.fn()
   const screen = await render(
     <TimePicker
-      label="Time"
       defaultValue="13:30"
       onValueChange={changed}
       onOpenChange={(open, details) => {
         if (!open && details.reason === 'escape-key') details.cancel()
       }}
     >
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -88,7 +95,8 @@ it('honors canceled close requests without discarding the active draft', async (
 it('supports 24-hour navigation and numeric minute locating', async () => {
   const changed = vi.fn()
   const screen = await render(
-    <TimePicker label="Time" hourCycle={24} defaultValue="13:30" onValueChange={changed}>
+    <TimePicker hourCycle={24} defaultValue="13:30" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -106,7 +114,8 @@ it('isolates draft option names and values from an enclosing field', async () =>
     <form id="time-form">
       <Field name="appointment">
         <FieldLabel>Appointment</FieldLabel>
-        <TimePicker label="Appointment" name="appointment" defaultValue="13:30">
+        <TimePicker name="appointment" defaultValue="13:30">
+          <TimePickerLabel className="sr-only">Appointment</TimePickerLabel>
           <TimePickerTrigger />
           <TimePickerContent />
         </TimePicker>
@@ -133,7 +142,8 @@ it('repositions all time columns when Now is clicked again without committing', 
   vi.spyOn(Date, 'now').mockReturnValue(new Date('2025-01-15T13:30:00Z').getTime())
   const changed = vi.fn()
   const screen = await render(
-    <TimePicker label="Time" timeZone="UTC" defaultValue="13:30" onValueChange={changed}>
+    <TimePicker timeZone="UTC" defaultValue="13:30" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -159,13 +169,8 @@ it('keeps a quarter-hour field reachable and rounds Now down to its current inte
   vi.spyOn(Date, 'now').mockReturnValue(new Date('2025-01-15T13:37:00Z').getTime())
   const changed = vi.fn()
   const screen = await render(
-    <TimePicker
-      label="Time"
-      timeZone="UTC"
-      minuteStep={15}
-      defaultValue="09:00"
-      onValueChange={changed}
-    >
+    <TimePicker timeZone="UTC" minuteStep={15} defaultValue="09:00" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -190,7 +195,8 @@ it('discards a draft when Tab leaves the nonmodal picker inside a modal dialog',
     <Dialog defaultOpen>
       <DialogContent>
         <DialogTitle>Settings</DialogTitle>
-        <TimePicker label="Time" defaultValue="13:30" onValueChange={changed}>
+        <TimePicker defaultValue="13:30" onValueChange={changed}>
+          <TimePickerLabel className="sr-only">Time</TimePickerLabel>
           <TimePickerTrigger />
           <TimePickerContent />
         </TimePicker>
@@ -219,7 +225,8 @@ it('discards a draft when Tab leaves the nonmodal picker inside a modal dialog',
 
 it('aligns pointer selections and immediately positions keyboard selections at the same top anchor', async () => {
   const screen = await render(
-    <TimePicker label="Time" defaultValue="13:30">
+    <TimePicker defaultValue="13:30">
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger />
       <TimePickerContent />
     </TimePicker>,
@@ -250,7 +257,8 @@ it('preserves draft selection after focus leaves and does not select hovered opt
   const changed = vi.fn()
   const screen = await render(
     <DirectionProvider direction="rtl">
-      <TimePicker label="Time" defaultValue="13:30" onValueChange={changed}>
+      <TimePicker defaultValue="13:30" onValueChange={changed}>
+        <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
         <TimePickerContent />
       </TimePicker>
@@ -283,7 +291,8 @@ it('preserves draft selection after focus leaves and does not select hovered opt
 
 it('announces the complete custom displayed value including its timezone', async () => {
   const screen = await render(
-    <TimePicker label="Time" defaultValue="13:30">
+    <TimePicker defaultValue="13:30">
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
       <TimePickerTrigger>
         <TimePickerValue>
           {(displayValue) => (

@@ -256,7 +256,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isDate && isConstant && (
               <div className="min-w-0 grow">
                 <ToolDatePicker
-                  label={fieldTitle || variable}
+                  aria-label={fieldTitle || variable}
                   value={varInput?.value}
                   onChange={handleValueChange(variable, type)}
                   placeholder={placeholder?.[language] || placeholder?.en_US}
