@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "อัปเดตทักษะของเวิร์กสเปซไม่สำเร็จ",
   "agentDetail.configure.skills.workspaceSelector.search": "ค้นหาทักษะ...",
   "agentDetail.configure.switchToPreviewConfirm.title": "สลับไปยังโหมดแสดงตัวอย่าง?",
+  "agentDetail.configure.templatePreview.agentUI": "อินเทอร์เฟซเอเจนต์",
   "agentDetail.configure.title": "กำหนดค่า",
   "agentDetail.configure.tools.add": "เพิ่มเครื่องมือ",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "สำหรับนักพัฒนา",

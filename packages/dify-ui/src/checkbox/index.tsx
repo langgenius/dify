@@ -26,24 +26,17 @@ const checkboxIndicatorClassName =
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-type CheckboxRootProps = BaseCheckboxNS.Root.Props
-function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
+type CheckboxProps = Omit<BaseCheckboxNS.Root.Props, 'children'>
+
+function Checkbox({ className, ...props }: CheckboxProps) {
   return (
     <BaseCheckbox.Root
       className={(state) => cn(checkboxRootClassName, resolveClassName(className, state))}
       {...props}
-    />
-  )
-}
-
-type CheckboxIndicatorProps = Omit<BaseCheckboxNS.Indicator.Props, 'children'>
-function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
-  return (
-    <BaseCheckbox.Indicator
-      className={(state) => cn(checkboxIndicatorClassName, resolveClassName(className, state))}
-      render={
-        render ??
-        ((indicatorProps, state) => (
+    >
+      <BaseCheckbox.Indicator
+        className={checkboxIndicatorClassName}
+        render={(indicatorProps, state) => (
           <span {...indicatorProps}>
             {state.indeterminate ? (
               <span className="block h-[1.5px] w-1.75 rounded-full bg-current" />
@@ -51,20 +44,9 @@ function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorPro
               <span className="i-ri-check-line block size-3 shrink-0" />
             )}
           </span>
-        ))
-      }
-      {...props}
-    />
-  )
-}
-
-type CheckboxProps = Omit<CheckboxRootProps, 'children'>
-
-function Checkbox({ ...props }: CheckboxProps) {
-  return (
-    <CheckboxRoot {...props}>
-      <CheckboxIndicator />
-    </CheckboxRoot>
+        )}
+      />
+    </BaseCheckbox.Root>
   )
 }
 
@@ -76,6 +58,6 @@ function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
   return <div className={cn(checkboxSkeletonClassName, className)} {...props} />
 }
 
-export { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton }
+export { Checkbox, CheckboxSkeleton }
 
-export type { CheckboxIndicatorProps, CheckboxProps, CheckboxRootProps, CheckboxSkeletonProps }
+export type { CheckboxProps, CheckboxSkeletonProps }

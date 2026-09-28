@@ -192,11 +192,6 @@
       "count": 9
     }
   },
-  "web/app/components/app/app-publisher/__tests__/sections.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -440,7 +435,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 4
     }
   },
   "web/app/components/app/configuration/debug/types.ts": {
@@ -455,7 +450,7 @@
   },
   "web/app/components/app/configuration/hooks/__tests__/use-configuration-utils.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 52
+      "count": 48
     }
   },
   "web/app/components/app/configuration/hooks/__tests__/use-configuration.spec.tsx": {
@@ -500,7 +495,7 @@
   },
   "web/app/components/app/log/__tests__/list.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 9
     }
   },
   "web/app/components/app/log/filter.tsx": {
@@ -780,14 +775,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 12
-    }
-  },
-  "web/app/components/base/chat/chat/log/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat/question.tsx": {
@@ -1326,14 +1313,6 @@
   },
   "web/app/components/base/prompt-editor/plugins/hitl-input-block/pre-populate.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/tag-label.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -2230,22 +2209,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/strategy-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -2270,31 +2233,11 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/trigger/event-list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-item/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -2527,17 +2470,6 @@
   "web/app/components/snippet-list/__tests__/reflow.browser.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
-    }
-  },
-  "web/app/components/snippets/components/snippet-run-panel.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 5
-    },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 5
     }
   },
   "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
@@ -3245,11 +3177,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/index.tsx": {
-    "eslint-react/static-components": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/iteration/node.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -3682,14 +3609,6 @@
     }
   },
   "web/app/components/workflow/note-node/note-editor/toolbar/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/note-node/note-editor/toolbar/operator.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -4307,7 +4226,7 @@
   },
   "web/models/debug.ts": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/models/log.ts": {
@@ -4402,7 +4321,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/service/base.spec.ts": {
@@ -4416,11 +4335,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/common.spec.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     }
   },
   "web/service/common.ts": {
@@ -4642,7 +4556,7 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 3
+      "count": 2
     }
   },
   "web/service/use-workflow.ts": {

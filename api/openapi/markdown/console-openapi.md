@@ -663,7 +663,11 @@ Get suggested questions for an Agent App message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
 | 404 | Agent, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
@@ -2510,7 +2514,11 @@ Get suggested questions for a message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 404 | Message or conversation not found |  |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
+| 404 | App, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation
@@ -2811,7 +2819,7 @@ Update application model configuration
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ModelConfigRequest](#modelconfigrequest)<br> |
+|  Yes | **application/json**: [AppModelConfigPayload](#appmodelconfigpayload)<br> |
 
 #### Responses
 
@@ -2891,6 +2899,7 @@ Create MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
+| 409 | MCP server already exists for this app |  |
 
 ### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
@@ -9319,6 +9328,155 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
+### [GET] /trial-apps/{app_id}/agent-composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/files/{name}/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/octet-stream**: binary<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Normalized member path inside the published Skill package | Yes | string |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/inspect
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Must match the current published template snapshot | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published template resource | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
 
@@ -9350,6 +9508,20 @@ Remove one or more tag bindings from a target.
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9385,6 +9557,22 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| format | query | Export format; defaults to ifpkg | No | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg |
+| version_id | query | Current published template snapshot ID | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
+| 404 | Published template unavailable |  |
 
 ### [POST] /trial-apps/{app_id}/files/upload
 **Upload a file into the tenant that owns the trial app**
@@ -15742,6 +15930,16 @@ This class is used to store the schema information of an api based tool.
 | app_id | string |  | No |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 
+#### AppAgentModePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| max_iteration | integer |  | No |
+| prompt | [AppAgentPromptPayload](#appagentpromptpayload)<br>string |  | No |
+| strategy | [PlanningStrategy](#planningstrategy)<br>string, <br>**Available values:** "", "cot", "function-calling" |  | No |
+| tools | [ [AppAgentToolPayload](#appagenttoolpayload) ] |  | No |
+
 #### AppAgentModeResponse
 
 | Name | Type | Description | Required |
@@ -15752,12 +15950,25 @@ This class is used to store the schema information of an api based tool.
 | strategy | [PlanningStrategy](#planningstrategy)<br>string, <br>**Available values:** "cot", "function-calling" |  | No |
 | tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | No |
 
+#### AppAgentPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_prompt | string |  | No |
+| next_iteration | string |  | No |
+
 #### AppAgentPromptResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | first_prompt | string |  | No |
 | next_iteration | string |  | No |
+
+#### AppAgentToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppAgentToolPayload | [AppProviderAgentToolPayload](#appprovideragenttoolpayload)<br>[AppLegacyDatasetToolPayload](#applegacydatasettoolpayload)<br>[AppLegacyGoogleSearchToolPayload](#applegacygooglesearchtoolpayload)<br>[AppLegacyWebReaderToolPayload](#applegacywebreadertoolpayload)<br>[AppLegacyWikipediaToolPayload](#applegacywikipediatoolpayload)<br>[AppLegacyCurrentDatetimeToolPayload](#applegacycurrentdatetimetoolpayload)<br>[AppLegacySensitiveWordToolPayload](#applegacysensitivewordtoolpayload) |  |  |
 
 #### AppAnnotationReplyDisabledResponse
 
@@ -15793,11 +16004,23 @@ This class is used to store the schema information of an api based tool.
 | role | string |  | Yes |
 | text | string |  | Yes |
 
+#### AppChatPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| prompt | [ [AppPromptMessagePayload](#apppromptmessagepayload) ] |  | No |
+
 #### AppCheckboxFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | checkbox | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppCheckboxInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkbox | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppCompletionPromptConfigResponse
 
@@ -15806,11 +16029,30 @@ This class is used to store the schema information of an api based tool.
 | conversation_histories_role | [AppConversationHistoriesRoleResponse](#appconversationhistoriesroleresponse) |  | No |
 | prompt | [AppCompletionPromptTextResponse](#appcompletionprompttextresponse) |  | No |
 
+#### AppCompletionPromptPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_histories_role | [AppConversationRolesPayload](#appconversationrolespayload) |  | No |
+| prompt | [AppCompletionPromptTextPayload](#appcompletionprompttextpayload) |  | No |
+
+#### AppCompletionPromptTextPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
 #### AppCompletionPromptTextResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | text | string |  | Yes |
+
+#### AppConfigJsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppConfigJsonValue | string<br>integer<br>number<br>boolean<br>[ [AppConfigJsonValue](#appconfigjsonvalue) ]<br>object |  |  |
 
 #### AppConversationHistoriesRoleResponse
 
@@ -15818,6 +16060,38 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | assistant_prefix | string |  | Yes |
 | user_prefix | string |  | Yes |
+
+#### AppConversationRolesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| assistant_prefix | string |  | Yes |
+| user_prefix | string |  | Yes |
+
+#### AppDatasetCollectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AppDatasetToolPayload](#appdatasettoolpayload) ] |  | Yes |
+| strategy | string |  | No |
+
+#### AppDatasetConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [AppDatasetCollectionPayload](#appdatasetcollectionpayload)<br>[AppEmptyDatasetCollectionPayload](#appemptydatasetcollectionpayload) |  | No |
+| metadata_filtering_conditions | [AppMetadataFilteringPayload](#appmetadatafilteringpayload) |  | No |
+| metadata_filtering_mode | string, <br>**Available values:** "automatic", "disabled", "manual" | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
+| metadata_model_config | [AppMetadataModelPayload](#appmetadatamodelpayload) |  | No |
+| reranking_enable | boolean |  | No |
+| reranking_enabled | boolean |  | No |
+| reranking_mode | [RerankMode](#rerankmode) |  | No |
+| reranking_model | [AppRerankingModelPayload](#apprerankingmodelpayload) |  | No |
+| retrieval_model | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | No |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
+| weights | [AppRetrievalWeightsPayload](#appretrievalweightspayload) |  | No |
 
 #### AppDatasetConfigsResponse
 
@@ -15856,6 +16130,19 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 | id | string |  | No |
+
+#### AppDatasetSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| id | string |  | No |
+
+#### AppDatasetToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppDatasetSelectionPayload](#appdatasetselectionpayload) |  | Yes |
 
 #### AppDetail
 
@@ -15970,6 +16257,11 @@ This class is used to store the schema information of an api based tool.
 | embedding_model_name | string |  | Yes |
 | embedding_provider_name | string |  | Yes |
 
+#### AppEmptyDatasetCollectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### AppEnabledConfigResponse
 
 | Name | Type | Description | Required |
@@ -16003,11 +16295,35 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | data | string |  | Yes |
 
+#### AppExternalDataInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| external_data_tool | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
+
 #### AppExternalDataToolFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | external_data_tool | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppExternalDataToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| label | string |  | No |
+| type | string |  | No |
+| variable | string |  | No |
+
+#### AppFeaturePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
 
 #### AppFileFormResponse
 
@@ -16020,6 +16336,38 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file-list | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppFilePreviewPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_type_list | [ string ] |  | No |
+| mode | string |  | No |
+
+#### AppFileTypeUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+
+#### AppFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| audio | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| custom | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| document | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
+| enabled | boolean |  | No |
+| image | [AppImageUploadPayload](#appimageuploadpayload) |  | No |
+| image_config | [AppImageConfigPayload](#appimageconfigpayload) |  | No |
+| number_limits | integer |  | No |
+| preview_config | [AppFilePreviewPayload](#appfilepreviewpayload) |  | No |
+| video | [AppFileTypeUploadPayload](#appfiletypeuploadpayload) |  | No |
 
 #### AppFileUploadResponse
 
@@ -16039,6 +16387,23 @@ This class is used to store the schema information of an api based tool.
 | icon | string | Icon data | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
+
+#### AppImageConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string, <br>**Available values:** "high", "low" |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+
+#### AppImageUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string, <br>**Available values:** "high", "low" |  | No |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 
 #### AppImageUploadResponse
 
@@ -16060,6 +16425,9 @@ This class is used to store the schema information of an api based tool.
 | icon_type | string |  | No |
 | mode | string | Import mode | Yes |
 | name | string |  | No |
+| package_url | string |  | No |
+| template_id | string |  | No |
+| version_id | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
 
@@ -16076,6 +16444,25 @@ This class is used to store the schema information of an api based tool.
 | status | [ImportStatus](#importstatus) |  | Yes |
 | warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
 
+#### AppInputFieldPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| default | [AppConfigJsonValue](#appconfigjsonvalue) |  | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| hide | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| json_schema | string<br>object |  | No |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
+| variable | string |  | Yes |
+
 #### AppJsonObjectFormResponse
 
 | Name | Type | Description | Required |
@@ -16088,11 +16475,36 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | keyword_weight | number |  | Yes |
 
+#### AppKeywordWeightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_weight | number |  | Yes |
+
+#### AppLegacyCurrentDatetimeToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_datetime | [AppFeaturePayload](#appfeaturepayload) |  | Yes |
+
 #### AppLegacyCurrentDatetimeToolResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | current_datetime | object |  | Yes |
+
+#### AppLegacyDatasetSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| id | string |  | No |
+
+#### AppLegacyDatasetToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset | [AppLegacyDatasetSelectionPayload](#applegacydatasetselectionpayload) |  | Yes |
 
 #### AppLegacyDatasetToolResponse
 
@@ -16100,11 +16512,31 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | dataset | [AppDatasetReferenceResponse](#appdatasetreferenceresponse) |  | Yes |
 
+#### AppLegacyGoogleSearchToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| google_search | [AppFeaturePayload](#appfeaturepayload) |  | Yes |
+
 #### AppLegacyGoogleSearchToolResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | google_search | object |  | Yes |
+
+#### AppLegacySensitiveWordConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canned_response | string |  | Yes |
+| enabled | boolean |  | Yes |
+| words | [ string ] |  | Yes |
+
+#### AppLegacySensitiveWordToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sensitive-word-avoidance | [AppLegacySensitiveWordConfigPayload](#applegacysensitivewordconfigpayload) |  | Yes |
 
 #### AppLegacySensitiveWordToolResponse
 
@@ -16120,11 +16552,23 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | sensitive-word-avoidance | [AppLegacySensitiveWordToolResponse](#applegacysensitivewordtoolresponse) |  | Yes |
 
+#### AppLegacyWebReaderToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| web_reader | [AppFeaturePayload](#appfeaturepayload) |  | Yes |
+
 #### AppLegacyWebReaderToolResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | web_reader | object |  | Yes |
+
+#### AppLegacyWikipediaToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| wikipedia | [AppFeaturePayload](#appfeaturepayload) |  | Yes |
 
 #### AppLegacyWikipediaToolResponse
 
@@ -16160,11 +16604,21 @@ This class is used to store the schema information of an api based tool.
 
 #### AppMCPServerStatus
 
-AppMCPServer Status Enum
+Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+| AppMCPServerStatus | string | Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls. |  |
+
+#### AppMetadataConditionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| id | string |  | No |
+| metadata_id | string |  | No |
+| name | string |  | Yes |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
 
 #### AppMetadataConditionResponse
 
@@ -16183,11 +16637,53 @@ AppMCPServer Status Enum
 | conditions | [ [AppMetadataConditionResponse](#appmetadataconditionresponse) ] |  | No |
 | logical_operator | string, <br>**Available values:** "and", "or" |  | No |
 
+#### AppMetadataFilteringPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [AppMetadataConditionPayload](#appmetadataconditionpayload) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or" |  | No |
+
+#### AppMetadataModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | [LLMMode](#llmmode)<br>string |  | No |
+| name | string |  | No |
+| provider | string |  | No |
+
 #### AppMode
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
+
+#### AppModelConfigPayload
+
+Write transport; app-mode validators own defaults and feature-specific rules.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | [AppAgentModePayload](#appagentmodepayload) |  | No |
+| chat_prompt_config | [AppChatPromptPayload](#appchatpromptpayload) |  | No |
+| completion_prompt_config | [AppCompletionPromptPayload](#appcompletionpromptpayload) |  | No |
+| dataset_configs | [AppDatasetConfigPayload](#appdatasetconfigpayload) |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools | [ [AppExternalDataToolPayload](#appexternaldatatoolpayload) ] |  | No |
+| file_upload | [AppFileUploadPayload](#appfileuploadpayload) |  | No |
+| model | [AppModelSelectionPayload](#appmodelselectionpayload) |  | Yes |
+| more_like_this | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string, <br>**Available values:** "", "advanced", "simple" |  | No |
+| retriever_resource | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| sensitive_word_avoidance | [AppModerationPayload](#appmoderationpayload) |  | No |
+| speech_to_text | [AppFeaturePayload](#appfeaturepayload) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [AppSuggestedQuestionsPayload](#appsuggestedquestionspayload) |  | No |
+| text_to_speech | [AppTextToSpeechPayload](#apptexttospeechpayload) |  | No |
+| user_input_form | [ [AppUserInputFormPayload](#appuserinputformpayload) ] |  | No |
 
 #### AppModelConfigResponse
 
@@ -16218,6 +16714,15 @@ AppMCPServer Status Enum
 | updated_by | string |  | Yes |
 | user_input_form | [ [AppTextInputFormResponse](#apptextinputformresponse)<br>[AppSelectFormResponse](#appselectformresponse)<br>[AppParagraphFormResponse](#appparagraphformresponse)<br>[AppNumberFormResponse](#appnumberformresponse)<br>[AppCheckboxFormResponse](#appcheckboxformresponse)<br>[AppFileFormResponse](#appfileformresponse)<br>[AppFileListFormResponse](#appfilelistformresponse)<br>[AppExternalDataToolFormResponse](#appexternaldatatoolformresponse)<br>[AppJsonObjectFormResponse](#appjsonobjectformresponse) ] |  | Yes |
 
+#### AppModelSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | Yes |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
 #### AppModelSelectionResponse
 
 | Name | Type | Description | Required |
@@ -16226,6 +16731,30 @@ AppMCPServer Status Enum
 | mode | [LLMMode](#llmmode)<br>string |  | No |
 | name | string |  | No |
 | provider | string |  | No |
+
+#### AppModerationConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_based_extension_id | string |  | No |
+| inputs_config | [AppModerationContentPayload](#appmoderationcontentpayload) |  | No |
+| keywords | string |  | No |
+| outputs_config | [AppModerationContentPayload](#appmoderationcontentpayload) |  | No |
+
+#### AppModerationContentPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| preset_response | string |  | No |
+
+#### AppModerationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [AppModerationConfigPayload](#appmoderationconfigpayload) |  | No |
+| enabled | boolean |  | No |
+| type | string |  | No |
 
 #### AppNamePayload
 
@@ -16238,6 +16767,12 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | number | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppNumberInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| number | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppPagination
 
@@ -16254,6 +16789,12 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | paragraph | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppParagraphInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| paragraph | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
 
 #### AppPartial
 
@@ -16286,6 +16827,29 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppPromptMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string |  | Yes |
+| text | string |  | Yes |
+
+#### AppProviderAgentToolPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| enabled | boolean |  | No |
+| isDeleted | boolean |  | No |
+| notAuthor | boolean |  | No |
+| plugin_unique_identifier | string |  | No |
+| provider_id | string |  | Yes |
+| provider_name | string |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
+| tool_label | string |  | No |
+| tool_name | string |  | Yes |
+| tool_parameters | object |  | Yes |
+
 #### AppProviderAgentToolResponse
 
 | Name | Type | Description | Required |
@@ -16302,6 +16866,13 @@ AppMCPServer Status Enum
 | tool_name | string |  | Yes |
 | tool_parameters | object |  | Yes |
 
+#### AppRerankingModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_model_name | string |  | No |
+| reranking_provider_name | string |  | No |
+
 #### AppRerankingModelResponse
 
 | Name | Type | Description | Required |
@@ -16309,11 +16880,44 @@ AppMCPServer Status Enum
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
+#### AppRetrievalWeightsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [AppKeywordWeightPayload](#appkeywordweightpayload) |  | Yes |
+| vector_setting | [AppVectorWeightPayload](#appvectorweightpayload) |  | Yes |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
+
+#### AppSelectFieldPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| default | [AppConfigJsonValue](#appconfigjsonvalue) |  | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| hide | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| json_schema | string<br>object |  | No |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
+| variable | string |  | Yes |
+
 #### AppSelectFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | select | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppSelectInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| select | [AppSelectFieldPayload](#appselectfieldpayload) |  | Yes |
 
 #### AppSelectorScope
 
@@ -16387,11 +16991,43 @@ AppMCPServer Status Enum
 | model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | prompt | string |  | No |
 
+#### AppSuggestedQuestionsModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | [LLMMode](#llmmode)<br>string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
+#### AppSuggestedQuestionsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| model | [AppSuggestedQuestionsModelPayload](#appsuggestedquestionsmodelpayload) |  | No |
+| prompt | string |  | No |
+
 #### AppTextInputFormResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | text-input | [AppUserInputFormConfigResponse](#appuserinputformconfigresponse) |  | Yes |
+
+#### AppTextInputPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text-input | [AppInputFieldPayload](#appinputfieldpayload) |  | Yes |
+
+#### AppTextToSpeechPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" | *Enum:* `"disabled"`, `"enabled"` | No |
+| enabled | boolean |  | No |
+| language | string |  | No |
+| voice | string |  | No |
 
 #### AppTextToSpeechResponse
 
@@ -16438,6 +17074,12 @@ AppMCPServer Status Enum
 | type | string |  | No |
 | variable | string |  | Yes |
 
+#### AppUserInputFormPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppUserInputFormPayload | [AppTextInputPayload](#apptextinputpayload)<br>[AppSelectInputPayload](#appselectinputpayload)<br>[AppParagraphInputPayload](#appparagraphinputpayload)<br>[AppNumberInputPayload](#appnumberinputpayload)<br>[AppCheckboxInputPayload](#appcheckboxinputpayload)<br>[AppExternalDataInputPayload](#appexternaldatainputpayload) |  |  |
+
 #### AppVariableConfig
 
 | Name | Type | Description | Required |
@@ -16448,6 +17090,14 @@ AppMCPServer Status Enum
 | type | string |  | Yes |
 
 #### AppVectorSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | Yes |
+| embedding_provider_name | string |  | Yes |
+| vector_weight | number |  | Yes |
+
+#### AppVectorWeightPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -19833,9 +20483,9 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Server description | No |
-| id | string | Server ID | Yes |
+| id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
-| status | string | Server status | No |
+| status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
 
 #### Marketplace
 
@@ -20096,23 +20746,6 @@ Metadata operation data
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
-
-#### ModelConfigRequest
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_mode | object | Agent mode configuration | No |
-| configs | object | Model configuration parameters | No |
-| dataset_configs | object | Dataset configurations | No |
-| model | string | Model name | No |
-| more_like_this | object | More like this configuration | No |
-| opening_statement | string | Opening statement | No |
-| provider | string | Model provider | No |
-| retrieval_model | object | Retrieval model configuration | No |
-| speech_to_text | object | Speech to text configuration | No |
-| suggested_questions | [ string ] | Suggested questions | No |
-| text_to_speech | object | Text to speech configuration | No |
-| tools | [ object ] | Available tools | No |
 
 #### ModelCredentialResponse
 
@@ -22034,6 +22667,13 @@ Resource types understood by access policies.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAgentExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| format | string, <br>**Available values:** "ifpkg", "yaml", <br>**Default:** ifpkg | Export format; defaults to ifpkg<br>*Enum:* `"ifpkg"`, `"yaml"` | No |
+| version_id | string (uuid) | Current published template snapshot ID | Yes |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -22045,6 +22685,8 @@ Resource types understood by access policies.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+| package_url | string | Download URL for a New Agent .ifpkg template | No |
+| version_id | string | Published version for direct local template creation | No |
 
 #### RecommendedAppInfoResponse
 
@@ -23919,6 +24561,19 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
 
+#### TrialAgentConfigQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Must match the current published template snapshot | No |
+
+#### TrialAgentSkillFileQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| path | string | Normalized member path inside the published Skill package | Yes |
+| version_id | string | Must match the current published template snapshot | No |
+
 #### TrialAppAgentMode
 
 | Name | Type | Description | Required |
@@ -25238,6 +25893,7 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+| warning | string | Advisory warning for variable references that can read a skipped branch. Publish still succeeds. | No |
 
 #### WorkflowResponse
 

@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "ອັບເດດທັກສະຂອງພື້ນທີ່ເຮັດວຽກບໍ່ສຳເລັດ.",
   "agentDetail.configure.skills.workspaceSelector.search": "ຄົ້ນຫາທັກສະ...",
   "agentDetail.configure.switchToPreviewConfirm.title": "ສະຫຼັບໄປໂໝດເບິ່ງຕົວຢ່າງບໍ?",
+  "agentDetail.configure.templatePreview.agentUI": "ສ່ວນຕິດຕໍ່ເອເຈນ",
   "agentDetail.configure.title": "ຕັ້ງຄ່າ",
   "agentDetail.configure.tools.add": "ເພີ່ມເຄື່ອງມື",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "ສຳລັບນັກພັດທະນາ",

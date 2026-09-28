@@ -17,7 +17,8 @@ const routerPushMock = vi.hoisted(() => vi.fn())
 
 const trackCreateAppMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useMutation: () => ({
     isPending: mutationMock.isPending,
     mutate: mutationMock.mutate,

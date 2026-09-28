@@ -5,13 +5,12 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgeni
 import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowHistory } from '../hooks/use-workflow-history'
 import TipPopup from '../operator/tip-popup'
+import { useStore } from '../store'
 
 type ChangeHistoryEntry = {
   label: string
@@ -30,13 +29,7 @@ const ViewWorkflowHistory = () => {
   const [open, setOpen] = useState(false)
 
   const { nodesReadOnly } = useNodesReadOnly()
-  const { setCurrentLogItem, setShowMessageLogModal } = useAppStore(
-    useShallow((state) => ({
-      appDetail: state.appDetail,
-      setCurrentLogItem: state.setCurrentLogItem,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-    })),
-  )
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { store, getHistoryLabel } = useWorkflowHistory()
 
@@ -143,6 +136,7 @@ const ViewWorkflowHistory = () => {
       open={open}
       onOpenChange={(nextOpen) => {
         if (nodesReadOnly) return
+        setMessageLogItem(undefined)
         setOpen(nextOpen)
       }}
     >
@@ -162,11 +156,6 @@ const ViewWorkflowHistory = () => {
               focusableWhenDisabled
               aria-label={t(($) => $['changeHistory.title'], { ns: 'workflowHistory' })}
               className="rounded-md"
-              onClick={() => {
-                if (nodesReadOnly) return
-                setCurrentLogItem()
-                setShowMessageLogModal(false)
-              }}
             >
               <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
             </IconButton>
@@ -190,10 +179,6 @@ const ViewWorkflowHistory = () => {
                   <span aria-hidden className="i-ri-close-line size-4 text-text-secondary" />
                 </IconButton>
               }
-              onClick={() => {
-                setCurrentLogItem()
-                setShowMessageLogModal(false)
-              }}
             />
           </div>
           <div
