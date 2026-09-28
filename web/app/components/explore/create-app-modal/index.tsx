@@ -1,6 +1,10 @@
 'use client'
+import type {
+  AppDetailWithSite,
+  UpdateAppPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppIconType } from '@/types/app'
+import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -28,27 +32,17 @@ export type CreateAppModalProps = {
   isEditModal?: boolean
   appName: string
   appDescription: string
-  appIconType: AppIconType | null
-  appIcon: string
+  appIconType: AppDetailWithSite['icon_type']
+  appIcon: AppDetailWithSite['icon']
   appIconBackground?: string | null
   appIconUrl?: string | null
   appMode?: string
   appUseIconAsAnswerIcon?: boolean
   max_active_requests?: number | null
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string
-    description: string
-    use_icon_as_answer_icon?: boolean
-    max_active_requests?: number | null
-  }) => Promise<void>
+  onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
   onHide: () => void
 }
-
-type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
@@ -74,11 +68,32 @@ const CreateAppModal = ({
   const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
-  const [appIcon, setAppIcon] = useState(() =>
-    appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl ?? '' }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
-  )
+  const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
+  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+    selectedIcon ??
+    (appIconType === 'image' && _appIcon
+      ? { type: 'image', fileId: _appIcon, url: appIconUrl ?? '' }
+      : appIconType === 'emoji' && _appIcon
+        ? { type: 'emoji', icon: _appIcon, background: appIconBackground }
+        : undefined)
+  const currentIcon = selectedIcon
+    ? {
+        icon_type: selectedIcon.type,
+        icon: selectedIcon.type === 'emoji' ? selectedIcon.icon : selectedIcon.fileId,
+        icon_background: selectedIcon.type === 'emoji' ? selectedIcon.background : undefined,
+        icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
+      }
+    : {
+        icon_type: appIconType,
+        icon: _appIcon,
+        icon_background: appIconBackground,
+        icon_url: appIconUrl,
+      }
+  const {
+    icon_type: currentIconType,
+    icon: currentIconValue,
+    icon_background: currentIconBackground,
+  } = currentIcon
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
@@ -116,11 +131,11 @@ const CreateAppModal = ({
     }
     const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
     const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
-    const payload: CreateAppPayload = {
+    const payload: UpdateAppPayload = {
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? (appIcon.background ?? undefined) : undefined,
+      icon_type: currentIconType,
+      icon: currentIconValue,
+      icon_background: currentIconBackground,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
@@ -134,7 +149,9 @@ const CreateAppModal = ({
     isAppQuotaUnavailable,
     isAppsFull,
     name,
-    appIcon,
+    currentIconType,
+    currentIconValue,
+    currentIconBackground,
     description,
     useIconAsAnswerIcon,
     onConfirm,
@@ -209,10 +226,12 @@ const CreateAppModal = ({
                     setShowIconPicker(true)
                   }}
                   className="cursor-pointer"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                  iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
+                  icon={currentIcon.icon ?? undefined}
+                  background={currentIcon.icon_background}
+                  imageUrl={
+                    currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
+                  }
                 />
                 <Input
                   id={nameInputId}
@@ -313,11 +332,9 @@ const CreateAppModal = ({
       </Dialog>
       <IconPickerDialog
         open={showIconPicker}
-        defaultValue={appIcon}
+        defaultValue={pickerDefaultValue}
         onOpenChange={setShowIconPicker}
-        onConfirm={(payload) => {
-          setAppIcon(payload)
-        }}
+        onConfirm={setSelectedIcon}
       />
     </>
   )

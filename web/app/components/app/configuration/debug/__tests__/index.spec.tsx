@@ -398,13 +398,6 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
     retriever_resource: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 0,
-      file_size_limit: 0,
-      image_file_size_limit: 0,
-      video_file_size_limit: 0,
-      workflow_file_upload_limit: 0,
-    },
     dataSets: [],
     agentConfig: {
       enabled: false,
@@ -774,6 +767,49 @@ describe('Debug', () => {
 
       fireEvent.click(screen.getByTestId('cannot-query-confirm'))
       expect(screen.queryByTestId('cannot-query-dataset')).not.toBeInTheDocument()
+    })
+
+    it('reports an invalid chat prompt before starting a completion request', async () => {
+      const user = userEvent.setup()
+      const { notify } = renderDebug({
+        contextValue: {
+          mode: AppModeEnum.COMPLETION,
+          isAdvancedMode: true,
+          chatPromptConfig: { prompt: [{ text: 'Missing role' }] },
+        },
+      })
+
+      await user.click(screen.getByTestId('panel-send'))
+
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
+      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+    })
+
+    it('reports an invalid upload count and allows retry after correcting the configuration', async () => {
+      const user = userEvent.setup()
+      const file = { ...mockState.mockFeaturesState.file, enabled: true, number_limits: 1.5 }
+      mockState.mockFeaturesState.file = file
+      const { notify } = renderDebug({ contextValue: { mode: AppModeEnum.COMPLETION } })
+
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
+      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+
+      file.number_limits = 2
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(mockState.mockSendCompletionMessage).toHaveBeenCalledExactlyOnceWith(
+        'app-id',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            file_upload: expect.objectContaining({ number_limits: 2 }),
+          }),
+        }),
+        expect.any(Object),
+      )
     })
 
     it('should send completion request and render completion result', async () => {
