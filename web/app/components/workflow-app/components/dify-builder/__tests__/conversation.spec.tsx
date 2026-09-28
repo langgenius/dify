@@ -2,7 +2,7 @@ import type { ConversationItem, FormField } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { DifyBuilderConversation } from '../conversation'
@@ -259,6 +259,42 @@ describe('DifyBuilderConversation test data form', () => {
     await waitFor(() => {
       expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', true)
     })
+  })
+
+  it.each([
+    {
+      name: 'option outside the available choices',
+      field: { key: 'locale', label: 'Locale', type: 'select', options: ['en', 'zh'] },
+      value: 'fr',
+      message: 'workflow.difyBuilder.validation.invalidOption',
+    },
+    {
+      name: 'text above the field limit',
+      field: { key: 'topic', label: 'Topic', type: 'text', max_length: 3 },
+      value: 'long',
+      message: 'workflow.difyBuilder.validation.maxLength',
+    },
+    {
+      name: 'non-text value in a text field',
+      field: { key: 'topic', label: 'Topic', type: 'text' },
+      value: 123,
+      message: 'workflow.difyBuilder.validation.invalidValue',
+    },
+    {
+      name: 'too many uploaded files',
+      field: { key: 'attachments', label: 'Attachments', type: 'file-list', number_limits: 1 },
+      value: [
+        { type: 'document', transfer_method: 'local_file', upload_file_id: 'file-1' },
+        { type: 'document', transfer_method: 'local_file', upload_file_id: 'file-2' },
+      ],
+      message: 'workflow.difyBuilder.validation.maxFiles',
+    },
+  ])('uses localized validation for $name', ({ field, value, message }) => {
+    renderForm([field as FormField], { [field.key]: value })
+
+    fireEvent.submit(screen.getByRole('form', { name: 'workflow.difyBuilder.cardCategory.form' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
   })
 
   it('renders file inputs as uploaders and emits workflow file DTOs after upload', async () => {
@@ -681,7 +717,7 @@ describe('DifyBuilderConversation test data form', () => {
     },
   )
 
-  it('hides source forms and renders only the durable submitted response', () => {
+  it('hides source forms and renders the submitted values in read-only controls', () => {
     const oldCard: Extract<ConversationItem, { kind: 'form' }> = {
       seq: 2,
       at_version: 2,
@@ -731,9 +767,225 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Provide test data' })).toBeInTheDocument()
-    expect(screen.getByText('new value')).toBeInTheDocument()
+    const topic = screen.getByRole('textbox', { name: 'Topic' })
+    expect(topic).toHaveValue('new value')
+    expect(topic).toHaveAttribute('readonly')
+    expect(screen.queryByDisplayValue('old value')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('restored value')).not.toBeInTheDocument()
+  })
+
+  it('uses the source field types for a read-only submitted form', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 1,
+            at_version: 1,
+            kind: 'form',
+            payload: {
+              variant: 'testdata',
+              title: 'Provide test data',
+              fields: [
+                { key: 'enabled', label: 'Enabled', type: 'checkbox' },
+                { key: 'retries', label: 'Retries', type: 'number' },
+                { key: 'notes', label: 'Notes', type: 'textarea' },
+                { key: 'locale', label: 'Locale', type: 'select', options: ['en', 'zh'] },
+              ],
+              values: {},
+            },
+          },
+          {
+            seq: 2,
+            at_version: 2,
+            kind: 'interaction_response',
+            payload: {
+              interaction_kind: 'form',
+              question: 'Provide test data',
+              fields: [
+                { key: 'enabled', label: 'Enabled', value: true, display_value: 'Yes' },
+                { key: 'retries', label: 'Retries', value: 3, display_value: '3' },
+                { key: 'notes', label: 'Notes', value: 'line one', display_value: 'line one' },
+                { key: 'locale', label: 'Locale', value: 'zh', display_value: 'zh' },
+              ],
+              submitted_data: { enabled: true, retries: 3, notes: 'line one', locale: 'zh' },
+            },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('checkbox', { name: 'Enabled' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Enabled' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.queryByText('Yes')).not.toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Retries' })).toHaveValue(3)
+    expect(screen.getByRole('spinbutton', { name: 'Retries' })).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('line one')
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveAttribute('readonly')
+    const locale = screen.getByRole('combobox', { name: 'Locale' })
+    expect(locale).toHaveTextContent('zh')
+    expect(locale).toHaveAttribute('data-readonly')
+  })
+
+  it('shows submitted files as a read-only file list', () => {
+    const document = {
+      type: 'document',
+      transfer_method: 'local_file',
+      url: '',
+      upload_file_id: 'file-1',
+      name: 'spec.pdf',
+    }
+    const images = [
+      { ...document, upload_file_id: 'file-2', name: 'one.png' },
+      { ...document, upload_file_id: 'file-3', name: 'two.png' },
+    ]
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 1,
+            at_version: 1,
+            kind: 'form',
+            payload: {
+              variant: 'testdata',
+              fields: [
+                { key: 'document', label: 'Document', type: 'file' },
+                { key: 'images', label: 'Images', type: 'files' },
+              ],
+              values: {},
+            },
+          },
+          {
+            seq: 2,
+            at_version: 2,
+            kind: 'interaction_response',
+            payload: {
+              interaction_kind: 'form',
+              question: 'Provide files',
+              fields: [
+                { key: 'document', label: 'Document', value: document, display_value: 'spec.pdf' },
+                {
+                  key: 'images',
+                  label: 'Images',
+                  value: images,
+                  display_value: 'one.png, two.png',
+                },
+              ],
+              submitted_data: { document, images },
+            },
+          },
+        ]}
+      />,
+    )
+
+    const documentGroup = screen.getByRole('group', { name: 'Document' })
+    const imagesGroup = screen.getByRole('group', { name: 'Images' })
+    expect(within(documentGroup).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(documentGroup).getByText('spec.pdf')).toBeInTheDocument()
+    expect(within(imagesGroup).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(imagesGroup).getByText('one.png')).toBeInTheDocument()
+    expect(within(imagesGroup).getByText('two.png')).toBeInTheDocument()
+    expect(within(documentGroup).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(imagesGroup).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('replaces a read-only optimistic form with the durable submitted values', () => {
+    const form: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        title: 'Provide test data',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text' }],
+        values: {},
+      },
+    }
+    const localResponse: Extract<ConversationItem, { kind: 'interaction_response' }> = {
+      seq: 1,
+      at_version: 2,
+      kind: 'interaction_response',
+      payload: {
+        interaction_kind: 'form',
+        question: 'Provide test data',
+        fields: [{ key: 'topic', label: 'Topic', value: 'draft', display_value: 'draft' }],
+        submitted_data: { topic: 'draft' },
+      },
+    }
+    const localInteractionResponse = {
+      afterSequence: 0,
+      baseVersion: 1,
+      item: localResponse,
+      localId: 'local-response-1',
+      sessionId: 'session-1',
+    }
+    const { rerender } = render(
+      <DifyBuilderConversation
+        busy
+        interrupted={false}
+        items={[form]}
+        localInteractionResponse={localInteractionResponse}
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('draft')
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveAttribute('readonly')
+
+    const durableResponse: Extract<ConversationItem, { kind: 'interaction_response' }> = {
+      ...localResponse,
+      payload: {
+        ...localResponse.payload,
+        fields: [{ key: 'topic', label: 'Topic', value: 'saved', display_value: 'saved' }],
+        submitted_data: { topic: 'saved' },
+      },
+    }
+    rerender(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[form, durableResponse]}
+        localInteractionResponse={localInteractionResponse}
+      />,
+    )
+
+    expect(screen.getAllByRole('textbox', { name: 'Topic' })).toHaveLength(1)
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('saved')
+  })
+
+  it('renders a read-only form when the source form is outside loaded history', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 8,
+            at_version: 6,
+            kind: 'interaction_response',
+            payload: {
+              interaction_kind: 'form',
+              question: 'Provide test data',
+              fields: [
+                { key: 'enabled', label: 'Enabled', value: false, display_value: 'No' },
+                { key: 'topic', label: 'Topic', value: 'support', display_value: 'support' },
+              ],
+              submitted_data: { enabled: false, topic: 'support' },
+            },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('checkbox', { name: 'Enabled' })).not.toBeChecked()
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('support')
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveAttribute('readonly')
   })
 
   it('reconciles an optimistic response with its durable conversation item', () => {
