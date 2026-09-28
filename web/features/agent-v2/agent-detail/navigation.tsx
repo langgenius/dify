@@ -1,6 +1,5 @@
 'use client'
 
-import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentDetailSectionKey } from './section'
 import {
   Breadcrumb,
@@ -145,8 +144,8 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         <TooltipContent placement="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
-            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>
@@ -179,8 +178,12 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
   const imageUrl =
-    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
-  const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
+    agent?.icon_type === 'image'
+      ? agent.icon_url
+      : agent?.icon_type === 'link'
+        ? agent.icon
+        : undefined
+  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -207,7 +210,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
                 size="large"
                 rounded
                 iconType={iconType}
-                icon={agent?.icon ?? undefined}
+                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
                 background={agent?.icon_background}
                 imageUrl={imageUrl}
               />

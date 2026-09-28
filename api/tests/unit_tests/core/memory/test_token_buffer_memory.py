@@ -236,6 +236,42 @@ class TestGetHistoryPromptMessages:
     def test_returns_empty_when_no_messages(self, database: Database) -> None:
         assert self._make_memory(database).get_history_prompt_messages() == []
 
+    def test_missing_app_preserves_text_history(self, database: Database) -> None:
+        conversation = _make_conversation()
+        mem = TokenBufferMemory(conversation=conversation, model_instance=_make_model_instance())
+        message = _persist_message(database, conversation.id, query="My query", answer="My answer")
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+
+        with patch.object(memory_module.file_factory, "build_from_mapping") as build_file:
+            result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["My query", "My answer"]
+        build_file.assert_not_called()
+
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def test_workflow_history_uses_callers_uncommitted_app(self, database: Database, mode: AppMode) -> None:
+        mem = self._make_memory(database, mode)
+        workflow_run = _make_workflow_run()
+        workflow = _persist_workflow(database, workflow_id=workflow_run.workflow_id)
+        message = _persist_message(database, mem.conversation.id, workflow_run_id=workflow_run.id)
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, mem.conversation.app_id)
+        assert app is not None
+        app.tenant_id = str(uuid4())
+        repository = MagicMock()
+        repository.get_workflow_run_by_id.return_value = workflow_run
+
+        with patch.object(
+            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+        ):
+            result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["user query", "hello"]
+        repository.get_workflow_run_by_id.assert_called_once_with(
+            tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+        )
+        assert database.session.get(Workflow, workflow.id) is workflow
+
     def test_skips_newest_message_without_answer(self, database: Database) -> None:
         mem = self._make_memory(database)
         message = _persist_message(database, mem.conversation.id, answer="", answer_tokens=0)

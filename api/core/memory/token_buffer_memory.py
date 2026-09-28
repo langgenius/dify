@@ -303,10 +303,11 @@ class TokenBufferMemory:
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
+        session = db.session()
         history = self.load_history(
             conversation=self.conversation,
-            app_record=self.conversation.app,
-            session=db.session(),
+            app_record=self.conversation.app(session=session),
+            session=session,
             message_limit=message_limit,
         )
         return history.get_prompt_messages(model_instance=self.model_instance, max_token_limit=max_token_limit)

@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
@@ -122,7 +123,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 )
 class MessageListApi(Resource):
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageListQuery)
@@ -130,7 +131,7 @@ class MessageListApi(Resource):
     def get(
         self, query: MessageListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
-        page = application_services().installed_app_messages.get_page(
+        page = application_services().installed_apps.messages.get_page(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=query.conversation_id,
@@ -146,7 +147,7 @@ class MessageListApi(Resource):
 )
 class MessageFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageFeedbackPayload)
@@ -158,7 +159,7 @@ class MessageFeedbackApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> dict[str, object]:
-        application_services().installed_app_messages.set_feedback(
+        application_services().installed_apps.messages.set_feedback(
             installed_app=installed_app,
             account_id=request_context.account_id,
             message_id=str(message_id),
@@ -174,7 +175,7 @@ class MessageFeedbackApi(Resource):
 )
 class MessageMoreLikeThisApi(Resource):
     @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(MoreLikeThisQuery)
@@ -186,7 +187,7 @@ class MessageMoreLikeThisApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> Response:
-        response = application_services().installed_app_generation.generate_more_like_this(
+        response = application_services().installed_apps.generation.generate_more_like_this(
             installed_app=installed_app,
             account_id=request_context.account_id,
             message_id=str(message_id),
@@ -201,7 +202,7 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_message_errors
@@ -209,7 +210,7 @@ class MessageSuggestedQuestionApi(Resource):
         self, request_context: RequestContext, installed_app: InstalledAppRef, message_id: UUID
     ) -> dict[str, object]:
         try:
-            questions = application_services().installed_app_messages.get_suggested_questions(
+            questions = application_services().installed_apps.messages.get_suggested_questions(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 message_id=str(message_id),

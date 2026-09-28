@@ -455,14 +455,15 @@ class AgentTextToSpeechVoicesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
+    @model_validate(TextToSpeechVoiceQuery)
     def get(
         self,
+        req_data: TextToSpeechVoiceQuery,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
         agent_id: UUID,
     ):
-        query = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
         enforce_rbac_checks(
             tenant_id=current_tenant_id,
             account_id=current_user.id,
@@ -474,4 +475,4 @@ class AgentTextToSpeechVoicesApi(Resource):
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=query.language)
+        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=req_data.language)
