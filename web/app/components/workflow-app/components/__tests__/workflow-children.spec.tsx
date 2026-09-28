@@ -3,11 +3,14 @@ import { act, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import * as React from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import WorkflowChildren from '../workflow-children'
 
 type WorkflowStoreState = {
@@ -201,15 +204,19 @@ vi.mock('@/app/components/workflow/features', () => ({
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   default: ({
+    appId,
+    appMode,
     onCancel,
     onBackup,
     onImport,
   }: {
+    appId: string
+    appMode: AppModeEnum
     onCancel: () => void
     onBackup: () => void
     onImport: () => void
   }) => (
-    <div data-testid="update-dsl-modal">
+    <div data-testid="update-dsl-modal" data-app-id={appId} data-app-mode={appMode}>
       <button type="button" onClick={onCancel}>
         cancel-import-dsl
       </button>
@@ -359,6 +366,9 @@ describe('WorkflowChildren', () => {
 
   it('should render feature panel, import modal actions, and default workflow chrome', async () => {
     const user = userEvent.setup()
+    useAppStore.setState({
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: AppModeEnum.WORKFLOW }),
+    })
     workflowStoreState = {
       ...workflowStoreState,
       showFeaturesPanel: true,
@@ -371,7 +381,8 @@ describe('WorkflowChildren', () => {
     expect(screen.getByTestId('workflow-header')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-panel')).toBeInTheDocument()
     expect(await screen.findByTestId('workflow-features')).toBeInTheDocument()
-    expect(screen.getByTestId('update-dsl-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('update-dsl-modal')).toHaveAttribute('data-app-id', 'app-1')
+    expect(screen.getByTestId('update-dsl-modal')).toHaveAttribute('data-app-mode', 'workflow')
 
     await user.click(screen.getByRole('button', { name: /cancel-import-dsl/i }))
     await user.click(screen.getByRole('button', { name: /backup-dsl/i }))

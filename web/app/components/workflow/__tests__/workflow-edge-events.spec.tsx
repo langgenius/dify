@@ -6,7 +6,7 @@ import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { FlowType } from '@/types/common'
-import { WORKFLOW_DATA_UPDATE } from '../constants'
+import { WORKFLOW_DATA_UPDATE, WORKFLOW_DSL_IMPORT_COMMITTED } from '../constants'
 import { Workflow } from '../index'
 import { ControlMode } from '../types'
 import { renderWorkflowComponent } from './workflow-test-env'
@@ -22,6 +22,8 @@ const collaborationBridge = vi.hoisted(() => ({
   canFlushGraphOnPageClose: vi.fn(),
   canUseLocalDraftFallback: vi.fn(),
   isConnected: vi.fn(),
+  ownsReactFlowStore: vi.fn(),
+  replaceGraphFromCommittedDraft: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -188,6 +190,8 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
     isConnected: collaborationBridge.isConnected,
+    ownsReactFlowStore: collaborationBridge.ownsReactFlowStore,
+    replaceGraphFromCommittedDraft: collaborationBridge.replaceGraphFromCommittedDraft,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -550,6 +554,8 @@ describe('Workflow edge event wiring', () => {
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
     collaborationBridge.isConnected.mockReturnValue(true)
+    collaborationBridge.ownsReactFlowStore.mockReturnValue(true)
+    collaborationBridge.replaceGraphFromCommittedDraft.mockReturnValue(true)
     eventEmitter = new EventEmitter<EventEmitterValue>()
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -643,6 +649,92 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+  })
+
+  it('applies a sidebar DSL import to the matching canvas after replacing its collaboration graph', () => {
+    const { store } = renderSubject({
+      initialStoreState: {
+        appId: 'app-1',
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
+      },
+    })
+
+    act(() => {
+      eventEmitter.emit({
+        type: WORKFLOW_DSL_IMPORT_COMMITTED,
+        payload: {
+          appId: 'app-1',
+          workflowData: { nodes: [], edges: [], hash: 'imported-hash' },
+        },
+      })
+    })
+
+    expect(collaborationBridge.replaceGraphFromCommittedDraft).toHaveBeenCalledWith(
+      'app-1',
+      reactFlowBridge.store,
+      [],
+      [],
+    )
+    expect(screen.queryByText('Workflow node node-1')).not.toBeInTheDocument()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
+    expect(store.getState().syncWorkflowDraftHash).toBe('imported-hash')
+  })
+
+  it('ignores a sidebar DSL import for another app', () => {
+    const { store } = renderSubject({
+      initialStoreState: {
+        appId: 'app-2',
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
+      },
+    })
+
+    act(() => {
+      eventEmitter.emit({
+        type: WORKFLOW_DSL_IMPORT_COMMITTED,
+        payload: { appId: 'app-1', workflowData: { nodes: [], edges: [] } },
+      })
+    })
+
+    expect(collaborationBridge.replaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+    expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'edge-1' })
+  })
+
+  it.each(['disconnected', 'owned by another canvas'] as const)(
+    'applies the imported local graph when collaboration is %s',
+    (collaborationState) => {
+      collaborationBridge.isConnected.mockReturnValue(collaborationState !== 'disconnected')
+      collaborationBridge.ownsReactFlowStore.mockReturnValue(
+        collaborationState !== 'owned by another canvas',
+      )
+      renderSubject({ initialStoreState: { appId: 'app-1' } })
+
+      act(() => {
+        eventEmitter.emit({
+          type: WORKFLOW_DSL_IMPORT_COMMITTED,
+          payload: { appId: 'app-1', workflowData: { nodes: [], edges: [] } },
+        })
+      })
+
+      expect(collaborationBridge.replaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+      expect(screen.queryByText('Workflow node node-1')).not.toBeInTheDocument()
+    },
+  )
+
+  it('keeps the old canvas when collaboration rejects a committed import', () => {
+    collaborationBridge.replaceGraphFromCommittedDraft.mockReturnValueOnce(false)
+    renderSubject({ initialStoreState: { appId: 'app-1' } })
+
+    expect(() =>
+      act(() => {
+        eventEmitter.emit({
+          type: WORKFLOW_DSL_IMPORT_COMMITTED,
+          payload: { appId: 'app-1', workflowData: { nodes: [], edges: [] } },
+        })
+      }),
+    ).toThrow('Collaborative graph is not ready to apply the imported draft.')
+
+    expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
   })
 
   it.each(['app-1', 'app-2'])(

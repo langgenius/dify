@@ -1,10 +1,10 @@
 'use client'
 
-import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
 import type {
-  WorkflowDataUpdateEvent,
   WorkflowDataUpdatePayload,
+  WorkflowDSLImportCommittedEvent,
 } from './workflow-data-update-event'
 import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -13,10 +13,8 @@ import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
@@ -25,8 +23,7 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
-import { WORKFLOW_DATA_UPDATE } from './constants'
-import { useStore, useWorkflowStore } from './store'
+import { WORKFLOW_DSL_IMPORT_COMMITTED } from './constants'
 import {
   getImportNotificationPayload,
   isImportCompleted,
@@ -36,6 +33,8 @@ import {
 import { initialEdges, initialNodes } from './utils'
 
 type UpdateDSLModalProps = {
+  appId: string
+  appMode: AppMode
   onCancel: () => void
   onBackup: () => void
   onImport?: () => void
@@ -47,12 +46,8 @@ type PreparedImport = {
   refreshError?: string
 }
 
-const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
+const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
-  const appId = useStore((state) => state.appId)
-  const appMode = useAppStore((state) => state.appDetail?.mode)
-  const workflowStore = useWorkflowStore()
-  const reactFlowStore = useStoreApi()
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
   const { mutateAsync: requestImport } = useMutation(
@@ -113,7 +108,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
     if (!result) return
     const { response, workflowData, refreshError } = result
     if (isImportCompleted(response.status)) {
-      if (!response.app_id) {
+      if (response.app_id !== appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
@@ -133,36 +128,28 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           : undefined,
       )
 
-      const cannotApplyGraph =
-        workflowData &&
-        collaborationManager.ownsReactFlowStore(reactFlowStore) &&
-        collaborationManager.isConnected() &&
-        !collaborationManager.replaceGraphFromCommittedDraft(
-          response.app_id,
-          reactFlowStore,
-          workflowData.nodes,
-          workflowData.edges,
-        )
-      if (refreshError || cannotApplyGraph) {
+      let applyError = refreshError
+      if (!applyError && workflowData) {
+        try {
+          eventEmitter?.emit({
+            type: WORKFLOW_DSL_IMPORT_COMMITTED,
+            payload: { appId, workflowData },
+          } satisfies WorkflowDSLImportCommittedEvent)
+        } catch (error) {
+          applyError = error instanceof Error ? error.message : String(error)
+        }
+      }
+      if (applyError) {
         collaborationManager.emitWorkflowUpdate(response.app_id)
         toast.error(
           t(($) => $.error, { ns: 'common' }),
-          {
-            description:
-              refreshError || 'Collaborative graph is not ready to apply the imported draft.',
-          },
+          { description: applyError },
         )
         // Reload the committed graph before this canvas can resume autosaving.
         window.location.reload()
         return
       }
 
-      if (workflowData) {
-        eventEmitter?.emit({
-          type: WORKFLOW_DATA_UPDATE,
-          payload: { ...workflowData, target: workflowStore },
-        } satisfies WorkflowDataUpdateEvent)
-      }
       collaborationManager.emitWorkflowUpdate(response.app_id)
       onImport?.()
       dependencyMutation.mutate(response.app_id, {
@@ -193,7 +180,6 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
 
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!appId || !appMode) return
       try {
         if (file.name.toLowerCase().endsWith('.ifpkg'))
           return prepareImport(await requestImport({ body: { file, app_id: appId } }))
@@ -231,7 +217,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
     importMutation.isPending || confirmImportMutation.isPending || dependencyMutation.isPending
 
   const handleImport: MouseEventHandler = () => {
-    if (isImporting || !currentFile || !appId || !appMode) return
+    if (isImporting || !currentFile) return
     importMutation.mutate(currentFile, {
       onSuccess: handleImportResponse,
       onError: notifyImportError,
@@ -313,7 +299,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
             <Button
-              disabled={isImporting || !currentFile || !appId || !appMode}
+              disabled={isImporting || !currentFile}
               variant="primary"
               tone="destructive"
               onClick={handleImport}

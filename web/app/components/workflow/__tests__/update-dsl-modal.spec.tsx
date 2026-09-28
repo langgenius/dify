@@ -4,19 +4,15 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ReactFlowProvider } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { AppModeEnum } from '@/types/app'
 import { useStore as usePluginDependenciesStore } from '../plugin-dependency/store'
 import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
-const mockWorkflowStore = vi.hoisted(() => ({}))
-const mockOwnsReactFlowStore = vi.hoisted(() => vi.fn(() => true))
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
-const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
-const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -73,25 +69,7 @@ vi.mock('@/service/workflow', () => ({
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitWorkflowUpdate: mockEmitWorkflowUpdate,
-    isConnected: mockIsCollaborationConnected,
-    ownsReactFlowStore: mockOwnsReactFlowStore,
-    replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
   },
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => mockWorkflowStore,
-  useStore: <T,>(selector: (state: { appId: string }) => T) => selector({ appId: 'app-1' }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -106,16 +84,14 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 
 function render(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-  return rtlRender(
-    <QueryClientProvider client={client}>
-      <ReactFlowProvider>{children}</ReactFlowProvider>
-    </QueryClientProvider>,
-  )
+  return rtlRender(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
 }
 
 describe('UpdateDSLModal', () => {
   const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
+    appId: 'app-1',
+    appMode: AppModeEnum.CHAT,
     onCancel: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),
@@ -148,10 +124,7 @@ describe('UpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
-    mockIsCollaborationConnected.mockReturnValue(true)
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
     mockCheckDependencies.mockResolvedValue({ leaked_dependencies: [] })
-    mockOwnsReactFlowStore.mockReturnValue(true)
     usePluginDependenciesStore.setState({ dependencies: [] })
   })
 
@@ -185,7 +158,6 @@ describe('UpdateDSLModal', () => {
       resolveDraft({ graph: { nodes: [], edges: [] }, features: {}, hash: 'old-app-hash' })
     })
 
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
     expect(mockEmit).not.toHaveBeenCalled()
     expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     expect(defaultProps.onImport).not.toHaveBeenCalled()
@@ -206,7 +178,6 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
     await waitFor(() => expect(mockCheckDependencies).toHaveBeenCalledWith({ app_id: 'app-1' }))
     expect(mockEmit).toHaveBeenCalledOnce()
-    expect(mockReplaceGraphFromCommittedDraft).toHaveBeenCalledOnce()
     expect(
       screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
     ).toHaveAttribute('aria-disabled', 'true')
@@ -336,7 +307,8 @@ describe('UpdateDSLModal', () => {
 
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'WORKFLOW_DATA_UPDATE',
+        type: 'WORKFLOW_DSL_IMPORT_COMMITTED',
+        payload: expect.objectContaining({ appId: 'app-1' }),
       }),
     )
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
@@ -344,7 +316,7 @@ describe('UpdateDSLModal', () => {
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
+  it('sends the committed draft to the canvas before notifying other clients', async () => {
     const importedNode = {
       id: 'imported-start',
       type: 'custom',
@@ -366,46 +338,29 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
-    const [appId, _store, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
-    expect(appId).toBe('app-1')
-    expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
-    expect(edges).toEqual([])
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'WORKFLOW_DATA_UPDATE',
+        type: 'WORKFLOW_DSL_IMPORT_COMMITTED',
         payload: expect.objectContaining({
-          nodes,
-          edges,
-          hash: 'imported-hash',
-          target: mockWorkflowStore,
+          appId: 'app-1',
+          workflowData: expect.objectContaining({
+            nodes: [expect.objectContaining({ id: 'imported-start' })],
+            edges: [],
+            hash: 'imported-hash',
+          }),
         }),
       }),
-    )
-    expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
-      mockEmit.mock.invocationCallOrder[0]!,
     )
     expect(mockEmit.mock.invocationCallOrder[0]).toBeLessThan(
       mockEmitWorkflowUpdate.mock.invocationCallOrder[0]!,
     )
   })
 
-  it('updates the imported canvas when collaboration is disconnected', async () => {
-    mockIsCollaborationConnected.mockReturnValue(false)
-    renderModal()
-
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
-
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
-  })
-
   it('reloads instead of showing a graph that collaboration cannot accept', async () => {
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(false)
+    mockEmit.mockImplementationOnce(() => {
+      throw new Error('Collaborative graph is not ready to apply the imported draft.')
+    })
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
@@ -414,7 +369,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
-    expect(mockEmit).not.toHaveBeenCalled()
+    expect(mockEmit).toHaveBeenCalledOnce()
     expect(defaultProps.onCancel).not.toHaveBeenCalled()
     reload.mockRestore()
   })
@@ -617,7 +572,6 @@ describe('UpdateDSLModal', () => {
     expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
     expect(defaultProps.onCancel).not.toHaveBeenCalled()
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
     expect(mockCheckDependencies).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     reload.mockRestore()

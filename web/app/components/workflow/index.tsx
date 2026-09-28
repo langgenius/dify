@@ -105,7 +105,10 @@ import SyncingDataModal from './syncing-data-modal'
 import { ControlMode, WorkflowRunningStatus } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { WorkflowContextmenu } from './workflow-contextmenu'
-import { isWorkflowDataUpdateEvent } from './workflow-data-update-event'
+import {
+  isWorkflowDataUpdateEvent,
+  isWorkflowDSLImportCommittedEvent,
+} from './workflow-data-update-event'
 import 'reactflow/dist/style.css'
 import './style.css'
 
@@ -311,22 +314,42 @@ export const Workflow: FC<WorkflowProps> = memo(
     )
 
     eventEmitter?.useSubscription((event) => {
+      let payload: WorkflowDataUpdatePayload
       if (isWorkflowDataUpdateEvent(event)) {
-        const { target, ...payload } = event.payload
+        const { target, ...data } = event.payload
         if (target !== workflowStore) return
-        setNodes(payload.nodes)
-        store.getState().setNodes(payload.nodes)
-        setEdges(payload.edges)
-        workflowStore.setState({ contextMenuTarget: undefined })
-
-        if (payload.viewport) reactflow.setViewport(payload.viewport)
-
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
-
-        onWorkflowDataUpdate?.(payload)
-
-        setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+        payload = data
+      } else if (isWorkflowDSLImportCommittedEvent(event)) {
+        const { appId, workflowData } = event.payload
+        if (workflowStore.getState().appId !== appId) return
+        if (
+          collaborationManager.ownsReactFlowStore(store) &&
+          collaborationManager.isConnected() &&
+          !collaborationManager.replaceGraphFromCommittedDraft(
+            appId,
+            store,
+            workflowData.nodes,
+            workflowData.edges,
+          )
+        )
+          throw new Error('Collaborative graph is not ready to apply the imported draft.')
+        payload = workflowData
+      } else {
+        return
       }
+
+      setNodes(payload.nodes)
+      store.getState().setNodes(payload.nodes)
+      setEdges(payload.edges)
+      workflowStore.setState({ contextMenuTarget: undefined })
+
+      if (payload.viewport) reactflow.setViewport(payload.viewport)
+
+      if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+
+      onWorkflowDataUpdate?.(payload)
+
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
 
     useEffect(() => {

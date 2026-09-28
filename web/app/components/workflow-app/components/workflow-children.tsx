@@ -6,6 +6,7 @@ import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -64,6 +65,8 @@ const getTriggerPluginNodeData = (
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
+  const appId = useStore((s) => s.appId)
+  const appMode = useAppStore((s) => (s.appDetail?.id === appId ? s.appDetail?.mode : undefined))
   const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
   const showImportDSLModal = useStore((s) => s.showImportDSLModal)
@@ -172,8 +175,10 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {canImportExportDSL && showImportDSLModal && (
+      {canImportExportDSL && showImportDSLModal && appId && appMode && (
         <UpdateDSLModal
+          appId={appId}
+          appMode={appMode}
           onCancel={() => setShowImportDSLModal(false)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}
