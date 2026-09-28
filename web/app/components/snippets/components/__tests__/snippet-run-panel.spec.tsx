@@ -65,9 +65,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/form-i
   }) => (
     <div>
       <span>{`${payload.label}:${payload.type}:${String(value)}`}</span>
-      {payload.type === InputVarType.textInput && (
-        <input aria-label={payload.label} />
-      )}
+      {payload.type === InputVarType.textInput && <input aria-label={payload.label} />}
       <button type="button" onClick={() => onChange('changed topic')}>
         {`change-${payload.variable}`}
       </button>
@@ -148,7 +146,13 @@ describe('SnippetRunPanel', () => {
           task_id: 'task-1',
           resultText: 'final answer',
           tracing: [],
-          result: { status: WorkflowRunningStatus.Succeeded, files: [] },
+          result: {
+            status: WorkflowRunningStatus.Succeeded,
+            files: [],
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs_truncated: false,
+          },
         },
       },
     })
