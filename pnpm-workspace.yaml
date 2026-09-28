@@ -58,7 +58,7 @@ overrides:
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
   solid-js: 1.9.15
-  string-width: ~8.2.2
+  string-width: ~8.3.0
   tar@<=7.5.15: ^7.5.16
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
