@@ -314,20 +314,10 @@ class WorkflowRunNodeExecutionListApi(Resource):
         """
         Get workflow run node execution list
         """
-<<<<<<< HEAD
         node_executions = application_services().workflow_runs.get_workflow_run_node_executions(
             request_context,
             app_id=app_model.id,
-            run_id=str(run_id),
-=======
-        run_id_str = run_id
-
-        workflow_run_service = WorkflowRunService()
-        node_executions = workflow_run_service.get_workflow_run_node_executions(
-            app_model=app_model,
-            run_id=run_id_str,
-            user=current_user,
->>>>>>> 493909dc14 (fix: fix ci)
+            run_id=run_id,
         )
 
         return dump_response(WorkflowRunNodeExecutionListResponse, {"data": node_executions})

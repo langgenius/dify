@@ -301,7 +301,6 @@ class DeviceFlowRedis:
             args=[owner_id],
         )
 
-<<<<<<< HEAD
     def _transition(
         self,
         *,
@@ -321,113 +320,6 @@ class DeviceFlowRedis:
                     json.dumps(poll_payload) if poll_payload is not None else "",
                     ttl_floor,
                 ],
-=======
-    # Revoke any existing active token for this (subject, client, device) combination.
-    # PostgreSQL's ON CONFLICT doesn't support partial unique indexes (those with WHERE clauses),
-    # so we use a manual revoke-then-insert pattern instead.
-    if prior:
-        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=func.now()))
-
-    # Insert the new token.
-    new_token = OAuthAccessToken(
-        subject_email=subject_email,
-        subject_issuer=subject_issuer,
-        account_id=account_id,
-        client_id=client_id,
-        device_label=device_label,
-        prefix=prefix,
-        token_hash=new_hash,
-        expires_at=expires_at,
-    )
-    session.add(new_token)
-    session.flush()
-
-    token_id = new_token.id
-    session.commit()
-
-    return UpsertOutcome(
-        token_id=uuid.UUID(token_id),
-        rotated=prior is not None,
-        old_hash=old_hash,
-    )
-
-
-# ============================================================================
-# TTL policy — days new OAuth tokens live
-# ============================================================================
-
-
-DEFAULT_OAUTH_TTL_DAYS = 14
-MIN_TTL_DAYS = 1
-MAX_TTL_DAYS = 365
-
-_TTL_ENV_VAR = "OAUTH_TTL_DAYS"
-
-
-def oauth_ttl_days(tenant_id: str | None = None) -> int:
-    """``OAUTH_TTL_DAYS`` env, else default. EE tenant-level lookup
-    is deferred; when it lands it wins over the env (Redis-cached 60s).
-    """
-    _ = tenant_id
-
-    raw = os.environ.get(_TTL_ENV_VAR)
-    if raw is None:
-        return DEFAULT_OAUTH_TTL_DAYS
-    try:
-        value = int(raw)
-    except ValueError:
-        logger.warning(
-            "%s=%r is not an int; falling back to %d",
-            _TTL_ENV_VAR,
-            raw,
-            DEFAULT_OAUTH_TTL_DAYS,
-        )
-        return DEFAULT_OAUTH_TTL_DAYS
-    if value < MIN_TTL_DAYS:
-        logger.warning("%s=%d below min %d; clamping", _TTL_ENV_VAR, value, MIN_TTL_DAYS)
-        return MIN_TTL_DAYS
-    if value > MAX_TTL_DAYS:
-        logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, MAX_TTL_DAYS)
-        return MAX_TTL_DAYS
-    return value
-
-
-def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
-    if ctx.subject_type == SubjectType.ACCOUNT:
-        return (OAuthAccessToken.account_id == str(ctx.account_id),)
-    return (
-        OAuthAccessToken.subject_email == ctx.subject_email,
-        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
-        OAuthAccessToken.account_id.is_(None),
-    )
-
-
-def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -> list[OAuthAccessToken]:
-    return list(
-        session.execute(
-            select(OAuthAccessToken)
-            .where(
-                and_(
-                    *subject_match_clauses(ctx),
-                    OAuthAccessToken.revoked_at.is_(None),
-                    OAuthAccessToken.token_hash.is_not(None),
-                    OAuthAccessToken.expires_at > now,
-                )
-            )
-            .order_by(OAuthAccessToken.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-
-def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
-    row = session.execute(
-        select(OAuthAccessToken.id).where(
-            and_(
-                OAuthAccessToken.id == token_id,
-                *subject_match_clauses(ctx),
->>>>>>> 493909dc14 (fix: fix ci)
             )
         )
         if result in (0, -2):
