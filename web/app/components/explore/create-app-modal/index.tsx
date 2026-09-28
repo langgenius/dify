@@ -108,7 +108,12 @@ const CreateAppModal = ({
     appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
-    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
+    if (
+      confirmLoading ||
+      confirmDisabled ||
+      (!isEditModal && (isAppQuotaUnavailable || isAppsFull))
+    )
+      return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -131,6 +136,7 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmLoading,
     confirmDisabled,
     isEditModal,
     isAppQuotaUnavailable,
@@ -158,6 +164,7 @@ const CreateAppModal = ({
             if (
               !show ||
               submitDisabled ||
+              confirmLoading ||
               showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
