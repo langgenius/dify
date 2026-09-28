@@ -16,7 +16,9 @@ from services.model_billing_migration_service import ModelBillingMigrationServic
 FIXTURES = Path(__file__).resolve().parents[3] / "contracts/fixtures"
 
 
-def test_go_manual_fixture_is_accepted_by_actual_core_cas(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+def test_go_manual_fixture_is_accepted_by_actual_core_cas(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     manifest = json.loads((FIXTURES / "tokener_migration_manifest_v1.json").read_text())
     request = json.loads((FIXTURES / "tokener_manual_replan_v1.json").read_text())
     tenant = Tenant(name="Shared Go/Core manual repair")

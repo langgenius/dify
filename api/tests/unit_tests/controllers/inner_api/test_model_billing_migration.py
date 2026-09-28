@@ -13,7 +13,7 @@ from services.model_billing_migration_service import MigrationError, ModelBillin
 from tests.unit_tests.config_override import apply_config_overrides
 
 
-def test_control_write_requires_inner_auth(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_control_write_requires_inner_auth(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, INNER_API=True, INNER_API_KEY="TEST_INTERNAL_KEY")
     service = MagicMock()
     monkeypatch.setattr(ModelBillingMigrationService, "prepare", service)
@@ -23,7 +23,7 @@ def test_control_write_requires_inner_auth(app: Flask, monkeypatch: pytest.Monke
     service.assert_not_called()
 
 
-def test_unknown_fields_rejected_without_side_effect(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_unknown_fields_rejected_without_side_effect(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, INNER_API=True, INNER_API_KEY="TEST_INTERNAL_KEY")
     service = MagicMock()
     monkeypatch.setattr(ModelBillingMigrationService, "prepare", service)
@@ -34,10 +34,10 @@ def test_unknown_fields_rejected_without_side_effect(app: Flask, monkeypatch: py
     service.assert_not_called()
 
 
-def test_status_no_store_and_no_secret_fields(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_status_no_store_and_no_secret_fields(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, INNER_API=True, INNER_API_KEY="TEST_INTERNAL_KEY")
     tenant_id = uuid4()
-    status = {
+    status: dict[str, object] = {
         "api_version": 1,
         "tenant_id": str(tenant_id),
         "migration_id": str(uuid4()),
@@ -63,7 +63,7 @@ def test_status_no_store_and_no_secret_fields(app: Flask, monkeypatch: pytest.Mo
     service.assert_called_once_with(str(tenant_id), None)
 
 
-def test_operation_not_found_remains_explicit(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_operation_not_found_remains_explicit(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, INNER_API=True, INNER_API_KEY="TEST_INTERNAL_KEY")
     monkeypatch.setattr(
         ModelBillingMigrationService,

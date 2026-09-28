@@ -1,13 +1,15 @@
 import json
 
 from flask import Flask
+from flask.testing import FlaskCliRunner
+from pytest_mock import MockerFixture
 
 import model_billing_migration_commands as commands
 
 TENANT = "11111111-1111-4111-8111-111111111111"
 
 
-def runner(mocker, *, admitted=True):
+def runner(mocker: MockerFixture, *, admitted: bool = True) -> FlaskCliRunner:
     mocker.patch.object(commands.ModelBillingMigrationService, "admitted", return_value=admitted)
     mocker.patch.object(commands, "migration_inventory", return_value={"inventory_hash": "sha256:" + "a" * 64})
     app = Flask(__name__)
@@ -15,7 +17,7 @@ def runner(mocker, *, admitted=True):
     return app.test_cli_runner()
 
 
-def args(*extra):
+def args(*extra: str) -> list[str]:
     return [
         "tokener-migration",
         "prepare",
@@ -29,7 +31,7 @@ def args(*extra):
     ]
 
 
-def test_prepare_is_read_only_by_default_and_identity_does_not_drift(mocker):
+def test_prepare_is_read_only_by_default_and_identity_does_not_drift(mocker: MockerFixture) -> None:
     cli = runner(mocker)
     post = mocker.patch.object(commands, "_post")
     first = cli.invoke(args=args())
@@ -40,7 +42,7 @@ def test_prepare_is_read_only_by_default_and_identity_does_not_drift(mocker):
     post.assert_not_called()
 
 
-def test_apply_only_prepares_not_trial_or_activation(mocker):
+def test_apply_only_prepares_not_trial_or_activation(mocker: MockerFixture) -> None:
     cli = runner(mocker)
     post = mocker.patch.object(commands, "_post")
     result = cli.invoke(args=args("--apply"))
@@ -50,7 +52,7 @@ def test_apply_only_prepares_not_trial_or_activation(mocker):
     assert "amount" not in result.output
 
 
-def test_prepare_rejects_unlisted_tenant_before_external_work(mocker):
+def test_prepare_rejects_unlisted_tenant_before_external_work(mocker: MockerFixture) -> None:
     cli = runner(mocker, admitted=False)
     post = mocker.patch.object(commands, "_post")
     assert cli.invoke(args=args("--apply")).exit_code == 1

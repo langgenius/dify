@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import call, patch
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.model_billing_profile import (
@@ -46,7 +47,9 @@ def _tokener_metering() -> dict[str, object]:
     }
 
 
-def test_migration_processing_is_not_displayed_as_zero_or_old_credit_balance(mocker, sqlite_session: Session):
+def test_migration_processing_is_not_displayed_as_zero_or_old_credit_balance(
+    mocker: MockerFixture, sqlite_session: Session
+) -> None:
     mocker.patch("core.model_invocation_routing.migration_display_status", return_value="processing")
     get_pool = mocker.patch.object(WorkspaceService, "get_effective_credit_pool")
     get_metering = mocker.patch("services.workspace_service.BillingService.get_tokener_metering")
@@ -370,8 +373,8 @@ def test_get_tenant_info_tokener_profile_skips_legacy_credit_pool(sqlite_session
 
 @pytest.mark.parametrize("migration_status", ["processing", "active"])
 def test_workspace_summary_preserves_plan_without_reading_fenced_legacy_balance(
-    mocker, migration_status, sqlite_session: Session
-):
+    mocker: MockerFixture, migration_status: str, sqlite_session: Session
+) -> None:
     tenant = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
     mocker.patch("core.model_invocation_routing.migration_display_status", return_value=migration_status)
     mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -394,8 +397,8 @@ def test_workspace_summary_preserves_plan_without_reading_fenced_legacy_balance(
 
 @pytest.mark.parametrize("migration_status", ["processing", "active"])
 def test_tenant_info_preserves_plan_without_reading_fenced_legacy_balance(
-    mocker, migration_status, sqlite_session: Session
-):
+    mocker: MockerFixture, migration_status: str, sqlite_session: Session
+) -> None:
     tenant = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
     mocker.patch("services.workspace_service.current_user", SimpleNamespace(id="account-1"))
     mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -421,7 +424,7 @@ def test_tenant_info_preserves_plan_without_reading_fenced_legacy_balance(
     get_pool.assert_not_called()
 
 
-def test_preparation_still_displays_legacy_balance(mocker, sqlite_session: Session):
+def test_preparation_still_displays_legacy_balance(mocker: MockerFixture, sqlite_session: Session) -> None:
     mocker.patch("core.model_invocation_routing.migration_display_status", return_value="preparing")
     mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch(
@@ -441,8 +444,8 @@ def test_preparation_still_displays_legacy_balance(mocker, sqlite_session: Sessi
 
 @pytest.mark.parametrize("latest_status", ["processing", "active"])
 def test_balance_read_claim_race_uses_refreshed_authority_without_trial_fallback(
-    mocker, latest_status, sqlite_session: Session
-):
+    mocker: MockerFixture, latest_status: str, sqlite_session: Session
+) -> None:
     # Provider display reads first, effective summary reads second, and only the
     # exact Billing denial triggers a third authoritative read after claim wins.
     status = mocker.patch(
@@ -472,7 +475,9 @@ def test_balance_read_claim_race_uses_refreshed_authority_without_trial_fallback
 
 
 @pytest.mark.parametrize("latest_status", ["none", "preparing"])
-def test_unconfirmed_billing_fence_is_not_masked(mocker, latest_status, sqlite_session: Session):
+def test_unconfirmed_billing_fence_is_not_masked(
+    mocker: MockerFixture, latest_status: str, sqlite_session: Session
+) -> None:
     mocker.patch("core.model_invocation_routing.migration_display_status", return_value=latest_status)
     mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch(
@@ -487,7 +492,7 @@ def test_unconfirmed_billing_fence_is_not_masked(mocker, latest_status, sqlite_s
     get_pool.assert_called_once()
 
 
-def test_unrelated_billing_outage_is_not_masked(mocker, sqlite_session: Session):
+def test_unrelated_billing_outage_is_not_masked(mocker: MockerFixture, sqlite_session: Session) -> None:
     status = mocker.patch("core.model_invocation_routing.migration_display_status", return_value="preparing")
     mocker.patch("services.workspace_service.dify_config", DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch(

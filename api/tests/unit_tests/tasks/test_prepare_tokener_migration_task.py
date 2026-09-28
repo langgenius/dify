@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from datetime import timedelta
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -28,7 +29,7 @@ def add_migration_records(session: Session, tenant_id: str) -> str:
 def test_persist_key_does_not_change_byok_provider_or_activate_new_provider(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     tenant = Tenant(name="Preserve BYOK")
     sqlite_session.add(tenant)
     sqlite_session.flush()
@@ -52,9 +53,11 @@ def test_persist_key_does_not_change_byok_provider_or_activate_new_provider(
     assert module._persist_key(tenant.id, migration_id, "TEST_KEY_NOT_REAL") == credential_id
     sqlite_session.expire_all()
     persisted = sqlite_session.get(Provider, provider.id)
+    assert persisted is not None
     assert persisted.credential_id == "byok-original"
     assert persisted.is_valid is True
     credential = sqlite_session.get(ProviderCredential, credential_id)
+    assert credential is not None
     assert "ENCRYPTED_TEST_KEY" in credential.encrypted_config
     service.switch_active_provider_credential.assert_not_called()
     service.update_default_model_of_model_type.assert_not_called()
@@ -62,6 +65,7 @@ def test_persist_key_does_not_change_byok_provider_or_activate_new_provider(
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
     )
+    assert integration is not None
     assert integration.provider_credential_id == credential_id
     assert integration.status == TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER
     service._get_provider_configuration.assert_called_once()
@@ -75,7 +79,7 @@ def test_persist_key_does_not_change_byok_provider_or_activate_new_provider(
 def test_persist_key_only_creates_credential_record(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     tenant = Tenant(name="No active provider")
     sqlite_session.add(tenant)
     sqlite_session.commit()
@@ -89,7 +93,7 @@ def test_persist_key_only_creates_credential_record(
     assert sqlite_session.scalar(select(Provider).where(Provider.tenant_id == tenant.id)) is None
 
 
-def test_prepare_resource_exchange_never_calls_signup_grant(monkeypatch: pytest.MonkeyPatch):
+def test_prepare_resource_exchange_never_calls_signup_grant(monkeypatch: pytest.MonkeyPatch) -> None:
     response = {
         "tenant_id": "tenant-fixture",
         "status": "ready",
@@ -110,7 +114,7 @@ def test_prepare_resource_exchange_never_calls_signup_grant(monkeypatch: pytest.
     assert response == {}
 
 
-def test_cross_tenant_resource_response_is_rejected(monkeypatch: pytest.MonkeyPatch):
+def test_cross_tenant_resource_response_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.unit_tests.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, TOKENER_BILLING_API_URL="https://billing.example.test")
@@ -134,7 +138,7 @@ def test_cross_tenant_resource_response_is_rejected(monkeypatch: pytest.MonkeyPa
 
 def test_key_validation_exception_cannot_escape_with_plaintext(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     tenant = Tenant(name="Secret isolation")
     sqlite_session.add(tenant)
     sqlite_session.commit()
@@ -151,7 +155,7 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     spoof_label: str,
-):
+) -> None:
     from core import model_invocation_routing
     from tests.unit_tests.config_override import apply_config_overrides
 
@@ -253,6 +257,7 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
             module._run_preparation(tenant.id, payload.migration_id)
         crash_bound_id = module._find_bound_credential(tenant.id)
         assert crash_bound_id is not None
+        assert fake_credential is not None
         assert crash_bound_id != fake_credential.id
         monkeypatch.setattr(module, "_update_integration", update)
     module._run_preparation(tenant.id, payload.migration_id)
@@ -264,12 +269,17 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
     )
+    assert integration is not None
     managed = sqlite_session.get(ProviderCredential, integration.provider_credential_id)
+    assert managed is not None
     assert managed.credential_name.startswith(f"{module.MANAGED_TOKENER_CREDENTIAL_NAME}:{payload.migration_id}")
     if fake_credential is not None:
         assert managed.id != fake_credential.id
         assert fake_credential.encrypted_config == '{"api_key":"PRIVATE_BYOK_ORG"}'
-        assert sqlite_session.get(Provider, byok.id).credential_id == fake_credential.id
+        assert byok is not None
+        persisted_byok = sqlite_session.get(Provider, byok.id)
+        assert persisted_byok is not None
+        assert persisted_byok.credential_id == fake_credential.id
     else:
         assert sqlite_session.scalar(select(Provider).where(Provider.tenant_id == tenant.id)) is None
     if crash_bound_id is not None:
@@ -284,7 +294,9 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
 
 
 @pytest.mark.parametrize("invalid_scope", ["tenant", "provider", "empty_ciphertext"])
-def test_bound_credential_requires_tenant_provider_and_nonempty_ciphertext(sqlite_session: Session, invalid_scope: str):
+def test_bound_credential_requires_tenant_provider_and_nonempty_ciphertext(
+    sqlite_session: Session, invalid_scope: str
+) -> None:
     tenant = Tenant(name="Trusted integration owner")
     other = Tenant(name="Other owner")
     sqlite_session.add_all([tenant, other])
@@ -301,6 +313,7 @@ def test_bound_credential_requires_tenant_provider_and_nonempty_ciphertext(sqlit
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
     )
+    assert integration is not None
     integration.provider_credential_id = credential.id
     sqlite_session.commit()
     assert module._find_bound_credential(tenant.id) is None
@@ -308,7 +321,7 @@ def test_bound_credential_requires_tenant_provider_and_nonempty_ciphertext(sqlit
 
 def test_fresh_platform_binding_rejects_ciphertext_edit_before_ready(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     tenant = Tenant(name="Credential pin")
     sqlite_session.add(tenant)
     sqlite_session.commit()
@@ -323,24 +336,23 @@ def test_fresh_platform_binding_rejects_ciphertext_edit_before_ready(
     sqlite_session.expire_all()
     row = sqlite_session.get(TenantModelBillingMigration, tenant.id)
     credential = sqlite_session.get(ProviderCredential, credential_id)
+    assert row is not None
+    assert credential is not None
     assert row.state["provisioned_binding"]["provider_credential_id"] == credential_id
     original = row.state["provisioned_binding"]["credential_fingerprint"]
     credential.encrypted_config = '{"api_key":"PRIVATE_ORG_EDIT"}'
     sqlite_session.commit()
     assert module._find_bound_credential(tenant.id) is None
     sqlite_session.expire_all()
-    assert (
-        sqlite_session.get(TenantModelBillingMigration, tenant.id).state["provisioned_binding"][
-            "credential_fingerprint"
-        ]
-        == original
-    )
+    refreshed_migration = sqlite_session.get(TenantModelBillingMigration, tenant.id)
+    assert refreshed_migration is not None
+    assert refreshed_migration.state["provisioned_binding"]["credential_fingerprint"] == original
 
 
 def test_credential_and_trusted_binding_roll_back_together_before_commit(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     tenant = Tenant(name="Atomic credential publication")
     sqlite_session.add(tenant)
     sqlite_session.commit()
@@ -354,9 +366,9 @@ def test_credential_and_trusted_binding_roll_back_together_before_commit(
     monkeypatch.setattr(module, "ModelProviderService", lambda: service)
     original_flush = Session.flush
 
-    def fail_after_credential_flush(session, *args, **kwargs):
+    def fail_after_credential_flush(session: Session, objects: Sequence[object] | None = None) -> None:
         contains_credential = any(isinstance(item, ProviderCredential) for item in session.new)
-        original_flush(session, *args, **kwargs)
+        original_flush(session, objects)
         if contains_credential:
             raise RuntimeError("simulated interruption before binding commit")
 
@@ -366,7 +378,9 @@ def test_credential_and_trusted_binding_roll_back_together_before_commit(
     sqlite_session.expire_all()
     assert sqlite_session.scalar(select(ProviderCredential).where(ProviderCredential.tenant_id == tenant.id)) is None
     assert module._find_bound_credential(tenant.id) is None
-    assert "provisioned_binding" not in sqlite_session.get(TenantModelBillingMigration, tenant.id).state
+    migration = sqlite_session.get(TenantModelBillingMigration, tenant.id)
+    assert migration is not None
+    assert "provisioned_binding" not in migration.state
     credential_id = module._persist_key(tenant.id, migration_id, "PLATFORM_TEST_KEY")
     assert credential_id is not None
     assert module._find_bound_credential(tenant.id) == credential_id
@@ -375,7 +389,7 @@ def test_credential_and_trusted_binding_roll_back_together_before_commit(
 def test_sweeper_alerts_and_recovers_financial_work_but_stops_initial_30_minute_retries(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     now = module.naive_utc_now()
     rows = []
     for age, activated in [(301, False), (1801, False), (86400, True)]:
@@ -405,7 +419,7 @@ def test_sweeper_alerts_and_recovers_financial_work_but_stops_initial_30_minute_
     assert dispatch.call_count == 2
 
 
-def test_financial_recovery_calls_only_durable_resume_endpoint(monkeypatch: pytest.MonkeyPatch):
+def test_financial_recovery_calls_only_durable_resume_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.unit_tests.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, TOKENER_BILLING_API_URL="https://billing.example.test")
@@ -431,7 +445,7 @@ def test_financial_recovery_calls_only_durable_resume_endpoint(monkeypatch: pyte
 def test_sweeper_recovers_unpublished_cancelled_routing_but_not_completed_or_overdue(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     now = module.naive_utc_now()
     rows = []
     for age, published in [(301, False), (1801, False), (301, True)]:

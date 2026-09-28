@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core import model_billing_profile as service_module
@@ -20,7 +21,7 @@ from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationSta
 _CACHE_KEY = "tenant:model-billing-source:v1:tenant-1"
 
 
-def test_active_migration_cannot_be_reverted_by_a_late_legacy_cache_fill(mocker):
+def test_active_migration_cannot_be_reverted_by_a_late_legacy_cache_fill(mocker: MockerFixture) -> None:
     mocker.patch("core.model_invocation_routing.migration_routing_state", return_value={"phase": "active"})
     cache = mocker.patch.object(service_module, "redis_client")
     cache.get.return_value = b"legacy_message_credits"

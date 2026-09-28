@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from threading import Event
 
 import pytest
@@ -6,13 +7,13 @@ from flask import Flask
 from core.app.apps.execution_stream import EXECUTION_OUTPUT_BUFFER_SIZE, execution_owned_stream
 
 
-def test_slow_subscriber_is_bounded_and_detach_drains_without_aborting():
+def test_slow_subscriber_is_bounded_and_detach_drains_without_aborting() -> None:
     produced = [0]
     full = Event()
     finished = Event()
-    failures = []
+    failures: list[Exception] = []
 
-    def source():
+    def source() -> Generator[int, None, None]:
         for value in range(1000):
             produced[0] += 1
             if produced[0] == EXECUTION_OUTPUT_BUFFER_SIZE + 1:
@@ -29,11 +30,11 @@ def test_slow_subscriber_is_bounded_and_detach_drains_without_aborting():
     assert not failures
 
 
-def test_delivery_preserves_order_and_reports_real_execution_errors():
+def test_delivery_preserves_order_and_reports_real_execution_errors() -> None:
     completed = Event()
-    errors = []
+    errors: list[Exception] = []
 
-    def source():
+    def source() -> Generator[str, None, None]:
         yield "first"
         yield "second"
         raise ValueError("fixture-failure")
