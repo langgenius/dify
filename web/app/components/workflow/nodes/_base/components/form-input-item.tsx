@@ -125,7 +125,7 @@ const FormInputItem: FC<Props> = ({
   inPanel,
 }) => {
   const language = useLanguage()
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

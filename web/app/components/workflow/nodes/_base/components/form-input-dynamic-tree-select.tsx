@@ -143,7 +143,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   placeholder,
   value,
 }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const [isOpen, setIsOpen] = useState(false)
   const [collapsedValues, setCollapsedValues] = useState<Set<string>>(() => new Set())
   const selectedValues = useMemo(() => normalizeValues(value), [value])
