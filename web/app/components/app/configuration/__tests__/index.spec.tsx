@@ -147,8 +147,7 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-function setup() {
-  const queryClient = createTestQueryClient()
+function setup(queryClient = createTestQueryClient()) {
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const wrapper = createQueryClientWrapper(queryClient)
   return { user: userEvent.setup(), queryClient, ...render(<Configuration />, { wrapper }) }
@@ -171,6 +170,127 @@ afterEach(() => {
 })
 
 describe('Configuration editing session', () => {
+  it('waits for fresh app detail before creating a draft from a cached response', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createDetail('app-1', 'Cached prompt'),
+    )
+    const freshDetail = deferred<Response>()
+    mockRequest.mockImplementation((url: string) =>
+      url.endsWith('/files/upload')
+        ? Promise.resolve(Response.json(uploadConfig))
+        : freshDetail.promise,
+    )
+
+    setup(queryClient)
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.stringContaining('/apps/app-1'),
+        expect.anything(),
+        expect.anything(),
+      ),
+    )
+    expect(screen.queryByRole('textbox', { name: 'Prompt' })).not.toBeInTheDocument()
+    await act(async () => freshDetail.resolve(Response.json(createDetail('app-1', 'Fresh prompt'))))
+    expect(await screen.findByRole('textbox', { name: 'Prompt' })).toHaveValue('Fresh prompt')
+  })
+
+  it('does not expose a cached draft when the entry detail request fails', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createDetail('app-1', 'Cached prompt'),
+    )
+    mockRequest.mockImplementation((url: string) =>
+      url.endsWith('/files/upload')
+        ? Promise.resolve(Response.json(uploadConfig))
+        : Promise.reject(new Error('Fresh detail unavailable')),
+    )
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      render(
+        <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
+          <Configuration />
+        </ErrorBoundary>,
+        { wrapper: createQueryClientWrapper(queryClient) },
+      )
+      expect(await screen.findByRole('alert')).toHaveTextContent('Fresh detail unavailable')
+      expect(screen.queryByRole('textbox', { name: 'Prompt' })).not.toBeInTheDocument()
+    } finally {
+      report.mockRestore()
+    }
+  })
+
+  it('waits for fresh tool, upload, and dataset defaults before opening the editor', async () => {
+    const queryClient = createTestQueryClient()
+    const tools = deferred<unknown[]>()
+    const upload = deferred<Response>()
+    const datasets = deferred<{ data: { id: string; name: string }[] }>()
+    const detail = createDetail()
+    detail.model_config = createAppModelConfigFixture({
+      ...detail.model_config,
+      dataset_configs: {
+        retrieval_model: 'multiple',
+        datasets: { datasets: [{ dataset: { enabled: true, id: 'dataset-1' } }] },
+      },
+    })
+    queryClient.setQueryData(['tools', 'allToolProviders'], [])
+    queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), uploadConfig)
+    queryClient.setQueryData(['configuration', 'datasets', ['dataset-1']], {
+      data: [{ id: 'dataset-1', name: 'Cached dataset' }],
+    })
+    mockGet.mockReturnValue(tools.promise)
+    mockDatasets.mockReturnValue(datasets.promise)
+    mockRequest.mockImplementation((url: string) =>
+      url.endsWith('/files/upload') ? upload.promise : Promise.resolve(Response.json(detail)),
+    )
+
+    setup(queryClient)
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers'))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.stringContaining('/files/upload'),
+        expect.anything(),
+        expect.anything(),
+      ),
+    )
+    expect(screen.queryByRole('textbox', { name: 'Prompt' })).not.toBeInTheDocument()
+    await act(async () => {
+      tools.resolve([])
+      upload.resolve(Response.json(uploadConfig))
+    })
+    await waitFor(() =>
+      expect(mockDatasets).toHaveBeenCalledWith({
+        url: '/datasets',
+        params: { page: 1, ids: ['dataset-1'] },
+      }),
+    )
+    expect(screen.queryByRole('textbox', { name: 'Prompt' })).not.toBeInTheDocument()
+    await act(async () => datasets.resolve({ data: [{ id: 'dataset-1', name: 'Fresh dataset' }] }))
+    expect(await screen.findByRole('textbox', { name: 'Prompt' })).toHaveValue('Saved prompt')
+    expect(screen.getByLabelText('Datasets')).toHaveTextContent('dataset-1')
+  })
+
+  it('surfaces a failed tool refresh instead of opening from cached tool defaults', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['tools', 'allToolProviders'], [])
+    mockGet.mockRejectedValue(new Error('Fresh tools unavailable'))
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      render(
+        <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
+          <Configuration />
+        </ErrorBoundary>,
+        { wrapper: createQueryClientWrapper(queryClient) },
+      )
+      expect(await screen.findByRole('alert')).toHaveTextContent('Fresh tools unavailable')
+      expect(screen.queryByRole('textbox', { name: 'Prompt' })).not.toBeInTheDocument()
+    } finally {
+      report.mockRestore()
+    }
+  })
+
   it('starts independent defaults together and waits for selected datasets before exposing the editor', async () => {
     const details = deferred<Response>()
     const tools = deferred<unknown[]>()

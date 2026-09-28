@@ -1,9 +1,10 @@
 'use client'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { Collection } from '@/app/components/tools/types'
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -26,8 +27,7 @@ const ConfigurationSession = ({
 }: {
   defaults: Parameters<typeof useConfiguration>[0]
 }) => {
-  const [initialDefaults] = useState(defaults)
-  const viewModel = useConfiguration(initialDefaults)
+  const viewModel = useConfiguration(defaults)
   return (
     <>
       <AppToastHost manager={appConfigurationToastManager} offset={{ top: 60 }} />
@@ -42,77 +42,88 @@ function ConfigurationDefaults({
   upload,
 }: {
   detail: AppDetailWithSite
-  collections?: Collection[]
-  upload?: UploadConfig
+  collections: UseQueryResult<Collection[]>
+  upload: UseQueryResult<UploadConfig>
 }) {
-  const [initialDetail] = useState(detail)
   const { currentModel, currentProvider } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.rerank,
   )
-  const datasetIds = initialDetail.model_config
-    ? getConfigurationDatasetIds(initialDetail.model_config)
-    : []
+  const datasetIds = useMemo(
+    () => (detail.model_config ? getConfigurationDatasetIds(detail.model_config) : []),
+    [detail.model_config],
+  )
   const datasets = useQuery(
     queryOptions({
       queryKey: ['configuration', 'datasets', datasetIds],
       queryFn: datasetIds.length
         ? () => fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
         : skipToken,
+      refetchOnMount: 'always',
     }),
   )
-  if (!initialDetail.model_config)
-    throw new Error(`App ${initialDetail.id} has no model configuration`)
-  if (datasets.isLoadingError) throw datasets.error
-  if (!collections || !upload || (datasetIds.length && !datasets.data)) {
+  const [initialDefaults, setInitialDefaults] = useState<Parameters<typeof useConfiguration>[0]>()
+  if (!detail.model_config) throw new Error(`App ${detail.id} has no model configuration`)
+  if (
+    !initialDefaults &&
+    collections.isFetchedAfterMount &&
+    collections.isSuccess &&
+    upload.isFetchedAfterMount &&
+    upload.isSuccess &&
+    (!datasetIds.length || (datasets.isFetchedAfterMount && datasets.isSuccess))
+  ) {
+    setInitialDefaults({
+      ...buildConfigurationDefaults({
+        response: detail,
+        collections: collections.data,
+        nextDataSets: datasets.data?.data ?? [],
+        basePath,
+        currentRerankModel: currentModel?.model,
+        currentRerankProvider: currentProvider?.provider,
+      }),
+      fileUploadConfigResponse: upload.data,
+    })
+  }
+  if (!initialDefaults) {
+    if (collections.isError && !collections.isFetching) throw collections.error
+    if (upload.isError && !upload.isFetching) throw upload.error
+    if (datasets.isError && !datasets.isFetching) throw datasets.error
     return (
       <div className="flex h-full items-center justify-center">
         <LoadingPlaceholder />
       </div>
     )
   }
+  return <ConfigurationSession defaults={initialDefaults} />
+}
 
-  return (
-    <ConfigurationSession
-      defaults={{
-        ...buildConfigurationDefaults({
-          response: initialDetail,
-          collections,
-          nextDataSets: datasets.data?.data ?? [],
-          basePath,
-          currentRerankModel: currentModel?.model,
-          currentRerankProvider: currentProvider?.provider,
-        }),
-        fileUploadConfigResponse: upload,
-      }}
-    />
+function ConfigurationEntry({ appId }: { appId: string }) {
+  const detail = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      refetchOnMount: 'always',
+    }),
   )
+  const collections = useAllToolProviders()
+  const { refetch: refetchCollections } = collections
+  useEffect(() => {
+    void refetchCollections()
+  }, [refetchCollections])
+  const upload = useQuery(consoleQuery.files.upload.get.queryOptions({ refetchOnMount: 'always' }))
+  const [initialDetail, setInitialDetail] = useState<AppDetailWithSite>()
+  if (!initialDetail && detail.isFetchedAfterMount && detail.isSuccess)
+    setInitialDetail(detail.data)
+  if (!initialDetail) {
+    if (detail.isError && !detail.isFetching) throw detail.error
+    return (
+      <div className="flex h-full items-center justify-center">
+        <LoadingPlaceholder />
+      </div>
+    )
+  }
+  return <ConfigurationDefaults detail={initialDetail} collections={collections} upload={upload} />
 }
 
 export default function Configuration() {
   const { appId } = useParams<{ appId: string }>()
-  const detail = useQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({
-      input: { params: { app_id: appId } },
-    }),
-  )
-  const collections = useAllToolProviders()
-  const upload = useQuery(consoleQuery.files.upload.get.queryOptions())
-  if (detail.isLoadingError) throw detail.error
-  if (collections.isLoadingError) throw collections.error
-  if (upload.isLoadingError) throw upload.error
-  if (!detail.data) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoadingPlaceholder />
-      </div>
-    )
-  }
-  return (
-    <ConfigurationDefaults
-      key={appId}
-      detail={detail.data}
-      collections={collections.data}
-      upload={upload.data}
-    />
-  )
+  return <ConfigurationEntry key={appId} appId={appId} />
 }
