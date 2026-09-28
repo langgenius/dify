@@ -1706,7 +1706,7 @@ requires-dist = [
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.200.0,<3.0.0" },
-    { name = "google-cloud-aiplatform", specifier = ">=2.1.3,<3.0.0" },
+    { name = "google-cloud-aiplatform", specifier = ">=2.2.0,<3.0.0" },
     { name = "graphon", specifier = "==0.7.0" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
@@ -2887,7 +2887,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "2.1.3"
+version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -2904,9 +2904,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/22/2c0f9ccb918d67e9e34ca857337670c97fe49a84ab31979060eb9112dc64/google_cloud_aiplatform-2.1.3.tar.gz", hash = "sha256:6ccd59e9bd5f313209cfe1bef8c4ab2f57ef2c91b96003dd88053df3a5757dc6", size = 11335191, upload-time = "2026-09-16T02:29:39.991Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/da/492c73aa5d2584c132aea33dacfd132866952e47c3dbb9e4297f3774d5c6/google_cloud_aiplatform-2.2.0.tar.gz", hash = "sha256:adafcc07cd36289664ae36891137ad28f81a6372a3d698648646f2a9ca6e1c7d", size = 11339673, upload-time = "2026-09-23T17:29:23.283Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/b3/be1a23d1cbc239f43de9d4a97dd5e2623a04735125aa41a214822b2e8ad6/google_cloud_aiplatform-2.1.3-py2.py3-none-any.whl", hash = "sha256:846d5dcda761832933bac34aeca1faba5d12819299d200e7a215c22c04770843", size = 9455465, upload-time = "2026-09-16T02:29:36.445Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/9c/ebfa67010c20efa0b8a16bd689fe9bc336d7d228012abb5440d63b35a29f/google_cloud_aiplatform-2.2.0-py2.py3-none-any.whl", hash = "sha256:8de28d03dcb0887fce4a77557085f4d308758526b76cfd53820420ae82a68c80", size = 9459182, upload-time = "2026-09-23T17:29:19.859Z" },
 ]
 
 [[package]]
@@ -3349,8 +3349,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
