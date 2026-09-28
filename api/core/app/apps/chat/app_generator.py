@@ -30,6 +30,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, EndUser, load_annotation_reply_config
 from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation = ConversationService.try_get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
+            if conversation is None and invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
+                # Only API callers may supply an id for a conversation that does not exist yet.
+                raise ConversationNotExistsError()
         # get app model config
         app_model_config = self._get_app_model_config(
             app_model=app_model,
