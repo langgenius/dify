@@ -7,7 +7,7 @@ from graphon.model_runtime.entities import (
 )
 
 
-def test_short_image_url_is_preserved_when_saving_prompt():
+def test_short_image_url_is_preserved_when_saving_prompt() -> None:
     # `data` is a property that returns `url` when set. A short url makes the
     # saved `data` short enough that the old `data[:10] + mark + data[-10:]`
     # truncation would have duplicated it (e.g. "abc" -> "abc...[TRUNCATED]...abc").
@@ -27,7 +27,7 @@ def test_short_image_url_is_preserved_when_saving_prompt():
     assert saved[0]["files"][0]["data"] == "abc"
 
 
-def test_short_audio_url_is_preserved_when_saving_prompt():
+def test_short_audio_url_is_preserved_when_saving_prompt() -> None:
     prompt = UserPromptMessage(
         content=[
             AudioPromptMessageContent(
@@ -43,7 +43,7 @@ def test_short_audio_url_is_preserved_when_saving_prompt():
     assert saved[0]["files"][0]["data"] == "abc"
 
 
-def test_long_media_data_is_still_truncated_when_saving_prompt():
+def test_long_media_data_is_still_truncated_when_saving_prompt() -> None:
     long_url = "https://example.com/image.jpg"
     prompt = UserPromptMessage(
         content=[
