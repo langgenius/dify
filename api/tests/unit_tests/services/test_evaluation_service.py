@@ -94,25 +94,25 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
     worksheet = load_workbook(io.BytesIO(content)).active
 
     assert worksheet is not None
-    assert [cell.value for cell in worksheet[1]] == ["index", "input", "llm-1 : expected_output"]
+    assert [cell.value for cell in worksheet[1]] == ["index", "input", "Answer : expected_output"]
 
 
-def test_parse_csv_dataset_preserves_node_id_scoped_references() -> None:
+def test_parse_csv_dataset_preserves_node_title_scoped_references() -> None:
     items = EvaluationService._parse_dataset(
-        b"index,query,llm-node-7 : expected_output\n7,hello,world\n",
+        b"index,query,Answer : expected_output\n7,hello,world\n",
         "dataset.csv",
     )
 
     assert len(items) == 1
     assert items[0].index == 7
     assert items[0].inputs == {"query": "hello"}
-    assert items[0].expected_outputs == {"llm-node-7": "world"}
+    assert items[0].expected_outputs == {"Answer": "world"}
 
 
-def test_parse_dataset_preserves_node_specific_expected_tool_calls() -> None:
+def test_parse_dataset_preserves_node_title_scoped_expected_tool_calls() -> None:
     items = EvaluationService._rows_to_dataset_items(
         [
-            ["index", "query", "agent-1 : expected_tool_calls"],
+            ["index", "query", "Research Agent : expected_tool_calls"],
             [
                 7,
                 "weather in Paris",
@@ -123,11 +123,11 @@ def test_parse_dataset_preserves_node_specific_expected_tool_calls() -> None:
 
     assert items[0].inputs == {"query": "weather in Paris"}
     assert items[0].expected_tool_calls_by_node == {
-        "agent-1": [AgentToolCall(name="weather", arguments={"city": "Paris"})]
+        "Research Agent": [AgentToolCall(name="weather", arguments={"city": "Paris"})]
     }
     assert items[0].iter_expected_output_columns() == [
         (
-            "agent-1 : expected_tool_calls",
+            "Research Agent : expected_tool_calls",
             '[{"arguments": {"city": "Paris"}, "name": "weather"}]',
         )
     ]
@@ -137,7 +137,7 @@ def test_parse_dataset_rejects_invalid_expected_tool_calls() -> None:
     with pytest.raises(EvaluationDatasetInvalidError, match="JSON array of tool calls.*7"):
         EvaluationService._rows_to_dataset_items(
             [
-                ["index", "query", "agent-1 : expected_tool_calls"],
+                ["index", "query", "Research Agent : expected_tool_calls"],
                 [7, "hello", '{"name": "weather"}'],
             ]
         )
@@ -204,15 +204,15 @@ def test_dataset_validation_allows_reference_free_metrics() -> None:
     EvaluationService._validate_dataset_expected_outputs(items, metrics)
 
 
-def test_dataset_validation_resolves_duplicate_titles_by_node_id() -> None:
+def test_dataset_validation_resolves_references_by_node_title() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_expected_output.return_value = True
     metrics = [
         DefaultMetric(
             metric="answer_correctness",
             node_info_list=[
-                NodeInfo(node_id="llm-1", type="llm", title="Answer"),
-                NodeInfo(node_id="llm-2", type="llm", title="Answer"),
+                NodeInfo(node_id="llm-1", type="llm", title="Primary Answer"),
+                NodeInfo(node_id="llm-2", type="llm", title="Backup Answer"),
             ],
         )
     ]
@@ -222,7 +222,7 @@ def test_dataset_validation_resolves_duplicate_titles_by_node_id() -> None:
             EvaluationDatasetInput(
                 index=7,
                 inputs={"query": "hello"},
-                expected_outputs={"llm-1": "first", "llm-2": "second"},
+                expected_outputs={"Primary Answer": "first", "Backup Answer": "second"},
             )
         ],
         metrics,
@@ -235,7 +235,7 @@ def test_dataset_validation_resolves_duplicate_titles_by_node_id() -> None:
                 EvaluationDatasetInput(
                     index=7,
                     inputs={"query": "hello"},
-                    expected_outputs={"llm-1": "first"},
+                    expected_outputs={"Primary Answer": "first"},
                 )
             ],
             metrics,
@@ -268,7 +268,7 @@ def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric
                     index=7,
                     inputs={"query": "hello"},
                     expected_tool_calls_by_node={
-                        "agent-2": [AgentToolCall(name="search", arguments={"query": "hello"})]
+                        "Other Agent": [AgentToolCall(name="search", arguments={"query": "hello"})]
                     },
                 )
             ],
@@ -281,7 +281,9 @@ def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric
             EvaluationDatasetInput(
                 index=7,
                 inputs={"query": "hello"},
-                expected_tool_calls_by_node={"agent-1": [AgentToolCall(name="search", arguments={"query": "hello"})]},
+                expected_tool_calls_by_node={
+                    "Research Agent": [AgentToolCall(name="search", arguments={"query": "hello"})]
+                },
             )
         ],
         metrics,
@@ -299,7 +301,7 @@ def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metr
                 metric="tool_call_accuracy",
                 node_info_list=[
                     NodeInfo(node_id="agent-1", type="agent", title="Research Agent"),
-                    NodeInfo(node_id="agent-2", type="agent", title="Research Agent"),
+                    NodeInfo(node_id="agent-2", type="agent", title="Backup Agent"),
                 ],
             ),
             DefaultMetric(
@@ -311,12 +313,12 @@ def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metr
     )
 
     assert columns == [
-        {"name": "agent-1 : expected_tool_calls", "type": "string"},
-        {"name": "agent-2 : expected_tool_calls", "type": "string"},
+        {"name": "Research Agent : expected_tool_calls", "type": "string"},
+        {"name": "Backup Agent : expected_tool_calls", "type": "string"},
     ]
 
 
-def test_expected_output_columns_use_node_ids_when_titles_are_duplicated() -> None:
+def test_expected_output_columns_use_node_titles() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_expected_output.return_value = True
 
@@ -325,8 +327,8 @@ def test_expected_output_columns_use_node_ids_when_titles_are_duplicated() -> No
             DefaultMetric(
                 metric="answer_correctness",
                 node_info_list=[
-                    NodeInfo(node_id="llm-1", type="llm", title="Answer"),
-                    NodeInfo(node_id="llm-2", type="llm", title="Answer"),
+                    NodeInfo(node_id="llm-1", type="llm", title="Primary Answer"),
+                    NodeInfo(node_id="llm-2", type="llm", title="Backup Answer"),
                 ],
             )
         ],
@@ -334,9 +336,22 @@ def test_expected_output_columns_use_node_ids_when_titles_are_duplicated() -> No
     )
 
     assert columns == [
-        {"name": "llm-1 : expected_output", "type": "string"},
-        {"name": "llm-2 : expected_output", "type": "string"},
+        {"name": "Primary Answer : expected_output", "type": "string"},
+        {"name": "Backup Answer : expected_output", "type": "string"},
     ]
+
+
+def test_dataset_references_fall_back_to_legacy_node_ids() -> None:
+    expected_tool_calls = [AgentToolCall(name="search", arguments={"query": "hello"})]
+    item = EvaluationDatasetInput(
+        index=7,
+        inputs={"query": "hello"},
+        expected_outputs={"llm-1": "legacy answer"},
+        expected_tool_calls_by_node={"agent-1": expected_tool_calls},
+    )
+
+    assert item.get_expected_output_for_node("llm-1", "Answer") == "legacy answer"
+    assert item.get_expected_tool_calls_for_node("agent-1", "Research Agent") == expected_tool_calls
 
 
 def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPatch) -> None:
