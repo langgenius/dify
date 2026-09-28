@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
@@ -62,8 +63,9 @@ TitleInput.displayName = 'TitleInput'
 type DescriptionInputProps = {
   value: string
   onChange: (value: string) => void
+  inputRef?: Ref<HTMLTextAreaElement>
 }
-export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps) => {
+export const DescriptionInput = memo(({ value, onChange, inputRef }: DescriptionInputProps) => {
   const { t } = useTranslation(['workflow'])
   const inputId = useId()
   const [focus, setFocus] = useState(false)
@@ -83,6 +85,7 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
         className={`group flex max-h-15 overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-1.25 leading-0 ${focus && 'shadow-xs!'} `}
       >
         <Textarea
+          ref={inputRef}
           id={inputId}
           value={value}
           onChange={(e) => onChange(e.target.value)}

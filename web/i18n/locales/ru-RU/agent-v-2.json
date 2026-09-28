@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Не удалось обновить навыки рабочего пространства.",
   "agentDetail.configure.skills.workspaceSelector.search": "Поиск навыков...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Перейти в режим предпросмотра?",
+  "agentDetail.configure.templatePreview.agentUI": "Интерфейс агента",
   "agentDetail.configure.title": "Настроить",
   "agentDetail.configure.tools.add": "Добавить инструмент",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Для разработчиков",

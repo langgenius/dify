@@ -4,6 +4,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from functools import partial
 from uuid import UUID
 
 import pytest
@@ -28,8 +29,8 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus
-from models.model import App, AppMode, IconType
+from models.enums import AppStatus, CustomizeTokenStrategy
+from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
@@ -713,15 +714,18 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight(rewrite_manife
     ("case", "error_type", "message"),
     [
         ("missing_manifest", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("name_mismatch", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("size_limit", RosterAgentPackageTooLargeError, "exceeds the size limit"),
+        ("name_mismatch", RosterAgentPackageExportFailedError, "Skill"),
+        ("size_limit", RosterAgentPackageTooLargeError, "size limit"),
+        ("missing_payload", RosterAgentPackageExportFailedError, "Unable to read"),
     ],
 )
+@pytest.mark.parametrize("local", [False, True])
 def test_export_rejects_unusable_or_oversized_skill_payload(
     case: str,
     error_type: type[RosterAgentPackageExportFailedError | RosterAgentPackageTooLargeError],
     message: str,
     monkeypatch: pytest.MonkeyPatch,
+    local: bool,
 ) -> None:
     payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
     if case == "size_limit":
@@ -737,10 +741,18 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     app = _package_app()
     app.package.soul.config_files = []
     exporter = RosterAgentPackageExporter()
-    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    resources = AgentPackageResourceExporter(
+        storage_backend=_MemoryStorage({} if case == "missing_payload" else {"skill": payload})
+    )
     resources.sources["agent_1"] = ([source], list[_FileSource]())
+    resources.packages["agent_1"] = app.package
+    export = (
+        partial(resources.read_local_resources, "agent_1")
+        if local
+        else partial(exporter._build_archive, app=app, resources=resources)
+    )
     with pytest.raises(error_type, match=message):
-        exporter._build_archive(app=app, resources=resources)
+        export()
 
 
 @pytest.mark.parametrize("max_bytes", [0, 8])
@@ -899,8 +911,17 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         created_by="account-1",
         updated_by="account-1",
     )
+    assert agent.app_id is not None
+    site = Site(
+        app_id=agent.app_id,
+        title="Agent Site",
+        default_language="en",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        icon_type=IconType.EMOJI,
+        icon="S",
+    )
     sqlite_session.add_all(
-        [_app("33333333-3333-4333-8333-333333333333"), skill_file, config_file, agent, snapshot, draft]
+        [_app("33333333-3333-4333-8333-333333333333"), site, skill_file, config_file, agent, snapshot, draft]
     )
     sqlite_session.commit()
 
@@ -927,6 +948,8 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     app_model = sqlite_session.get(App, agent.app_id)
     assert app_model is not None
     standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
+    assert standalone_dsl["site"]["title"] == "Agent Site"
+    assert standalone_dsl["site"]["default_language"] == "en-US"
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
@@ -935,6 +958,10 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             manifest_data = yaml.safe_load(archive.read("manifest.yaml"))
             app_data = yaml.safe_load(archive.read("app.yaml"))
             exported_app = AgentAppDsl.model_validate(app_data)
+            assert exported_app.site is not None
+            assert exported_app.site.title == "Agent Site"
+            assert exported_app.site.default_language == "en-US"
+            assert exported_app.site.icon == "S"
             exported_soul = exported_app.package.soul
             assert exported_soul.model is not None
             assert exported_soul.model.credential_ref is None
@@ -967,7 +994,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
                     "sha256": hashlib.sha256(archive.read("app.yaml")).hexdigest(),
                 }
             ]
-            assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
+            assert set(app_data) == {"version", "kind", "app", "site", "agent", "agent_packages", "dependencies"}
             assert app_data["kind"] == "app"
             assert app_data["app"]["mode"] == "agent"
             assert app_data["app"]["icon"] == "R"
@@ -1201,6 +1228,12 @@ def test_export_uses_current_workspace_skill_bindings(
     assert dsl.package.soul.prompt.system_prompt == ""
     assert len(dsl.package.workspace_skills) == 1
     assert dsl.package.workspace_skills[0].priority == 0
+    exported_yaml = exporter.export_yaml(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version_id=historical_version_id,
+    )
+    assert AgentAppDsl.model_validate(yaml.safe_load(exported_yaml)) == dsl
 
 
 @pytest.mark.parametrize("source", ["missing", "other_tenant", "other_agent", "internal_snapshot"])
