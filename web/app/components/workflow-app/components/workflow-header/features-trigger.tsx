@@ -30,8 +30,7 @@ import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflo
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -164,7 +163,7 @@ const FeaturesTrigger = () => {
     try {
       if (!appID) return
 
-      const res = await fetchAppDetail({ url: '/apps', id: appID })
+      const res = await consoleClient.apps.byAppId.get({ params: { app_id: appID } })
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)

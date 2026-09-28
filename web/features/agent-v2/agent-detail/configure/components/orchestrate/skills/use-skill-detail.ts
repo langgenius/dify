@@ -169,11 +169,13 @@ const findSkillFileById = (files: AgentFileNode[], fileId?: string): AgentFileNo
 
 export function useAgentSkillDetail({
   apiContext,
+  canDownload,
   description,
   isOpen,
   skill,
 }: {
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   description: string
   isOpen: boolean
   skill: AgentSkill
@@ -491,7 +493,7 @@ export function useAgentSkillDetail({
         ? inspectQuery.isPending
         : !!selectedPreviewPath && previewQuery.isPending,
     },
-    onDownloadFile: handleDownloadFile,
+    onDownloadFile: canDownload ? handleDownloadFile : undefined,
     onSelectFile: (file) => setSelectedFileId(file.id),
     selectedFileId: previewFileId,
     sections: [],

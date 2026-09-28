@@ -715,8 +715,7 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
@@ -799,6 +798,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
+                canDownload
                 canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
@@ -827,8 +827,6 @@ export function AgentTemplateSkills() {
       label={t(($) => $['agentDetail.configure.skills.label'])}
       labelId={labelId}
       tip={<AgentConfigureTipContent type="skills" />}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="pb-4"
     >
       {skills.length === 0 ? (
         <ConfigureSectionEmpty
@@ -841,6 +839,7 @@ export function AgentTemplateSkills() {
             <li key={skill.id}>
               <AgentSkillItem
                 apiContext={apiContext}
+                canDownload={false}
                 canRemove={false}
                 skill={skill}
                 onRemove={noop}

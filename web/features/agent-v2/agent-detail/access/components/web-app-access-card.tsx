@@ -2,7 +2,7 @@
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
+import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -60,8 +60,8 @@ export function WebAppAccessCard({
           appBaseUrl,
           siteInfo: {
             title: site?.title ?? agent?.name ?? '',
-            chat_color_theme: site?.chat_color_theme ?? undefined,
-            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
+            chat_color_theme: site?.chat_color_theme ?? null,
+            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? false,
           },
         }
       : null
@@ -184,7 +184,7 @@ export function WebAppAccessCard({
     })
   }
 
-  async function handleSaveSettings(params: ConfigParams) {
+  async function handleSaveSettings(params: AppSiteUpdatePayload) {
     if (!appId || !canManageWebApp) return
 
     const sitePayload = params satisfies AppSiteUpdatePayload

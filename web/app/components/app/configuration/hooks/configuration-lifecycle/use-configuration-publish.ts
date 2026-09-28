@@ -5,35 +5,38 @@ import type { AppPublisherPublishParams } from '@/app/components/app/app-publish
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet } from '@/models/datasets'
-import type { DatasetConfigs, ModelConfig } from '@/models/debug'
-import type { AppModeEnum, ModelConfig as BackendModelConfig, ModelModeType } from '@/types/app'
+import type { DatasetConfigs, ModelConfig, PromptMode } from '@/models/debug'
+import type { ConsoleClient } from '@/service/console'
+import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { useCallback } from 'react'
 import { createPublishHandler } from './publish'
 
 type UseConfigurationPublishParams = {
   appId: string
   canReleaseAndVersion: boolean
-  chatPromptConfig: BackendModelConfig['chat_prompt_config']
+  chatPromptConfig: ModelConfig['chat_prompt_config']
   completionParams: FormValue
-  completionPromptConfig: BackendModelConfig['completion_prompt_config']
+  completionPromptConfig: ModelConfig['completion_prompt_config']
   contextVar?: string
   contextVarEmpty: boolean
   dataSets: DataSet[]
   datasetConfigs: DatasetConfigs
-  externalDataToolsConfig: BackendModelConfig['external_data_tools']
+  externalDataToolsConfig: ModelConfig['external_data_tools']
   hasSetBlockStatus: { history: boolean; query: boolean }
   isAdvancedMode: boolean
   isFunctionCall: boolean
   mode: AppModeEnum
   modelConfig: ModelConfig
   promptEmpty: boolean
-  promptMode: BackendModelConfig['prompt_type']
+  promptMode: PromptMode
   resolvedModelModeType: ModelModeType
   setCanReturnToSimpleMode: (value: boolean) => void
   setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
   syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
   t: TFunction<['appDebug', 'common']>
-  updateModelConfig: (params: { url: string; body: BackendModelConfig }) => Promise<unknown>
+  updateModelConfig: (
+    params: Parameters<ConsoleClient['apps']['byAppId']['modelConfig']['post']>[0],
+  ) => Promise<unknown>
 }
 
 export function useConfigurationPublish({

@@ -1077,10 +1077,7 @@ export function AgentPromptEditor() {
     ) : null
 
   return (
-    <section
-      className="flex flex-col gap-1 px-0 py-0"
-      aria-labelledby="agent-configure-prompt-label"
-    >
+    <section className="flex flex-col gap-1 py-3" aria-labelledby="agent-configure-prompt-label">
       <div className="flex items-center gap-2">
         <div className="flex min-h-6 min-w-0 flex-1 items-center gap-0.5">
           <h3
@@ -1209,10 +1206,7 @@ export function AgentTemplatePromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver(providerTypes)
 
   return (
-    <section
-      className="flex flex-col gap-2 border-b border-divider-subtle pb-4"
-      aria-labelledby={labelId}
-    >
+    <section className="flex flex-col gap-1 py-3" aria-labelledby={labelId}>
       <div className="flex items-center gap-0.5">
         <h3 id={labelId} className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['agentDetail.configure.prompt.label'])}
@@ -1247,7 +1241,7 @@ export function AgentTemplatePromptEditor() {
         }}
         disableSlashPicker
         disableBracePicker
-        wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3"
+        wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3 pt-2 pb-9"
         className="min-h-26 text-text-primary"
       />
     </section>

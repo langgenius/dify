@@ -221,11 +221,6 @@ const AppInfo: FC<Props> = ({
           </ul>
         </section>
       )}
-      {mode === 'agent' && (
-        <p className="mt-auto shrink-0 pt-4 system-xs-regular text-text-tertiary">
-          {t(($) => $['tryApp.agentSetupHint'], { ns: 'explore' })}
-        </p>
-      )}
     </div>
   )
 }

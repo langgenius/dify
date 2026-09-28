@@ -1,11 +1,12 @@
+import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -141,12 +142,11 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = {
-      id: 'app-1',
+    const mockApp = createAppDetailFixture({
       mode: AppModeEnum.ADVANCED_CHAT,
       maintainer: 'user-1',
-    }
-    mockCreateApp.mockResolvedValue(mockApp as App)
+    })
+    mockCreateApp.mockResolvedValue(mockApp)
     const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
@@ -181,13 +181,12 @@ describe('CreateAppModal', () => {
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
-    const mockApp: Partial<App> = {
-      id: 'app-1',
+    const mockApp = createAppDetailFixture({
       mode: AppModeEnum.ADVANCED_CHAT,
       maintainer: 'user-1',
-    }
+    })
     let resolveTracking: (() => void) | undefined
-    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockCreateApp.mockResolvedValue(mockApp)
     mockTrackCreateApp.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveTracking = resolve
@@ -251,7 +250,9 @@ describe('CreateAppModal', () => {
   })
 
   it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
-    mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
+    mockCreateApp.mockResolvedValue(
+      createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
+    )
     renderModal()
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
@@ -324,7 +325,9 @@ describe('CreateAppModal', () => {
   })
 
   it('should switch between app types before creating a completion app', async () => {
-    mockCreateApp.mockResolvedValue({ id: 'completion-app', mode: AppModeEnum.COMPLETION } as App)
+    mockCreateApp.mockResolvedValue(
+      createAppDetailFixture({ id: 'completion-app', mode: AppModeEnum.COMPLETION }),
+    )
     renderModal()
 
     fireEvent.click(screen.getByText('app.types.workflow'))
@@ -349,11 +352,11 @@ describe('CreateAppModal', () => {
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
-    let resolveCreate: ((value: App) => void) | undefined
+    let resolveCreate: ((value: AppDetail) => void) | undefined
     mockCreateApp.mockImplementation(
       () =>
-        new Promise((resolve) => {
-          resolveCreate = resolve as (value: App) => void
+        new Promise<AppDetail>((resolve) => {
+          resolveCreate = resolve
         }),
     )
     renderModal()
@@ -373,7 +376,7 @@ describe('CreateAppModal', () => {
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
 
-    resolveCreate?.({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT } as App)
+    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT }))
     await waitFor(() => {
       expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     })
