@@ -151,9 +151,18 @@ export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = 
   return useMutation(
     consoleQuery.logout.post.mutationOptions({
       onSuccess: () => {
+        // Registration markers and Analytics identity can survive a page reload,
+        // so clear them explicitly after the server has ended the session.
         discardRegistrationSessionState()
         resetUser()
-        // A new document resets all account-scoped stores and query observers.
+        // Client-side navigation keeps root providers and account-scoped stores alive.
+        // QueryClient.clear() alone is insufficient: atomWithQuery caches observers
+        // that can remain attached to removed Query instances and expose old results
+        // when another account signs in with the same query keys (see #42809).
+        // Replace the document to recreate all stores and observers for the next
+        // session, without maintaining a reset dependency on every account-scoped atom.
+        // Native navigation needs the deployment base path added explicitly; redirectTo
+        // also preserves flow-specific sign-in parameters such as the OAuth return URL.
         window.location.replace(`${basePath}${redirectTo}`)
       },
     }),
