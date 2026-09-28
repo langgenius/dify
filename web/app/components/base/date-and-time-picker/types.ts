@@ -63,6 +63,7 @@ export type DatePickerFooterProps = {
 
 export type TriggerParams = {
   inputElem: React.ReactNode
+  displayText: string
   onClick: (e: React.MouseEvent) => void
 }
 export type TimePickerProps = {
@@ -77,6 +78,7 @@ export type TimePickerProps = {
     state: TriggerState,
     params: TriggerParams,
   ) => React.ReactElement
+  triggerNativeButton?: boolean
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
   notClearable?: boolean
