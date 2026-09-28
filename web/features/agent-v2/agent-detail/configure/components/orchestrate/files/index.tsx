@@ -533,8 +533,6 @@ export function AgentFiles() {
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="pb-4"
         actions={
           !readOnly ? (
             <ConfigureSectionAddButton
@@ -600,8 +598,6 @@ export function AgentTemplateFiles() {
       label={t(($) => $['agentDetail.configure.files.label'])}
       labelId={labelId}
       tip={<AgentConfigureTipContent type="files" />}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="pb-4"
     >
       {visibleFiles.length === 0 ? (
         <ConfigureSectionEmpty
