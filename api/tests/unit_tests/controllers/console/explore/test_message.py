@@ -44,9 +44,14 @@ _BLOCKING: dict[str, object] = {"answer": "你好", "metadata": {}, "usage": Non
 
 
 @dataclass(frozen=True)
+class _InstalledAppServices:
+    messages: InstalledAppMessageService
+    generation: InstalledAppGenerationService
+
+
+@dataclass(frozen=True)
 class _Services:
-    installed_app_messages: InstalledAppMessageService
-    installed_app_generation: InstalledAppGenerationService
+    installed_apps: _InstalledAppServices
 
 
 @dataclass
@@ -144,14 +149,16 @@ def messages(
         state.sessions.append(session)
 
     services = _Services(
-        installed_app_messages=InstalledAppMessageService(
-            messages=SQLAlchemyInstalledAppMessageRepository(session_factory=factory),
-            get_extra_contents=state.get_extra_contents,
-            suggested_questions=state.suggested_questions,
-            emit_feedback=state.emit_feedback,
-        ),
-        installed_app_generation=InstalledAppGenerationService(
-            usage=SQLAlchemyInstalledAppRepository(session_factory=factory), runtime=state
+        installed_apps=_InstalledAppServices(
+            messages=InstalledAppMessageService(
+                messages=SQLAlchemyInstalledAppMessageRepository(session_factory=factory),
+                get_extra_contents=state.get_extra_contents,
+                suggested_questions=state.suggested_questions,
+                emit_feedback=state.emit_feedback,
+            ),
+            generation=InstalledAppGenerationService(
+                usage=SQLAlchemyInstalledAppRepository(session_factory=factory), runtime=state
+            ),
         ),
     )
     monkeypatch.setattr(module, "application_services", lambda: services)

@@ -79,13 +79,6 @@ export type Import = {
   warnings?: Array<DslImportWarning>
 }
 
-export type RosterAgentPackageConflictResponse = {
-  code: string
-  leaked_dependencies?: Array<PluginDependency>
-  message: string
-  status?: 409
-}
-
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
@@ -1166,6 +1159,7 @@ export type PublishWorkflowPayload = {
 export type WorkflowPublishResponse = {
   created_at: number
   result: string
+  warning?: string | null
 }
 
 export type WebhookTriggerResponse = {
@@ -3579,7 +3573,7 @@ export type PostAppsImportsData = {
 export type PostAppsImportsErrors = {
   400: Import
   403: unknown
-  409: RosterAgentPackageConflictResponse
+  409: unknown
   413: unknown
 }
 

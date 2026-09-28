@@ -117,7 +117,7 @@ function MarketplaceSuggestionList({
               <AutocompleteItem
                 key={item.id}
                 value={item}
-                className="mx-0 items-start gap-1 rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
+                className="mx-0 items-start gap-1 rounded-lg py-1 pr-1 pl-3 hover:text-text-primary not-data-highlighted:hover:bg-state-base-hover"
                 onClick={() => onSelect(item.selection)}
               >
                 <span className="flex shrink-0 items-start py-1">
@@ -323,6 +323,7 @@ export function MarketplaceSearchAutocomplete({
     <div ref={searchRootRef} className="relative">
       <Autocomplete
         filter={null}
+        highlightItemOnHover={false}
         itemToStringValue={(item) => item.label}
         items={suggestionGroups}
         mode="list"
@@ -352,7 +353,13 @@ export function MarketplaceSearchAutocomplete({
             size="large"
             type="text"
             onKeyDownCapture={(event) => {
-              if (event.key !== 'Enter' || !inputName) return
+              if (
+                event.defaultPrevented ||
+                event.nativeEvent.isComposing ||
+                event.key !== 'Enter' ||
+                !inputName
+              )
+                return
               if (keyboardHighlightedRef.current) return
               event.preventDefault()
               event.stopPropagation()

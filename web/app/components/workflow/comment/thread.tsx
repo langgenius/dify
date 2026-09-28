@@ -201,7 +201,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(
 
     // Focus management refs
     const replyInputRef = useRef<HTMLTextAreaElement>(null)
-    const threadRef = useRef<HTMLDivElement>(null)
 
     // Get mentionable users from store
     const mentionUsersFromStore = useStore((state) =>
@@ -247,26 +246,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(
 
       return () => clearTimeout(timer)
     }, [comment.id, editingReply.id, isCommentEditing, canReply])
-
-    // P2: Handle Esc key to close thread
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // Don't intercept if actively editing a reply
-        if (editingReply.id || isCommentEditing) return
-
-        // Don't intercept if mention dropdown is open (let MentionInput handle it)
-        if (document.querySelector('[data-mention-dropdown]')) return
-
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          onClose()
-        }
-      }
-
-      document.addEventListener('keydown', handleKeyDown, true)
-      return () => document.removeEventListener('keydown', handleKeyDown, true)
-    }, [onClose, editingReply.id, isCommentEditing])
 
     const handleReplySubmit = useCallback(
       async (content: string, mentionedUserIds: string[]) => {
@@ -448,11 +427,18 @@ export const CommentThread: FC<CommentThreadProps> = memo(
         onMouseEnter={() => setCommentPreviewHovering(true)}
         onMouseLeave={() => setCommentPreviewHovering(false)}
       >
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The thread handles bubbling Escape after its child editor and menus have handled it. */}
         <div
-          ref={threadRef}
+          onKeyDown={(event) => {
+            if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
+              return
+            if (editingReply.id || isCommentEditing) return
+            event.preventDefault()
+            event.stopPropagation()
+            onClose()
+          }}
           className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
           role="dialog"
-          aria-modal="true"
           aria-labelledby="comment-thread-title"
         >
           <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">

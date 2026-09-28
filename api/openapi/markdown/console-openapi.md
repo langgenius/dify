@@ -1549,8 +1549,8 @@ Create a new application
 | 200 | Import completed | **application/json**: [Import](#import)<br> |
 | 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
-| 403 | Insufficient import or plugin installation permissions |  |
-| 409 | Agent name conflict or missing plugins | **application/json**: [RosterAgentPackageConflictResponse](#rosteragentpackageconflictresponse)<br> |
+| 403 | Insufficient import permissions |  |
+| 409 | Agent name conflict |  |
 | 413 | Roster Agent package exceeds the size limit |  |
 
 ### [GET] /apps/imports/{app_id}/check-dependencies
@@ -22467,15 +22467,6 @@ Resource types understood by access policies.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
 
-#### RosterAgentPackageConflictResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
-| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
-| message | string |  | Yes |
-| status | integer, <br>**Default:** 409 |  | No |
-
 #### RosterListQuery
 
 | Name | Type | Description | Required |
@@ -25451,6 +25442,7 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+| warning | string | Advisory warning for variable references that can read a skipped branch. Publish still succeeds. | No |
 
 #### WorkflowResponse
 

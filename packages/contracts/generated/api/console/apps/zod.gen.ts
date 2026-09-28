@@ -684,6 +684,7 @@ export const zPublishWorkflowPayload = z.object({
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
+  warning: z.string().nullish(),
 })
 
 /**
@@ -2171,16 +2172,6 @@ export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
-})
-
-/**
- * RosterAgentPackageConflictResponse
- */
-export const zRosterAgentPackageConflictResponse = z.object({
-  code: z.string(),
-  leaked_dependencies: z.array(zPluginDependency).optional(),
-  message: z.string(),
-  status: z.literal(409).optional().default(409),
 })
 
 /**
