@@ -7,6 +7,8 @@ from services.app.agent_app_contracts import AgentReferencingWorkflow
 
 
 class AgentAppReferences(Protocol):
+    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
+
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]: ...
 
 
@@ -23,6 +25,11 @@ class AgentFeatureValidator(Protocol):
 class AgentAppAccessService:
     def __init__(self, *, references: AgentAppReferences) -> None:
         self._references = references
+
+    def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        return self._references.resolve_existing_runtime_app_id(
+            tenant_id=context.active_workspace_id, agent_id=agent_id
+        )
 
     def list_referencing_workflows(self, context: RequestContext, agent_id: str) -> list[AgentReferencingWorkflow]:
         return self._references.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)

@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "워크스페이스 스킬을 업데이트하지 못했습니다.",
   "agentDetail.configure.skills.workspaceSelector.search": "스킬 검색...",
   "agentDetail.configure.switchToPreviewConfirm.title": "미리보기 모드로 전환할까요?",
+  "agentDetail.configure.templatePreview.agentUI": "에이전트 UI",
   "agentDetail.configure.title": "구성",
   "agentDetail.configure.tools.add": "도구 추가",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "개발자용",

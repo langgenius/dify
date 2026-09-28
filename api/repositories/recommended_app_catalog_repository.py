@@ -4,14 +4,19 @@ import json
 import logging
 from collections.abc import Sequence
 from typing import cast, override
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.languages import languages
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from extensions.ext_redis import RedisClientWrapper
-from models.model import App, RecommendedApp, Site
+from models.account import Tenant, TenantStatus
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigSnapshot, AgentScope, AgentStatus
+from models.model import App, AppMode, RecommendedApp, Site
 from services.app_dsl_service import AppDslService
+from services.recommended_app_package_service import RecommendedAgentPackageSource
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
     RecommendedAppCatalogQuery,
@@ -56,6 +61,43 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
     def get_detail(self, app_id: str) -> RecommendedAppDetailRecord | None:
         with self._session_factory() as session:
             return self._get_detail(app_id, session=session)
+
+    def get_package_source(self, app_id: str, version_id: UUID) -> RecommendedAgentPackageSource | None:
+        with self._session_factory() as session:
+            source = self._get_agent_package_source(app_id, session=session)
+            return source if source is not None and source.version_id == version_id else None
+
+    @staticmethod
+    def _get_agent_package_source(app_id: str, *, session: Session) -> RecommendedAgentPackageSource | None:
+        row = session.execute(
+            select(Agent.tenant_id, Agent.id, Agent.active_config_snapshot_id)
+            .join(App, (App.id == Agent.app_id) & (App.tenant_id == Agent.tenant_id))
+            .join(Tenant, Tenant.id == App.tenant_id)
+            .join(RecommendedApp, RecommendedApp.app_id == App.id)
+            .join(
+                AgentConfigSnapshot,
+                (AgentConfigSnapshot.id == Agent.active_config_snapshot_id)
+                & (AgentConfigSnapshot.agent_id == Agent.id)
+                & (AgentConfigSnapshot.tenant_id == Agent.tenant_id),
+            )
+            .where(
+                App.id == app_id,
+                App.mode == AppMode.AGENT,
+                App.status == "normal",
+                App.is_public.is_(True),
+                RecommendedApp.is_listed.is_(True),
+                Tenant.status != TenantStatus.ARCHIVE,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+                workflow_callable_active_snapshot_filter(),
+                (Agent.backing_app_id == App.id) | Agent.backing_app_id.is_(None),
+            )
+            .limit(1)
+        ).one_or_none()
+        if row is None:
+            return None
+        return RecommendedAgentPackageSource(tenant_id=row[0], agent_id=row[1], version_id=UUID(row[2]))
 
     @override
     def contains(self, app_id: str) -> bool:
@@ -179,13 +221,19 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
         if app is None or not app.is_public:
             return None
 
+        version_id = None
+        if app.mode == AppMode.AGENT:
+            source = DatabaseRecommendedAppCatalogRepository._get_agent_package_source(app.id, session=session)
+            if source is not None:
+                version_id = str(source.version_id)
         return RecommendedAppDetailRecord(
             id=app.id,
             name=app.name,
             icon=cast(str | None, app.icon),
             icon_background=app.icon_background,
             mode=app.mode.value,
-            export_data=AppDslService.export_dsl(app_model=app, session=session),
+            export_data="" if app.mode == AppMode.AGENT else AppDslService.export_dsl(app_model=app, session=session),
+            version_id=version_id,
         )
 
     @staticmethod

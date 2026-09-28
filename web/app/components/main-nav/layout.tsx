@@ -2,12 +2,15 @@
 
 import type { ReactNode } from 'react'
 import type { MainNavProps } from './types'
+import type { DetailSidebarMode } from '@/app/components/detail-sidebar/cookie'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
+import { useHydrateAtoms } from 'jotai/utils'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { detailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
@@ -20,6 +23,7 @@ type MainNavLayoutProps = {
   children: ReactNode
   detailSidebar?: ReactNode
   initialPlatform?: MainNavProps['initialPlatform']
+  initialDetailSidebarMode: DetailSidebarMode
 }
 
 function AppDetailStoreCleanup() {
@@ -40,7 +44,13 @@ function AppDetailStoreCleanup() {
   return null
 }
 
-const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayoutProps) => {
+const MainNavLayout = ({
+  children,
+  detailSidebar,
+  initialPlatform,
+  initialDetailSidebarMode,
+}: MainNavLayoutProps) => {
+  useHydrateAtoms([[detailSidebarModeAtom, initialDetailSidebarMode]])
   const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)

@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
+import { handleShortcutMenuKeyDown, OptionRow, SingleOptionTrigger } from './test-run-menu-helpers'
 
 export const TriggerType = {
   UserInput: 'user_input',
@@ -84,7 +84,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
     mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
 
   options.triggers.forEach((trigger) => {
-    if (trigger.enabled !== false)
+    if (trigger.enabled !== false && numericShortcut < 10)
       mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
   })
 
@@ -121,12 +121,6 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
     const runSoleOption = useCallback(() => {
       if (soleEnabledOption) handleSelect(soleEnabledOption)
     }, [handleSelect, soleEnabledOption])
-
-    useShortcutMenu({
-      open,
-      shortcutMappings,
-      handleSelect,
-    })
 
     useImperativeHandle(
       ref,
@@ -171,6 +165,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
           <DropdownMenuTrigger style={{ userSelect: 'none' }}>{children}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent
+          onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
           placement="bottom-start"
           sideOffset={8}
           alignOffset={-4}

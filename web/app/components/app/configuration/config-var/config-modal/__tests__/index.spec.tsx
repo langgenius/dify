@@ -1,5 +1,4 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { App } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -8,6 +7,7 @@ import { useStore } from '@/app/components/app/store'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -56,9 +56,7 @@ describe('ConfigModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useStore.setState({
-      appDetail: {
-        mode: AppModeEnum.CHAT,
-      } as App,
+      appDetail: createAppDetailFixture({ mode: AppModeEnum.CHAT }),
     })
   })
 

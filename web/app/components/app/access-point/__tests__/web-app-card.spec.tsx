@@ -1,6 +1,6 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,6 +9,7 @@ import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -110,8 +111,8 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
     ) : null,
 }))
 
-function createAppInfo(mode: AppModeEnum): App {
-  return {
+function createAppInfo(mode: AppModeEnum): AppDetailWithSite {
+  return createAppDetailFixture({
     access_mode: AccessMode.PUBLIC,
     api_base_url: 'https://api.example.test/v1',
     enable_site: true,
@@ -121,11 +122,11 @@ function createAppInfo(mode: AppModeEnum): App {
     icon_url: null,
     id: 'app-1',
     mode,
-    site: {
+    site: createAppSiteFixture({
       access_token: 'site-code',
       app_base_url: 'https://site.example.test',
-    },
-  } as App
+    }),
+  })
 }
 
 function renderCard(
@@ -134,17 +135,21 @@ function renderCard(
   workflow?: PublishedWorkflow,
   {
     accessMode = AccessMode.PUBLIC,
+    appOverrides = {},
     canManageAccessPoint = true,
     onRefreshApp = vi.fn().mockResolvedValue(undefined),
     showAccessControl = true,
   }: {
-    accessMode?: AccessMode
+    accessMode?: AccessMode | null
+    appOverrides?: Partial<AppDetailWithSite>
     canManageAccessPoint?: boolean
     onRefreshApp?: () => Promise<void>
     showAccessControl?: boolean
   } = {},
 ) {
-  useAppStore.setState({ appDetail: { ...createAppInfo(mode), access_mode: accessMode } })
+  useAppStore.setState({
+    appDetail: { ...createAppInfo(mode), ...appOverrides, access_mode: accessMode },
+  })
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['system-features'], {
     webapp_auth: { enabled: showAccessControl },
@@ -257,6 +262,34 @@ describe('WebAppAccessPointCard', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('disables site actions when the app has no site', () => {
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { appOverrides: { site: null } })
+
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /studio\.accessPoint\.embedIntoSite/ }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: /studio\.accessPoint\.open/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('https://site.example.test/chat/')).not.toBeInTheDocument()
+  })
+
+  it('does not present an unknown access mode as public or allow launching', () => {
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { accessMode: null })
+
+    expect(
+      screen.queryByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /studio\.accessPoint\.open/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('shows the current access mode without a redundant section label', () => {

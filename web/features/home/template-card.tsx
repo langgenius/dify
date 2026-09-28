@@ -103,7 +103,7 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.AGENT_CHAT && (
+            {(appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.AGENT) && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
