@@ -2,6 +2,7 @@ import type {
   ConversationItem,
   DifyBuilderLocalInteractionResponse,
   DifyBuilderLocalUserMessage,
+  FormField,
 } from '../types'
 import type { DifyBuilderConversationGroup } from './group-conversation-items'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,6 +16,33 @@ type ConversationRenderEntry =
   | DifyBuilderConversationGroup
   | { type: 'local-user'; message: DifyBuilderLocalUserMessage }
   | { type: 'local-interaction'; response: DifyBuilderLocalInteractionResponse }
+
+type FormResponse = Extract<ConversationItem, { kind: 'interaction_response' }>
+
+const sourceFormFieldsFor = (
+  items: ConversationItem[],
+  response: FormResponse,
+): FormField[] | undefined => {
+  if (response.payload.interaction_kind !== 'form') return undefined
+  const responseFields = response.payload.fields ?? []
+  let source: Extract<ConversationItem, { kind: 'form' }> | undefined
+  for (const item of items) {
+    if (item.kind !== 'form' || item.at_version >= response.at_version) continue
+    const fields = item.payload.fields ?? []
+    if (
+      fields.length !== responseFields.length ||
+      !fields.every((field, index) => field.key === responseFields[index]?.key)
+    )
+      continue
+    if (
+      !source ||
+      item.at_version > source.at_version ||
+      (item.at_version === source.at_version && item.seq > source.seq)
+    )
+      source = item
+  }
+  return source?.payload.fields
+}
 
 const firstSequence = (group: DifyBuilderConversationGroup) =>
   group.type === 'standalone' ? group.item.seq : (group.cards[0]?.seq ?? group.turn.seq)
@@ -86,6 +114,22 @@ export const DifyBuilderConversation = memo(
   }) => {
     const { t } = useTranslation(['workflow'])
     const groups = useMemo(() => groupConversationItems(items), [items])
+    const sourceFormFieldsByResponse = useMemo(() => {
+      const result = new Map<number, FormField[]>()
+      for (const item of items) {
+        if (item.kind !== 'interaction_response') continue
+        const sourceFields = sourceFormFieldsFor(items, item)
+        if (sourceFields) result.set(item.seq, sourceFields)
+      }
+      return result
+    }, [items])
+    const localSourceFormFields = useMemo(
+      () =>
+        localInteractionResponse
+          ? sourceFormFieldsFor(items, localInteractionResponse.item)
+          : undefined,
+      [items, localInteractionResponse],
+    )
     const entries = useMemo(
       () => addLocalEntries(groups, items, localUserMessage, localInteractionResponse),
       [groups, items, localInteractionResponse, localUserMessage],
@@ -118,6 +162,7 @@ export const DifyBuilderConversation = memo(
                   key={`interaction-${group.response.item.at_version}`}
                   item={group.response.item}
                   invalidated={false}
+                  sourceFormFields={localSourceFormFields}
                 />
               )
             }
@@ -140,6 +185,7 @@ export const DifyBuilderConversation = memo(
                   }
                   item={group.item}
                   invalidated={false}
+                  sourceFormFields={sourceFormFieldsByResponse.get(group.item.seq)}
                 />
               )
             }
@@ -161,6 +207,7 @@ export const DifyBuilderConversation = memo(
                     key={`${item.seq}-${item.kind}`}
                     item={item}
                     invalidated={group.invalidated}
+                    sourceFormFields={sourceFormFieldsByResponse.get(item.seq)}
                   />
                 ))}
               </div>

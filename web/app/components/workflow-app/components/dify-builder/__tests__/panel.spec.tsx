@@ -639,15 +639,17 @@ describe('DifyBuilderPanel', () => {
     expect(
       await within(log).findByRole('heading', { name: 'Provide test data' }),
     ).toBeInTheDocument()
-    expect(within(log).getByText('AI agents')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+    expect(within(log).getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
+    expect(within(log).getByRole('textbox', { name: 'Topic' })).toHaveAttribute('readonly')
 
     await act(async () => {
       finishAction(false)
       await action
     })
 
-    expect(await screen.findByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
+    const restoredField = await screen.findByRole('textbox', { name: 'Topic' })
+    expect(restoredField).toHaveValue('AI agents')
+    expect(restoredField).not.toHaveAttribute('readonly')
     expect(
       within(log).queryByRole('heading', { name: 'Provide test data' }),
     ).not.toBeInTheDocument()

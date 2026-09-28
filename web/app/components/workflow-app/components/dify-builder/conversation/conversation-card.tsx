@@ -1,10 +1,11 @@
-import type { ConversationItem } from '../types'
+import type { ConversationItem, FormField } from '../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { DifyBuilderCard } from '../cards/card-shell'
 import { ExecutionProgress } from './execution-progress'
 import { PreflightContextCard } from './preflight-context-card'
+import { ReadOnlyFormResponse } from './read-only-form-response'
 import { Thinking } from './thinking'
 
 export const AssistantReply = ({ text }: { text: string }) => (
@@ -25,7 +26,15 @@ export const UserMessage = memo(({ text }: { text: string }) => {
 })
 
 export const ConversationCard = memo(
-  ({ item, invalidated }: { item: ConversationItem; invalidated: boolean }) => {
+  ({
+    item,
+    invalidated,
+    sourceFormFields,
+  }: {
+    item: ConversationItem
+    invalidated: boolean
+    sourceFormFields?: FormField[]
+  }) => {
     const { t } = useTranslation(['workflow'])
 
     if (item.kind === 'user' || item.kind === 'decision')
@@ -75,18 +84,7 @@ export const ConversationCard = memo(
               </p>
             )}
           </div>
-          {hasFields && (
-            <dl className="m-0">
-              {fields.map((field) => (
-                <div key={field.key} className="rounded-lg px-2 py-1.5 wrap-break-word">
-                  <dt className="system-sm-regular text-text-tertiary">{field.label}</dt>
-                  <dd className="m-0 mt-0.5 system-md-regular whitespace-pre-wrap text-text-primary">
-                    {field.display_value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
+          {hasFields && <ReadOnlyFormResponse fields={fields} sourceFields={sourceFormFields} />}
         </article>
       )
     }

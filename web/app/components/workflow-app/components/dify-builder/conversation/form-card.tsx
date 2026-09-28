@@ -126,13 +126,23 @@ export const FormCard = memo(
         return `${field.label}: ${t(($) => $['nodes.agent.outputVars.defaultValueObjectInvalid'], { ns: 'workflowAgent' })}`
       if (error === 'invalid-json')
         return t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: field.label })
-      if (error === 'invalid-number') return `${field.label} must be a number.`
-      if (error === 'invalid-option') return `${field.label} must use an available option.`
+      if (error === 'invalid-number')
+        return t(($) => $['nodes.agent.outputVars.defaultValueNumberInvalid'], {
+          ns: 'workflowAgent',
+        })
+      if (error === 'invalid-option')
+        return t(($) => $['difyBuilder.validation.invalidOption'], { ns: 'workflow' })
       if (error === 'max-files')
-        return `${field.label} accepts at most ${field.number_limits ?? field.max_length} files.`
+        return t(($) => $['difyBuilder.validation.maxFiles'], {
+          ns: 'workflow',
+          limit: field.number_limits ?? field.max_length ?? 1,
+        })
       if (error === 'max-length')
-        return `${field.label} must be ${field.max_length} characters or less.`
-      return `${field.label} has an invalid value.`
+        return t(($) => $['difyBuilder.validation.maxLength'], {
+          ns: 'workflow',
+          limit: field.max_length ?? 0,
+        })
+      return t(($) => $['difyBuilder.validation.invalidValue'], { ns: 'workflow' })
     }
 
     const form = (
