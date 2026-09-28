@@ -27,6 +27,9 @@ const PRESENCE = { Required: 'required', Optional: 'optional' } as const
 const FIRST_LINE = /\r?\n/
 const PLACEHOLDER = /^<[^<>]*>$/
 const GAP = '  '
+const MAX_COLUMN_WIDTH = 60
+const WORD_SEPARATOR = ' '
+const ESCAPE = '\u001B'
 const INDENT = '  '
 const NEWLINE = '\n'
 const BLOCK_BREAK = '\n\n'
@@ -38,18 +41,37 @@ const SKELETON_TITLE = 'Required fields'
 const COMMENT = '#'
 const NO_POSITIONAL: readonly string[] = []
 
+function wrapped(cell: string): string[] {
+  if (cell.length <= MAX_COLUMN_WIDTH || cell.includes(ESCAPE)) return [cell]
+  const lines: string[] = []
+  let line = ''
+  for (const word of cell.split(WORD_SEPARATOR)) {
+    if (line !== '' && line.length + WORD_SEPARATOR.length + word.length > MAX_COLUMN_WIDTH) {
+      lines.push(line)
+      line = word
+    } else {
+      line = line === '' ? word : `${line}${WORD_SEPARATOR}${word}`
+    }
+  }
+  lines.push(line)
+  return lines
+}
+
 /** Pads every column but leaves the last one free, so a styled cell keeps its width. */
 function aligned(rows: readonly (readonly string[])[]): string[] {
+  const wrappedRows = rows.map((cells) => cells.map(wrapped))
   const widths: number[] = []
-  for (const cells of rows)
-    cells.forEach((cell, at) => {
-      widths[at] = Math.max(widths[at] ?? 0, cell.length)
+  for (const cells of wrappedRows)
+    cells.forEach((lines, at) => {
+      widths[at] = Math.max(widths[at] ?? 0, ...lines.map((line) => line.length))
     })
-  return rows.map((cells) =>
-    cells
-      .map((cell, at) => cell.padEnd(widths[at] ?? 0))
-      .join(GAP)
-      .trimEnd(),
+  return wrappedRows.flatMap((cells) =>
+    Array.from({ length: Math.max(...cells.map((lines) => lines.length)) }, (_, row) =>
+      cells
+        .map((lines, at) => (lines[row] ?? '').padEnd(widths[at] ?? 0))
+        .join(GAP)
+        .trimEnd(),
+    ),
   )
 }
 

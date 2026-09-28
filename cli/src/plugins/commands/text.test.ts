@@ -60,9 +60,15 @@ it('renders an op descriptor with input, options, global and examples', () => {
 
     Flags
       --app-id        string             required
-      --attachments   file[]             optional  Local files attached to the run itself (the app's \`sys.files\`), not to a variable
-      --files         map<string, json>  optional  Local files keyed by the app's file variable name; the server uploads each one and sets \`inputs[<name>]\`. Send a list (part name \`files[<name>][]\`) for a file-list variable
-      --inputs        map<string, json>  required  Variables declared by the app. The exact shape is per app: read \`input_schema\` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in \`files\`, not both.
+      --attachments   file[]             optional  Local files attached to the run itself (the app's
+                                                   \`sys.files\`), not to a variable
+      --files         map<string, json>  optional  Local files keyed by the app's file variable name; the
+                                                   server uploads each one and sets \`inputs[<name>]\`. Send a
+                                                   list (part name \`files[<name>][]\`) for a file-list variable
+      --inputs        map<string, json>  required  Variables declared by the app. The exact shape is per app:
+                                                   read \`input_schema\` from describe.console_app. A file
+                                                   variable takes a Dify file mapping (remote url or upload id)
+                                                   here, or a local file in \`files\`, not both.
       --workflow-id   string             optional  Pin a published workflow version
       --workspace-id  string             optional  Workspace that owns the app
 
@@ -92,11 +98,13 @@ it('renders a static descriptor with arguments and flags', () => {
       difyctl install skills <dir> [flags]
 
     Arguments
-      <dir>  string  required  The agent's skills root: the folder that holds one subfolder per skill
+      <dir>  string  required  The agent's skills root: the folder that holds one subfolder
+                               per skill
 
     Flags
       --skill  string[]  []                                                        Skill to install (repeatable); default: the whole collection
-      --from   string    "https://github.com/langgenius/dify/tree/0000000/skills"  Where the skills come from: a GitHub folder URL or a local folder
+      --from   string    "https://github.com/langgenius/dify/tree/0000000/skills"  Where the skills come from: a GitHub folder URL or a local
+                                                                                   folder
 
     Global
       --verbose  boolean  false  Keep the raw server response in error envelopes
