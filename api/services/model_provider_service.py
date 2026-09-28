@@ -345,6 +345,9 @@ class ModelProviderService:
         provider_entities = PluginService.fetch_plugin_model_providers(tenant_id=tenant_id)
         states = self._load_provider_summary_states(tenant_id)
         model_billing = ModelBillingProfileService.resolve(tenant_id)
+        from core.model_invocation_routing import has_compatibility_route, migration_routing_state
+
+        compatibility_route = has_compatibility_route(migration_routing_state(tenant_id))
 
         bindings_by_provider: dict[str, PluginModelProviderBinding] = {}
         for binding in bindings:
@@ -382,7 +385,7 @@ class ModelProviderService:
             custom_present = state.has_custom_provider or state.has_custom_models
             provider_binding = bindings_by_provider.get(provider_name)
             system_enabled = bool(
-                model_billing.uses_legacy_message_credits
+                (model_billing.uses_legacy_message_credits or compatibility_route)
                 and provider_binding
                 and self._has_system_provider_hosting_configuration(provider_name)
                 and provider_binding.source != PluginInstallationSource.Package
@@ -390,7 +393,7 @@ class ModelProviderService:
             )
             preferred_provider_type = (
                 ProviderType.CUSTOM
-                if model_billing.uses_tokener
+                if model_billing.uses_tokener and not compatibility_route
                 else self._get_preferred_provider_type(
                     state,
                     custom_present=custom_present,
@@ -924,7 +927,10 @@ class ModelProviderService:
             preferred_provider_type_enum == ProviderType.SYSTEM
             and ModelBillingProfileService.resolve(tenant_id).uses_tokener
         ):
-            raise ValueError("Hosted SYSTEM providers are disabled for this workspace.")
+            from core.model_invocation_routing import has_compatibility_route, migration_routing_state
+
+            if not has_compatibility_route(migration_routing_state(tenant_id)):
+                raise ValueError("Hosted SYSTEM providers are disabled for this workspace.")
 
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
 

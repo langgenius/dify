@@ -165,6 +165,7 @@ class QuotaReserveResult(TypedDict):
     reservation_id: str
     available: int
     reserved: int
+    reserved_amount: NotRequired[int]
 
 
 class QuotaCommitResult(TypedDict):
@@ -495,6 +496,7 @@ class BillingService:
         amount: int = 1,
         meta: dict | None = None,
         bucket: str = "",
+        capped: bool = False,
     ) -> QuotaReserveResult:
         """Reserve quota before task execution."""
         payload: dict = {
@@ -507,6 +509,8 @@ class BillingService:
             payload["bucket"] = bucket
         if meta:
             payload["meta"] = meta
+        if capped:
+            payload["capped"] = True
         return _quota_reserve_adapter.validate_python(cls._send_quota_request("POST", "/quota/reserve", json=payload))
 
     @classmethod

@@ -2,6 +2,7 @@ from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
+    from model_billing_migration_commands import tokener_migration
     from commands import (
         add_qdrant_index,
         archive_workflow_runs,
@@ -48,6 +49,7 @@ def init_app(app: DifyApp):
     )
 
     cmds_to_register = [
+        tokener_migration,
         reset_password,
         reset_email,
         reset_encrypt_key_pair,

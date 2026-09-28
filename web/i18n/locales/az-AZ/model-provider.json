@@ -130,6 +130,7 @@
   "modelProvider.tokenerEntitlementProcessing": "Ödənişli Tokener kreditləri tətbiq edilir. Aktivləşdirmədən sonra mövcud balans yenilənəcək.",
   "modelProvider.tokenerEntitlementRetrying": "Ödənişli Tokener kreditləri gecikir və tətbiq avtomatik təkrar yoxlanılır. Mövcud balans artırılmayıb.",
   "modelProvider.tokenerMonthlyUsageUnavailable": "Aylıq ödəniş və sorğular müvəqqəti olaraq əlçatan deyil",
+  "modelProvider.tokenerProcessing": "Tokener kreditləri yenilənir. Bir az sonra yenidən cəhd edin.",
   "modelProvider.tokenerRequestsThisMonth": "Bu ay edilən sorğular",
   "modelProvider.tokenerUsageLabel": "TOKENER.AI KREDİTLƏRİ",
   "modelProvider.tokenerUsagePending": "Tokener quraşdırılması hazır olduqda istifadə məlumatları görünəcək.",

@@ -1,6 +1,6 @@
 import binascii
 from collections.abc import Generator, Sequence
-from typing import IO, Any
+from typing import IO, Any, override
 
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -30,9 +30,43 @@ _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 
 class PluginModelClient(BasePluginClient):
+    @override
+    def _prepare_request(self, path, headers, data, params, files):
+        if isinstance(data, dict) and "redirect" in data:
+            prefix, separator, operation = path.partition("/dispatch/")
+            if not separator or operation.startswith("redirect/") or "validate" in operation:
+                raise ValueError("Invalid model redirect operation")
+            context = data.get("_route_context", {})
+            if prefix != f"plugin/{context.get('tenant_id')}" or operation not in context.get("operations", ()):
+                raise ValueError("Model redirect binding mismatch")
+            from models.provider_ids import ModelProviderID
+
+            logical = ModelProviderID(context["logical_provider"])
+            if (headers or {}).get("X-Plugin-ID") != logical.plugin_id or data["data"].get(
+                "provider"
+            ) != logical.provider_name:
+                raise ValueError("Model redirect provider binding mismatch")
+            data = {key: value for key, value in data.items() if key != "_route_context"}
+            path = f"{prefix}/dispatch/redirect/v1/{operation}"
+        return super()._prepare_request(path, headers, data, params, files)
+
     @staticmethod
     def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
+        from core.model_invocation_routing import RoutedModelCredentials, redirect_payload
+
         payload: dict[str, Any] = {"data": data}
+        credentials = data.get("credentials")
+        if isinstance(credentials, RoutedModelCredentials):
+            payload["redirect"] = redirect_payload(credentials.plan, data)
+            # Transport-private admission metadata is stripped in _prepare_request.
+            # Never use the daemon's persistent Context for this or for keys.
+            payload["_route_context"] = {
+                "tenant_id": credentials.plan.tenant_id,
+                "logical_provider": credentials.plan.logical_provider,
+                "operations": credentials.plan.operations,
+            }
+            payload["data"] = {**data, "credentials": {}}
+            payload["user_id"] = user_id or ""
         if user_id is not None:
             payload["user_id"] = user_id
         if app_id is not None:

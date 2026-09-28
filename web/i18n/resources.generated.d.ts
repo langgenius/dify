@@ -3419,6 +3419,7 @@ export default interface Resources {
     'modelProvider.tokenerEntitlementProcessing': 'Paid Tokener credits are being applied. The available balance will update after activation.'
     'modelProvider.tokenerEntitlementRetrying': 'Paid Tokener credits are delayed and retrying automatically. The available balance has not been increased.'
     'modelProvider.tokenerMonthlyUsageUnavailable': 'Monthly billing and requests are temporarily unavailable'
+    'modelProvider.tokenerProcessing': 'Tokener credits are being updated. Please try again shortly.'
     'modelProvider.tokenerRequestsThisMonth': 'requests this month'
     'modelProvider.tokenerUsageLabel': 'TOKENER.AI CREDITS'
     'modelProvider.tokenerUsagePending': 'Usage will appear when Tokener setup is ready.'

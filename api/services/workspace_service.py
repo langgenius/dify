@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class EffectiveCreditPool:
     model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     tokener_bootstrap_status: str | None = None
     plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
@@ -128,7 +129,15 @@ class WorkspaceService:
     @classmethod
     def get_model_provider_credits(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
         """Return legacy credits or enrich a ready Tokener cohort with metering usage."""
+        from core.model_invocation_routing import migration_display_status
+
+        migration_status = migration_display_status(tenant_id)
+        if migration_status == "processing":
+            # No old-credit zero/remaining value masquerading as the new wallet.
+            return EffectiveCreditPool(model_billing_migration_status="processing")
         credit_pool = cls.get_effective_credit_pool(tenant_id, session=session)
+        if migration_status != credit_pool.model_billing_migration_status:
+            credit_pool = replace(credit_pool, model_billing_migration_status=migration_status)
         if (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
             or credit_pool.model_billing_source != ModelBillingSource.TOKENER

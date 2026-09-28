@@ -2122,6 +2122,10 @@ export const zModelProviderCreditsResponse = z.object({
   exhausted_at: z.int().nullable(),
   is_exhausted: z.boolean(),
   is_unlimited: z.boolean(),
+  model_billing_migration_status: z
+    .enum(['active', 'none', 'preparing', 'processing'])
+    .optional()
+    .default('none'),
   model_billing_source: z
     .enum(['legacy_message_credits', 'tokener'])
     .optional()

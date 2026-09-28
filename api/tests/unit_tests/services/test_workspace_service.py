@@ -43,6 +43,18 @@ def _tokener_metering() -> dict[str, object]:
     }
 
 
+def test_migration_processing_is_not_displayed_as_zero_or_old_credit_balance(mocker):
+    mocker.patch("core.model_invocation_routing.migration_display_status", return_value="processing")
+    get_pool = mocker.patch.object(WorkspaceService, "get_effective_credit_pool")
+    get_metering = mocker.patch("services.workspace_service.BillingService.get_tokener_metering")
+    result = WorkspaceService.get_model_provider_credits("tenant-1", session=MagicMock())
+    assert result.model_billing_migration_status == "processing"
+    assert result.remaining_credits is None
+    assert result.tokener_metering is None
+    get_pool.assert_not_called()
+    get_metering.assert_not_called()
+
+
 def _persist_membership(session: Session, *, role: TenantAccountRole) -> Tenant:
     tenant = Tenant(name="Workspace")
     session.add_all(

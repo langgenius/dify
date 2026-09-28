@@ -144,6 +144,7 @@ class TestAgentChatAppGeneratorGenerate:
             )
 
     def test_generate_success_with_debugger_override(self, generator, mocker: MockerFixture, sqlite_session: Session):
+        mocker.patch("core.app.llm.message_billing.begin_message_billing")
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
 
@@ -234,6 +235,7 @@ class TestAgentChatAppGeneratorGenerate:
         thread_obj.start.assert_called_once()
 
     def test_generate_without_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
+        mocker.patch("core.app.llm.message_billing.begin_message_billing")
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
         annotation_reply = {"enabled": False}

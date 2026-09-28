@@ -521,15 +521,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
         calls: list[int] = []
 
         class _FakeModelInstance:
-            def __init__(self, provider_model_bundle, model):
-                pass
+            def __init__(self, provider_model_bundle, model, credentials):
+                self.credentials = credentials
 
             def get_llm_num_tokens(self, messages):
                 calls.append(1)
                 return 10 if len(calls) == 1 else 5
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.ModelInstance",
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.create_model_instance",
             _FakeModelInstance,
         )
 

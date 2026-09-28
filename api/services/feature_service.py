@@ -51,6 +51,9 @@ class FeatureService:
         if tenant_id:
             model_billing = ModelBillingProfileService.resolve(tenant_id)
             features.model_billing_source = model_billing.model_billing_source.value
+            from core.model_invocation_routing import migration_display_status
+
+            features.model_billing_migration_status = migration_display_status(tenant_id)
 
         return features
 

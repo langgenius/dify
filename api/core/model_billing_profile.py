@@ -112,6 +112,16 @@ class ModelBillingProfileService:
         *,
         session: Session | None = None,
     ) -> TenantModelBillingResolution:
+        from core.model_invocation_routing import has_compatibility_route, migration_routing_state
+
+        try:
+            migration = migration_routing_state(tenant_id)
+        except Exception:
+            logger.warning("Model billing migration authority is unavailable, tenant_id=%s", tenant_id)
+            raise ModelBillingProfileResolutionError from None
+        if migration and has_compatibility_route(migration) and migration.get("phase") in {"active", "cancelled"}:
+            # An old concurrent cache refill must never reopen legacy billing.
+            return cls._resolve_tokener_status(tenant_id, session=session)
         try:
             cached_source = _ModelBillingSourceCache.get(tenant_id)
         except Exception:

@@ -125,6 +125,10 @@ class AppQueueManager(ABC):
     def execution_state(self) -> AppExecutionState:
         return self._execution_coordinator.state
 
+    def request_abort(self, reason: str) -> bool:
+        """Abort a failed execution, independently of response listener state."""
+        return self._execution_coordinator.request_abort(reason)
+
     def _publish_timeout_stop(self, reason: str) -> None:
         self.publish(
             QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL, reason=reason),

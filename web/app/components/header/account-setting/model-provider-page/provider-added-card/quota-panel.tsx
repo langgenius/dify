@@ -268,6 +268,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   })
   const {
     modelBillingSource,
+    modelBillingMigrationStatus,
     tokenerBootstrapStatus,
     tokenerMetering,
     usedCredits,
@@ -358,6 +359,17 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .filter(Boolean)
       .join(', '),
   })
+
+  if (modelBillingMigrationStatus === 'processing') {
+    return (
+      <div
+        role="status"
+        className="rounded-xl border border-components-panel-border p-4 text-text-secondary"
+      >
+        {t(($) => $['modelProvider.tokenerProcessing'], { ns: 'modelProvider' })}
+      </div>
+    )
+  }
 
   if (modelBillingSource === 'tokener') {
     return <TokenerQuotaPanel bootstrapStatus={tokenerBootstrapStatus} metering={tokenerMetering} />

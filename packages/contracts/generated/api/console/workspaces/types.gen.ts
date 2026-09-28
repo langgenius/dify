@@ -227,6 +227,7 @@ export type ModelProviderCreditsResponse = {
   exhausted_at: number | null
   is_exhausted: boolean
   is_unlimited: boolean
+  model_billing_migration_status?: 'active' | 'none' | 'preparing' | 'processing'
   model_billing_source?: 'legacy_message_credits' | 'tokener'
   next_credit_reset_date: number | null
   pool_type: 'paid' | 'trial' | null

@@ -66,12 +66,32 @@ class CreditPoolReservation:
     request_id: str
     reservation_id: str | None
     meta: dict[str, Any] = field(default_factory=dict)
+    capped: bool = False
+    requested_amount: int | None = None
     _session_factory: Callable[[], Session] | None = field(default=None, repr=False)
     _state: CreditPoolReservationState = field(default=CreditPoolReservationState.RESERVED, init=False, repr=False)
 
     @property
     def state(self) -> CreditPoolReservationState:
         return self._state
+
+    def renew(self) -> None:
+        """Renew the same capped message hold, never acquire a replacement hold."""
+        if not self.capped or self.reservation_id is None or self._state != CreditPoolReservationState.RESERVED:
+            return
+        from services.billing_service import BillingService
+
+        result = BillingService.quota_reserve(
+            tenant_id=self.tenant_id,
+            feature_key=FEATURE_KEY_CREDIT_POOL,
+            bucket=self.pool_type,
+            request_id=self.request_id,
+            amount=self.requested_amount or self.amount,
+            meta=self.meta,
+            capped=True,
+        )
+        if result.get("reservation_id") != self.reservation_id or result.get("reserved_amount") != self.amount:
+            raise RuntimeError("The original capped message reservation could not be renewed")
 
     def commit(self) -> None:
         if self._state == CreditPoolReservationState.COMMITTED:
@@ -266,8 +286,13 @@ class CreditPoolService:
         request_id: str,
         session_factory: Callable[[], Session] | None = None,
         meta: dict[str, Any] | None = None,
+        _capped: bool = False,
     ) -> CreditPoolReservation:
-        """Reserve the full amount or raise before the billable operation starts."""
+        """Reserve before invocation; capped mode is used only by the message owner.
+
+        Strict callers retain their existing full-amount contract. Capping is
+        atomic in the quota owner, never a GetBalance/min/Reserve race.
+        """
         if credits_required <= 0:
             raise ValueError("credits_required must be greater than 0")
         if not request_id:
@@ -278,6 +303,7 @@ class CreditPoolService:
         if cls._use_billing_quota():
             from services.billing_service import BillingService
 
+            extra: dict[str, Any] = {"capped": True} if _capped else {}
             result = BillingService.quota_reserve(
                 tenant_id=tenant_id,
                 feature_key=FEATURE_KEY_CREDIT_POOL,
@@ -285,38 +311,64 @@ class CreditPoolService:
                 request_id=request_id,
                 amount=credits_required,
                 meta=reservation_meta,
+                **extra,
             )
             reservation_id = result.get("reservation_id", "")
             if not reservation_id:
                 raise QuotaExceededError("Insufficient credits remaining")
+            reserved_amount = result.get("reserved_amount", 0) if _capped else credits_required
+            if (
+                not isinstance(reserved_amount, int)
+                or isinstance(reserved_amount, bool)
+                or not 0 < reserved_amount <= credits_required
+            ):
+                raise ValueError("Invalid capped reservation amount; do not retry with a different request ID")
             return CreditPoolReservation(
                 tenant_id=tenant_id,
                 pool_type=normalized_pool_type,
-                amount=credits_required,
+                amount=reserved_amount,
                 request_id=request_id,
                 reservation_id=reservation_id,
                 meta=reservation_meta,
+                capped=_capped,
+                requested_amount=credits_required if _capped else None,
             )
 
         if session_factory is None:
             raise ValueError("session_factory is required when billing quota is disabled")
 
+        from core.model_invocation_routing import ModelMigrationProcessing
+
         session = session_factory()
 
         def reserve() -> int:
+            from models.model_billing_migration import TenantModelBillingMigration
+
+            # Serialize local legacy admission with Core's cutover CAS. An
+            # already committed reservation still settles to its original pool.
+            migration = session.scalar(
+                select(TenantModelBillingMigration)
+                .where(TenantModelBillingMigration.tenant_id == tenant_id)
+                .with_for_update()
+            )
+            if migration is not None and migration.claimed_at is not None:
+                raise ModelMigrationProcessing
             pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
             if not pool:
                 raise QuotaExceededError("Credit pool not found")
-            if not pool.has_sufficient_credits(credits_required):
+            reserved_amount = credits_required
+            if _capped and pool.quota_limit != -1:
+                reserved_amount = min(credits_required, max(0, pool.remaining_credits))
+            if reserved_amount <= 0 or not pool.has_sufficient_credits(reserved_amount):
                 raise QuotaExceededError("Insufficient credits remaining")
 
-            pool.quota_used += credits_required
+            pool.quota_used += reserved_amount
             session.commit()
-            return credits_required
+            return reserved_amount
 
         try:
-            cls._deduct_with_tenant_lock(tenant_id, reserve)
-        except QuotaExceededError:
+            reserved_amount = cls._deduct_with_tenant_lock(tenant_id, reserve)
+        except (QuotaExceededError, ModelMigrationProcessing):
             session.rollback()
             raise
         except Exception:
@@ -327,11 +379,35 @@ class CreditPoolService:
         return CreditPoolReservation(
             tenant_id=tenant_id,
             pool_type=normalized_pool_type,
-            amount=credits_required,
+            amount=reserved_amount,
             request_id=request_id,
             reservation_id=None,
             meta=reservation_meta,
             _session_factory=session_factory,
+            capped=_capped,
+            requested_amount=credits_required if _capped else None,
+        )
+
+    @classmethod
+    def reserve_credits_capped(
+        cls,
+        tenant_id: str,
+        credits_required: int,
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        request_id: str,
+        session_factory: Callable[[], Session] | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> CreditPoolReservation:
+        """Freeze one legacy message charge, including its original tail-credit cap."""
+        return cls.reserve_credits(
+            tenant_id,
+            credits_required,
+            pool_type,
+            request_id=request_id,
+            session_factory=session_factory,
+            meta=meta,
+            _capped=True,
         )
 
     @classmethod

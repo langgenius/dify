@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "migration_id": "22222222-2222-4222-8222-222222222222",
+  "plan_revision": 1,
+  "calendar_policy": "LEGACY_TRANSITION_V1",
+  "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+  "subscription_id": "sub_fixture",
+  "paid_period_start": "2027-01-15T18:00:00Z",
+  "paid_period_end": "2028-01-15T18:00:00Z",
+  "funding_invoice_id": "in_fixture_annual",
+  "amount_policy_version": "plans-v1",
+  "model_mapping_version": "hosted-v1",
+  "windows": [
+    {
+      "ordinal": 0,
+      "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+      "starts_at": "2027-06-17T00:00:00Z",
+      "ends_at": "2027-07-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-06-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 1,
+      "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+      "starts_at": "2027-07-17T00:00:00Z",
+      "ends_at": "2027-08-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-07-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+      "starts_at": "2027-08-17T00:00:00Z",
+      "ends_at": "2027-09-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-08-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 3,
+      "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+      "starts_at": "2027-09-17T00:00:00Z",
+      "ends_at": "2027-10-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-09-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 4,
+      "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+      "starts_at": "2027-10-17T00:00:00Z",
+      "ends_at": "2027-11-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-10-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 5,
+      "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+      "starts_at": "2027-11-17T00:00:00Z",
+      "ends_at": "2027-12-17T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-11-16"
+        }
+      ]
+    },
+    {
+      "ordinal": 6,
+      "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+      "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+      "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+      "starts_at": "2027-12-17T00:00:00Z",
+      "ends_at": "2028-01-15T00:00:00Z",
+      "amount_usd_micro": "5000000",
+      "aliases": [
+        {
+          "kind": "legacy_annual_target_date",
+          "id": "2027-12-16"
+        }
+      ]
+    }
+  ]
+}
