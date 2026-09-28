@@ -166,6 +166,15 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         assert result.app_model_config_from.value == "app-latest-config"
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
+    def test_get_app_config_requires_annotation_reply_without_override(self):
+        with pytest.raises(ValueError, match="Annotation reply config is required"):
+            AgentChatAppConfigManager.get_app_config(
+                app_model=_app(),
+                app_model_config=_config(),
+                conversation=None,
+                annotation_reply=None,
+            )
+
 
 class TestAgentChatAppConfigManagerConfigValidate:
     def test_config_validate_filters_related_keys(self, mocker: MockerFixture):
