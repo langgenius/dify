@@ -422,30 +422,17 @@ describe('AgentWorkingDirectoryPanel', () => {
     expect(mocks.sandboxInfoQueryOptions).not.toHaveBeenCalled()
   })
 
-  it('should download the selected working directory file from the preview header download action', async () => {
+  it('should download a working directory file when clicking its row in the file system list', async () => {
     const user = userEvent.setup()
     const download = createDeferred<{ url: string }>()
     mocks.sandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('notes.md'))
-    await user.click(
-      await screen.findByRole('button', {
-        name: /common\.operation\.download.*notes\.md/i,
-      }),
-    )
-
-    const downloadingButton = await screen.findByRole('button', {
-      name: /common\.operation\.downloading.*notes\.md/i,
-    })
-    expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
-    await user.click(downloadingButton)
-    expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
-
     download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
       expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
         params: {
           agent_id: 'agent-1',
@@ -457,6 +444,99 @@ describe('AgentWorkingDirectoryPanel', () => {
         },
       })
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file',
+        fileName: 'notes.md',
+      })
+      expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
+    })
+  })
+
+  it('should download a newly selected file even while a previous row-triggered download is still pending', async () => {
+    const user = userEvent.setup()
+    const notesDownload = createDeferred<{ url: string }>()
+    const reportDownload = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn
+      .mockReturnValueOnce(notesDownload.promise)
+      .mockReturnValueOnce(reportDownload.promise)
+    renderWorkingDirectoryPanel()
+
+    await user.click(await screen.findByText('notes.md'))
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
+    })
+
+    await user.click(await screen.findByText('report.md'))
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.sandboxFileDownloadMutationFn.mock.calls[1]?.[0]).toEqual({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        caller_type: 'conversation',
+        caller_id: 'conversation-1',
+        path: '~/report.md',
+      },
+    })
+
+    notesDownload.resolve({ url: 'https://example.com/sandbox-file-notes' })
+    reportDownload.resolve({ url: 'https://example.com/sandbox-file-report' })
+
+    await waitFor(() => {
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file-notes',
+        fileName: 'notes.md',
+      })
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file-report',
+        fileName: 'report.md',
+      })
+    })
+  })
+
+  it('should download the selected working directory file from the preview header download action', async () => {
+    const user = userEvent.setup()
+    const selectDownload = createDeferred<{ url: string }>()
+    const headerDownload = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn
+      .mockReturnValueOnce(selectDownload.promise)
+      .mockReturnValueOnce(headerDownload.promise)
+    renderWorkingDirectoryPanel()
+
+    await user.click(await screen.findByText('notes.md'))
+    selectDownload.resolve({ url: 'https://example.com/sandbox-file-select' })
+
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
+    })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*notes\.md/i,
+      }),
+    )
+
+    const downloadingButton = await screen.findByRole('button', {
+      name: /common\.operation\.downloading.*notes\.md/i,
+    })
+    expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
+    expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(2)
+
+    headerDownload.resolve({ url: 'https://example.com/sandbox-file' })
+
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[1]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          caller_type: 'conversation',
+          caller_id: 'conversation-1',
+          path: '~/notes.md',
+        },
+      })
+      expect(mocks.downloadUrl).toHaveBeenLastCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'notes.md',
       })
@@ -490,11 +570,19 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should download binary working directory files from the unsupported preview download link', async () => {
     const user = userEvent.setup()
-    const download = createDeferred<{ url: string }>()
-    mocks.sandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
+    const selectDownload = createDeferred<{ url: string }>()
+    const previewDownload = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn
+      .mockReturnValueOnce(selectDownload.promise)
+      .mockReturnValueOnce(previewDownload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('model.bin'))
+    selectDownload.resolve({ url: 'https://example.com/sandbox-file-select' })
+
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
+    })
 
     expect(
       await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported'),
@@ -510,11 +598,11 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
     expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
 
-    download.resolve({ url: 'https://example.com/sandbox-file' })
+    previewDownload.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(2)
+      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[1]?.[0]).toEqual({
         params: {
           agent_id: 'agent-1',
         },
@@ -524,7 +612,7 @@ describe('AgentWorkingDirectoryPanel', () => {
           path: '~/model.bin',
         },
       })
-      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      expect(mocks.downloadUrl).toHaveBeenLastCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'model.bin',
       })
