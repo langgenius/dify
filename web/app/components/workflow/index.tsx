@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import ReactFlow, {
+import {
   Background,
   ReactFlowProvider,
   SelectionMode,
@@ -63,6 +63,7 @@ import CommentManager from './comment-manager'
 import { CommentIcon } from './comment/comment-icon'
 import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
+import { CommentPlacementPreview } from './comment/placement-preview'
 import { CommentThread } from './comment/thread'
 import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
@@ -83,7 +84,6 @@ import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -97,7 +97,7 @@ import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
-import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
+import { WorkflowCanvas } from './shortcuts/workflow-canvas'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import { useStore, useWorkflowStore } from './store/workflow'
@@ -141,37 +141,6 @@ export type WorkflowProps = {
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
-
-const CommentPlacementPreview = memo(
-  ({
-    onSubmit,
-    onCancel,
-  }: {
-    onSubmit: (content: string, mentionedUserIds: string[]) => void
-    onCancel: () => void
-  }) => {
-    const isCommentPlacing = useStore((s) => s.isCommentPlacing)
-    const pendingComment = useStore((s) => s.pendingComment)
-    const mousePosition = useStore((s) => s.mousePosition)
-
-    if (!isCommentPlacing || pendingComment) return null
-
-    return (
-      <CommentInput
-        position={{
-          x: mousePosition.elementX,
-          y: mousePosition.elementY,
-        }}
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-        autoFocus={false}
-        disabled
-      />
-    )
-  },
-)
-
-CommentPlacementPreview.displayName = 'CommentPlacementPreview'
 
 export const Workflow: FC<WorkflowProps> = memo(
   ({
@@ -502,9 +471,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [handleSyncWorkflowDraftWhenPageClose, handleBeforeUnload])
 
-    useEventListener('keydown', (e) => {
-      if (shouldPreventWorkflowBrowserDefault(e)) e.preventDefault()
-    })
     useEventListener('mousemove', (e) => {
       const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
 
@@ -588,7 +554,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       },
     })
 
-    useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
 
@@ -767,7 +732,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         })}
         {children}
         <WorkflowContextmenu>
-          <ReactFlow
+          <WorkflowCanvas
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             nodes={nodes}
@@ -826,7 +791,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                 onlineUsers={onlineUsers || []}
               />
             )}
-          </ReactFlow>
+          </WorkflowCanvas>
         </WorkflowContextmenu>
         <SyncingDataModal />
       </div>

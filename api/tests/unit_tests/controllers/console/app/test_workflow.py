@@ -134,13 +134,43 @@ def _make_workflow(**overrides) -> Workflow:
     return workflow
 
 
+@pytest.mark.parametrize(
+    "advisory", ["clean", "warning", "checker-error", "formatter-error", "empty", "non-object", "invalid-json"]
+)
 def test_publish_workflow_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    advisory: str,
 ) -> None:
     current_user = SimpleNamespace(id="account-1")
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start"}},
+            {"id": "branch", "data": {"type": "if-else"}},
+            {"id": "producer", "data": {"type": "code", "title": "Producer"}},
+            {
+                "id": "consumer",
+                "data": {"type": "answer", "title": "Consumer", "answer": "{{#producer.text#}}"},
+            },
+        ],
+        "edges": [
+            {"source": "start", "target": "branch"},
+            {"source": "branch", "target": "producer", "sourceHandle": "true"},
+            {"source": "branch", "target": "consumer", "sourceHandle": "false"},
+        ],
+    }
+    workflow = SimpleNamespace(
+        id="published-workflow",
+        created_at=datetime(2026, 8, 17, 12, 0, 0),
+        graph={"clean": "{}", "empty": None, "non-object": "[]", "invalid-json": "{"}.get(advisory, json.dumps(graph)),
+    )
+    if advisory == "checker-error":
+        monkeypatch.setattr(workflow_module, "validate_variable_references", Mock(side_effect=RuntimeError("checker")))
+    elif advisory == "formatter-error":
+        monkeypatch.setattr(
+            workflow_module, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
+        )
     session = Mock()
     session.get.return_value = app_model
     monkeypatch.setattr(
@@ -163,6 +193,14 @@ def test_publish_workflow_returns_success(
         )
 
     assert response["result"] == "success"
+    assert app_model.workflow_id == workflow.id
+    assert isinstance(response["created_at"], int)
+    if advisory == "warning":
+        assert "Consumer" in response["warning"]
+        assert "Producer" in response["warning"]
+        assert "skipped branch" in response["warning"]
+    else:
+        assert "warning" not in response
 
 
 @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
