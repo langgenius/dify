@@ -1,6 +1,7 @@
 """Unit tests for the pooled MCP client manager."""
 
 import threading
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,8 +10,8 @@ from core.mcp.client_manager import MCPClientManager
 from core.mcp.error import MCPAuthError, MCPConnectionError
 
 
-def _invoke(manager: MCPClientManager, **kwargs):
-    params = {
+def _invoke(manager: MCPClientManager, **kwargs: object) -> object:
+    params: dict[str, Any] = {
         "tenant_id": "tenant-1",
         "user_id": "user-1",
         "server_url": "http://test.example.com/mcp",
@@ -28,7 +29,7 @@ def _invoke(manager: MCPClientManager, **kwargs):
 
 
 class TestMCPClientManager:
-    def test_same_scope_reuses_connection(self):
+    def test_same_scope_reuses_connection(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             client = MagicMock()
@@ -42,7 +43,7 @@ class TestMCPClientManager:
             assert client.invoke_tool.call_count == 2
             client.cleanup.assert_not_called()
 
-    def test_changing_credentials_still_reuse_connection(self):
+    def test_changing_credentials_still_reuse_connection(self) -> None:
         """Per-call credentials (minted JWTs, refreshed OAuth tokens) must not split the pool."""
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
@@ -54,7 +55,7 @@ class TestMCPClientManager:
 
             assert factory.call_count == 1
 
-    def test_distinct_users_get_distinct_connections(self):
+    def test_distinct_users_get_distinct_connections(self) -> None:
         """A stateful server must not share one session across end users."""
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
@@ -65,7 +66,7 @@ class TestMCPClientManager:
 
             assert factory.call_count == 2
 
-    def test_distinct_tenants_and_providers_get_distinct_connections(self):
+    def test_distinct_tenants_and_providers_get_distinct_connections(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             factory.side_effect = [MagicMock(), MagicMock(), MagicMock()]
@@ -76,7 +77,7 @@ class TestMCPClientManager:
 
             assert factory.call_count == 3
 
-    def test_dead_connection_is_evicted_and_retried(self):
+    def test_dead_connection_is_evicted_and_retried(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             dead, alive = MagicMock(), MagicMock()
@@ -89,7 +90,7 @@ class TestMCPClientManager:
             assert factory.call_count == 2
             dead.cleanup.assert_called_once()
 
-    def test_auth_error_propagates_but_keeps_connection(self):
+    def test_auth_error_propagates_but_keeps_connection(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             client = MagicMock()
@@ -106,7 +107,7 @@ class TestMCPClientManager:
             _invoke(manager)
             assert factory.call_count == 1
 
-    def test_value_error_evicts_without_retry(self):
+    def test_value_error_evicts_without_retry(self) -> None:
         """Transport-level parsing failures corrupt the session: drop it, do not re-invoke."""
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
@@ -123,22 +124,23 @@ class TestMCPClientManager:
             assert factory.call_count == 2
             broken.cleanup.assert_called_once()
 
-    def test_blocked_call_does_not_block_other_scopes(self):
+    def test_blocked_call_does_not_block_other_scopes(self) -> None:
         """A hung call on one connection must not wedge calls on other connections."""
         manager = MCPClientManager()
         release = threading.Event()
         hung_entered = threading.Event()
 
-        def hung_invoke(**_kwargs):
+        def hung_invoke(**_kwargs: object) -> str:
             hung_entered.set()
             release.wait(10)
             return "hung-ok"
 
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
 
-            def make_client(**kwargs):
+            def make_client(**kwargs: object) -> MagicMock:
                 client = MagicMock()
-                if kwargs.get("headers", {}).get("X-User") == "hung":
+                headers = kwargs.get("headers")
+                if isinstance(headers, dict) and headers.get("X-User") == "hung":
                     client.invoke_tool.side_effect = hung_invoke
                 return client
 
@@ -161,22 +163,23 @@ class TestMCPClientManager:
             release.set()
             hung_thread.join(timeout=3)
 
-    def test_evicting_in_flight_entry_does_not_wedge_new_acquires(self):
+    def test_evicting_in_flight_entry_does_not_wedge_new_acquires(self) -> None:
         """Idle eviction of an entry whose call is still running must not block the same key."""
         manager = MCPClientManager(idle_ttl_seconds=0)
         release = threading.Event()
         hung_entered = threading.Event()
 
-        def hung_invoke(**_kwargs):
+        def hung_invoke(**_kwargs: object) -> str:
             hung_entered.set()
             release.wait(10)
             return "hung-ok"
 
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
 
-            def make_client(**kwargs):
+            def make_client(**kwargs: object) -> MagicMock:
                 client = MagicMock()
-                if kwargs.get("headers", {}).get("X-User") == "hung":
+                headers = kwargs.get("headers")
+                if isinstance(headers, dict) and headers.get("X-User") == "hung":
                     client.invoke_tool.side_effect = hung_invoke
                 return client
 
@@ -201,7 +204,7 @@ class TestMCPClientManager:
             release.set()
             hung_thread.join(timeout=3)
 
-    def test_idle_ttl_closes_stale_connection(self):
+    def test_idle_ttl_closes_stale_connection(self) -> None:
         manager = MCPClientManager(idle_ttl_seconds=0)
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             stale, fresh = MagicMock(), MagicMock()
@@ -213,7 +216,7 @@ class TestMCPClientManager:
             assert factory.call_count == 2
             stale.cleanup.assert_called_once()
 
-    def test_max_size_evicts_least_recently_used(self):
+    def test_max_size_evicts_least_recently_used(self) -> None:
         manager = MCPClientManager(max_size=1)
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             oldest, newest = MagicMock(), MagicMock()
@@ -225,7 +228,7 @@ class TestMCPClientManager:
             assert factory.call_count == 2
             oldest.cleanup.assert_called_once()
 
-    def test_failed_initialize_is_not_pooled(self):
+    def test_failed_initialize_is_not_pooled(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             failing = MagicMock()
@@ -239,7 +242,7 @@ class TestMCPClientManager:
             result = _invoke(manager)
             assert result is ok.invoke_tool.return_value
 
-    def test_close_all_closes_every_connection(self):
+    def test_close_all_closes_every_connection(self) -> None:
         manager = MCPClientManager()
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
             factory.side_effect = [MagicMock(), MagicMock()]
@@ -252,7 +255,7 @@ class TestMCPClientManager:
                 client.cleanup.assert_called_once()
             assert manager._clients == {}
 
-    def test_same_key_race_neither_call_raises_and_loser_is_closed(self):
+    def test_same_key_race_neither_call_raises_and_loser_is_closed(self) -> None:
         """Two callers racing on one key must both succeed on one pooled connection.
 
         A Barrier inside the mocked ``__enter__`` forces both callers to
@@ -261,15 +264,15 @@ class TestMCPClientManager:
         """
         manager = MCPClientManager()
         both_connecting = threading.Barrier(2, timeout=5)
-        created: list = []
+        created: list[MagicMock] = []
         created_lock = threading.Lock()
 
         with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
 
-            def make_client(**_kwargs):
+            def make_client(**_kwargs: object) -> MagicMock:
                 client = MagicMock()
 
-                def slow_enter():
+                def slow_enter() -> MagicMock:
                     both_connecting.wait()
                     return client
 
@@ -280,10 +283,10 @@ class TestMCPClientManager:
 
             factory.side_effect = make_client
 
-            results: list = []
-            errors: list = []
+            results: list[object] = []
+            errors: list[BaseException] = []
 
-            def call():
+            def call() -> None:
                 try:
                     results.append(_invoke(manager))
                 except Exception as exc:
