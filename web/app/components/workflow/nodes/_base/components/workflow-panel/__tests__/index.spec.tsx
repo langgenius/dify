@@ -3,7 +3,12 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  renderWorkflowComponent,
+  renderWorkflowFlowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { useNodeKeyboardInteractions } from '@/app/components/workflow/hooks/use-node-keyboard-interactions'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BasePanel from '../index'
 
@@ -379,9 +384,36 @@ const createData = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+function KeyboardOpenedPanel({ type }: { type: BlockEnum }) {
+  const [open, setOpen] = React.useState(false)
+  const onKeyDownCapture = useNodeKeyboardInteractions(() => setOpen(true))
+
+  React.useEffect(() => {
+    mockHandleNodeSelect.mockImplementation((_id: string, cancel?: boolean) => {
+      if (cancel) setOpen(false)
+    })
+  }, [])
+
+  return (
+    <div id="workflow-container">
+      <div onKeyDownCapture={onKeyDownCapture}>
+        <div className="react-flow__node" data-id="node-1" role="button" tabIndex={0}>
+          Canvas node
+        </div>
+      </div>
+      {open && (
+        <BasePanel id="node-1" data={createData({ type }) as never}>
+          <div>panel-child</div>
+        </BasePanel>
+      )}
+    </div>
+  )
+}
+
 describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockHandleNodeSelect.mockReset()
     mockNodesReadOnly = false
     mockCanRun = true
     mockBuiltInTools = [
@@ -398,6 +430,53 @@ describe('workflow-panel index', () => {
     mockLastRunState.tabType = 'settings'
     mockLastRunState.singleRunParams = createMockSingleRunParams()
   })
+
+  it.each([BlockEnum.Start, BlockEnum.End])(
+    'moves focus from a keyboard opened %s node into its configuration panel',
+    async (type) => {
+      const user = userEvent.setup()
+      renderWorkflowFlowComponent(<KeyboardOpenedPanel type={type} />, {
+        nodes: [createNode({ id: 'node-1', data: { type } })],
+      })
+
+      const canvasNode = screen.getByRole('button', { name: 'Canvas node' })
+      await user.click(canvasNode)
+      await user.keyboard('{Enter}')
+
+      const description = await screen.findByRole('textbox', {
+        name: 'workflow.common.nodeDescription',
+      })
+      expect(description).toHaveFocus()
+      expect(canvasNode).not.toHaveFocus()
+    },
+  )
+
+  it.each([BlockEnum.Start, BlockEnum.End])(
+    'closes a %s node configuration panel with Escape and restores focus to its canvas node',
+    async (type) => {
+      const user = userEvent.setup()
+      renderWorkflowFlowComponent(<KeyboardOpenedPanel type={type} />, {
+        nodes: [createNode({ id: 'node-1', data: { type } })],
+      })
+
+      const canvasNode = screen.getByRole('button', { name: 'Canvas node' })
+      await user.click(canvasNode)
+      await user.keyboard('{Enter}')
+
+      const description = await screen.findByRole('textbox', {
+        name: 'workflow.common.nodeDescription',
+      })
+      expect(description).toHaveFocus()
+
+      await user.keyboard('{Escape}')
+
+      expect(
+        screen.queryByRole('region', { name: /workflow\.panel\.nodePanel/ }),
+      ).not.toBeInTheDocument()
+      expect(canvasNode).toHaveFocus()
+      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
+    },
+  )
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
     renderWorkflowComponent(
@@ -818,6 +897,36 @@ describe('workflow-panel index', () => {
     await user.tab({ shift: true })
     expect(screen.getByRole('button', { name: 'Before panel' })).toHaveFocus()
   })
+
+  it.each([BlockEnum.Start, BlockEnum.End, BlockEnum.Tool, BlockEnum.StartPlaceholder])(
+    'focuses the node panel once when keyboard selection opens a %s node',
+    async (type) => {
+      const user = userEvent.setup()
+      const { store } = renderWorkflowComponent(
+        <>
+          <button type="button">Canvas node</button>
+          <BasePanel id="node-1" data={createData({ type }) as never}>
+            <div>panel-child</div>
+          </BasePanel>
+        </>,
+      )
+
+      const canvasNode = screen.getByRole('button', { name: 'Canvas node' })
+      await user.click(canvasNode)
+      expect(canvasNode).toHaveFocus()
+
+      act(() => store.getState().setPendingNodePanelFocusId('node-1'))
+      const focusTarget =
+        type === BlockEnum.StartPlaceholder
+          ? screen.getByRole('region', { name: /Tool Node workflow\.panel\.nodePanel/i })
+          : screen.getByRole('textbox', { name: 'workflow.common.nodeDescription' })
+      await waitFor(() => expect(focusTarget).toHaveFocus())
+      expect(store.getState().pendingNodePanelFocusId).toBeUndefined()
+
+      await user.click(canvasNode)
+      expect(canvasNode).toHaveFocus()
+    },
+  )
 
   it('should constrain keyboard resizing to the available space and keep unrelated keys untouched', async () => {
     const user = userEvent.setup()
