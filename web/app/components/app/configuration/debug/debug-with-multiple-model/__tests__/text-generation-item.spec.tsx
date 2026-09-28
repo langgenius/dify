@@ -1,7 +1,11 @@
 import type { ModelAndParameter } from '../../types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Log from '@/app/components/base/chat/chat/log'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
+import { DebugWithMultipleModelContextProvider } from '../context-provider'
 import TextGenerationItem from '../text-generation-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
@@ -15,6 +19,7 @@ const { mockToastError } = vi.hoisted(() => ({
 }))
 
 let capturedTextGenerationProps: {
+  onOpenLog: (item: IChatItem) => void
   content: string
   isLoading: boolean
   isResponding: boolean
@@ -63,6 +68,12 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
     capturedTextGenerationProps = props
     return (
       <div data-testid="text-generation">
+        {props && (
+          <Log
+            logItem={{ id: props.messageId!, isAnswer: true, content: props.content }}
+            onOpenLog={props.onOpenLog}
+          />
+        )}
         <span data-testid="content">{props?.content}</span>
         <span data-testid="is-loading">{props?.isLoading ? 'yes' : 'no'}</span>
         <span data-testid="is-responding">{props?.isResponding ? 'yes' : 'no'}</span>
@@ -167,6 +178,25 @@ describe('TextGenerationItem', () => {
     capturedTextGenerationProps = null
     eventSubscriptionCallback = null
     createDefaultMocks()
+  })
+
+  it('opens this model result through the owning debug session', async () => {
+    const user = userEvent.setup()
+    const onOpenLog = vi.fn()
+    render(
+      <DebugWithMultipleModelContextProvider
+        multipleModelConfigs={[]}
+        onMultipleModelConfigsChange={vi.fn()}
+        onDebugWithMultipleModelChange={vi.fn()}
+        onOpenLog={onOpenLog}
+      >
+        <TextGenerationItem modelAndParameter={createModelAndParameter()} />
+      </DebugWithMultipleModelContextProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+    expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: 'msg-123', isAnswer: true }),
+    )
   })
 
   describe('rendering', () => {
