@@ -92,6 +92,7 @@ function Operation({
   const {
     config,
     onOpenLog,
+    canOpenLog,
     onAnnotationAdded,
     onAnnotationEdited,
     onAnnotationRemoved,
@@ -115,6 +116,7 @@ function Operation({
 
   const content = getPublicResponseContent(item)
   const hasPublicContent = !!content.trim()
+  const availableLogAction = onOpenLog && (canOpenLog?.(item) ?? true) ? onOpenLog : undefined
 
   const displayUserFeedback = userFeedbackOverride ?? feedback
   const displayAdminFeedback = adminFeedbackOverride ?? adminFeedback
@@ -199,7 +201,7 @@ function Operation({
   const operationWidth = useMemo(() => {
     let width = 0
     if (!isOpeningStatement) width += 26
-    if (!isOpeningStatement && onOpenLog) width += 28 + 8
+    if (!isOpeningStatement && availableLogAction) width += 28 + 8
     if (!isOpeningStatement && config?.text_to_speech?.enabled && hasPublicContent) width += 26
     if (!isOpeningStatement && shouldShowAnnotationAction) width += 26
     if (shouldShowUserFeedbackBar) width += hasUserFeedback ? 28 + 8 : 60 + 8
@@ -213,7 +215,7 @@ function Operation({
     hasPublicContent,
     hasUserFeedback,
     isOpeningStatement,
-    onOpenLog,
+    availableLogAction,
     shouldShowAdminFeedbackBar,
     shouldShowAnnotationAction,
     shouldShowUserFeedbackBar,
@@ -458,9 +460,9 @@ function Operation({
             </div>
           </DialogContent>
         </Dialog>
-        {onOpenLog && !isOpeningStatement && (
+        {availableLogAction && !isOpeningStatement && (
           <div className={cn('hidden', answerActiveBlockClassName)}>
-            <Log logItem={item} onOpenLog={onOpenLog} />
+            <Log logItem={item} onOpenLog={availableLogAction} />
           </div>
         )}
         {!isOpeningStatement && (

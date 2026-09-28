@@ -42,6 +42,7 @@ export type ChatProps = {
   chatFooterInnerClassName?: string
   suggestedQuestions?: string[]
   onOpenLog?: (item: IChatItem) => void
+  canOpenLog?: (item: IChatItem) => boolean
   questionIcon?: ReactNode
   answerIcon?: ReactNode
   allToolIcons?: Record<string, ToolIcon>
@@ -110,6 +111,7 @@ const Chat: FC<ChatProps> = ({
   chatFooterInnerClassName,
   suggestedQuestions,
   onOpenLog,
+  canOpenLog,
   questionIcon,
   answerIcon,
   onAnnotationAdded,
@@ -183,6 +185,7 @@ const Chat: FC<ChatProps> = ({
       chatList={chatList}
       isResponding={isResponding}
       onOpenLog={onOpenLog}
+      canOpenLog={canOpenLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
       onSend={onSend}

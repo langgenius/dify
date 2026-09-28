@@ -133,6 +133,7 @@ const ChatRecord = () => {
               noChatInput
               allToolIcons={{}}
               onOpenLog={setMessageLogItem}
+              canOpenLog={(item) => !!item.workflow_run_id}
               switchSibling={switchSibling}
               noSpacing
               chatAnswerContainerInner="pr-2!"

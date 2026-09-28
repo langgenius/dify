@@ -72,4 +72,24 @@ describe('Chat log actions', () => {
     rerender(<Chat chatList={[firstAnswer]} noChatInput />)
     expect(screen.queryByRole('button', { name: /operation\.log/ })).not.toBeInTheDocument()
   })
+
+  it('shows log actions only for items accepted by the owner', async () => {
+    const user = userEvent.setup()
+    const onOpenLog = vi.fn()
+    const answerWithRun = { ...secondAnswer, workflow_run_id: 'run-1' }
+
+    render(
+      <Chat
+        chatList={[firstAnswer, answerWithRun]}
+        noChatInput
+        onOpenLog={onOpenLog}
+        canOpenLog={(item) => !!item.workflow_run_id}
+      />,
+    )
+
+    expect(screen.getAllByRole('button', { name: /operation\.log/ })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: /operation\.log/ }))
+    expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(answerWithRun)
+  })
 })

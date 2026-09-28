@@ -9,6 +9,7 @@ export type ChatContextValue = Pick<
   | 'isResponding'
   | 'chatList'
   | 'onOpenLog'
+  | 'canOpenLog'
   | 'questionIcon'
   | 'answerIcon'
   | 'onSend'

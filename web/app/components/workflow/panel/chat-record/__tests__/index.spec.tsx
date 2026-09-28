@@ -75,6 +75,7 @@ describe('ChatRecord', () => {
     expect(screen.getByText('Question 3')).toBeInTheDocument()
     expect(screen.getByText('Answer 3')).toBeInTheDocument()
     expect(screen.queryByText('Question 2')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'common.operation.log' })).toHaveLength(0)
 
     await user.click(screen.getByRole('button', { name: 'Previous' }))
 

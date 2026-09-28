@@ -226,6 +226,7 @@ const ChatWrapper = ({
         noSpacing
         suggestedQuestions={suggestedQuestions}
         onOpenLog={setMessageLogItem}
+        canOpenLog={(item) => !!item.workflow_run_id}
         chatAnswerContainerInner="pr-2!"
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
