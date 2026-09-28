@@ -1,6 +1,7 @@
 import base64
 import binascii
 import logging
+from http import HTTPStatus
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field
@@ -139,7 +140,7 @@ register_response_schema_models(
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @console_ns.doc(params=query_params_from_model(InstalledAppsListQuery))
-    @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @console_account_admission()
     @model_validate(InstalledAppsListQuery)
     def get(self, query: InstalledAppsListQuery, request_context: RequestContext) -> dict[str, object]:
@@ -184,7 +185,7 @@ class InstalledAppsListApi(Resource):
 class InstalledAppApi(Resource):
     """Read or update an admitted workspace installation."""
 
-    @console_ns.response(200, "Success", console_ns.models[InstalledAppResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def get(
@@ -208,7 +209,7 @@ class InstalledAppApi(Resource):
             ),
         )
 
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
     @console_account_admission()
     @get_installed_app
