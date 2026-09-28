@@ -115,7 +115,11 @@ class ClassicMessageBilling:
 
 
 def begin_message_billing(entity: EasyUIBasedAppGenerateEntity, message_id: str) -> ClassicMessageBilling:
-    from core.app.entities.app_invoke_entities import get_credit_usage_app_type, get_credit_usage_created_by
+    from core.app.entities.app_invoke_entities import (
+        AgentAppGenerateEntity,
+        get_credit_usage_app_type,
+        get_credit_usage_created_by,
+    )
     from core.app.llm.quota import reserve_message_quota_for_model
 
     existing = entity._classic_message_billing
@@ -131,7 +135,7 @@ def begin_message_billing(entity: EasyUIBasedAppGenerateEntity, message_id: str)
     model = entity.model_conf.model
     credentials = entity.model_conf.credentials
     owner = ClassicMessageBilling(tenant_id, message_id, str(ModelProviderID(provider)), model, "custom")
-    if getattr(entity, "agent_llm_gateway_enabled", False):
+    if isinstance(entity, AgentAppGenerateEntity) and entity.agent_llm_gateway_enabled:
         entity._classic_message_billing = owner
         return owner
     if configuration.using_provider_type == ProviderType.SYSTEM:
@@ -171,7 +175,7 @@ def begin_message_billing(entity: EasyUIBasedAppGenerateEntity, message_id: str)
 
 
 def require_message_billing(entity: EasyUIBasedAppGenerateEntity) -> ClassicMessageBilling:
-    owner = getattr(entity, "_classic_message_billing", None)
+    owner = entity._classic_message_billing
     if owner is None:
         # Never silently turn a lost message-level receipt into per-LLM
         # accounting and a second charge from the message-created event.
@@ -180,7 +184,7 @@ def require_message_billing(entity: EasyUIBasedAppGenerateEntity) -> ClassicMess
 
 
 def release_message_billing(entity: EasyUIBasedAppGenerateEntity) -> None:
-    owner = getattr(entity, "_classic_message_billing", None)
+    owner = entity._classic_message_billing
     if owner is not None:
         try:
             owner.release_unsettled()

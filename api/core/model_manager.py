@@ -438,7 +438,7 @@ class ModelInstance:
         :param kwargs: function kwargs
         :return:
         """
-        message_billing = getattr(self, "_message_billing", None)
+        message_billing = self._message_billing
         if message_billing is not None:
             message_billing.check_active()
         if not self.load_balancing_manager:
