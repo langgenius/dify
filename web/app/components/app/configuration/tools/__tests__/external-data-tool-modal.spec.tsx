@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
 
 const mockToastError = vi.fn()
@@ -141,7 +141,7 @@ describe('ExternalDataToolModal', () => {
     const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
     expect(emojiButton).toBeTruthy()
     fireEvent.click(emojiButton!)
-    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 

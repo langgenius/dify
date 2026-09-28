@@ -556,7 +556,6 @@ class TestConversationServiceHelpers:
         """
         # Arrange
         conversation = ConversationServiceTestDataFactory.create_conversation()
-        conversation.updated_at = naive_utc_now()
 
         # Act
         condition = ConversationService._build_filter_condition(
@@ -577,7 +576,6 @@ class TestConversationServiceHelpers:
         """
         # Arrange
         conversation = ConversationServiceTestDataFactory.create_conversation()
-        conversation.created_at = naive_utc_now()
 
         # Act
         condition = ConversationService._build_filter_condition(

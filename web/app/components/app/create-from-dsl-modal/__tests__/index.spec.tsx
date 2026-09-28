@@ -22,9 +22,6 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
   warning: vi.fn(),
 }))
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
-}))
 let appCount = 0
 let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
@@ -32,28 +29,6 @@ const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: any[]) => any) => ({
     run: fn,
-  }),
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: () => void, options?: { enabled?: boolean }) => {
-      hotkeyMocks.handlers.set(hotkey, { handler, options })
-    },
-  }
-})
-
-const triggerHotkey = (hotkey: string) => {
-  const registration = hotkeyMocks.handlers.get(hotkey)
-  if (registration?.options?.enabled === false) return
-  registration?.handler()
-}
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
   }),
 }))
 
@@ -151,10 +126,20 @@ function render(ui: ReactElement) {
   })
 }
 
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
+function submitWithKeyboard() {
+  const target =
+    screen.queryByRole('textbox') ??
+    screen.queryByRole('button', { name: /operation\.create/i }) ??
+    document.body
+  fireEvent.keyDown(target, { key: 'Enter', ctrlKey: true })
+  fireEvent.keyUp(target, { key: 'Enter', ctrlKey: true })
+}
+
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.handlers.clear()
     appCount = 0
     appLimit = 10
     mockWorkspacePermissionKeys = ['app.create_and_management']
@@ -243,7 +228,7 @@ describe('CreateFromDSLModal', () => {
     const handleClose = vi.fn()
     render(<CreateFromDSLModal show onClose={handleClose} />)
 
-    triggerHotkey('Mod+Enter')
+    submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -524,7 +509,7 @@ describe('CreateFromDSLModal', () => {
       expect(getCreateButton())!.toBeDisabled()
     })
 
-    triggerHotkey('Mod+Enter')
+    submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
@@ -879,7 +864,13 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    triggerHotkey('Mod+Enter')
+    fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(document.body, { key: 'Enter', ctrlKey: true })
+    const input = screen.getByRole('textbox')
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+    fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    submitWithKeyboard()
 
     await waitFor(() => {
       expect(mockImportDSL).toHaveBeenCalledWith({
@@ -924,7 +915,7 @@ describe('CreateFromDSLModal', () => {
     expect(screen.getByText('apps-full')).toBeInTheDocument()
     expect(getCreateButton()).toBeDisabled()
     await user.click(getCreateButton())
-    triggerHotkey('Mod+Enter')
+    submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
