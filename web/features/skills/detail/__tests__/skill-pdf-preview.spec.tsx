@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useEffect } from 'react'
 import { SkillPdfPreview } from '../skill-pdf-preview'
 
 const { mockLoader } = vi.hoisted(() => ({
@@ -9,6 +10,9 @@ const { mockLoader } = vi.hoisted(() => ({
 // Mirrors the real PdfLoader contract: on a failed load it renders
 // `errorMessage` instead of the children, and it only reloads when `url`
 // changes, so a retry has to come from a remount.
+//
+// `mounts` is incremented from a mount-only effect rather than the render body,
+// so it counts real mounts and stays flat across an ordinary re-render.
 vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
   PdfLoader: ({
     children,
@@ -21,7 +25,9 @@ vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
     workerSrc?: string
     errorMessage?: ReactNode
   }) => {
-    mockLoader.mounts += 1
+    useEffect(() => {
+      mockLoader.mounts += 1
+    }, [])
     return (
       <div data-testid="pdf-loader" data-worker-src={workerSrc}>
         {mockLoader.failed && errorMessage ? (

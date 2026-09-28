@@ -101,7 +101,10 @@ function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
           <PdfLoader
             key={loadAttempt}
             errorMessage={
-              <PdfPreviewError onRetry={() => setLoadAttempt((attempt) => attempt + 1)} />
+              <PdfPreviewError
+                variant="overlay"
+                onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+              />
             }
             workerSrc={`${basePath}/pdf.worker.min.mjs`}
             url={url}
