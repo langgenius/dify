@@ -56,7 +56,7 @@ from core.repositories.human_input_repository import HumanInputFormRepository, H
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
-from graphon.file import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -74,7 +74,6 @@ from graphon.model_runtime.errors.invoke import (
 )
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
-from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageAgentThought, MessageFile
 from models.tools import ToolFile

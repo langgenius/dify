@@ -789,9 +789,7 @@ async def _convert_tool_response(
         elif response.type is DifyPluginToolInvokeMessage.MessageType.BINARY_LINK:
             link_message = response.message
             if isinstance(link_message, DifyPluginToolInvokeMessage.TextMessage):
-                parts.append(
-                    f"generated file: {link_message.text}. please tell the user to check the attachment."
-                )
+                parts.append(f"generated file: {link_message.text}. please tell the user to check the attachment.")
                 tool_file = _tool_file_metadata_from_meta_or_url(response.meta, link_message.text)
                 if tool_file is not None:
                     tool_files.append(tool_file)
@@ -817,8 +815,7 @@ async def _convert_tool_response(
                 )
             else:
                 parts.append(
-                    f"generated file `{uploaded.name}` has been saved. "
-                    "please tell the user to check the attachment."
+                    f"generated file `{uploaded.name}` has been saved. please tell the user to check the attachment."
                 )
         elif response.type is DifyPluginToolInvokeMessage.MessageType.JSON:
             json_message = response.message

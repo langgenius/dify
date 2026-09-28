@@ -149,10 +149,7 @@ class AgentObservabilityService:
         invoke_from = message.invoke_from.value if message.invoke_from else None
         message_files: list[dict[str, Any]] = []
         if session is not None:
-            message_files = [
-                dict(file_info)
-                for file_info in message.message_files_with_session(session=session)
-            ]
+            message_files = [dict(file_info) for file_info in message.message_files_with_session(session=session)]
         return {
             "id": message.id,
             "message_id": message.id,
