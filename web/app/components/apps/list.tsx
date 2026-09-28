@@ -192,7 +192,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             canCreateApp={canCreateApp}
             dragging={dragging}
             hasActiveFilters={hasActiveFilters}
-            onCreateBlank={openCreateBlankModal}
             onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
@@ -214,8 +213,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         defaultMode={creationQuery.mode ?? category}
         dialog={creationDialog}
         onClose={closeCreationDialog}
-        onOpenBlank={openCreateBlankModal}
-        onOpenTemplate={openCreateTemplateDialog}
       />
     </StudioListNavigation>
   )

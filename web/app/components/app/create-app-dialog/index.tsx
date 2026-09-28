@@ -6,7 +6,6 @@ import AppList from './app-list'
 type CreateAppDialogProps = {
   show: boolean
   onClose: () => void
-  onCreateFromBlank?: () => void
   onCreated?: () => void
   templateMode?: 'agent'
 }
@@ -14,7 +13,6 @@ type CreateAppDialogProps = {
 const CreateAppTemplateDialog = ({
   show,
   onClose,
-  onCreateFromBlank,
   onCreated,
   templateMode,
 }: CreateAppDialogProps) => {
@@ -27,7 +25,7 @@ const CreateAppTemplateDialog = ({
       onClose={onClose}
     >
       <AppList
-        onCreateFromBlank={onCreateFromBlank}
+        onClose={onClose}
         onCreated={onCreated}
         templateMode={templateMode}
       />
