@@ -593,6 +593,7 @@ def _xlsx_response(content: bytes, filename: str) -> Response:
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(Resource):
+    @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
     @console_ns.doc(
         produces=[XLSX_MIME_TYPE],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: [XLSX_MIME_TYPE]},
@@ -612,8 +613,9 @@ class EvaluationDatasetTemplateDownloadApi(Resource):
         snippet_permission=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
     )
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> Response:
+        payload = EvaluationConfigPayload.model_validate(console_ns.payload or {})
         try:
-            content, filename = EvaluationService.generate_dataset_template(target, target_type, session)
+            content, filename = EvaluationService.generate_dataset_template(target, target_type, payload, session)
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
         return _xlsx_response(content, filename)

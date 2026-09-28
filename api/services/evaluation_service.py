@@ -92,34 +92,24 @@ class EvaluationService:
         cls,
         target: Union[App, CustomizedSnippet],
         target_type: str,
+        data: EvaluationConfigData,
         session: Session,
     ) -> tuple[bytes, str]:
         """
         Generate evaluation dataset template as XLSX bytes.
 
-        Creates an XLSX file with headers based on the evaluation target's input parameters.
-        The first column is index, followed by input parameter columns.
+        Creates an XLSX file with headers based on the evaluation target's input parameters
+        and the selected evaluation metrics.
 
         :param target: App or CustomizedSnippet instance
         :param target_type: Target type string ("apps" or "snippets")
+        :param data: Evaluation configuration used to determine reference columns
+        :param session: Database session used to resolve target inputs
         :return: Tuple of (xlsx_content_bytes, filename)
         :raises ValueError: If target type is not supported or app mode is excluded
         """
-        # Validate target type
-        if target_type == EvaluationTargetType.APPS.value:
-            if not isinstance(target, App):
-                raise ValueError("Invalid target: expected App instance")
-            cls._validate_app_mode(target)
-            input_fields = cls._get_app_input_fields(target, session)
-        elif target_type == EvaluationTargetType.SNIPPETS.value:
-            if not isinstance(target, CustomizedSnippet):
-                raise ValueError("Invalid target: expected CustomizedSnippet instance")
-            input_fields = cls._get_snippet_input_fields(target, session)
-        else:
-            raise ValueError(f"Unsupported target type: {target_type}")
-
-        # Generate XLSX template
-        xlsx_content = cls._generate_xlsx_template(input_fields, target.name)
+        columns = cls.get_dataset_column_names(target, target_type, data, session)
+        xlsx_content = cls._generate_xlsx_template(columns, target.name)
 
         # Build filename
         truncated_name = target.name[:10] + "..." if len(target.name) > 10 else target.name
@@ -176,16 +166,20 @@ class EvaluationService:
         return []
 
     @classmethod
-    def _generate_xlsx_template(cls, input_fields: list[dict], target_name: str) -> bytes:
+    def _generate_xlsx_template(
+        cls,
+        columns: Sequence[EvaluationTemplateColumn],
+        target_name: str,
+    ) -> bytes:
         """
         Generate XLSX template file content.
 
         Creates a workbook with:
-        - First row as header row with "index" and input field names
+        - First row as header row with the provided template column names
         - Styled header with background color and borders
         - Empty data rows ready for user input
 
-        :param input_fields: List of input field definitions
+        :param columns: Ordered template column definitions
         :param target_name: Name of the target (for sheet name)
         :return: XLSX file content as bytes
         """
@@ -207,13 +201,7 @@ class EvaluationService:
             bottom=Side(style="thin"),
         )
 
-        # Build header row
-        headers = ["index"]
-
-        for field in input_fields:
-            cls._normalize_template_column_type(field.get("type") or field.get("value_type") or field.get("input_type"))
-            variable_name = str(field.get("variable") or field.get("label") or "")
-            headers.append(variable_name)
+        headers = [column["name"] for column in columns]
 
         # Write header row
         for col_idx, header in enumerate(headers, start=1):
