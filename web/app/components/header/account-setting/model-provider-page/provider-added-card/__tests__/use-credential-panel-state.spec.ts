@@ -1,3 +1,4 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../declarations'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
@@ -9,6 +10,8 @@ import {
 import { isDestructiveVariant, useCredentialPanelState } from '../use-credential-panel-state'
 
 const mockTrialCredits = {
+  modelBillingMigrationStatus:
+    'none' as ModelProviderCreditsResponse['model_billing_migration_status'],
   credits: 100,
   totalCredits: 10_000,
   isExhausted: false,
@@ -50,6 +53,7 @@ describe('useCredentialPanelState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Object.assign(mockTrialCredits, {
+      modelBillingMigrationStatus: 'none',
       credits: 100,
       totalCredits: 10_000,
       isExhausted: false,
@@ -59,6 +63,64 @@ describe('useCredentialPanelState', () => {
 
   // Credits priority variants
   describe('Credits priority variants', () => {
+    it.each([false, true])(
+      'shows processing independently of legacy exhaustion (%s)',
+      (isExhausted) => {
+        mockTrialCredits.modelBillingMigrationStatus = 'processing'
+        mockTrialCredits.isExhausted = isExhausted
+        mockTrialCredits.credits = 0
+
+        const { result } = renderPanelHook(
+          createProvider({
+            custom_configuration: {
+              status: CustomConfigurationStatusEnum.noConfigure,
+              available_credentials: [],
+            },
+          }),
+        )
+
+        expect(result.current.variant).toBe('credits-processing')
+        expect(result.current.isCreditsExhausted).toBe(false)
+        expect(result.current.showPrioritySwitcher).toBe(true)
+        expect(isDestructiveVariant(result.current.variant)).toBe(false)
+      },
+    )
+
+    it('keeps an explicitly selected customer key active during migration', () => {
+      mockTrialCredits.modelBillingMigrationStatus = 'processing'
+      mockTrialCredits.isExhausted = true
+
+      const { result } = renderPanelHook(
+        createProvider({
+          preferred_provider_type: PreferredProviderTypeEnum.custom,
+        }),
+      )
+
+      expect(result.current.variant).toBe('api-active')
+      expect(result.current.credentialName).toBe('My Key')
+      expect(result.current.isCreditsExhausted).toBe(false)
+    })
+
+    it('preserves required customer key configuration for providers without hosted credits', () => {
+      mockTrialCredits.modelBillingMigrationStatus = 'processing'
+
+      const { result } = renderPanelHook(
+        createProvider({
+          system_configuration: {
+            enabled: false,
+            current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+            quota_configurations: [],
+          },
+          custom_configuration: {
+            status: CustomConfigurationStatusEnum.noConfigure,
+            available_credentials: [],
+          },
+        }),
+      )
+
+      expect(result.current.variant).toBe('api-required-add')
+    })
+
     it('should return credits-active when credits available', () => {
       const { result } = renderPanelHook(createProvider())
 
