@@ -1,406 +1,216 @@
-import type { ComponentProps, ReactNode } from 'react'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { fetchAgentLogDetail } from '@/service/log'
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps } from 'react'
+import type { Props as CodeEditorProps } from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import type { ConsoleClient } from '@/service/console'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AgentLogDetail from '../detail'
+import { createChatLog, createIteration, createLogResponse, createToolCall } from './fixtures'
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
+const { getAgentLog } = vi.hoisted(() => ({
+  getAgentLog: vi.fn<ConsoleClient['apps']['byAppId']['agent']['logs']['get']>(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const { withAgentLogOperation } = await import('./fixtures')
+  const consoleClient = withAgentLogOperation(actual.consoleClient, getAgentLog)
+  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
 })
 
-vi.mock('@/service/log', () => ({
-  fetchAgentLogDetail: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: mockToast,
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
-    <div
-      data-testid="status-panel"
-      data-status={String(status)}
-      data-time={String(time)}
-      data-tokens={String(tokens)}
-    >
-      {error ? <span>{String(error)}</span> : null}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: ReactNode; value: string | object }) => (
-    <div data-testid="code-editor">
-      {title}
-      {typeof value === 'string' ? value : JSON.stringify(value)}
-    </div>
-  ),
-}))
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', async () => {
+  const { serializeCodeEditorValue } =
+    await import('@/app/components/workflow/nodes/_base/components/editor/code-editor/utils')
+  return {
+    default: ({ title, value, isJSONStringifyBeauty }: CodeEditorProps) => (
+      <section>
+        {title}
+        <pre>{serializeCodeEditorValue(value, isJSONStringifyBeauty)}</pre>
+      </section>
+    ),
+  }
+})
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: (ts: number, fmt: string) => `${ts}-${fmt}` }),
+  default: () => ({ formatTime: () => '2024-03-12 10:00' }),
 }))
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
-
-const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
-  id: 'msg-id',
-  content: 'output content',
-  isAnswer: false,
-  conversationId: 'conv-id',
-  input: 'user input',
-  ...overrides,
-})
-
-const createMockResponse = (
-  overrides: Partial<AgentLogDetailResponse> = {},
-): AgentLogDetailResponse => ({
-  meta: {
-    status: 'succeeded',
-    executor: 'User',
-    start_time: '2023-01-01',
-    elapsed_time: 1.0,
-    total_tokens: 100,
-    agent_mode: 'function_call',
-    iterations: 1,
-  },
-  iterations: [
-    {
-      created_at: '',
-      files: [],
-      thought: '',
-      tokens: 0,
-      tool_raw: { inputs: '', outputs: '' },
-      tool_calls: [
-        {
-          tool_name: 'tool1',
-          status: 'success',
-          tool_icon: null,
-          tool_label: { 'en-US': 'Tool 1' },
-        },
-      ],
-    },
-  ],
-  files: [],
-  ...overrides,
-})
 
 const deferredResponse = () => {
-  let resolve!: (response: AgentLogDetailResponse) => void
+  let resolve!: (response: AgentLogResponse) => void
   let reject!: (error: Error) => void
-  const promise = new Promise<AgentLogDetailResponse>((resolvePromise, rejectPromise) => {
+  const promise = new Promise<AgentLogResponse>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise
     reject = rejectPromise
   })
   return { promise, resolve, reject }
 }
 
-describe('AgentLogDetail', () => {
-  const renderComponent = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
-    const defaultProps: ComponentProps<typeof AgentLogDetail> = {
-      appId: 'app-id',
-      conversationID: 'conv-id',
-      messageID: 'msg-id',
-      log: createMockLog(),
-    }
-    return render(<AgentLogDetail {...defaultProps} {...props} />)
-  }
+const defaultProps: ComponentProps<typeof AgentLogDetail> = {
+  appId: 'app-id',
+  conversationID: 'conv-id',
+  messageID: 'msg-id',
+  log: createChatLog(),
+}
 
-  const renderAndWaitForData = async (
-    props: Partial<ComponentProps<typeof AgentLogDetail>> = {},
-  ) => {
-    const result = renderComponent(props)
-    await waitFor(() => {
-      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-    })
-    return result
-  }
+const renderDetail = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) =>
+  render(<AgentLogDetail {...defaultProps} {...props} />)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+beforeEach(() => {
+  getAgentLog.mockReset()
+  getAgentLog.mockResolvedValue(createLogResponse())
+})
 
-  describe('Rendering', () => {
-    it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
-
-      renderComponent()
-
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    })
-
-    it('should display result panel after data loads', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
-      expect(screen.getByText(/runLog.tracing/i)).toBeInTheDocument()
-    })
-
-    it('should call fetchAgentLogDetail with correct params', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      expect(fetchAgentLogDetail).toHaveBeenCalledWith({
-        appID: 'app-id',
+describe('Agent log data ownership', () => {
+  it('loads the selected log through generated input and keeps local error ownership', async () => {
+    const request = deferredResponse()
+    getAgentLog.mockReturnValue(request.promise)
+    renderDetail()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    await waitFor(() => expect(getAgentLog).toHaveBeenCalledOnce())
+    expect(getAgentLog).toHaveBeenCalledWith(
+      { params: { app_id: 'app-id' }, query: { conversation_id: 'conv-id', message_id: 'msg-id' } },
+      expect.objectContaining({
         signal: expect.any(AbortSignal),
-        params: {
-          conversation_id: 'conv-id',
-          message_id: 'msg-id',
-        },
-      })
-    })
+        context: expect.objectContaining({ silent: true }),
+      }),
+    )
+    await act(async () => request.resolve(createLogResponse()))
+    expect(await screen.findByText('Output content')).toBeInTheDocument()
+    expect(screen.getByText('User input')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('100 Tokens')
   })
 
-  describe('Props', () => {
-    it('should default to DETAIL tab when activeTab is not provided', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.getAttribute('data-active')).toBe('true')
-    })
-
-    it('should show TRACING tab when activeTab is TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData({ activeTab: 'TRACING' })
-
-      const tracingTab = screen.getByText(/runLog.tracing/i)
-      expect(tracingTab.getAttribute('data-active')).toBe('true')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should switch to TRACING tab when clicked', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
-
-      await waitFor(() => {
-        const tracingTab = screen.getByText(/runLog.tracing/i)
-        expect(tracingTab.getAttribute('data-active')).toBe('true')
-      })
-
-      const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.getAttribute('data-active')).toBe('false')
-    })
-
-    it('should switch back to DETAIL tab after switching to TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/runLog.tracing/i).getAttribute('data-active')).toBe('true')
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /runLog.detail/i }))
-
-      await waitFor(() => {
-        const detailTab = screen.getByText(/runLog.detail/i)
-        expect(detailTab.getAttribute('data-active')).toBe('true')
-      })
-    })
-  })
-
-  describe('Request identity', () => {
-    it.each([
-      { appId: 'next-app' },
-      { conversationID: 'next-conversation' },
-      { messageID: 'next-message' },
-    ])('ignores a late response after identity changes to %j', async (nextIdentity) => {
+  it.each([
+    { appId: 'next-app' },
+    { conversationID: 'next-conversation' },
+    { messageID: 'next-message' },
+  ])(
+    'cancels the old identity and ignores its late response after %j changes',
+    async (nextIdentity) => {
       const previous = deferredResponse()
       const current = deferredResponse()
-      vi.mocked(fetchAgentLogDetail)
-        .mockReturnValueOnce(previous.promise)
-        .mockReturnValueOnce(current.promise)
-      const props = {
-        appId: 'app-id',
-        conversationID: 'conv-id',
-        messageID: 'msg-id',
-        log: createMockLog(),
-      }
-      const { rerender } = render(<AgentLogDetail {...props} />)
-      const previousSignal = vi.mocked(fetchAgentLogDetail).mock.calls[0]![0].signal
-      rerender(<AgentLogDetail {...props} {...nextIdentity} />)
-      expect(previousSignal.aborted).toBe(true)
-
+      getAgentLog.mockReturnValueOnce(previous.promise).mockReturnValueOnce(current.promise)
+      const { rerender } = renderDetail()
+      await waitFor(() => expect(getAgentLog).toHaveBeenCalledOnce())
+      const previousSignal = getAgentLog.mock.calls[0]?.[1]?.signal
+      expect(previousSignal).toBeInstanceOf(AbortSignal)
+      rerender(<AgentLogDetail {...defaultProps} {...nextIdentity} />)
+      await waitFor(() => expect(getAgentLog).toHaveBeenCalledTimes(2))
+      expect(previousSignal?.aborted).toBe(true)
       await act(async () =>
         current.resolve(
-          createMockResponse({
-            meta: { ...createMockResponse().meta, total_tokens: 222 },
-          }),
+          createLogResponse({ meta: { ...createLogResponse().meta, total_tokens: 222 } }),
         ),
       )
-      await waitFor(() =>
-        expect(screen.getByTestId('status-panel')).toHaveAttribute('data-tokens', '222'),
-      )
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('222 Tokens'))
       await act(async () =>
         previous.resolve(
-          createMockResponse({
-            meta: { ...createMockResponse().meta, total_tokens: 111 },
-          }),
+          createLogResponse({ meta: { ...createLogResponse().meta, total_tokens: 111 } }),
         ),
       )
-      await waitFor(() =>
-        expect(screen.getByTestId('status-panel')).toHaveAttribute('data-tokens', '222'),
+      expect(screen.getByRole('status')).toHaveTextContent('222 Tokens')
+      expect(screen.queryByText('111 Tokens')).not.toBeInTheDocument()
+      const identity = { ...defaultProps, ...nextIdentity }
+      expect(getAgentLog).toHaveBeenLastCalledWith(
+        {
+          params: { app_id: identity.appId },
+          query: { conversation_id: identity.conversationID, message_id: identity.messageID },
+        },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       )
-      const identity = { ...props, ...nextIdentity }
-      expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-        appID: identity.appId,
-        signal: expect.any(AbortSignal),
-        params: { conversation_id: identity.conversationID, message_id: identity.messageID },
-      })
-    })
+    },
+  )
 
-    it('keeps the new request loading and suppresses errors from an obsolete request', async () => {
-      const previous = deferredResponse()
-      const current = deferredResponse()
-      vi.mocked(fetchAgentLogDetail)
-        .mockReturnValueOnce(previous.promise)
-        .mockReturnValueOnce(current.promise)
-      const props = {
-        appId: 'app-id',
-        conversationID: 'conv-id',
-        messageID: 'msg-id',
-        log: createMockLog(),
-      }
-      const { rerender } = render(<AgentLogDetail {...props} />)
-      rerender(<AgentLogDetail {...props} messageID="next-message" />)
-      await act(async () => previous.reject(new Error('Obsolete failure')))
-
-      expect(mockToast.error).not.toHaveBeenCalled()
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      await act(async () => current.resolve(createMockResponse()))
-      await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
-      expect(screen.getByTestId('status-panel')).toBeInTheDocument()
-    })
+  it('cancels the request when the log panel closes', async () => {
+    getAgentLog.mockReturnValue(new Promise(() => {}))
+    const view = renderDetail()
+    await waitFor(() => expect(getAgentLog).toHaveBeenCalledOnce())
+    const signal = getAgentLog.mock.calls[0]?.[1]?.signal
+    view.unmount()
+    expect(signal?.aborted).toBe(true)
   })
 
-  describe('Edge Cases', () => {
-    it('shows an error and retries the current log request', async () => {
-      vi.mocked(fetchAgentLogDetail)
-        .mockRejectedValueOnce(new Error('API Error'))
-        .mockResolvedValueOnce(createMockResponse())
+  it('ignores an obsolete rejection while the selected log is still loading', async () => {
+    const previous = deferredResponse()
+    const current = deferredResponse()
+    getAgentLog.mockReturnValueOnce(previous.promise).mockReturnValueOnce(current.promise)
+    const { rerender } = renderDetail()
+    await waitFor(() => expect(getAgentLog).toHaveBeenCalledOnce())
+    rerender(<AgentLogDetail {...defaultProps} messageID="next-message" />)
+    await waitFor(() => expect(getAgentLog).toHaveBeenCalledTimes(2))
+    await act(async () => previous.reject(new Error('Obsolete failure')))
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await act(async () => current.resolve(createLogResponse()))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('100 Tokens'))
+  })
 
-      renderComponent()
+  it('shows the current failure without automatic retries and retries on request', async () => {
+    const user = userEvent.setup()
+    getAgentLog
+      .mockRejectedValueOnce(new Error('Unavailable'))
+      .mockResolvedValueOnce(createLogResponse())
+    renderDetail()
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.message')
+    expect(getAgentLog).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('100 Tokens'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(getAgentLog).toHaveBeenCalledTimes(2)
+  })
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.message')
-      fireEvent.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
-      expect(await screen.findByTestId('status-panel')).toBeInTheDocument()
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(mockToast.error).not.toHaveBeenCalled()
-    })
-
-    it('keeps the current log visible when a background refresh fails', async () => {
-      vi.mocked(fetchAgentLogDetail)
-        .mockResolvedValueOnce(createMockResponse())
-        .mockRejectedValueOnce(new Error('Background failure'))
-      const { queryClient } = await renderAndWaitForData()
-
-      await act(async () => {
-        await queryClient.invalidateQueries({ queryKey: ['log', 'agent-detail'] })
+  it('retains the current log when a background refresh fails', async () => {
+    const { queryClient } = renderDetail()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('100 Tokens'))
+    getAgentLog.mockRejectedValueOnce(new Error('Refresh failure'))
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.agent.logs.get.key(),
       })
-
-      expect(screen.getByTestId('status-panel')).toHaveAttribute('data-tokens', '100')
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
+    expect(getAgentLog).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('status')).toHaveTextContent('100 Tokens')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 
-    it('should stop loading after API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('Network failure'))
-
-      renderComponent()
-
-      await waitFor(() => {
-        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle response with empty iterations', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse({ iterations: [] }))
-
-      await renderAndWaitForData()
-    })
-
-    it('should handle response with multiple iterations and duplicate tools', async () => {
-      const response = createMockResponse({
+  it('switches between the result and tracing while keeping tool names deduplicated', async () => {
+    const user = userEvent.setup()
+    getAgentLog.mockResolvedValue(
+      createLogResponse({
+        meta: { ...createLogResponse().meta, iterations: 2 },
         iterations: [
-          {
-            created_at: '',
-            files: [],
-            thought: '',
-            tokens: 0,
-            tool_raw: { inputs: '', outputs: '' },
+          createIteration(),
+          createIteration({
             tool_calls: [
-              {
-                tool_name: 'tool1',
-                status: 'success',
-                tool_icon: null,
-                tool_label: { 'en-US': 'Tool 1' },
-              },
-              {
-                tool_name: 'tool2',
-                status: 'success',
-                tool_icon: null,
-                tool_label: { 'en-US': 'Tool 2' },
-              },
+              createToolCall(),
+              createToolCall({ tool_name: 'calendar', tool_label: 'Calendar' }),
             ],
-          },
-          {
-            created_at: '',
-            files: [],
-            thought: '',
-            tokens: 0,
-            tool_raw: { inputs: '', outputs: '' },
-            tool_calls: [
-              {
-                tool_name: 'tool1',
-                status: 'success',
-                tool_icon: null,
-                tool_label: { 'en-US': 'Tool 1' },
-              },
-            ],
-          },
+          }),
         ],
-      })
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(response)
+      }),
+    )
+    renderDetail()
+    expect(await screen.findByText('search, calendar')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    expect(screen.getByText('APPLOG.AGENTLOGDETAIL.ITERATION 1')).toBeInTheDocument()
+    expect(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Calendar/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+    expect(screen.getByText('Output content')).toBeInTheDocument()
+  })
 
-      await renderAndWaitForData()
-
-      expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
-    })
+  it('renders an empty trace without fabricated iterations', async () => {
+    const user = userEvent.setup()
+    getAgentLog.mockResolvedValue(
+      createLogResponse({ meta: { ...createLogResponse().meta, iterations: 0 }, iterations: [] }),
+    )
+    renderDetail()
+    await screen.findByText('0')
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    expect(screen.queryByRole('button', { name: /LLM/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('appLog.agentLogDetail.finalProcessing')).not.toBeInTheDocument()
   })
 })

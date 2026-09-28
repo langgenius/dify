@@ -1031,12 +1031,12 @@ export const zAgentConfigSkillInspectResponse = z.object({
  * AgentLogMetaResponse
  */
 export const zAgentLogMetaResponse = z.object({
-  agent_mode: z.string(),
-  elapsed_time: z.number().nullish(),
+  agent_mode: z.string().nullable(),
+  elapsed_time: z.number(),
   executor: z.string(),
   iterations: z.int(),
   start_time: z.string(),
-  status: z.string(),
+  status: z.literal('success'),
   total_tokens: z.int(),
 })
 
@@ -2212,39 +2212,53 @@ export const zWorkflowOnlineUsersResponse = z.object({
 })
 
 /**
- * AgentToolCallResponse
+ * MessageFileBelongsTo
+ *
+ * MessageFile belongs_to
  */
-export const zAgentToolCallResponse = z.object({
-  error: z.string().nullish(),
-  status: z.string(),
-  time_cost: z.union([z.number(), z.int()]),
-  tool_icon: z.unknown().optional(),
-  tool_input: z.record(z.string(), z.unknown()),
-  tool_label: z.string(),
-  tool_name: z.string(),
-  tool_output: z.record(z.string(), z.unknown()),
-  tool_parameters: z.record(z.string(), z.unknown()),
+export const zMessageFileBelongsTo = z.enum(['assistant', 'user'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * AgentLogFileResponse
+ */
+export const zAgentLogFileResponse = z.object({
+  belongs_to: zMessageFileBelongsTo.nullable(),
+  dify_model_identity: z.literal('__dify__file__'),
+  extension: z.string().nullable(),
+  filename: z.string().nullable(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  reference: z.string().nullable(),
+  related_id: z.string().nullable(),
+  remote_url: z.string().nullable(),
+  size: z.int(),
+  transfer_method: zFileTransferMethod,
+  type: zFileType,
+  upload_file_id: z.string().nullable(),
+  url: z.string().nullable(),
 })
 
 /**
- * AgentIterationLogResponse
+ * AgentToolRawResponse
  */
-export const zAgentIterationLogResponse = z.object({
-  created_at: z.string(),
-  files: z.array(z.unknown()).optional(),
-  thought: z.string().nullish(),
-  tokens: z.int(),
-  tool_calls: z.array(zAgentToolCallResponse),
-  tool_raw: z.record(z.string(), z.unknown()),
-})
-
-/**
- * AgentLogResponse
- */
-export const zAgentLogResponse = z.object({
-  files: z.array(z.unknown()).optional(),
-  iterations: z.array(zAgentIterationLogResponse),
-  meta: zAgentLogMetaResponse,
+export const zAgentToolRawResponse = z.object({
+  inputs: z.string().nullable(),
+  outputs: z.string().nullable(),
 })
 
 /**
@@ -2610,21 +2624,6 @@ export const zAppRerankingModelPayload = z
     reranking_provider_name: z.string().optional(),
   })
   .catchall(z.json())
-
-/**
- * FileType
- */
-export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
-
-/**
- * FileTransferMethod
- */
-export const zFileTransferMethod = z.enum([
-  'datasource_file',
-  'local_file',
-  'remote_url',
-  'tool_file',
-])
 
 /**
  * AppFileTypeUploadPayload
@@ -3377,6 +3376,52 @@ export const zAppExternalDataToolFormResponse = z.object({
  */
 export const zAppJsonObjectFormResponse = z.object({
   json_object: zAppUserInputFormConfigResponse,
+})
+
+/**
+ * EmojiIconDict
+ */
+export const zEmojiIconDict = z.object({
+  background: z.string(),
+  content: z.string(),
+})
+
+export const zAgentLogJsonValue = z.json().nullable()
+
+/**
+ * AgentToolCallResponse
+ */
+export const zAgentToolCallResponse = z.object({
+  error: z.string().nullable(),
+  status: z.enum(['error', 'success']),
+  time_cost: z.number(),
+  tool_icon: z.union([z.string(), zEmojiIconDict]),
+  tool_input: zAgentLogJsonValue,
+  tool_label: z.union([z.string(), z.record(z.string(), z.string())]),
+  tool_name: z.string(),
+  tool_output: zAgentLogJsonValue,
+  tool_parameters: z.record(z.string(), zAgentLogJsonValue),
+})
+
+/**
+ * AgentIterationLogResponse
+ */
+export const zAgentIterationLogResponse = z.object({
+  created_at: z.string(),
+  files: z.array(z.string()),
+  thought: z.string().nullable(),
+  tokens: z.int().nullable(),
+  tool_calls: z.array(zAgentToolCallResponse),
+  tool_raw: zAgentToolRawResponse,
+})
+
+/**
+ * AgentLogResponse
+ */
+export const zAgentLogResponse = z.object({
+  files: z.array(zAgentLogFileResponse),
+  iterations: z.array(zAgentIterationLogResponse),
+  meta: zAgentLogMetaResponse,
 })
 
 /**
@@ -5386,6 +5431,8 @@ export const zAppConfigJsonValueWritable = z.json().nullable()
  * AppEmptyDatasetCollectionPayload
  */
 export const zAppEmptyDatasetCollectionPayloadWritable = z.record(z.string(), z.never())
+
+export const zAgentLogJsonValueWritable = z.json().nullable()
 
 export const zGetAppsQuery = z.object({
   creator_ids: z.array(z.string()).optional(),

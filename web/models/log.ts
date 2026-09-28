@@ -318,60 +318,6 @@ export type WorkflowRunDetailResponse = {
   exceptions_count?: number
 }
 
-type AgentLogMeta = {
-  status: string
-  executor: string
-  start_time: string
-  elapsed_time: number
-  total_tokens: number
-  agent_mode: string
-  iterations: number
-  error?: string
-}
-
-export type ToolCall = {
-  status: string
-  error?: string | null
-  time_cost?: number
-  tool_icon: any
-  tool_input?: any
-  tool_output?: any
-  tool_name?: string
-  tool_label?: any
-  tool_parameters?: any
-}
-
-export type AgentIteration = {
-  created_at: string
-  files: string[]
-  thought: string
-  tokens: number
-  tool_calls: ToolCall[]
-  tool_raw: {
-    inputs: string
-    outputs: string
-  }
-}
-
-type AgentLogFile = {
-  id: string
-  type: string
-  url: string
-  name: string
-  belongs_to: string
-}
-
-export type AgentLogDetailRequest = {
-  conversation_id: string
-  message_id: string
-}
-
-export type AgentLogDetailResponse = {
-  meta: AgentLogMeta
-  iterations: AgentIteration[]
-  files: AgentLogFile[]
-}
-
 type PauseType =
   | {
       type: 'human_input'

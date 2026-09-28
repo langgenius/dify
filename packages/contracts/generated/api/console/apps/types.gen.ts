@@ -262,7 +262,7 @@ export type AgentConfigSkillInspectResponse = {
 }
 
 export type AgentLogResponse = {
-  files?: Array<unknown>
+  files: Array<AgentLogFileResponse>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
 }
@@ -1455,24 +1455,39 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
+export type AgentLogFileResponse = {
+  belongs_to: MessageFileBelongsTo | null
+  dify_model_identity: '__dify__file__'
+  extension: string | null
+  filename: string | null
+  id: string
+  mime_type: string | null
+  reference: string | null
+  related_id: string | null
+  remote_url: string | null
+  size: number
+  transfer_method: FileTransferMethod
+  type: FileType
+  upload_file_id: string | null
+  url: string | null
+}
+
 export type AgentIterationLogResponse = {
   created_at: string
-  files?: Array<unknown>
-  thought?: string | null
-  tokens: number
+  files: Array<string>
+  thought: string | null
+  tokens: number | null
   tool_calls: Array<AgentToolCallResponse>
-  tool_raw: {
-    [key: string]: unknown
-  }
+  tool_raw: AgentToolRawResponse
 }
 
 export type AgentLogMetaResponse = {
-  agent_mode: string
-  elapsed_time?: number | null
+  agent_mode: string | null
+  elapsed_time: number
   executor: string
   iterations: number
   start_time: string
-  status: string
+  status: 'success'
   total_tokens: number
 }
 
@@ -2516,22 +2531,33 @@ export type WorkflowOnlineUser = {
   username: string
 }
 
+export type MessageFileBelongsTo = 'assistant' | 'user'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
 export type AgentToolCallResponse = {
-  error?: string | null
-  status: string
-  time_cost: number | number
-  tool_icon?: unknown
-  tool_input: {
-    [key: string]: unknown
-  }
-  tool_label: string
+  error: string | null
+  status: 'error' | 'success'
+  time_cost: number
+  tool_icon: string | EmojiIconDict
+  tool_input: AgentLogJsonValue
+  tool_label:
+    | string
+    | {
+        [key: string]: string
+      }
   tool_name: string
-  tool_output: {
-    [key: string]: unknown
-  }
+  tool_output: AgentLogJsonValue
   tool_parameters: {
-    [key: string]: unknown
+    [key: string]: AgentLogJsonValue
   }
+}
+
+export type AgentToolRawResponse = {
+  inputs: string | null
+  outputs: string | null
 }
 
 export type SimpleModelConfig = {
@@ -2698,10 +2724,6 @@ export type AppRetrievalWeightsPayload = {
     | 'semantic_first'
     | undefined
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AppFileTypeUploadPayload = {
   enabled?: boolean | null
@@ -3245,6 +3267,22 @@ export type AppUserInputFormConfigResponse = {
   variable: string
   [key: string]: unknown
 }
+
+export type EmojiIconDict = {
+  background: string
+  content: string
+}
+
+export type AgentLogJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AgentLogJsonValue>
+  | {
+      [key: string]: AgentLogJsonValue
+    }
+  | null
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -4193,6 +4231,17 @@ export type AppConfigJsonValueWritable =
 export type AppEmptyDatasetCollectionPayloadWritable = {
   [key: string]: never
 }
+
+export type AgentLogJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AgentLogJsonValueWritable>
+  | {
+      [key: string]: AgentLogJsonValueWritable
+    }
+  | null
 
 export type GetAppsData = {
   body?: never

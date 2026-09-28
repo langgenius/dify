@@ -608,22 +608,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/agent-log-modal/result.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/agent-log-modal/tool-call.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/amplitude/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -4197,7 +4181,7 @@
   },
   "web/models/log.ts": {
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 1
     }
   },
   "web/models/pipeline.ts": {

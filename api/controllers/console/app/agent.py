@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -16,11 +16,16 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from core.tools.entities.tool_entities import EmojiIconDict
 from fields.base import ResponseModel
-from libs.helper import uuid_value
+from graphon.file import FileTransferMethod, FileType
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
+from models.enums import MessageFileBelongsTo
 from models.model import App, AppMode
 from services.agent_service import AgentService
+
+type AgentLogJsonValue = str | int | float | bool | None | list[AgentLogJsonValue] | dict[str, AgentLogJsonValue]
 
 
 class AgentLogQuery(BaseModel):
@@ -34,40 +39,62 @@ class AgentLogQuery(BaseModel):
 
 
 class AgentLogMetaResponse(ResponseModel):
-    status: str
+    status: Literal["success"]
     executor: str
     start_time: str
-    elapsed_time: float | None = None
+    elapsed_time: float
     total_tokens: int
-    agent_mode: str
+    agent_mode: str | None
     iterations: int
 
 
 class AgentToolCallResponse(ResponseModel):
-    status: str
-    error: str | None = None
-    time_cost: float | int
+    status: Literal["success", "error"]
+    error: str | None
+    time_cost: float
     tool_name: str
-    tool_label: str
-    tool_input: dict[str, Any]
-    tool_output: dict[str, Any]
-    tool_parameters: dict[str, Any]
-    tool_icon: Any = Field(default=None)
+    tool_label: str | dict[str, str]
+    tool_input: AgentLogJsonValue
+    tool_output: AgentLogJsonValue
+    tool_parameters: dict[str, AgentLogJsonValue]
+    tool_icon: str | EmojiIconDict
+
+
+class AgentToolRawResponse(ResponseModel):
+    inputs: str | None
+    outputs: str | None
 
 
 class AgentIterationLogResponse(ResponseModel):
-    tokens: int
+    tokens: int | None
     tool_calls: list[AgentToolCallResponse]
-    tool_raw: dict[str, Any]
-    thought: str | None = None
+    tool_raw: AgentToolRawResponse
+    thought: str | None
     created_at: str
-    files: list[Any] = Field(default_factory=list)
+    files: list[str]
+
+
+class AgentLogFileResponse(ResponseModel):
+    id: str
+    type: FileType
+    transfer_method: FileTransferMethod
+    remote_url: str | None
+    reference: str | None
+    filename: str | None
+    extension: str | None
+    mime_type: str | None
+    size: int
+    dify_model_identity: Literal["__dify__file__"]
+    related_id: str | None
+    url: str | None
+    belongs_to: MessageFileBelongsTo | None
+    upload_file_id: str | None
 
 
 class AgentLogResponse(ResponseModel):
     meta: AgentLogMetaResponse
     iterations: list[AgentIterationLogResponse]
-    files: list[Any] = Field(default_factory=list)
+    files: list[AgentLogFileResponse]
 
 
 register_response_schema_models(console_ns, AgentLogResponse)
@@ -91,4 +118,5 @@ class AgentLogApi(Resource):
     def get(self, req_data: AgentLogQuery, session: Session, app_model: App):
         """Get agent logs."""
 
-        return AgentService.get_agent_logs(app_model, req_data.conversation_id, req_data.message_id, session)
+        result = AgentService.get_agent_logs(app_model, req_data.conversation_id, req_data.message_id, session)
+        return dump_response(AgentLogResponse, result)

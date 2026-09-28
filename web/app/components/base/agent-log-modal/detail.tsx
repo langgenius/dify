@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { fetchAgentLogDetail } from '@/service/log'
+import { consoleQuery } from '@/service/console'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
@@ -34,14 +34,12 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
     isLoadingError,
     refetch,
   } = useQuery(
-    queryOptions({
-      queryKey: ['log', 'agent-detail', appId, conversationID, messageID],
-      queryFn: ({ signal }) =>
-        fetchAgentLogDetail({
-          appID: appId,
-          params: { conversation_id: conversationID, message_id: messageID },
-          signal,
-        }),
+    consoleQuery.apps.byAppId.agent.logs.get.queryOptions({
+      input: {
+        params: { app_id: appId },
+        query: { conversation_id: conversationID, message_id: messageID },
+      },
+      context: { silent: true },
       retry: false,
     }),
   )
@@ -108,15 +106,8 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           <ResultPanel
             inputs={log.input}
             outputs={log.content}
-            status={runDetail.meta.status}
-            error={runDetail.meta.error}
-            elapsed_time={runDetail.meta.elapsed_time}
-            total_tokens={runDetail.meta.total_tokens}
-            created_at={runDetail.meta.start_time}
-            created_by={runDetail.meta.executor}
-            agentMode={runDetail.meta.agent_mode}
+            meta={runDetail.meta}
             tools={tools}
-            iterations={runDetail.iterations.length}
           />
         )}
         {!loading && !isLoadingError && currentTab === 'TRACING' && (
