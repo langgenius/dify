@@ -503,18 +503,22 @@ def test_parse_openapi_to_tool_bundle_path_level_parameters(app: Flask):
     with app.test_request_context():
         get_bundle, delete_bundle = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, warning=warning)
 
-    assert [p.name for p in get_bundle.parameters] == ["user_id", "verbose", "fields"]
-    assert get_bundle.parameters[0].required is True
-    assert get_bundle.parameters[1].type == ToolParameter.ToolParameterType.NUMBER
+    get_parameters = get_bundle.parameters
+    assert get_parameters is not None
+    assert [p.name for p in get_parameters] == ["user_id", "verbose", "fields"]
+    assert get_parameters[0].required is True
+    assert get_parameters[1].type == ToolParameter.ToolParameterType.NUMBER
     assert [(p["name"], p["in"]) for p in get_bundle.openapi["parameters"]] == [
         ("user_id", "path"),
         ("verbose", "query"),
         ("fields", "query"),
     ]
 
-    assert [p.name for p in delete_bundle.parameters] == ["user_id", "verbose"]
-    assert delete_bundle.parameters[1].type == ToolParameter.ToolParameterType.BOOLEAN
-    assert delete_bundle.parameters[1].llm_description == "operation override"
+    delete_parameters = delete_bundle.parameters
+    assert delete_parameters is not None
+    assert [p.name for p in delete_parameters] == ["user_id", "verbose"]
+    assert delete_parameters[1].type == ToolParameter.ToolParameterType.BOOLEAN
+    assert delete_parameters[1].llm_description == "operation override"
     assert "duplicated_parameter" not in warning
 
 
@@ -536,4 +540,6 @@ def test_parse_swagger_to_openapi_keeps_path_level_parameters(app: Flask):
 
     assert len(bundles) == 1
     assert bundles[0].operation_id == "getUser"
-    assert [p.name for p in bundles[0].parameters] == ["user_id"]
+    parameters = bundles[0].parameters
+    assert parameters is not None
+    assert [p.name for p in parameters] == ["user_id"]
