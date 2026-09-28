@@ -31,7 +31,7 @@ export const useOAuthCallback = (): OAuthCallbackState => {
       error,
       errorDescription,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL query params cannot change without navigating to a new callback page.
     [],
   )
 
