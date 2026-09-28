@@ -98,7 +98,7 @@ class CompletionApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_completion(
+            response = application_services().installed_apps.generation.generate_completion(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),
@@ -178,7 +178,7 @@ class ChatApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_chat(
+            response = application_services().installed_apps.generation.generate_chat(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),

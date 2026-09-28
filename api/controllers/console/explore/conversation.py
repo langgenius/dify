@@ -92,7 +92,7 @@ class ConversationListApi(Resource):
     def get(
         self, query: ConversationListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
-        page = application_services().installed_app_conversations.get_page(
+        page = application_services().installed_apps.conversations.get_page(
             installed_app=installed_app,
             account_id=request_context.account_id,
             last_id=query.last_id or None,
@@ -111,7 +111,7 @@ class ConversationApi(Resource):
     @get_installed_app
     @_conversation_errors
     def delete(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> tuple[str, int]:
-        application_services().installed_app_conversations.delete(
+        application_services().installed_apps.conversations.delete(
             installed_app=installed_app, account_id=request_context.account_id, conversation_id=str(c_id)
         )
         return "", 204
@@ -135,7 +135,7 @@ class ConversationRenameApi(Resource):
         installed_app: InstalledAppRef,
         c_id: UUID,
     ) -> dict[str, object]:
-        conversation = application_services().installed_app_conversations.rename(
+        conversation = application_services().installed_apps.conversations.rename(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),
@@ -154,7 +154,7 @@ class ConversationPinApi(Resource):
     @get_installed_app
     @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
-        application_services().installed_app_conversations.set_pinned(
+        application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),
@@ -173,7 +173,7 @@ class ConversationUnPinApi(Resource):
     @get_installed_app
     @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
-        application_services().installed_app_conversations.set_pinned(
+        application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),
