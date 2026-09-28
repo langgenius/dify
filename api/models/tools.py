@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import sqlalchemy as sa
 from deprecated import deprecated
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import ForeignKey, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -27,6 +29,16 @@ from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from core.entities.mcp_provider import MCPProviderEntity
+
+logger = logging.getLogger(__name__)
+
+_json_object_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_str_mapping_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
+_json_object_list_adapter: TypeAdapter[list[dict[str, Any]]] = TypeAdapter(list[dict[str, Any]])
+_api_tool_bundles_adapter: TypeAdapter[list[ApiToolBundle]] = TypeAdapter(list[ApiToolBundle])
+_workflow_tool_parameter_configurations_adapter: TypeAdapter[list[WorkflowToolParameterConfiguration]] = TypeAdapter(
+    list[WorkflowToolParameterConfiguration]
+)
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
@@ -67,7 +79,7 @@ class ToolOAuthTenantClient(TypeBase):
 
     @property
     def oauth_params(self) -> dict[str, Any]:
-        return cast(dict[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
+        return _json_object_adapter.validate_json(self.encrypted_oauth_params or "{}")
 
 
 class BuiltinToolProvider(TypeBase):
@@ -122,7 +134,7 @@ class BuiltinToolProvider(TypeBase):
     def credentials(self) -> dict[str, Any]:
         if not self.encrypted_credentials:
             return {}
-        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
+        return _json_object_adapter.validate_json(self.encrypted_credentials)
 
 
 class ApiToolProvider(TypeBase):
@@ -184,11 +196,11 @@ class ApiToolProvider(TypeBase):
 
     @property
     def tools(self) -> list[ApiToolBundle]:
-        return [ApiToolBundle.model_validate(tool) for tool in json.loads(self.tools_str)]
+        return _api_tool_bundles_adapter.validate_json(self.tools_str)
 
     @property
     def credentials(self) -> dict[str, Any]:
-        return dict[str, Any](json.loads(self.credentials_str))
+        return _json_object_adapter.validate_json(self.credentials_str)
 
     def user(self, session: Session) -> Account | None:
         if not self.user_id:
@@ -276,10 +288,7 @@ class WorkflowToolProvider(TypeBase):
 
     @property
     def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
-        return [
-            WorkflowToolParameterConfiguration.model_validate(config)
-            for config in json.loads(self.parameter_configuration)
-        ]
+        return _workflow_tool_parameter_configurations_adapter.validate_json(self.parameter_configuration)
 
     def app(self, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
@@ -350,8 +359,9 @@ class MCPToolProvider(TypeBase):
         if not self.encrypted_credentials:
             return {}
         try:
-            return json.loads(self.encrypted_credentials)
-        except Exception:
+            return _json_object_adapter.validate_json(self.encrypted_credentials)
+        except ValidationError:
+            logger.warning("Invalid credentials stored for MCP provider %s", self.id)
             return {}
 
     @property
@@ -359,15 +369,17 @@ class MCPToolProvider(TypeBase):
         if self.encrypted_headers is None:
             return {}
         try:
-            return json.loads(self.encrypted_headers)
-        except Exception:
+            return _str_mapping_adapter.validate_json(self.encrypted_headers)
+        except ValidationError:
+            logger.warning("Invalid headers stored for MCP provider %s", self.id)
             return {}
 
     @property
     def tool_dict(self) -> list[dict[str, Any]]:
         try:
-            return json.loads(self.tools) if self.tools else []
-        except (json.JSONDecodeError, TypeError):
+            return _json_object_list_adapter.validate_json(self.tools) if self.tools else []
+        except ValidationError:
+            logger.warning("Invalid tools stored for MCP provider %s", self.id)
             return []
 
     def to_entity(self) -> MCPProviderEntity:
@@ -545,4 +557,4 @@ class DeprecatedPublishedAppTool(TypeBase):
 
     @property
     def description_i18n(self) -> I18nObject:
-        return I18nObject.model_validate(json.loads(self.description))
+        return I18nObject.model_validate_json(self.description)
