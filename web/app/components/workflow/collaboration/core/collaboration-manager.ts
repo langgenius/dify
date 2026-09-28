@@ -9,6 +9,7 @@ import type {
   CollaborationUpdate,
   CursorPosition,
   GraphReloadRequest,
+  GraphSnapshotValidationRequest,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
@@ -17,6 +18,7 @@ import type {
   WorkflowSyncAcknowledgement,
   WorkflowSyncRequest,
   WorkflowSyncResult,
+  WorkflowUpdate,
 } from '../types/collaboration'
 import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
@@ -36,6 +38,8 @@ type NodePanelPresenceEventData = {
 
 type ReactFlowStore = {
   sourceStore: Pick<ReturnType<typeof useStoreApi>, 'getState'>
+  getInitialReplacementId?: () => string | null | undefined
+  projectNodesForCanvas?: (nodes: Node[], localNodes: Node[]) => Node[]
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -166,6 +170,7 @@ export class CollaborationManager {
   private provider: CRDTProvider | null = null
   private nodesMap: LoroMap<Record<string, Value>> | null = null
   private edgesMap: LoroMap<Record<string, Value>> | null = null
+  private draftRevisionMap: LoroMap<{ last_replacement_id: string | null }> | null = null
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: ReactFlowStore | null = null
@@ -186,12 +191,20 @@ export class CollaborationManager {
   private graphViewSequence = 0
   private visibilityListenerAttached = false
   private crdtTrusted = false
+  private authoritativeGraphApplied = false
   private hasEstablishedConnection = false
+  private hasReceivedStatus = false
   private localDraftFallbackActive = false
   private rebuildCrdtOnNextConnect = false
   private reconnectedWithFreshDoc = false
   private awaitingSnapshotImport = false
   private graphReloadRequired = false
+  private pendingCommittedReplacementId: string | null = null
+  private appliedReplacementIds = new Set<string>()
+  private workflowReplacementSequence = 0
+  private pendingWorkflowReplacementToken: number | null = null
+  private snapshotValidationRequest: GraphSnapshotValidationRequest | null = null
+  private snapshotValidationToken = 0
   private crdtGeneration = 0
   private graphReloadToken = 0
   private graphReloadAttempt = 0
@@ -571,7 +584,14 @@ export class CollaborationManager {
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
     this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
+    this.draftRevisionMap = this.doc.getMap('draft_revision') as LoroMap<{
+      last_replacement_id: string | null
+    }>
     this.crdtGeneration += 1
+    this.workflowReplacementSequence += 1
+    this.snapshotValidationRequest = null
+    this.pendingWorkflowReplacementToken = null
+    this.authoritativeGraphApplied = false
     this.pendingGraphImportEmit = false
     this.pendingGraphResyncBroadcast = false
     this.pendingImportLog = null
@@ -642,17 +662,38 @@ export class CollaborationManager {
   }
 
   private handleSnapshotImported = (): void => {
-    if (!this.awaitingSnapshotImport) return
+    if (!this.awaitingSnapshotImport && !this.snapshotValidationRequest) return
 
-    const shouldBroadcastSnapshot = this.isLeader && this.pendingGraphResyncBroadcast
     this.clearInitialSyncRetry()
     this.refreshGraphSynchronously()
+    this.authoritativeGraphApplied = true
     this.awaitingSnapshotImport = false
     this.crdtTrusted = true
     this.reconnectedWithFreshDoc = false
     this.graphReloadRequired = false
+    this.requireGraphSnapshotValidation()
+  }
+
+  private getDraftReplacementId(): string | null {
+    const replacementId = this.draftRevisionMap?.get('last_replacement_id')
+    return typeof replacementId === 'string' ? replacementId : null
+  }
+
+  private writeDraftReplacementId(replacementId: string | null | undefined): void {
+    this.draftRevisionMap?.set('last_replacement_id', replacementId ?? null)
+  }
+
+  private requireGraphSnapshotValidation(): void {
+    if (!this.currentAppId) return
+    this.workflowReplacementSequence += 1
+    this.snapshotValidationRequest = {
+      appId: this.currentAppId,
+      generation: this.crdtGeneration,
+      token: ++this.snapshotValidationToken,
+      lastReplacementId: this.getDraftReplacementId(),
+    }
+    this.eventEmitter.emit('graphSnapshotValidationRequired', this.snapshotValidationRequest)
     this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
   }
 
   private shouldImportSnapshot = (): boolean => {
@@ -674,6 +715,8 @@ export class CollaborationManager {
 
     if (this.currentAppId === appId && this.doc) {
       if (reactFlowStore) this.reactFlowStore = reactFlowStore
+      const initialReplacementId = reactFlowStore?.getInitialReplacementId?.()
+      if (initialReplacementId) this.appliedReplacementIds.add(initialReplacementId)
       this.activeConnections.add(connectionId)
 
       return connectionId
@@ -686,9 +729,12 @@ export class CollaborationManager {
     this.activeConnections.add(connectionId)
 
     this.hasEstablishedConnection = false
+    this.hasReceivedStatus = false
     this.currentAppId = appId
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
+    const initialReplacementId = reactFlowStore?.getInitialReplacementId?.()
+    if (initialReplacementId) this.appliedReplacementIds.add(initialReplacementId)
 
     const socket = webSocketClient.connect(appId)
     this.hasEstablishedConnection = socket.connected
@@ -698,6 +744,7 @@ export class CollaborationManager {
     this.attachVisibilityListener()
 
     this.crdtTrusted = false
+    this.authoritativeGraphApplied = false
     this.pendingInitialSync = true
     this.initializeCrdt(socket)
     this.emitGraphReadyState()
@@ -740,10 +787,17 @@ export class CollaborationManager {
     this.graphViewActive = null
     this.graphViewSequence = 0
     this.crdtTrusted = false
+    this.authoritativeGraphApplied = false
     this.rebuildCrdtOnNextConnect = false
     this.reconnectedWithFreshDoc = false
     this.awaitingSnapshotImport = false
     this.graphReloadRequired = false
+    this.hasReceivedStatus = false
+    this.pendingCommittedReplacementId = null
+    this.pendingWorkflowReplacementToken = null
+    this.snapshotValidationRequest = null
+    this.appliedReplacementIds.clear()
+    this.workflowReplacementSequence += 1
     this.graphReloadToken += 1
     this.graphReloadAttempt = 0
     this.pendingGraphResyncBroadcast = false
@@ -756,6 +810,7 @@ export class CollaborationManager {
     this.provider = null
     this.nodesMap = null
     this.edgesMap = null
+    this.draftRevisionMap = null
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
@@ -792,8 +847,10 @@ export class CollaborationManager {
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
     return (
-      this.localDraftFallbackActive ||
-      (isDefaultSocketUrl() && !this.isConnected() && !this.hasEstablishedConnection)
+      !this.snapshotValidationRequest &&
+      this.pendingWorkflowReplacementToken === null &&
+      (this.localDraftFallbackActive ||
+        (isDefaultSocketUrl() && !this.isConnected() && !this.hasEstablishedConnection))
     )
   }
 
@@ -807,17 +864,50 @@ export class CollaborationManager {
   }
 
   canRestoreGraphFromCrdt(): boolean {
-    return this.crdtTrusted && !this.graphReloadRequired && this.doc !== null
+    return (
+      this.crdtTrusted &&
+      !this.graphReloadRequired &&
+      !this.snapshotValidationRequest &&
+      this.pendingWorkflowReplacementToken === null &&
+      this.doc !== null
+    )
   }
 
   canPersistLocalGraph(): boolean {
+    if (
+      this.pendingCommittedReplacementId ||
+      this.pendingWorkflowReplacementToken !== null ||
+      this.snapshotValidationRequest
+    )
+      return false
     if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
 
   canApplyLocalGraphMutation(): boolean {
+    if (
+      this.pendingCommittedReplacementId ||
+      this.pendingWorkflowReplacementToken !== null ||
+      this.snapshotValidationRequest
+    )
+      return false
     if (this.localDraftFallbackActive || !this.currentAppId) return true
     return this.canPersistLocalGraph() && this.getActiveSocket()?.connected === true
+  }
+
+  canApplyWorkflowReplacementToLocalFallback(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    token: number,
+  ): boolean {
+    return (
+      this.ownsReactFlowStore(store) &&
+      this.isWorkflowReplacementCurrent(appId, token) &&
+      !this.graphReloadRequired &&
+      !this.snapshotValidationRequest &&
+      !this.isConnected() &&
+      (this.localDraftFallbackActive || (isDefaultSocketUrl() && !this.hasEstablishedConnection))
+    )
   }
 
   private activateLocalDraftFallback(socket: Socket): void {
@@ -846,7 +936,15 @@ export class CollaborationManager {
   }
 
   canFlushGraphOnPageClose(): boolean {
-    if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
+    if (
+      !this.crdtTrusted ||
+      this.graphReloadRequired ||
+      this.pendingCommittedReplacementId ||
+      this.pendingWorkflowReplacementToken !== null ||
+      this.snapshotValidationRequest ||
+      !this.isLeader
+    )
+      return false
     if (this.graphViewActive !== false) return true
 
     const socketId = this.getActiveSocket()?.id
@@ -877,6 +975,190 @@ export class CollaborationManager {
     return unsubscribe
   }
 
+  onGraphSnapshotValidationRequired(
+    callback: (request: GraphSnapshotValidationRequest) => void,
+  ): () => void {
+    const unsubscribe = this.eventEmitter.on('graphSnapshotValidationRequired', callback)
+    if (this.snapshotValidationRequest) callback(this.snapshotValidationRequest)
+    return unsubscribe
+  }
+
+  isGraphSnapshotValidationPending(appId: string): boolean {
+    return this.currentAppId === appId && this.snapshotValidationRequest !== null
+  }
+
+  isGraphSnapshotValidationCurrent(request: GraphSnapshotValidationRequest): boolean {
+    const current = this.snapshotValidationRequest
+    return (
+      !!current &&
+      this.currentAppId === request.appId &&
+      this.crdtTrusted &&
+      !this.graphReloadRequired &&
+      current.generation === request.generation &&
+      current.token === request.token &&
+      current.lastReplacementId === request.lastReplacementId &&
+      this.getDraftReplacementId() === request.lastReplacementId
+    )
+  }
+
+  completeGraphSnapshotValidation(
+    request: GraphSnapshotValidationRequest,
+    serverReplacementId: string | null,
+  ): boolean {
+    if (!this.isGraphSnapshotValidationCurrent(request)) return false
+    if (request.lastReplacementId !== serverReplacementId) {
+      if (this.isLeader) {
+        this.requireAuthoritativeGraphReload()
+      } else {
+        this.sendCollaborationEvent({
+          type: 'graph_revision_mismatch',
+          data: { appId: request.appId, lastReplacementId: serverReplacementId },
+          timestamp: Date.now(),
+        })
+      }
+      return false
+    }
+
+    if (serverReplacementId) this.appliedReplacementIds.add(serverReplacementId)
+    if (
+      this.pendingCommittedReplacementId &&
+      this.pendingCommittedReplacementId === serverReplacementId
+    ) {
+      this.appliedReplacementIds.add(this.pendingCommittedReplacementId)
+      this.pendingCommittedReplacementId = null
+    }
+    this.refreshGraphSynchronously()
+    this.snapshotValidationRequest = null
+    this.emitGraphReadyState()
+    if (this.pendingGraphResyncBroadcast) this.broadcastCurrentGraph()
+    return true
+  }
+
+  private requireAuthoritativeGraphReload(): void {
+    this.workflowReplacementSequence += 1
+    this.snapshotValidationRequest = null
+    this.pendingCommittedReplacementId = null
+    this.pendingWorkflowReplacementToken = null
+    this.pendingGraphResyncBroadcast = true
+    this.crdtTrusted = false
+    if (!this.graphReloadRequired) {
+      this.graphReloadRequired = true
+      this.emitGraphReloadRequired()
+    }
+    this.emitGraphReadyState()
+  }
+
+  refreshPendingGraphReload(appId: string, replacementId?: string): boolean {
+    if (this.currentAppId !== appId || !this.isLeader || !this.graphReloadRequired) return false
+
+    if (replacementId && this.pendingCommittedReplacementId === replacementId)
+      this.pendingCommittedReplacementId = null
+    this.emitGraphReloadRequired()
+    return true
+  }
+
+  hasAppliedReplacement(appId: string, replacementId: string): boolean {
+    return this.currentAppId === appId && this.appliedReplacementIds.has(replacementId)
+  }
+
+  refreshGraphForAppliedReplacement(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    replacementId: string,
+  ): boolean {
+    if (this.currentAppId !== appId || !this.ownsReactFlowStore(store))
+      throw new Error('Collaborative graph owner changed before the replacement was applied.')
+    if (this.graphReloadRequired || this.snapshotValidationRequest)
+      throw new Error('Collaborative graph is still reconciling a replaced draft.')
+    if (!this.crdtTrusted || !this.doc) return false
+    if (this.getDraftReplacementId() !== replacementId)
+      throw new Error('Collaborative graph replacement marker differs from the applied draft.')
+
+    this.refreshGraphSynchronously()
+    return true
+  }
+
+  getWorkflowReplacementSequence(appId: string): number | null {
+    return this.currentAppId === appId ? this.workflowReplacementSequence : null
+  }
+
+  isWorkflowReplacementPending(appId: string): boolean {
+    return this.currentAppId === appId && this.pendingWorkflowReplacementToken !== null
+  }
+
+  beginWorkflowReplacementIfUnchanged(appId: string, observedSequence: number): number | null {
+    if (this.getWorkflowReplacementSequence(appId) !== observedSequence) return null
+    return this.beginWorkflowReplacement(appId)
+  }
+
+  beginWorkflowReplacement(appId: string): number | null {
+    if (this.currentAppId !== appId || this.graphReloadRequired) return null
+
+    const token = ++this.workflowReplacementSequence
+    this.pendingCommittedReplacementId = null
+    this.pendingWorkflowReplacementToken = token
+    this.emitGraphReadyState()
+    return token
+  }
+
+  isWorkflowReplacementCurrent(appId: string, token: number): boolean {
+    return this.currentAppId === appId && this.pendingWorkflowReplacementToken === token
+  }
+
+  completeWorkflowReplacement(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    token: number,
+  ): boolean {
+    if (!this.ownsReactFlowStore(store) || !this.isWorkflowReplacementCurrent(appId, token))
+      return false
+
+    this.pendingWorkflowReplacementToken = null
+    this.emitGraphReadyState()
+    if (this.pendingGraphResyncBroadcast) this.broadcastCurrentGraph()
+    return true
+  }
+
+  cancelWorkflowReplacement(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    token: number,
+  ): boolean {
+    return this.completeWorkflowReplacement(appId, store, token)
+  }
+
+  beginCommittedReplacement(appId: string, replacementId: string): boolean {
+    if (
+      this.currentAppId !== appId ||
+      this.graphReloadRequired ||
+      this.hasAppliedReplacement(appId, replacementId)
+    )
+      return false
+
+    this.pendingCommittedReplacementId = replacementId
+    this.emitGraphReadyState()
+    return true
+  }
+
+  completeCommittedReplacement(
+    appId: string,
+    store: ReactFlowStore['sourceStore'],
+    appliedReplacementId: string | null,
+    notificationReplacementId?: string,
+  ): void {
+    if (this.currentAppId !== appId || !this.ownsReactFlowStore(store)) return
+
+    if (appliedReplacementId) this.appliedReplacementIds.add(appliedReplacementId)
+    if (
+      this.pendingCommittedReplacementId &&
+      (this.pendingCommittedReplacementId === notificationReplacementId ||
+        this.pendingCommittedReplacementId === appliedReplacementId)
+    ) {
+      this.pendingCommittedReplacementId = null
+      this.emitGraphReadyState()
+    }
+  }
+
   isGraphReloadCurrent(request: GraphReloadRequest): boolean {
     return (
       this.isLeader &&
@@ -887,19 +1169,36 @@ export class CollaborationManager {
     )
   }
 
-  replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
-    if (!this.doc || !this.reactFlowStore || !this.isGraphReloadCurrent(request)) return false
+  replaceGraphFromServerDraft(
+    request: GraphReloadRequest,
+    nodes: Node[],
+    edges: Edge[],
+    replacementId: string | null,
+  ): boolean {
+    if (!this.doc || !this.isGraphReloadCurrent(request)) return false
 
     const shouldBroadcastSnapshot = this.pendingGraphResyncBroadcast
-    const state = this.reactFlowStore.getState()
-    this.syncNodes(this.getNodes(), state.getNodes())
-    this.syncEdges(this.getEdges(), state.getEdges())
+    this.syncNodes(this.getNodes(), nodes)
+    this.syncEdges(this.getEdges(), edges)
+    this.writeDraftReplacementId(replacementId)
     this.doc.commit()
+    this.authoritativeGraphApplied = true
+    this.clearUndoStack()
     this.clearInitialSyncRetry()
     this.crdtTrusted = true
     this.awaitingSnapshotImport = false
     this.reconnectedWithFreshDoc = false
     this.graphReloadRequired = false
+    this.snapshotValidationRequest = null
+    this.pendingWorkflowReplacementToken = null
+    if (replacementId) this.appliedReplacementIds.add(replacementId)
+    if (
+      this.pendingCommittedReplacementId &&
+      this.pendingCommittedReplacementId === replacementId
+    ) {
+      this.appliedReplacementIds.add(this.pendingCommittedReplacementId)
+      this.pendingCommittedReplacementId = null
+    }
     this.emitGraphReadyState()
     if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
     return true
@@ -910,12 +1209,17 @@ export class CollaborationManager {
     store: ReactFlowStore['sourceStore'],
     nodes: Node[],
     edges: Edge[],
+    lastReplacementId: string | null,
   ): boolean {
     if (
       this.currentAppId !== appId ||
       !this.ownsReactFlowStore(store) ||
       !this.doc ||
-      !this.canApplyLocalGraphMutation()
+      !this.crdtTrusted ||
+      this.graphReloadRequired ||
+      this.snapshotValidationRequest !== null ||
+      this.graphViewActive === false ||
+      this.getActiveSocket()?.connected !== true
     )
       return false
 
@@ -923,8 +1227,11 @@ export class CollaborationManager {
     // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
     this.syncNodes(this.getNodes(), nodes)
     this.syncEdges(this.getEdges(), edges)
+    this.writeDraftReplacementId(lastReplacementId)
     this.doc.commit()
+    this.authoritativeGraphApplied = true
     this.clearUndoStack()
+    if (this.pendingGraphResyncBroadcast) this.broadcastCurrentGraph()
     return true
   }
 
@@ -1050,16 +1357,6 @@ export class CollaborationManager {
     this.visibilityListenerAttached = false
   }
 
-  emitWorkflowUpdate(appId: string): void {
-    if (this.currentAppId !== appId || !webSocketClient.isConnected(appId)) return
-
-    this.sendCollaborationEvent({
-      type: 'workflow_update',
-      data: { appId, timestamp: Date.now() },
-      timestamp: Date.now(),
-    })
-  }
-
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
@@ -1103,7 +1400,7 @@ export class CollaborationManager {
     return this.eventEmitter.on('onlineUsers', callback)
   }
 
-  onWorkflowUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
+  onWorkflowUpdate(callback: (update: WorkflowUpdate) => void): () => void {
     return this.eventEmitter.on('workflowUpdate', callback)
   }
 
@@ -1217,7 +1514,10 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
+          const updatedNodes = this.projectNodesForCanvas(
+            Array.from(this.nodesMap?.values() || []) as Node[],
+            previousNodes,
+          )
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
@@ -1257,7 +1557,10 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
+          const updatedNodes = this.projectNodesForCanvas(
+            Array.from(this.nodesMap?.values() || []) as Node[],
+            previousNodes,
+          )
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
@@ -1342,6 +1645,12 @@ export class CollaborationManager {
 
   private setupSubscriptions(): void {
     const generation = this.crdtGeneration
+    this.draftRevisionMap?.subscribe((event: LoroSubscribeEvent) => {
+      if (generation !== this.crdtGeneration || event.by !== 'import') return
+      if (this.isLeader || !this.crdtTrusted || this.awaitingSnapshotImport) return
+      if (this.graphReloadRequired) return
+      this.requireGraphSnapshotValidation()
+    })
     this.nodesMap?.subscribe((event: LoroSubscribeEvent) => {
       if (generation !== this.crdtGeneration) return
 
@@ -1385,7 +1694,7 @@ export class CollaborationManager {
 
         this.pendingInitialSync = false
 
-        const updatedNodes = Array.from(this.nodesMap?.keys() || []).map((nodeId) => {
+        const importedNodes = Array.from(this.nodesMap?.keys() || []).map((nodeId) => {
           const node = this.exportNode(nodeId as string)
           const clonedNode: Node = {
             ...node,
@@ -1409,6 +1718,7 @@ export class CollaborationManager {
 
           return clonedNode
         })
+        const updatedNodes = this.projectNodesForCanvas(importedNodes, previousNodes)
 
         // Call ReactFlow's native setter directly to avoid triggering collaboration
         this.captureSetNodesAnomaly(
@@ -1528,10 +1838,8 @@ export class CollaborationManager {
     const state = reactFlowStore?.getState()
     const localNodes = state?.getNodes() || []
 
-    if (localNodes.length === 0) return nodes
-
     const localNodesMap = new Map(localNodes.map((node) => [node.id, node]))
-    return nodes.map((node) => {
+    const mergedNodes = nodes.map((node) => {
       const localNode = localNodesMap.get(node.id)
       if (!localNode) return node
 
@@ -1555,6 +1863,11 @@ export class CollaborationManager {
       nextNode.data = nextData
       return nextNode
     })
+    return this.projectNodesForCanvas(mergedNodes, localNodes)
+  }
+
+  private projectNodesForCanvas(nodes: Node[], localNodes: Node[]): Node[] {
+    return this.reactFlowStore?.projectNodesForCanvas?.(nodes, localNodes) ?? nodes
   }
 
   getGraphImportLog(): GraphImportLogEntry[] {
@@ -1809,7 +2122,20 @@ export class CollaborationManager {
         } else if (update.type === 'app_publish_update') {
           this.eventEmitter.emit('appPublishUpdate', update)
         } else if (update.type === 'workflow_update') {
-          this.eventEmitter.emit('workflowUpdate', update.data)
+          const appId = update.data?.appId
+          const replacementId = update.data?.replacementId
+          if (
+            typeof appId !== 'string' ||
+            appId !== this.currentAppId ||
+            typeof replacementId !== 'string' ||
+            replacementId.length === 0
+          )
+            return
+          this.eventEmitter.emit('workflowUpdate', {
+            appId,
+            replacementId,
+            timestamp: update.timestamp,
+          } satisfies WorkflowUpdate)
         } else if (update.type === 'comments_update') {
           this.eventEmitter.emit('commentsUpdate', update.data)
         } else if (update.type === 'node_panel_presence') {
@@ -1842,6 +2168,23 @@ export class CollaborationManager {
           // The server sends this only to its selected snapshot source. Its routing decision is
           // authoritative even if the preceding local leader status event is still in flight.
           this.broadcastCurrentGraph()
+        } else if (update.type === 'graph_revision_mismatch') {
+          const appId = update.data?.appId
+          const lastReplacementId = update.data?.lastReplacementId
+          if (
+            !this.isLeader ||
+            appId !== this.currentAppId ||
+            !(lastReplacementId === null || typeof lastReplacementId === 'string')
+          )
+            return
+
+          if (this.graphReloadRequired || !this.crdtTrusted || this.snapshotValidationRequest) {
+            this.pendingGraphResyncBroadcast = true
+            return
+          }
+          if (this.pendingCommittedReplacementId) return
+          if (this.getDraftReplacementId() === lastReplacementId) this.broadcastCurrentGraph()
+          else this.requireAuthoritativeGraphReload()
         } else if (update.type === 'workflow_restore_intent') {
           this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
         } else if (update.type === 'workflow_restore_complete') {
@@ -1895,14 +2238,21 @@ export class CollaborationManager {
 
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
+        const isFirstLeader = !this.hasReceivedStatus && data.isLeader
+        this.hasReceivedStatus = true
         this.isLeader = data.isLeader
 
         if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (isFirstLeader ||
+            this.reconnectedWithFreshDoc ||
+            this.awaitingSnapshotImport ||
+            this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false
+          this.pendingCommittedReplacementId = null
+          this.pendingWorkflowReplacementToken = null
           const shouldNotifyReload = !this.graphReloadRequired || !wasLeader
           this.graphReloadRequired = true
           if (shouldNotifyReload) this.emitGraphReloadRequired()
@@ -1911,6 +2261,7 @@ export class CollaborationManager {
           this.seedCrdtGraphFromReactFlowIfNeeded()
           this.crdtTrusted = true
           this.pendingInitialSync = false
+          if (!wasLeader && this.snapshotValidationRequest) this.requireGraphSnapshotValidation()
         } else {
           this.awaitingSnapshotImport = !this.crdtTrusted
           this.pendingGraphResyncBroadcast = false
@@ -1957,6 +2308,8 @@ export class CollaborationManager {
       this.isLeader = false
       this.leaderId = null
       this.crdtTrusted = false
+      this.snapshotValidationRequest = null
+      this.pendingWorkflowReplacementToken = null
       this.rebuildCrdtOnNextConnect = true
       this.reconnectedWithFreshDoc = false
       this.awaitingSnapshotImport = false
@@ -2039,6 +2392,7 @@ export class CollaborationManager {
   private seedCrdtGraphFromReactFlowIfNeeded(): void {
     if (!this.doc) return
     if (!this.reactFlowStore) return
+    if (this.authoritativeGraphApplied) return
 
     // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
     // before collaboration finished connecting, and no local mutation has been written yet.
@@ -2060,7 +2414,12 @@ export class CollaborationManager {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
     if (!this.doc) return
 
-    if (!this.crdtTrusted || this.graphReloadRequired) {
+    if (
+      !this.crdtTrusted ||
+      this.graphReloadRequired ||
+      this.snapshotValidationRequest ||
+      this.pendingWorkflowReplacementToken !== null
+    ) {
       this.pendingGraphResyncBroadcast = true
       return
     }

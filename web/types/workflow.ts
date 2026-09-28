@@ -1,4 +1,4 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, DraftWorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -157,6 +157,45 @@ export type FetchWorkflowDraftResponse = {
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
+
+type AppWorkflowFeatureToggle = Record<string, unknown> & {
+  enabled?: boolean | null
+}
+
+type AppWorkflowFileUpload = AppWorkflowFeatureToggle & {
+  allowed_file_types?: string[] | null
+  allowed_file_extensions?: string[] | null
+  allowed_file_upload_methods?: string[] | null
+  number_limits?: number | null
+  image?:
+    | (AppWorkflowFeatureToggle & {
+        number_limits?: number | null
+        transfer_methods?: string[] | null
+      })
+    | null
+}
+
+export type AppWorkflowDraftFeatures = DraftWorkflowResponse['features'] & {
+  file_upload?: AppWorkflowFileUpload | null
+  opening_statement?: string | null
+  suggested_questions?: string[] | null
+  suggested_questions_after_answer?: AppWorkflowFeatureToggle | null
+  speech_to_text?: AppWorkflowFeatureToggle | null
+  text_to_speech?: AppWorkflowFeatureToggle | null
+  retriever_resource?: AppWorkflowFeatureToggle | null
+  sensitive_word_avoidance?: AppWorkflowFeatureToggle | null
+  annotation_reply?: AppWorkflowFeatureToggle | null
+}
+
+export type FetchAppWorkflowDraftResponse = Omit<
+  DraftWorkflowResponse,
+  'graph' | 'features' | 'environment_variables' | 'conversation_variables'
+> & {
+  graph: FetchWorkflowDraftResponse['graph']
+  features: AppWorkflowDraftFeatures
+  environment_variables: DraftWorkflowResponse['environment_variables']
+  conversation_variables: DraftWorkflowResponse['conversation_variables']
+}
 
 export type FetchWorkflowDraftPageParams = {
   url: string

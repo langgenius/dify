@@ -56,7 +56,11 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
 
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
-    copy(currentVar.value)
+    copy(
+      typeof currentVar.value === 'string'
+        ? currentVar.value
+        : (JSON.stringify(currentVar.value) ?? ''),
+    )
     setIsCopied(true)
     setTimeout(() => {
       setIsCopied(false)

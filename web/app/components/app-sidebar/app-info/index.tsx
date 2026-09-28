@@ -16,6 +16,7 @@ export const AppInfoView = ({ expand }: AppInfoViewProps) => {
     setSecretEnvList,
     onEdit,
     onCopy,
+    onImport,
     onExport,
     isExporting,
     exportCheck,
@@ -42,6 +43,7 @@ export const AppInfoView = ({ expand }: AppInfoViewProps) => {
         setSecretEnvList={setSecretEnvList}
         onEdit={onEdit}
         onCopy={onCopy}
+        onImport={onImport}
         onExport={onExport}
         isExporting={isExporting}
         exportCheck={exportCheck}

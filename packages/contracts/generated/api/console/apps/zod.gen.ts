@@ -680,10 +680,11 @@ export const zWorkflowUpdatePayload = z.object({
 })
 
 /**
- * WorkflowRestoreResponse
+ * AppWorkflowRestoreResponse
  */
-export const zWorkflowRestoreResponse = z.object({
+export const zAppWorkflowRestoreResponse = z.object({
   hash: z.string(),
+  replacement_id: z.uuid(),
   result: z.string(),
   updated_at: z.int(),
 })
@@ -1691,6 +1692,29 @@ export const zPipelineVariableResponse = z.object({
   type: z.string(),
   unit: z.string().nullish(),
   variable: z.string(),
+})
+
+/**
+ * DraftWorkflowResponse
+ */
+export const zDraftWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
+  features: z.record(z.string(), z.unknown()),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string(),
+  id: z.string(),
+  last_replacement_id: z.string().nullable(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  rag_pipeline_variables: z.array(zPipelineVariableResponse),
+  tool_published: z.boolean(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+  version_number: z.int().nullish(),
 })
 
 /**
@@ -6979,7 +7003,7 @@ export const zGetAppsByAppIdWorkflowsDraftPath = z.object({
 /**
  * Draft workflow retrieved successfully
  */
-export const zGetAppsByAppIdWorkflowsDraftResponse = zWorkflowResponse
+export const zGetAppsByAppIdWorkflowsDraftResponse = zDraftWorkflowResponse
 
 export const zPostAppsByAppIdWorkflowsDraftBody = zSyncDraftWorkflowPayload
 
@@ -7532,7 +7556,7 @@ export const zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath = z.object({
 /**
  * Workflow restored successfully
  */
-export const zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse = zWorkflowRestoreResponse
+export const zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse = zAppWorkflowRestoreResponse
 
 export const zGetAppsByResourceIdApiKeysPath = z.object({
   resource_id: z.uuid(),

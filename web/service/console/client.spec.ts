@@ -333,6 +333,32 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('preserves a draft-not-found response thrown by the browser transport', async () => {
+    const errorResponse = new Response(JSON.stringify({ code: 'draft_workflow_not_exist' }), {
+      status: 404,
+      headers: { 'content-type': 'application/json' },
+    })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.apps.byAppId.workflows.draft.get.queryOptions({
+      input: { params: { app_id: 'app-1' } },
+      context: { silent: true },
+    })
+
+    let caught: unknown
+    try {
+      await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(Response)
+    if (!(caught instanceof Response)) throw new TypeError('Expected a native response')
+    expect(caught.status).toBe(404)
+    expect(await caught.json()).toEqual({ code: 'draft_workflow_not_exist' })
+    expect(fetchSpy).toHaveBeenCalled()
+  })
+
   it('should forward keepalive context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {

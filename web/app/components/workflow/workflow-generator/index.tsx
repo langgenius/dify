@@ -38,7 +38,7 @@ import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { generateWorkflow, generateWorkflowStream } from '@/service/workflow-generator'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
@@ -368,7 +368,7 @@ function WorkflowGeneratorModal() {
     let currentGraph: GeneratedGraph | undefined
     if (isRefine && currentAppId) {
       try {
-        const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
+        const draft = await fetchAppWorkflowDraft(currentAppId)
         if (draft?.graph?.nodes?.length) currentGraph = draft.graph as GeneratedGraph
       } catch {
         currentGraph = undefined

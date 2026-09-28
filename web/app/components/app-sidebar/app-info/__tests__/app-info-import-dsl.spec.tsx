@@ -65,6 +65,7 @@ const appDetail: AppDetailWithSite = createAppDetailFixture({
 it('imports DSL from the app sidebar without canvas providers', async () => {
   const user = userEvent.setup()
   const closeModal = vi.fn()
+  const onImport = vi.fn()
   mockImportDSL.mockResolvedValue({ id: 'import-1', status: 'completed', app_id: 'app-1' })
   mockFetchWorkflowDraft.mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
@@ -86,6 +87,7 @@ it('imports DSL from the app sidebar without canvas providers', async () => {
         setSecretEnvList={vi.fn()}
         onEdit={vi.fn()}
         onCopy={vi.fn()}
+        onImport={onImport}
         onExport={vi.fn(async () => true)}
         isExporting={false}
         exportCheck={vi.fn()}
@@ -95,11 +97,14 @@ it('imports DSL from the app sidebar without canvas providers', async () => {
     </QueryClientProvider>,
   )
 
-  const input = await waitFor(() => {
-    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')
-    expect(fileInput).not.toBeNull()
-    return fileInput!
-  })
+  const input = await waitFor(
+    () => {
+      const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')
+      if (!fileInput) throw new Error('Expected the DSL file input to load')
+      return fileInput
+    },
+    { timeout: 3000 },
+  )
   await user.upload(input, new File(['workflow'], 'workflow.ifpkg'))
   await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -107,4 +112,5 @@ it('imports DSL from the app sidebar without canvas providers', async () => {
     expect(mockImportDSL).toHaveBeenCalledWith({ file: expect.any(File), app_id: 'app-1' }),
   )
   await waitFor(() => expect(closeModal).toHaveBeenCalledOnce())
+  expect(onImport).toHaveBeenCalledOnce()
 })

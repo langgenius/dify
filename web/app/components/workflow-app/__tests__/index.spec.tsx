@@ -1,6 +1,6 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode, RefObject } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -24,6 +24,8 @@ const mockFetchRunDetail = vi.fn()
 const mockInitialNodes = vi.fn()
 const mockInitialEdges = vi.fn()
 const mockGetWorkflowRunAndTraceUrl = vi.fn()
+let mockCanvasReadyRef: RefObject<boolean> | undefined
+let mockCanvasListenerMounted = true
 
 let appStoreState: {
   appDetail?: {
@@ -36,6 +38,8 @@ let appStoreState: {
 
 let workflowInitState: {
   data: {
+    hash: string
+    last_replacement_id: string | null
     graph: {
       nodes: Array<Record<string, unknown>>
       edges: Array<Record<string, unknown>>
@@ -45,6 +49,7 @@ let workflowInitState: {
   } | null
   isLoading: boolean
   fileUploadConfigResponse: Record<string, unknown> | null
+  canvasInitEpoch: number
 }
 
 let consoleState: {
@@ -140,7 +145,10 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('../hooks/use-workflow-init', () => ({
-  useWorkflowInit: () => workflowInitState,
+  useWorkflowInit: (canvasReadyRef: RefObject<boolean>) => {
+    mockCanvasReadyRef = canvasReadyRef
+    return workflowInitState
+  },
 }))
 
 vi.mock('../hooks/use-get-run-and-trace-url', () => ({
@@ -177,7 +185,7 @@ vi.mock('@/app/components/base/features', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  default: ({
+  default: function WorkflowDefaultContextMock({
     nodes,
     edges,
     children,
@@ -185,15 +193,19 @@ vi.mock('@/app/components/workflow', () => ({
     nodes: Array<Record<string, unknown>>
     edges: Array<Record<string, unknown>>
     children: ReactNode
-  }) => (
-    <div
-      data-testid="workflow-default-context"
-      data-nodes={JSON.stringify(nodes)}
-      data-edges={JSON.stringify(edges)}
-    >
-      {children}
-    </div>
-  ),
+  }) {
+    const [initialNodes] = useState(nodes)
+    const [initialEdges] = useState(edges)
+    return (
+      <div
+        data-testid="workflow-default-context"
+        data-nodes={JSON.stringify(initialNodes)}
+        data-edges={JSON.stringify(initialEdges)}
+      >
+        {children}
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
@@ -201,23 +213,32 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     nodes,
     edges,
     viewport,
+    initialReplacementId,
+    onDraftReplacementListenerReadyChange,
   }: {
     nodes: Array<Record<string, unknown>>
     edges: Array<Record<string, unknown>>
     viewport: Record<string, unknown>
+    initialReplacementId?: string | null
+    onDraftReplacementListenerReadyChange?: (ready: boolean) => void
   }) {
     const appId = useStore((state) => state.appId)
     const inputs = useStore((state) => state.inputs)
     const setInputs = useStore((state) => state.setInputs)
     useEffect(() => {
+      if (!mockCanvasListenerMounted) return
+      onDraftReplacementListenerReadyChange?.(true)
       return () => {
+        onDraftReplacementListenerReadyChange?.(false)
         const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = mockWorkflowStore.getState()
         if (!isWorkflowDataLoaded) return
 
         debouncedSyncWorkflowDraft.cancel()
         mockFinalDraftSync()
       }
-    }, [])
+    }, [onDraftReplacementListenerReadyChange])
+
+    if (!mockCanvasListenerMounted) return null
 
     return (
       <div
@@ -226,6 +247,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
         data-viewport={JSON.stringify(viewport)}
+        data-initial-import-id={initialReplacementId ?? ''}
       >
         <span>{appId}</span>
         <input
@@ -241,6 +263,8 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
 describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanvasReadyRef = undefined
+    mockCanvasListenerMounted = true
     mockIsWorkflowDataLoaded = true
     mockWorkflowRunAbortController = null
     appStoreState = {
@@ -252,6 +276,8 @@ describe('WorkflowApp', () => {
     }
     workflowInitState = {
       data: {
+        hash: 'initial-hash',
+        last_replacement_id: null,
         graph: {
           nodes: [{ id: 'raw-node' }],
           edges: [{ id: 'raw-edge' }],
@@ -265,6 +291,7 @@ describe('WorkflowApp', () => {
       },
       isLoading: false,
       fileUploadConfigResponse: { enabled: true },
+      canvasInitEpoch: 0,
     }
     consoleState = {
       isLoadingCurrentWorkspace: false,
@@ -321,12 +348,96 @@ describe('WorkflowApp', () => {
       data: null,
       isLoading: true,
       fileUploadConfigResponse: null,
+      canvasInitEpoch: 0,
     }
 
     render(<WorkflowApp appId="app-1" />)
 
     expect(screen.getByTestId('loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+    expect(mockCanvasReadyRef?.current).toBe(false)
+  })
+
+  it('marks the canvas ready only while its import listener is mounted beyond all loading gates', () => {
+    workflowInitState.isLoading = true
+    const { rerender, unmount } = render(<WorkflowApp appId="app-1" />)
+
+    expect(mockCanvasReadyRef?.current).toBe(false)
+
+    workflowInitState.isLoading = false
+    consoleState.isLoadingCurrentWorkspace = true
+    rerender(<WorkflowApp appId="app-1" />)
+    expect(mockCanvasReadyRef?.current).toBe(false)
+
+    consoleState.isLoadingCurrentWorkspace = false
+    rerender(<WorkflowApp appId="app-1" />)
+    expect(mockCanvasReadyRef?.current).toBe(true)
+
+    workflowInitState.isLoading = true
+    rerender(<WorkflowApp appId="app-1" />)
+    expect(mockCanvasReadyRef?.current).toBe(false)
+
+    unmount()
+  })
+
+  it('rebuilds initial graph and features for a committed import before the canvas listener mounts', () => {
+    mockCanvasListenerMounted = false
+    mockInitialNodes.mockImplementation((nodes: Array<Record<string, unknown>>) => nodes)
+    mockInitialEdges.mockImplementation((edges: Array<Record<string, unknown>>) => edges)
+    const { rerender } = render(<WorkflowApp appId="app-1" />)
+    const firstContext = screen.getByTestId('workflow-default-context')
+    const firstFeatures = screen.getByTestId('features-provider')
+
+    expect(firstContext).toHaveAttribute('data-nodes', JSON.stringify([{ id: 'raw-node' }]))
+    expect(mockCanvasReadyRef?.current).toBe(false)
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+
+    const initialData = workflowInitState.data
+    if (!initialData) throw new Error('Expected the initial workflow draft')
+    workflowInitState.data = {
+      ...initialData,
+      hash: initialData.hash,
+      graph: { ...initialData.graph, nodes: [{ id: 'imported-node' }] },
+      features: { file_upload: { enabled: false } },
+    }
+    workflowInitState.canvasInitEpoch = 1
+    rerender(<WorkflowApp appId="app-1" />)
+
+    const nextContext = screen.getByTestId('workflow-default-context')
+    expect(nextContext).not.toBe(firstContext)
+    expect(nextContext).toHaveAttribute('data-nodes', JSON.stringify([{ id: 'imported-node' }]))
+    expect(screen.getByTestId('features-provider')).not.toBe(firstFeatures)
+    expect(JSON.parse(screen.getByTestId('features-provider').dataset.features ?? '{}')).toEqual(
+      expect.objectContaining({ file: expect.objectContaining({ enabled: false }) }),
+    )
+    expect(mockCanvasReadyRef?.current).toBe(false)
+  })
+
+  it('preserves the mounted canvas when the import listener owns the update', () => {
+    const { rerender } = render(<WorkflowApp appId="app-1" />)
+    const firstContext = screen.getByTestId('workflow-default-context')
+    const firstFeatures = screen.getByTestId('features-provider')
+    const firstCanvas = screen.getByRole('region', { name: 'Workflow canvas' })
+    expect(mockCanvasReadyRef?.current).toBe(true)
+
+    rerender(<WorkflowApp appId="app-1" />)
+
+    expect(screen.getByTestId('workflow-default-context')).toBe(firstContext)
+    expect(screen.getByTestId('features-provider')).toBe(firstFeatures)
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBe(firstCanvas)
+    expect(mockFinalDraftSync).not.toHaveBeenCalled()
+  })
+
+  it('passes the hydrated import identity to the collaboration canvas', () => {
+    if (!workflowInitState.data) throw new Error('Expected the initial workflow draft')
+    workflowInitState.data.last_replacement_id = 'import-visible'
+
+    render(<WorkflowApp appId="app-1" />)
+
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toHaveAttribute(
+      'data-initial-import-id',
+      'import-visible',
+    )
   })
 
   it('should render the workflow app shell and sync trigger statuses when data is ready', () => {

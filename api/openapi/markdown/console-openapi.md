@@ -3881,7 +3881,7 @@ Get draft workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| 200 | Draft workflow retrieved successfully | **application/json**: [DraftWorkflowResponse](#draftworkflowresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft
@@ -4791,7 +4791,7 @@ Restore a published workflow version into the draft workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
+| 200 | Workflow restored successfully | **application/json**: [AppWorkflowRestoreResponse](#appworkflowrestoreresponse)<br> |
 | 400 | Source workflow must be published |  |
 | 404 | Workflow not found |  |
 
@@ -17113,6 +17113,15 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | vector_setting | [AppVectorSettingResponse](#appvectorsettingresponse) |  | Yes |
 | weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
 
+#### AppWorkflowRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| replacement_id | string (uuid) |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
+
 #### AudioBinaryResponse
 
 | Name | Type | Description | Required |
@@ -19052,6 +19061,28 @@ Request payload for bulk downloading documents as a zip archive.
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
+
+#### DraftWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| last_replacement_id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| version | string |  | Yes |
+| version_number | integer |  | No |
 
 #### DraftWorkflowRunPayload
 

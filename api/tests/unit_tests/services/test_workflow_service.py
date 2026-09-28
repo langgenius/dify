@@ -473,6 +473,7 @@ class TestWorkflowService:
         account = TestWorkflowAssociatedDataFactory.create_account()
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
+        import_id = str(uuid.uuid4())
 
         with (
             patch("services.workflow_service.app_draft_workflow_was_synced"),
@@ -491,12 +492,14 @@ class TestWorkflowService:
                 environment_variables=[],
                 conversation_variables=[],
                 session=sqlite_session,
+                import_id=import_id,
             )
 
         persisted_workflow = sqlite_session.scalar(select(Workflow).where(Workflow.id == result.id))
         assert persisted_workflow is result
         assert result.graph_dict == graph
         assert result.features_dict == features
+        assert result.last_replacement_id == import_id
         retire_unowned.assert_called_once_with(
             tenant_id=app.tenant_id,
             agent_ids={"retired-agent"},
@@ -517,6 +520,8 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
         workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        workflow.last_replacement_id = str(uuid.uuid4())
+        next_import_id = str(uuid.uuid4())
         sqlite_session.add(workflow)
         sqlite_session.commit()
         unique_hash = workflow.unique_hash
@@ -531,6 +536,7 @@ class TestWorkflowService:
                 environment_variables=[],
                 conversation_variables=[],
                 session=sqlite_session,
+                import_id=next_import_id,
             )
 
         sqlite_session.refresh(workflow)
@@ -538,6 +544,69 @@ class TestWorkflowService:
         assert workflow.graph_dict == graph
         assert workflow.features_dict == features
         assert workflow.updated_by == account.id
+        assert workflow.last_replacement_id == next_import_id
+
+    def test_same_graph_import_invalidates_stale_save_hash(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        features = {"file_upload": {"enabled": False}}
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(graph=graph, features=features)
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        pre_import_hash = workflow.unique_hash
+        import_id = str(uuid.uuid4())
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            imported = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=graph,
+                features=features,
+                unique_hash=pre_import_hash,
+                account=account,
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+                import_id=import_id,
+            )
+
+        imported_hash = imported.unique_hash
+        assert imported.graph_dict == graph
+        assert imported_hash != pre_import_hash
+
+        updated_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        updated_graph["nodes"][0]["data"]["title"] = "Edited after import"
+        with pytest.raises(WorkflowHashNotEqualError):
+            workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=updated_graph,
+                features=features,
+                unique_hash=pre_import_hash,
+                account=account,
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+                graph_only=True,
+            )
+        sqlite_session.rollback()
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            saved = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=updated_graph,
+                features=features,
+                unique_hash=imported_hash,
+                account=account,
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+        assert saved.graph_dict == updated_graph
+        assert saved.last_replacement_id == import_id
 
     def test_sync_draft_workflow_collaborative_save_preserves_environment_variables_and_locks_row(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -675,7 +744,9 @@ class TestWorkflowService:
             features=existing_features,
             environment_variables=existing_environment_variables,
             conversation_variables=existing_conversation_variables,
+            last_replacement_id=str(uuid.uuid4()),
         )
+        last_replacement_id = workflow.last_replacement_id
         sqlite_session.add(workflow)
         sqlite_session.commit()
         unique_hash = workflow.unique_hash
@@ -710,6 +781,7 @@ class TestWorkflowService:
         assert workflow.features_dict == existing_features
         assert workflow.environment_variables == existing_environment_variables
         assert workflow.conversation_variables == existing_conversation_variables
+        assert workflow.last_replacement_id == last_replacement_id
 
     def test_sync_draft_workflow_graph_only_creates_complete_initial_draft(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -833,6 +905,11 @@ class TestWorkflowService:
                 "get_published_workflow_by_id",
                 wraps=workflow_service.get_published_workflow_by_id,
             ) as get_published_workflow_by_id,
+            patch.object(
+                workflow_service,
+                "_get_draft_workflow_for_update",
+                wraps=workflow_service._get_draft_workflow_for_update,
+            ) as get_draft_workflow_for_update,
             patch(
                 "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
                 return_value={"retired-agent"},
@@ -857,11 +934,106 @@ class TestWorkflowService:
             session=sqlite_session,
             for_update=True,
         )
+        get_draft_workflow_for_update.assert_called_once_with(app_model=app, session=sqlite_session)
         retire_unowned.assert_called_once_with(
             tenant_id=app.tenant_id,
             agent_ids={"retired-agent"},
             account_id=account.id,
         )
+
+    def test_same_graph_restore_replaces_import_identity_and_rejects_stale_save(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        features = {"file_upload": {"enabled": False}}
+        previous_replacement_id = str(uuid.uuid4())
+        source = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="published-workflow-id",
+            version="2026-03-19T00:00:00",
+            graph=graph,
+            features=features,
+        )
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="draft-workflow-id",
+            graph=graph,
+            features=features,
+            last_replacement_id=previous_replacement_id,
+        )
+        sqlite_session.add_all([source, draft])
+        sqlite_session.commit()
+        previous_hash = draft.unique_hash
+
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+                return_value=set(),
+            ),
+            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned"),
+        ):
+            restored = workflow_service.restore_published_workflow_to_draft(
+                app_model=app,
+                workflow_id=source.id,
+                account=account,
+                session=sqlite_session,
+            )
+
+        sqlite_session.refresh(draft)
+        assert restored is draft
+        assert draft.graph_dict == graph
+        assert draft.last_replacement_id is not None
+        uuid.UUID(draft.last_replacement_id)
+        assert draft.last_replacement_id != previous_replacement_id
+        assert draft.unique_hash != previous_hash
+
+        with pytest.raises(WorkflowHashNotEqualError):
+            workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=graph,
+                features=features,
+                unique_hash=previous_hash,
+                account=account,
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+    def test_restore_creates_draft_with_replacement_identity(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        source = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="published-workflow-id",
+            version="2026-03-19T00:00:00",
+            graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
+            features={"file_upload": {"enabled": False}},
+        )
+        sqlite_session.add(source)
+        sqlite_session.commit()
+
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+                return_value=set(),
+            ),
+            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned"),
+        ):
+            restored = workflow_service.restore_published_workflow_to_draft(
+                app_model=app,
+                workflow_id=source.id,
+                account=account,
+                session=sqlite_session,
+            )
+
+        sqlite_session.refresh(restored)
+        assert restored.version == Workflow.VERSION_DRAFT
+        assert restored.last_replacement_id is not None
+        uuid.UUID(restored.last_replacement_id)
 
     def test_restore_historical_inline_agent_after_current_pointer_moves_uses_real_clone(
         self,

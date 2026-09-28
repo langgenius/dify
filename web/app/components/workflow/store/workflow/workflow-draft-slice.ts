@@ -21,6 +21,10 @@ export type WorkflowDraftSliceShape = {
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
   setSyncWorkflowDraftHash: (hash: string) => void
+  lastAppliedReplacementId: string | null
+  setLastAppliedReplacementId: (replacementId: string | null) => void
+  draftReplacementEpoch: number
+  advanceDraftReplacementEpoch: () => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -42,6 +46,12 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
     setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    lastAppliedReplacementId: null,
+    setLastAppliedReplacementId: (lastAppliedReplacementId) =>
+      set(() => ({ lastAppliedReplacementId })),
+    draftReplacementEpoch: 0,
+    advanceDraftReplacementEpoch: () =>
+      set((state) => ({ draftReplacementEpoch: state.draftReplacementEpoch + 1 })),
     isSyncingWorkflowDraft: false,
     setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,

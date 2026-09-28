@@ -150,6 +150,23 @@ describe('useAppInfoActions', () => {
     })
   })
 
+  it('refreshes sidebar metadata after a DSL import without a collaboration socket', async () => {
+    const imported = createAppDetailFixture({
+      ...mockAppDetail,
+      name: 'Imported App',
+      icon: '🌱',
+    })
+    mockFetchAppDetail.mockResolvedValue(imported)
+    const { result, queryClient } = renderActions()
+
+    act(() => result.current.onImport())
+
+    await waitFor(() => expect(result.current.appDetail?.name).toBe('Imported App'))
+    expect(result.current.appDetail?.icon).toBe('🌱')
+    expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(imported)
+    expect(mockGetSocket).not.toHaveBeenCalled()
+  })
+
   describe('Modal management', () => {
     it('should open modal', () => {
       const { result } = renderActions()
@@ -574,6 +591,33 @@ describe('useAppInfoActions', () => {
   })
 
   describe('collaboration app meta updates', () => {
+    it('does not replace newer metadata with an older import refresh response', async () => {
+      let resolveOlder!: (detail: AppDetailWithSite) => void
+      const olderResponse = new Promise<AppDetailWithSite>((resolve) => {
+        resolveOlder = resolve
+      })
+      const newer = createAppDetailFixture({ ...mockAppDetail, name: 'Newest name' })
+      let onUpdate: (() => Promise<void>) | undefined
+      mockOnAppMetaUpdate.mockImplementation((callback: () => Promise<void>) => {
+        onUpdate = callback
+        return vi.fn()
+      })
+      mockFetchAppDetail.mockReturnValueOnce(olderResponse).mockResolvedValueOnce(newer)
+      const { result, queryClient } = renderActions()
+      await waitFor(() => expect(onUpdate).toBeDefined())
+
+      act(() => result.current.onImport())
+      await waitFor(() => expect(mockFetchAppDetail).toHaveBeenCalledTimes(1))
+      await act(async () => onUpdate?.())
+      expect(result.current.appDetail?.name).toBe('Newest name')
+
+      await act(async () =>
+        resolveOlder(createAppDetailFixture({ ...mockAppDetail, name: 'Older name' })),
+      )
+      expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(newer)
+      expect(useStore.getState().appDetail).toEqual(newer)
+    })
+
     it('should refresh app detail when receiving app_meta_update', async () => {
       const updated = createAppDetailFixture({ ...mockAppDetail, name: 'Remote Updated' })
       const unsubscribe = vi.fn()

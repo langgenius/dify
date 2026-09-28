@@ -116,4 +116,41 @@ describe('EnvItem', () => {
     expect(screen.getByText('workflow.blocks.llm')).toBeInTheDocument()
     expect(screen.getByText('gpt-4o')).toBeInTheDocument()
   })
+
+  it('displays nullable and non-model values from the draft without assuming an object shape', () => {
+    const { unmount } = renderWithProviders(
+      <EnvItem
+        env={createEnv({ value_type: 'string', value: null, description: '' })}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('api_key')).toBeInTheDocument()
+    unmount()
+
+    renderWithProviders(
+      <EnvItem
+        env={createEnv({ value_type: 'string', value: ['one', 'two'], description: '' })}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('["one","two"]')).toBeInTheDocument()
+  })
+
+  it('shows a backend boolean value without offering an editor that would change its type', () => {
+    const { container } = renderWithProviders(
+      <EnvItem
+        env={createEnv({ value_type: 'boolean', value: true, description: '' })}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Boolean')).toBeInTheDocument()
+    expect(screen.getByText('true')).toBeInTheDocument()
+    expect(container.querySelectorAll('.cursor-pointer')).toHaveLength(1)
+  })
 })

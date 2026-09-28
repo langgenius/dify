@@ -68,6 +68,7 @@ vi.mock('../hooks/use-workflow-init', async () => {
         },
         isLoading: false,
         fileUploadConfigResponse: null,
+        canvasInitEpoch: 0,
       }
     },
   }

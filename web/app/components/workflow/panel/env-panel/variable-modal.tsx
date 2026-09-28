@@ -1,4 +1,4 @@
-import type { EnvironmentVariable, EnvironmentVariableValue } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { LLMEnvironmentVariableValueField } from '@/app/components/workflow/llm-environment-variable-value-field'
+import { isEditableEnvironmentVariable } from '@/app/components/workflow/panel/env-panel/is-editable-environment-variable'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -30,7 +31,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
   const [name, setName] = React.useState('')
-  const [value, setValue] = React.useState<EnvironmentVariableValue>()
+  const [value, setValue] = React.useState<unknown>()
   const [description, setDescription] = React.useState<string>('')
   const originalLLMMode =
     env?.value_type === 'llm' && isLLMEnvironmentVariableValue(env.value)
@@ -75,7 +76,9 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
 
     if (nextType === 'number') {
       setValue(
-        value === undefined || value === '' || !Number.isFinite(Number(value))
+        (typeof value !== 'string' && typeof value !== 'number') ||
+          value === '' ||
+          !Number.isFinite(Number(value))
           ? undefined
           : Number(value),
       )
@@ -86,6 +89,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   }
 
   const handleSave = () => {
+    if (env && !isEditableEnvironmentVariable(env)) return
     if (!checkVariableName(name)) return
     if (
       value === undefined ||

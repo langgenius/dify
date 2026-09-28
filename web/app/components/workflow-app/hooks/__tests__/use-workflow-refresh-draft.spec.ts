@@ -12,6 +12,12 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
+const mockEventEmitterEmit = vi.fn()
+const mockBeginCommittedReplacement = vi.fn()
+const mockGetWorkflowReplacementSequence = vi.fn()
+const mockIsWorkflowReplacementPending = vi.fn()
+const mockBeginWorkflowReplacementIfUnchanged = vi.fn()
+const mockIsWorkflowReplacementCurrent = vi.fn()
 let appStoreState: {
   appDetail: {
     mode: string
@@ -21,6 +27,8 @@ let appStoreState: {
 let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
+  lastAppliedReplacementId: string | null
+  draftReplacementEpoch: number
   debouncedSyncWorkflowDraft?: { cancel: () => void }
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setIsSyncingWorkflowDraft: typeof mockSetIsSyncingWorkflowDraft
@@ -44,24 +52,59 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas }),
 }))
 
+vi.mock('@/context/event-emitter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/event-emitter')>()
+  return {
+    ...actual,
+    useEventEmitterContextContext: () => ({ eventEmitter: { emit: mockEventEmitterEmit } }),
+  }
+})
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    beginCommittedReplacement: (...args: unknown[]) => mockBeginCommittedReplacement(...args),
+    getWorkflowReplacementSequence: (...args: unknown[]) =>
+      mockGetWorkflowReplacementSequence(...args),
+    isWorkflowReplacementPending: (...args: unknown[]) => mockIsWorkflowReplacementPending(...args),
+    beginWorkflowReplacementIfUnchanged: (...args: unknown[]) =>
+      mockBeginWorkflowReplacementIfUnchanged(...args),
+    isWorkflowReplacementCurrent: (...args: unknown[]) => mockIsWorkflowReplacementCurrent(...args),
+  },
+}))
+
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 const draftResponse = {
+  id: 'draft-1',
   hash: 'server-hash',
+  last_replacement_id: null,
   graph: { nodes: [{ id: 'n1' }], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+  features: {},
   environment_variables: [],
   conversation_variables: [],
+  rag_pipeline_variables: [],
+  created_at: 0,
+  updated_at: 0,
+  tool_published: false,
+  version: '1',
+  marked_name: '',
+  marked_comment: '',
 }
 
 describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetWorkflowReplacementSequence.mockReturnValue(null)
+    mockIsWorkflowReplacementPending.mockReturnValue(false)
+    mockIsWorkflowReplacementCurrent.mockReturnValue(false)
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
+      lastAppliedReplacementId: null,
+      draftReplacementEpoch: 0,
       debouncedSyncWorkflowDraft: undefined,
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
@@ -74,6 +117,124 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       appDetail: { mode: AppModeEnum.ADVANCED_CHAT },
     }
     mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
+  })
+
+  it('applies a newly imported draft through the authoritative event before advancing its hash', async () => {
+    const importedDraft = {
+      ...draftResponse,
+      hash: 'imported-hash',
+      last_replacement_id: 'import-B',
+      graph: { nodes: [], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+      features: { opening_statement: 'Imported' },
+      updated_at: 2,
+      tool_published: false,
+    }
+    mockFetchWorkflowDraft.mockResolvedValue(importedDraft)
+    mockEventEmitterEmit.mockImplementation(() => {
+      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalledWith('imported-hash')
+      workflowStoreState.lastAppliedReplacementId = 'import-B'
+      workflowStoreState.draftReplacementEpoch += 1
+    })
+
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let refreshed = false
+    await act(async () => {
+      refreshed = await result.current.handleRefreshWorkflowDraft(true)
+    })
+
+    expect(refreshed).toBe(true)
+    expect(mockEventEmitterEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          draft: importedDraft,
+          appliedReplacementId: 'import-B',
+        }),
+      }),
+    )
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockSetIsWorkflowDataLoaded).toHaveBeenCalledWith(false)
+    expect(mockSetIsWorkflowDataLoaded).toHaveBeenLastCalledWith(true)
+  })
+
+  it('claims a conditional token before applying a newly observed import', async () => {
+    mockGetWorkflowReplacementSequence.mockReturnValue(1)
+    mockBeginWorkflowReplacementIfUnchanged.mockReturnValue(2)
+    mockFetchWorkflowDraft.mockResolvedValue({
+      ...draftResponse,
+      last_replacement_id: 'import-B',
+      graph: { nodes: [], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+    })
+    mockEventEmitterEmit.mockImplementation(() => {
+      workflowStoreState.lastAppliedReplacementId = 'import-B'
+      workflowStoreState.draftReplacementEpoch += 1
+    })
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    await act(async () => {
+      await result.current.handleRefreshWorkflowDraft(true)
+    })
+
+    expect(mockBeginWorkflowReplacementIfUnchanged).toHaveBeenCalledWith('app-1', 1)
+    expect(mockEventEmitterEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ workflowReplacementToken: 2 }),
+      }),
+    )
+  })
+
+  it('discards a refresh response after a newer replacement token begins', async () => {
+    mockGetWorkflowReplacementSequence.mockReturnValue(1)
+    let resolveDraft!: (draft: unknown) => void
+    mockFetchWorkflowDraft.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let refresh!: Promise<boolean>
+    act(() => {
+      refresh = result.current.handleRefreshWorkflowDraft(true)
+    })
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
+    mockGetWorkflowReplacementSequence.mockReturnValue(2)
+    mockIsWorkflowReplacementPending.mockReturnValue(true)
+
+    await act(async () => {
+      resolveDraft({ ...draftResponse, last_replacement_id: 'import-B', hash: 'new-hash' })
+      await expect(refresh).resolves.toBe(false)
+    })
+    expect(mockBeginWorkflowReplacementIfUnchanged).not.toHaveBeenCalled()
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+  })
+
+  it('discards an older GET after a same-marker draft replacement has applied', async () => {
+    workflowStoreState.lastAppliedReplacementId = 'import-A'
+    let resolveFetch!: (draft: unknown) => void
+    mockFetchWorkflowDraft.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let refresh!: Promise<boolean>
+    act(() => {
+      refresh = result.current.handleRefreshWorkflowDraft(true)
+    })
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
+
+    workflowStoreState.draftReplacementEpoch += 1
+    await act(async () => {
+      resolveFetch({ ...draftResponse, last_replacement_id: 'import-A', hash: 'old-hash' })
+      await expect(refresh).resolves.toBe(false)
+    })
+
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockSetIsWorkflowDataLoaded).toHaveBeenLastCalledWith(true)
   })
 
   it('should update canvas by default (notUpdateCanvas omitted)', async () => {
@@ -186,6 +347,23 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     })
   })
 
+  it('uses a verified prefetched draft without a second GET', async () => {
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    await act(async () => {
+      await result.current.handleRefreshWorkflowDraft(true, {
+        prefetchedDraft: {
+          ...draftResponse,
+          graph: { nodes: [], edges: [] },
+        },
+        shouldApply: () => true,
+      })
+    })
+
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+  })
+
   it('should cancel pending draft sync, use fallback viewport, and persist masked secrets', async () => {
     workflowStoreState = {
       ...workflowStoreState,
@@ -193,6 +371,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     }
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'server-hash',
+      last_replacement_id: null,
       graph: {
         nodes: [{ id: 'n1' }],
         edges: [],
@@ -212,11 +391,14 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
 
     await waitFor(() => {
       expect(mockCancel).toHaveBeenCalled()
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n1' }],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+        {
+          nodes: [{ id: 'n1' }],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        { authoritativeDraft: true },
+      )
       expect(mockSetEnvSecrets).toHaveBeenCalledWith({
         'env-secret': 'top-secret',
       })
@@ -234,6 +416,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     }
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'server-hash',
+      last_replacement_id: null,
       graph: {
         nodes: [],
         edges: [],
@@ -249,26 +432,30 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     })
 
     await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [
-          expect.objectContaining({
-            data: expect.objectContaining({
-              type: BlockEnum.StartPlaceholder,
-              title: 'workflow.blocks.start-placeholder',
-              desc: '',
-              selected: true,
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+        {
+          nodes: [
+            expect.objectContaining({
+              data: expect.objectContaining({
+                type: BlockEnum.StartPlaceholder,
+                title: 'workflow.blocks.start-placeholder',
+                desc: '',
+                selected: true,
+              }),
             }),
-          }),
-        ],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        { authoritativeDraft: true },
+      )
     })
   })
 
   it('should not restore a local start placeholder for non-workflow app modes', async () => {
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'server-hash',
+      last_replacement_id: null,
       graph: {
         nodes: [],
         edges: [],
@@ -284,11 +471,14 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     })
 
     await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+        {
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        { authoritativeDraft: true },
+      )
     })
   })
 

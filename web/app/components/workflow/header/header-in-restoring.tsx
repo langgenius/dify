@@ -15,6 +15,7 @@ import { consoleQuery } from '@/service/console'
 import {
   useInvalidAllLastRun,
   useResetWorkflowVersionHistory,
+  useRestoreAppWorkflow,
   useRestoreWorkflow,
 } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
@@ -52,6 +53,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
 
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { mutateAsync: restoreAppWorkflow } = useRestoreAppWorkflow()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
@@ -112,18 +114,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     [canEmitCollaborationEvents, currentVersion],
   )
 
-  const emitWorkflowUpdate = useCallback(async () => {
-    if (!configsMap?.flowId || !canEmitCollaborationEvents) return
-    try {
-      const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
-      collaborationManager.emitWorkflowUpdate(configsMap.flowId)
-    } catch (error) {
-      console.error('Failed to emit workflow update:', error)
-    }
-  }, [canEmitCollaborationEvents, configsMap?.flowId])
-
   const handleRestore = useCallback(async () => {
-    if (isPlanUnavailable || !canRestore || !currentVersion) return
+    if (isPlanUnavailable || !canRestore || !currentVersion || !configsMap?.flowId) return
 
     if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
       setIsRestorePlanUpgradeModalOpen(true)
@@ -134,7 +126,13 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     await emitRestoreIntent()
 
     try {
-      await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+      if (canEmitCollaborationEvents) {
+        await restoreAppWorkflow({
+          params: { app_id: configsMap.flowId, workflow_id: currentVersion.id },
+        })
+      } else {
+        await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+      }
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
@@ -142,7 +140,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       deleteAllInspectVars()
       invalidAllLastRun()
       await emitRestoreComplete(true)
-      await emitWorkflowUpdate()
     } catch {
       toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
       await emitRestoreComplete(false, 'restore failed')
@@ -158,6 +155,9 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     plan,
     setShowWorkflowVersionHistoryPanel,
     emitRestoreIntent,
+    canEmitCollaborationEvents,
+    configsMap?.flowId,
+    restoreAppWorkflow,
     restoreWorkflow,
     restoreVersionUrl,
     workflowStore,
@@ -166,7 +166,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     deleteAllInspectVars,
     invalidAllLastRun,
     emitRestoreComplete,
-    emitWorkflowUpdate,
     resetWorkflowVersionHistory,
     onRestoreSettled,
   ])

@@ -3913,7 +3913,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {

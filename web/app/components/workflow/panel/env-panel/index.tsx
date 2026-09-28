@@ -20,6 +20,7 @@ import {
   updateNodeVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
+import { isEditableEnvironmentVariable } from '@/app/components/workflow/panel/env-panel/is-editable-environment-variable'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -207,8 +208,8 @@ const useEnvPanelActions = ({
 
   const fetchPersistedEnvironmentVariables = useCallback(async () => {
     try {
-      const { fetchWorkflowDraft } = await import('@/service/workflow')
-      const workflow = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+      const { fetchAppWorkflowDraft } = await import('@/service/workflow')
+      const workflow = await fetchAppWorkflowDraft(appId)
       return workflow.environment_variables
     } catch (error) {
       console.error('Failed to refresh environment variables:', error)
@@ -583,6 +584,7 @@ const EnvPanel = () => {
   )
 
   const handleEdit = (env: EnvironmentVariable) => {
+    if (!isEditableEnvironmentVariable(env)) return
     setCurrentVar(env)
     setShowVariableModal(true)
   }

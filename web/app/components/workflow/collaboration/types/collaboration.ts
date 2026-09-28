@@ -45,6 +45,7 @@ type CollaborationEventType =
   | 'node_panel_presence'
   | 'app_publish_update'
   | 'graph_resync_request'
+  | 'graph_revision_mismatch'
   | 'workflow_restore_intent'
   | 'workflow_restore_complete'
   | 'workflow_history_action'
@@ -75,6 +76,19 @@ export type GraphReloadRequest = {
   generation: number
   token: number
   attempt: number
+}
+
+export type GraphSnapshotValidationRequest = {
+  appId: string
+  generation: number
+  token: number
+  lastReplacementId: string | null
+}
+
+export type WorkflowUpdate = {
+  appId: string
+  replacementId: string
+  timestamp: number
 }
 
 export type RestoreIntentData = {

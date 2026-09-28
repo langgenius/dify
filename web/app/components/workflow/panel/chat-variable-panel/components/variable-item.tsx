@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
+import { isEditableConversationVariable } from './variable-modal.helpers'
 
 type VariableItemProps = {
   item: ConversationVariable
@@ -29,9 +30,11 @@ const VariableItem = ({ item, onEdit, onDelete }: VariableItemProps) => {
           <div className="system-xs-medium text-text-tertiary">{capitalize(item.value_type)}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
-          <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
-            <RiEditLine className="size-4" onClick={() => onEdit(item)} />
-          </div>
+          {isEditableConversationVariable(item) && (
+            <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
+              <RiEditLine className="size-4" onClick={() => onEdit(item)} />
+            </div>
+          )}
           <div
             className="cursor-pointer rounded-lg p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
             onMouseOver={() => setDestructive(true)}

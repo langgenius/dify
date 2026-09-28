@@ -1,5 +1,6 @@
 import type { LoroMap } from 'loro-crdt'
 import type { useStoreApi } from 'reactflow'
+import type { Socket } from 'socket.io-client'
 import type { OnlineUser } from '../../types/collaboration'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -194,6 +195,7 @@ describe('CollaborationManager logs and event helpers', () => {
       }),
     }
     internals.reactFlowStore = store
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue({ connected: true } as Socket)
     vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     const oldNode = createNode('old-node')
     const oldTarget = createNode('old-target')
@@ -218,6 +220,7 @@ describe('CollaborationManager logs and event helpers', () => {
         store.sourceStore,
         [importedNode, importedTarget],
         [importedEdge],
+        null,
       ),
     ).toBe(false)
     expect(
@@ -229,7 +232,13 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(manager.getEdges().map((edge) => edge.id)).toEqual(['old-edge'])
 
     expect(
-      manager.replaceGraphFromCommittedDraft('app-1', { getState: vi.fn() }, [importedNode], []),
+      manager.replaceGraphFromCommittedDraft(
+        'app-1',
+        { getState: vi.fn() },
+        [importedNode],
+        [],
+        null,
+      ),
     ).toBe(false)
     expect(manager.ownsReactFlowStore({ getState: vi.fn() })).toBe(false)
     expect(manager.ownsReactFlowStore(store.sourceStore)).toBe(true)
@@ -240,6 +249,7 @@ describe('CollaborationManager logs and event helpers', () => {
         store.sourceStore,
         [importedNode, importedTarget],
         [importedEdge],
+        null,
       ),
     ).toBe(true)
     const refreshedGraphs: Array<{ nodes: Node[]; edges: Edge[] }> = []
@@ -257,6 +267,7 @@ describe('CollaborationManager logs and event helpers', () => {
   it('does not seed the old canvas when importing into an empty CRDT graph', () => {
     const { manager, internals } = setupManagerWithDoc()
     internals.currentAppId = 'app-1'
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue({ connected: true } as Socket)
     vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     internals.reactFlowStore = {
       sourceStore: { getState: vi.fn() },
@@ -274,6 +285,7 @@ describe('CollaborationManager logs and event helpers', () => {
         internals.reactFlowStore.sourceStore,
         [createNode('imported-node')],
         [],
+        null,
       ),
     ).toBe(true)
     expect(manager.getNodes().map((node) => node.id)).toEqual(['imported-node'])

@@ -1,22 +1,37 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { isWorkflowDraftReplacedEvent } from '@/app/components/workflow/workflow-data-update-event'
+import { EventEmitterContext, useEventEmitterContextContext } from '@/context/event-emitter'
 import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
-const render = (ui: ReactNode) =>
-  renderWithAccountProfile(<ReactFlowProvider>{ui}</ReactFlowProvider>)
+let eventEmitter: EventEmitter<EventEmitterValue>
+const withWorkflowProviders = (ui: ReactNode) => (
+  <EventEmitterContext.Provider value={{ eventEmitter }}>
+    <ReactFlowProvider>{ui}</ReactFlowProvider>
+  </EventEmitterContext.Provider>
+)
+const render = (ui: ReactNode) => renderWithAccountProfile(withWorkflowProviders(ui))
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
 const mockSetEnvSecrets = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
+const mockSetDraftUpdatedAt = vi.fn()
+const mockSetToolPublished = vi.fn()
+const mockSetLastAppliedReplacementId = vi.fn()
+const mockAdvanceDraftReplacementEpoch = vi.fn()
+let draftReplacementEpoch = 0
+let lastAppliedReplacementId: string | null = null
 const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
@@ -25,11 +40,25 @@ const mockOnSyncRequest = vi.hoisted(() => vi.fn())
 const mockGetIsLeader = vi.hoisted(() => vi.fn(() => true))
 const mockOnGraphReloadRequired = vi.hoisted(() => vi.fn())
 const mockOnGraphReadyChange = vi.hoisted(() => vi.fn())
+const mockOnGraphSnapshotValidationRequired = vi.hoisted(() => vi.fn())
+const mockIsGraphSnapshotValidationCurrent = vi.hoisted(() => vi.fn())
+const mockCompleteGraphSnapshotValidation = vi.hoisted(() => vi.fn())
+const mockIsGraphSnapshotValidationPending = vi.hoisted(() => vi.fn())
 const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
-const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
+const mockReplaceGraphFromServerDraft = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
+const mockRefreshPendingGraphReload = vi.hoisted(() => vi.fn())
+const mockHasAppliedReplacement = vi.hoisted(() => vi.fn())
+const mockBeginCommittedReplacement = vi.hoisted(() => vi.fn())
+const mockCompleteCommittedReplacement = vi.hoisted(() => vi.fn())
+const mockBeginWorkflowReplacement = vi.hoisted(() => vi.fn())
+const mockIsWorkflowReplacementCurrent = vi.hoisted(() => vi.fn())
+const mockCompleteWorkflowReplacement = vi.hoisted(() => vi.fn())
+const mockCancelWorkflowReplacement = vi.hoisted(() => vi.fn())
+const mockGetWorkflowReplacementSequence = vi.hoisted(() => vi.fn())
+const mockIsWorkflowReplacementPending = vi.hoisted(() => vi.fn())
 const mockUseCollaboration = vi.hoisted(() => vi.fn())
 
 const hookFns = {
@@ -79,7 +108,13 @@ const collaborationRuntime = vi.hoisted(() => ({
 
 const collaborationListeners = vi.hoisted(() => ({
   varsAndFeaturesUpdate: null as null | ((update: unknown) => void | Promise<void>),
-  workflowUpdate: null as null | (() => void | Promise<void>),
+  workflowUpdate: null as
+    | null
+    | ((update: {
+        appId: string
+        timestamp: number
+        replacementId: string
+      }) => void | Promise<void>),
   syncRequest: null as
     | null
     | ((request: {
@@ -90,13 +125,29 @@ const collaborationListeners = vi.hoisted(() => ({
     | null
     | ((request: { generation: number; token: number; attempt: number }) => void | Promise<void>),
   graphReadyChange: null as null | ((isReady: boolean) => void),
+  graphSnapshotValidationRequired: null as
+    | null
+    | ((request: {
+        appId: string
+        generation: number
+        token: number
+        lastReplacementId: string | null
+      }) => void | Promise<void>),
 }))
 
 let capturedContextProps: Record<string, unknown> | null = null
 
 type MockWorkflowWithInnerContextProps = Pick<
   WorkflowProps,
-  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'
+  | 'nodes'
+  | 'edges'
+  | 'viewport'
+  | 'onWorkflowDataUpdate'
+  | 'onDraftReplacementListenerReadyChange'
+  | 'onDraftReplacementApplied'
+  | 'cursors'
+  | 'myUserId'
+  | 'onlineUsers'
 > & {
   hooksStore?: Record<string, unknown>
   children?: ReactNode
@@ -117,21 +168,28 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: { appId: string }) => T) =>
-    selector({
-      appId: 'app-1',
-    }),
-  useWorkflowStore: () => ({
+vi.mock('@/app/components/workflow/store', () => {
+  const workflowStore = {
     getState: () => ({
       envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
+      setDraftUpdatedAt: mockSetDraftUpdatedAt,
+      setToolPublished: mockSetToolPublished,
+      setLastAppliedReplacementId: mockSetLastAppliedReplacementId,
+      lastAppliedReplacementId,
+      draftReplacementEpoch,
+      advanceDraftReplacementEpoch: mockAdvanceDraftReplacementEpoch,
     }),
-  }),
-}))
+  }
+
+  return {
+    useStore: <T,>(selector: (state: { appId: string }) => T) => selector({ appId: 'app-1' }),
+    useWorkflowStore: () => workflowStore,
+  }
+})
 
 vi.mock('reactflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('reactflow')>()),
@@ -165,7 +223,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
       },
     ),
     onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation(
-      (handler: () => void | Promise<void>) => {
+      (handler: NonNullable<typeof collaborationListeners.workflowUpdate>) => {
         collaborationListeners.workflowUpdate = handler
         return vi.fn()
       },
@@ -189,17 +247,36 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
         return vi.fn()
       },
     ),
+    onGraphSnapshotValidationRequired: mockOnGraphSnapshotValidationRequired.mockImplementation(
+      (handler: typeof collaborationListeners.graphSnapshotValidationRequired) => {
+        collaborationListeners.graphSnapshotValidationRequired = handler
+        return vi.fn()
+      },
+    ),
+    isGraphSnapshotValidationCurrent: mockIsGraphSnapshotValidationCurrent,
+    isGraphSnapshotValidationPending: mockIsGraphSnapshotValidationPending,
+    completeGraphSnapshotValidation: mockCompleteGraphSnapshotValidation,
     refreshGraphSynchronously: mockRefreshGraphSynchronously,
-    replaceGraphFromReactFlow: mockReplaceGraphFromReactFlow,
+    replaceGraphFromServerDraft: mockReplaceGraphFromServerDraft,
     canPersistLocalGraph: mockCanPersistLocalGraph,
     isGraphReloadCurrent: mockIsGraphReloadCurrent,
     retryGraphReload: mockRetryGraphReload,
+    refreshPendingGraphReload: mockRefreshPendingGraphReload,
+    hasAppliedReplacement: mockHasAppliedReplacement,
+    beginCommittedReplacement: mockBeginCommittedReplacement,
+    completeCommittedReplacement: mockCompleteCommittedReplacement,
+    beginWorkflowReplacement: mockBeginWorkflowReplacement,
+    isWorkflowReplacementCurrent: mockIsWorkflowReplacementCurrent,
+    completeWorkflowReplacement: mockCompleteWorkflowReplacement,
+    cancelWorkflowReplacement: mockCancelWorkflowReplacement,
+    getWorkflowReplacementSequence: mockGetWorkflowReplacementSequence,
+    isWorkflowReplacementPending: mockIsWorkflowReplacementPending,
     getIsLeader: mockGetIsLeader,
   },
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 vi.mock('@/app/components/workflow', () => ({
@@ -208,16 +285,24 @@ vi.mock('@/app/components/workflow', () => ({
     edges,
     viewport,
     onWorkflowDataUpdate,
+    onDraftReplacementApplied,
+    onDraftReplacementListenerReadyChange,
     hooksStore,
     cursors,
     myUserId,
     onlineUsers,
     children,
   }: MockWorkflowWithInnerContextProps) => {
+    const { eventEmitter } = useEventEmitterContextContext()
+    eventEmitter?.useSubscription((event) => {
+      if (isWorkflowDraftReplacedEvent(event)) onWorkflowDataUpdate?.(event.payload.workflowData)
+    })
     capturedContextProps = {
       nodes,
       edges,
       viewport,
+      onDraftReplacementListenerReadyChange,
+      onDraftReplacementApplied,
       hooksStore,
       cursors,
       myUserId,
@@ -387,32 +472,21 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
+    getWorkflowDraftGraphForCanvas: (
+      graph?: {
+        nodes?: unknown[]
+        edges?: unknown[]
+        viewport?: unknown
+      },
+      options?: { localStartPlaceholderNodes?: unknown[] },
+    ) => ({
       nodes: graph?.nodes?.length
         ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+        : options?.localStartPlaceholderNodes?.length
+          ? options.localStartPlaceholderNodes
+          : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
       edges: graph?.edges || [],
       viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
     }),
@@ -434,6 +508,15 @@ vi.mock('@/context/permission-state', async () => {
 describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    draftReplacementEpoch = 0
+    lastAppliedReplacementId = null
+    mockSetLastAppliedReplacementId.mockImplementation((replacementId: string | null) => {
+      lastAppliedReplacementId = replacementId
+    })
+    mockAdvanceDraftReplacementEpoch.mockImplementation(() => {
+      draftReplacementEpoch++
+    })
+    eventEmitter = new EventEmitter<EventEmitterValue>()
     capturedContextProps = null
     collaborationRuntime.startCursorTracking.mockReset()
     collaborationRuntime.stopCursorTracking.mockReset()
@@ -446,15 +529,692 @@ describe('WorkflowMain', () => {
     collaborationListeners.syncRequest = null
     collaborationListeners.graphReloadRequired = null
     collaborationListeners.graphReadyChange = null
+    collaborationListeners.graphSnapshotValidationRequired = null
     mockFetchWorkflowDraft.mockReset()
     hookFns.doSyncWorkflowDraft.mockReset()
     mockGetIsLeader.mockReturnValue(true)
     mockCanPersistLocalGraph.mockReturnValue(true)
     mockIsGraphReloadCurrent.mockReturnValue(true)
-    mockReplaceGraphFromReactFlow.mockReturnValue(true)
+    mockIsGraphSnapshotValidationCurrent.mockReturnValue(true)
+    mockIsGraphSnapshotValidationPending.mockReturnValue(false)
+    mockCompleteGraphSnapshotValidation.mockReturnValue(true)
+    mockReplaceGraphFromServerDraft.mockReturnValue(true)
+    mockRefreshPendingGraphReload.mockReturnValue(false)
+    mockHasAppliedReplacement.mockReturnValue(false)
+    mockBeginWorkflowReplacement.mockReturnValue(null)
+    mockIsWorkflowReplacementCurrent.mockReturnValue(true)
+    mockGetWorkflowReplacementSequence.mockReturnValue(null)
+    mockIsWorkflowReplacementPending.mockReturnValue(false)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
     useAppStore.setState({ appDetail: undefined })
+  })
+
+  it('validates a follower snapshot marker and updates metadata without replacing peer graph edits', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    const draft = {
+      hash: 'imported-hash',
+      last_replacement_id: 'import-B',
+      features: { opening_statement: 'Imported' },
+      conversation_variables: [],
+      environment_variables: [],
+      updated_at: 2,
+      tool_published: false,
+    }
+    mockFetchWorkflowDraft.mockResolvedValue(draft)
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+    const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+
+    act(() => {
+      collaborationListeners.graphSnapshotValidationRequired?.(request)
+    })
+    await waitFor(() => {
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+    })
+
+    expect(mockSetFeatures).toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
+    expect(mockSetLastAppliedReplacementId).toHaveBeenCalledWith('import-B')
+    expect(mockAdvanceDraftReplacementEpoch).toHaveBeenCalled()
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockReplaceGraphFromServerDraft).not.toHaveBeenCalled()
+  })
+
+  it('keeps follower metadata unchanged while a snapshot marker differs from the server', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    mockFetchWorkflowDraft.mockResolvedValue({ last_replacement_id: 'import-B' })
+    mockCompleteGraphSnapshotValidation.mockReturnValue(false)
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+    const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-A' }
+
+    act(() => {
+      collaborationListeners.graphSnapshotValidationRequired?.(request)
+    })
+    await waitFor(() => {
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+    })
+
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockSetLastAppliedReplacementId).not.toHaveBeenCalled()
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+  })
+
+  it('retries snapshot validation after a failed draft GET before opening persistence', async () => {
+    vi.useFakeTimers()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      collaborationRuntime.isEnabled = true
+      collaborationRuntime.isConnected = true
+      mockFetchWorkflowDraft
+        .mockRejectedValueOnce(new Error('Draft temporarily unavailable'))
+        .mockResolvedValueOnce({
+          hash: 'imported-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+          updated_at: 2,
+          tool_published: false,
+        })
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+
+      await act(async () => {
+        collaborationListeners.graphSnapshotValidationRequired?.(request)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(mockCompleteGraphSnapshotValidation).not.toHaveBeenCalled()
+      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+    } finally {
+      consoleError.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('discards an import A GET that resolves after import B snapshot validation', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    let resolveOldDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOldDraft = resolve
+        }),
+      )
+      .mockResolvedValueOnce({
+        hash: 'imported-hash',
+        last_replacement_id: 'import-B',
+        features: {},
+        conversation_variables: [],
+        environment_variables: [],
+        updated_at: 2,
+        tool_published: false,
+      })
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-A',
+      })
+    })
+    const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+    await act(async () => {
+      collaborationListeners.graphSnapshotValidationRequired?.(request)
+    })
+    expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+
+    await act(async () => {
+      resolveOldDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        hash: 'old-hash',
+        last_replacement_id: null,
+        features: {},
+      })
+    })
+
+    expect(emit).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledTimes(1)
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenLastCalledWith('imported-hash')
+  })
+
+  it('waits for import B snapshot validation when an older import A GET resolves first', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    let resolveOldDraft: ((draft: unknown) => void) | undefined
+    let resolveImportedDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOldDraft = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveImportedDraft = resolve
+        }),
+      )
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-A',
+      })
+    })
+    const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+    mockIsGraphSnapshotValidationPending.mockReturnValue(true)
+    act(() => {
+      collaborationListeners.graphSnapshotValidationRequired?.(request)
+    })
+    await act(async () => {
+      resolveOldDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        hash: 'old-hash',
+        last_replacement_id: null,
+        features: {},
+      })
+    })
+    expect(emit).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveImportedDraft?.({
+        hash: 'imported-hash',
+        last_replacement_id: 'import-B',
+        features: {},
+        conversation_variables: [],
+        environment_variables: [],
+        updated_at: 2,
+        tool_published: false,
+      })
+    })
+    expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenLastCalledWith('imported-hash')
+    expect(emit).not.toHaveBeenCalled()
+  })
+
+  it('keeps a restore notification pending until its matching canvas replacement applies', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    mockBeginWorkflowReplacement.mockReturnValue(7)
+    let resolveDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const emit = vi.spyOn(eventEmitter, 'emit').mockImplementation(() => {
+      mockIsWorkflowReplacementCurrent.mockReturnValue(false)
+    })
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'restore-C',
+      })
+    })
+    expect(mockBeginWorkflowReplacement).toHaveBeenCalledWith('app-1')
+    expect(mockCancelWorkflowReplacement).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        hash: 'restored-hash',
+        last_replacement_id: 'restore-C',
+        features: {},
+        conversation_variables: [],
+        environment_variables: [],
+      })
+    })
+
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          appliedReplacementId: 'restore-C',
+          replacementId: 'restore-C',
+          workflowReplacementToken: 7,
+        }),
+      }),
+    )
+    expect(mockCancelWorkflowReplacement).not.toHaveBeenCalled()
+  })
+
+  it('completes a delayed import A notification after validating import B without replacing peer edits', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      collaborationRuntime.isConnected = true
+      mockBeginWorkflowReplacement.mockReturnValue(7)
+      let resolveOldDraft: ((draft: unknown) => void) | undefined
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveOldDraft = resolve
+          }),
+        )
+        .mockResolvedValue({
+          hash: 'imported-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+          updated_at: 2,
+          tool_published: false,
+        })
+      const emit = vi.spyOn(eventEmitter, 'emit')
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      act(() => {
+        collaborationListeners.workflowUpdate?.({
+          appId: 'app-1',
+          timestamp: 1,
+          replacementId: 'import-A',
+        })
+        collaborationListeners.graphSnapshotValidationRequired?.({
+          appId: 'app-1',
+          generation: 1,
+          token: 2,
+          lastReplacementId: 'import-B',
+        })
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalled()
+
+      await act(async () => {
+        resolveOldDraft?.({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          hash: 'old-hash',
+          last_replacement_id: null,
+          features: {},
+        })
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mockCompleteCommittedReplacement).toHaveBeenCalledWith(
+        'app-1',
+        expect.objectContaining({ getState: expect.any(Function) }),
+        'import-B',
+        'import-A',
+      )
+      expect(mockCompleteWorkflowReplacement).toHaveBeenCalledWith(
+        'app-1',
+        expect.objectContaining({ getState: expect.any(Function) }),
+        7,
+      )
+      expect(emit).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not let a delayed notification overwrite a newer local import token', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    mockBeginWorkflowReplacement.mockReturnValue(7)
+    let resolveOldDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft.mockReturnValue(
+      new Promise((resolve) => {
+        resolveOldDraft = resolve
+      }),
+    )
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-C',
+      })
+    })
+    expect(mockBeginWorkflowReplacement).toHaveBeenCalledWith('app-1')
+
+    mockIsWorkflowReplacementCurrent.mockReturnValue(false)
+    lastAppliedReplacementId = 'import-D'
+    draftReplacementEpoch += 1
+    await act(async () => {
+      resolveOldDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        hash: 'import-C-hash',
+        last_replacement_id: 'import-C',
+        features: {},
+      })
+    })
+    expect(emit).not.toHaveBeenCalled()
+    expect(mockCompleteWorkflowReplacement).not.toHaveBeenCalled()
+    expect(mockCancelWorkflowReplacement).not.toHaveBeenCalled()
+  })
+
+  it('applies restore C after import B snapshot validation', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      collaborationRuntime.isConnected = true
+      lastAppliedReplacementId = 'import-B'
+      mockBeginWorkflowReplacement.mockReturnValue(7)
+      mockCompleteGraphSnapshotValidation.mockImplementation(() => {
+        mockIsGraphSnapshotValidationPending.mockReturnValue(false)
+        return true
+      })
+      let resolveFirstRestoreGet: ((draft: unknown) => void) | undefined
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirstRestoreGet = resolve
+          }),
+        )
+        .mockResolvedValueOnce({
+          hash: 'snapshot-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+          updated_at: 2,
+          tool_published: false,
+        })
+        .mockResolvedValueOnce({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          hash: 'restored-hash',
+          last_replacement_id: 'restore-C',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+        })
+      const emit = vi.spyOn(eventEmitter, 'emit').mockImplementation(() => {
+        mockIsWorkflowReplacementCurrent.mockReturnValue(false)
+      })
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      act(() => {
+        collaborationListeners.workflowUpdate?.({
+          appId: 'app-1',
+          timestamp: 3,
+          replacementId: 'restore-C',
+        })
+        mockIsGraphSnapshotValidationPending.mockReturnValue(true)
+        collaborationListeners.graphSnapshotValidationRequired?.({
+          appId: 'app-1',
+          generation: 1,
+          token: 2,
+          lastReplacementId: 'import-B',
+        })
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalled()
+
+      await act(async () => {
+        resolveFirstRestoreGet?.({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          hash: 'snapshot-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+        })
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(3)
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            appliedReplacementId: 'restore-C',
+            replacementId: 'restore-C',
+            workflowReplacementToken: 7,
+            workflowData: expect.objectContaining({ hash: 'restored-hash' }),
+          }),
+        }),
+      )
+      expect(mockCancelWorkflowReplacement).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries a newer import after an older snapshot validation advances the draft epoch', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      collaborationRuntime.isConnected = true
+      mockIsGraphSnapshotValidationPending.mockReturnValue(true)
+      mockCompleteGraphSnapshotValidation.mockImplementation(() => {
+        mockIsGraphSnapshotValidationPending.mockReturnValue(false)
+        return true
+      })
+      let resolveOlderValidation: ((draft: unknown) => void) | undefined
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveOlderValidation = resolve
+          }),
+        )
+        .mockResolvedValueOnce({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          hash: 'import-C-hash',
+          last_replacement_id: 'import-C',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+        })
+      const emit = vi.spyOn(eventEmitter, 'emit')
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+
+      act(() => {
+        collaborationListeners.graphSnapshotValidationRequired?.(request)
+        collaborationListeners.workflowUpdate?.({
+          appId: 'app-1',
+          timestamp: 3,
+          replacementId: 'import-C',
+        })
+      })
+      expect(mockBeginCommittedReplacement).toHaveBeenCalledWith('app-1', 'import-C')
+
+      await act(async () => {
+        resolveOlderValidation?.({
+          hash: 'import-B-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+          updated_at: 2,
+          tool_published: false,
+        })
+      })
+      expect(mockCompleteGraphSnapshotValidation).toHaveBeenCalledWith(request, 'import-B')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ replacementId: 'import-C' }),
+        }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries restore C received during import B snapshot validation', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      collaborationRuntime.isConnected = true
+      mockIsGraphSnapshotValidationPending.mockReturnValue(true)
+      mockCompleteGraphSnapshotValidation.mockImplementation(() => {
+        mockIsGraphSnapshotValidationPending.mockReturnValue(false)
+        return true
+      })
+      let resolveOlderValidation: ((draft: unknown) => void) | undefined
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveOlderValidation = resolve
+          }),
+        )
+        .mockResolvedValueOnce({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          hash: 'restored-hash',
+          last_replacement_id: 'restore-C',
+          features: { opening_statement: 'Restored' },
+          conversation_variables: [],
+          environment_variables: [],
+        })
+      const emit = vi.spyOn(eventEmitter, 'emit')
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+
+      act(() => {
+        collaborationListeners.graphSnapshotValidationRequired?.(request)
+        collaborationListeners.workflowUpdate?.({
+          appId: 'app-1',
+          timestamp: 3,
+          replacementId: 'restore-C',
+        })
+      })
+
+      await act(async () => {
+        resolveOlderValidation?.({
+          hash: 'import-B-hash',
+          last_replacement_id: 'import-B',
+          features: {},
+          conversation_variables: [],
+          environment_variables: [],
+          updated_at: 2,
+          tool_published: false,
+        })
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            appliedReplacementId: 'restore-C',
+            replacementId: 'restore-C',
+            workflowData: expect.objectContaining({ hash: 'restored-hash' }),
+          }),
+        }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('drops an old vars and features GET after a newer imported snapshot is accepted', async () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.isConnected = true
+    let resolveOldDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOldDraft = resolve
+        }),
+      )
+      .mockResolvedValueOnce({
+        hash: 'imported-hash',
+        last_replacement_id: 'import-B',
+        features: { opening_statement: 'Imported' },
+        conversation_variables: [],
+        environment_variables: [],
+        updated_at: 2,
+        tool_published: false,
+      })
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    act(() => {
+      void collaborationListeners.varsAndFeaturesUpdate?.({ data: { syncWorkflowDraft: true } })
+    })
+    const request = { appId: 'app-1', generation: 1, token: 2, lastReplacementId: 'import-B' }
+    await act(async () => {
+      collaborationListeners.graphSnapshotValidationRequired?.(request)
+    })
+
+    await act(async () => {
+      resolveOldDraft?.({
+        hash: 'old-hash',
+        last_replacement_id: null,
+        features: { opening_statement: 'Old' },
+        conversation_variables: [],
+        environment_variables: [],
+      })
+    })
+
+    expect(mockSetFeatures).toHaveBeenCalledTimes(1)
+    expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        opening: expect.objectContaining({ opening_statement: 'Imported' }),
+      }),
+    )
+    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('routes a vars update that fetched a newer import through full draft reconciliation', async () => {
+    collaborationRuntime.isEnabled = true
+    const importedDraft = {
+      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      hash: 'imported-hash',
+      last_replacement_id: 'import-B',
+      features: { opening_statement: 'Imported' },
+      conversation_variables: [],
+      environment_variables: [],
+    }
+    mockFetchWorkflowDraft.mockResolvedValue(importedDraft)
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    await act(async () => {
+      await collaborationListeners.varsAndFeaturesUpdate?.({ data: { syncWorkflowDraft: true } })
+    })
+
+    expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        prefetchedDraft: importedDraft,
+        shouldApply: expect.any(Function),
+      }),
+    )
+    expect(mockSetFeatures).not.toHaveBeenCalled()
+    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('leaves vars reconciliation to pending snapshot validation', async () => {
+    collaborationRuntime.isEnabled = true
+    mockIsGraphSnapshotValidationPending.mockReturnValue(true)
+    mockFetchWorkflowDraft.mockResolvedValue({
+      last_replacement_id: 'import-B',
+      features: { opening_statement: 'Imported' },
+      conversation_variables: [],
+      environment_variables: [],
+    })
+    render(<WorkflowMain nodes={[]} edges={[]} />)
+
+    await act(async () => {
+      await collaborationListeners.varsAndFeaturesUpdate?.({ data: { syncWorkflowDraft: true } })
+    })
+
+    expect(hookFns.handleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetFeatures).not.toHaveBeenCalled()
+    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('passes the actual ReactFlow store identity through the collaboration adapter', () => {
@@ -475,12 +1235,91 @@ describe('WorkflowMain', () => {
     )
   })
 
+  it.each(['GET before CRDT patch', 'CRDT patch before GET'])(
+    'projects the local placeholder through the collaboration adapter after %s',
+    (ordering) => {
+      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+      const adapter = mockUseCollaboration.mock.calls.at(-1)?.[2]
+      const localPlaceholder = {
+        id: 'existing-placeholder',
+        data: { type: BlockEnum.StartPlaceholder, selected: true },
+      }
+      const localNodes = ordering === 'GET before CRDT patch' ? [localPlaceholder] : []
+
+      expect(adapter?.projectNodesForCanvas([], localNodes)).toEqual([
+        ordering === 'GET before CRDT patch'
+          ? localPlaceholder
+          : { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+      ])
+    },
+  )
+
+  it('keeps peer edits when import A notification arrives after import B is applied', async () => {
+    collaborationRuntime.isEnabled = true
+    lastAppliedReplacementId = 'import-A'
+    mockHasAppliedReplacement.mockImplementation(
+      (_appId, replacementId) => replacementId === 'import-A' || replacementId === 'import-B',
+    )
+    mockFetchWorkflowDraft.mockResolvedValue({
+      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      last_replacement_id: 'import-B',
+    })
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        initialReplacementId="import-A"
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+    const adapter = mockUseCollaboration.mock.calls.at(-1)?.[2]
+    expect(adapter.getInitialReplacementId()).toBe('import-A')
+
+    act(() => {
+      const onApplied = capturedContextProps?.onDraftReplacementApplied as
+        | ((replacementId: string) => void)
+        | undefined
+      onApplied?.('import-B')
+    })
+    lastAppliedReplacementId = 'import-B'
+    expect(adapter.getInitialReplacementId()).toBe('import-B')
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-A',
+      })
+    })
+
+    await waitFor(() =>
+      expect(mockCompleteCommittedReplacement).toHaveBeenCalledWith(
+        'app-1',
+        expect.objectContaining({ getState: expect.any(Function) }),
+        'import-B',
+        'import-A',
+      ),
+    )
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(emit).not.toHaveBeenCalled()
+    expect(mockAdvanceDraftReplacementEpoch).not.toHaveBeenCalled()
+  })
+
   it('should render the inner workflow context with children and forwarded graph props', () => {
     const nodes = [{ id: 'node-1' }]
     const edges = [{ id: 'edge-1' }]
     const viewport = { x: 1, y: 2, zoom: 1.5 }
+    const onDraftReplacementListenerReadyChange = vi.fn()
 
-    render(<WorkflowMain nodes={nodes as never} edges={edges as never} viewport={viewport} />)
+    render(
+      <WorkflowMain
+        nodes={nodes as never}
+        edges={edges as never}
+        viewport={viewport}
+        onDraftReplacementListenerReadyChange={onDraftReplacementListenerReadyChange}
+      />,
+    )
 
     expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-children')).toBeInTheDocument()
@@ -488,6 +1327,7 @@ describe('WorkflowMain', () => {
       nodes,
       edges,
       viewport,
+      onDraftReplacementListenerReadyChange,
     })
   })
 
@@ -625,8 +1465,10 @@ describe('WorkflowMain', () => {
 
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
     collaborationRuntime.isEnabled = true
+    const emit = vi.spyOn(eventEmitter, 'emit')
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'imported-hash',
+      last_replacement_id: 'import-1',
       features: {
         file_upload: { enabled: true },
         opening_statement: 'hello',
@@ -634,8 +1476,15 @@ describe('WorkflowMain', () => {
       conversation_variables: [],
       environment_variables: [],
       graph: {
-        nodes: [{ id: 'n-1' }],
-        edges: [{ id: 'e-1' }],
+        nodes: [
+          {
+            id: 'n-1',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+          },
+        ],
+        edges: [],
         viewport: { x: 3, y: 4, zoom: 1.2 },
       },
     })
@@ -661,23 +1510,231 @@ describe('WorkflowMain', () => {
     })
 
     await collaborationListeners.varsAndFeaturesUpdate?.({})
-    await collaborationListeners.workflowUpdate?.()
+    await collaborationListeners.workflowUpdate?.({
+      appId: 'app-1',
+      timestamp: 1,
+      replacementId: 'import-1',
+    })
 
     await waitFor(() => {
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1')
       expect(mockSetFeatures).toHaveBeenCalled()
-      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n-1' }],
-        edges: [{ id: 'e-1' }],
-        viewport: { x: 3, y: 4, zoom: 1.2 },
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'WORKFLOW_DRAFT_REPLACED',
+          payload: expect.objectContaining({
+            appId: 'app-1',
+            workflowData: expect.objectContaining({
+              hash: 'imported-hash',
+              features: {
+                file_upload: { enabled: true },
+                opening_statement: 'hello',
+              },
+            }),
+          }),
+        }),
+      )
+      expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    })
+  })
+
+  it('discards an own import notification when the local canvas applies it before the GET resolves', async () => {
+    collaborationRuntime.isEnabled = true
+    let resolveDraft:
+      | ((draft: {
+          graph: { nodes: []; edges: []; viewport: { x: number; y: number; zoom: number } }
+          last_replacement_id: string
+        }) => void)
+      | undefined
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-1',
       })
     })
+    expect(mockBeginCommittedReplacement).toHaveBeenCalledWith('app-1', 'import-1')
+
+    lastAppliedReplacementId = 'import-1'
+    mockHasAppliedReplacement.mockImplementation(
+      (_appId, replacementId) => replacementId === 'import-1',
+    )
+    await act(async () => {
+      resolveDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        last_replacement_id: 'import-1',
+      })
+    })
+
+    expect(emit).not.toHaveBeenCalled()
+    expect(mockCompleteCommittedReplacement).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({ getState: expect.any(Function) }),
+      'import-1',
+      'import-1',
+    )
+  })
+
+  it('applies restore C that supersedes an in-flight import A notification', async () => {
+    collaborationRuntime.isEnabled = true
+    let resolveImport:
+      | ((draft: {
+          graph: { nodes: []; edges: []; viewport: { x: number; y: number; zoom: number } }
+          last_replacement_id: string
+        }) => void)
+      | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveImport = resolve
+        }),
+      )
+      .mockResolvedValueOnce({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        features: { opening_statement: 'Restored' },
+        last_replacement_id: 'restore-C',
+      })
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-a',
+      })
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 2,
+        replacementId: 'restore-C',
+      })
+    })
+
+    await waitFor(() => {
+      expect(emit).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            appliedReplacementId: 'restore-C',
+            replacementId: 'restore-C',
+            draft: expect.objectContaining({ last_replacement_id: 'restore-C' }),
+          }),
+        }),
+      )
+    })
+    await act(async () => {
+      resolveImport?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        last_replacement_id: 'import-a',
+      })
+    })
+    expect(emit).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the GET replacement ID when an older notification reads a newer import', async () => {
+    collaborationRuntime.isEnabled = true
+    const emit = vi.spyOn(eventEmitter, 'emit')
+    mockFetchWorkflowDraft.mockResolvedValue({
+      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      features: {},
+      hash: 'same-graph-hash',
+      last_replacement_id: 'import-b',
+    })
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-a',
+      })
+    })
+    await waitFor(() =>
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            appliedReplacementId: 'import-b',
+            replacementId: 'import-a',
+          }),
+        }),
+      ),
+    )
+
+    lastAppliedReplacementId = 'import-b'
+    mockHasAppliedReplacement.mockImplementation(
+      (_appId, replacementId) => replacementId === 'import-b',
+    )
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 2,
+        replacementId: 'import-b',
+      })
+    })
+
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(emit).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the committed import gate closed and retries a failed remote draft GET', async () => {
+    vi.useFakeTimers()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      collaborationRuntime.isEnabled = true
+      const emit = vi.spyOn(eventEmitter, 'emit')
+      mockFetchWorkflowDraft
+        .mockRejectedValueOnce(new Error('Draft temporarily unavailable'))
+        .mockResolvedValueOnce({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          features: {},
+          last_replacement_id: 'import-1',
+        })
+      const { rerender } = render(
+        <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
+      )
+
+      await act(async () => {
+        collaborationListeners.workflowUpdate?.({
+          appId: 'app-1',
+          timestamp: 1,
+          replacementId: 'import-1',
+        })
+      })
+      expect(mockBeginCommittedReplacement).toHaveBeenCalledWith('app-1', 'import-1')
+      expect(emit).not.toHaveBeenCalled()
+
+      rerender(
+        withWorkflowProviders(
+          <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
+        ),
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ replacementId: 'import-1' }),
+        }),
+      )
+    } finally {
+      consoleError.mockRestore()
+      vi.useRealTimers()
+    }
   })
 
   it('syncs the leader only after applying a follower environment update', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -707,6 +1764,72 @@ describe('WorkflowMain', () => {
     )
   })
 
+  it('re-fetches the latest vars after a same-marker workflow replacement token closes', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      mockGetWorkflowReplacementSequence.mockReturnValue(1)
+      let resolveOldVars!: (draft: unknown) => void
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveOldVars = resolve
+          }),
+        )
+        .mockResolvedValueOnce({
+          last_replacement_id: null,
+          features: { opening_statement: 'Latest' },
+          conversation_variables: [],
+          environment_variables: [
+            {
+              id: 'env-latest',
+              name: 'LATEST',
+              value_type: 'string',
+              value: 'new',
+              description: '',
+            },
+          ],
+        })
+      render(<WorkflowMain nodes={[]} edges={[]} />)
+      const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
+      mockGetWorkflowReplacementSequence.mockReturnValue(2)
+      mockIsWorkflowReplacementPending.mockReturnValue(true)
+
+      await act(async () => {
+        resolveOldVars({
+          last_replacement_id: null,
+          features: { opening_statement: 'Old' },
+          conversation_variables: [],
+          environment_variables: [
+            {
+              id: 'env-old',
+              name: 'OLD',
+              value_type: 'string',
+              value: 'old',
+              description: '',
+            },
+          ],
+        })
+        await firstUpdate
+      })
+      expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+      mockIsWorkflowReplacementPending.mockReturnValue(false)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'env-latest' }),
+      ])
+      expect(mockSetEnvironmentVariables).not.toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'env-old' }),
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('ignores an older environment refresh that resolves after the latest update', async () => {
     collaborationRuntime.isEnabled = true
     let resolveFirst!: (value: Record<string, unknown>) => void
@@ -730,6 +1853,7 @@ describe('WorkflowMain', () => {
     const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
 
     resolveSecond({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -750,6 +1874,7 @@ describe('WorkflowMain', () => {
     expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
 
     resolveFirst({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -791,6 +1916,7 @@ describe('WorkflowMain', () => {
     const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
 
     resolveFirst({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -838,6 +1964,7 @@ describe('WorkflowMain', () => {
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
 
     resolveFirst({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -863,6 +1990,7 @@ describe('WorkflowMain', () => {
     collaborationRuntime.isEnabled = true
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockFetchWorkflowDraft.mockResolvedValueOnce({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [],
@@ -895,6 +2023,7 @@ describe('WorkflowMain', () => {
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
 
     resolveSlowRetry({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [
@@ -919,6 +2048,7 @@ describe('WorkflowMain', () => {
   it('retries a pending follower sync request after the first leader sync fails', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
+      last_replacement_id: null,
       features: {},
       conversation_variables: [],
       environment_variables: [],
@@ -941,9 +2071,20 @@ describe('WorkflowMain', () => {
     expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(2)
   })
 
-  it('reloads the HTTP draft before trusting a reconnected leader document', async () => {
+  it('reloads the complete HTTP draft before trusting a leader document', async () => {
     collaborationRuntime.isEnabled = true
     const request = { generation: 2, token: 1, attempt: 0 }
+    hookFns.handleRefreshWorkflowDraft.mockImplementationOnce(async (_notUpdateCanvas, options) => {
+      options.onSuccess({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        features: { file_upload: { enabled: true } },
+        conversation_variables: [],
+        environment_variables: [],
+        updated_at: 123,
+        tool_published: true,
+      })
+      return true
+    })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
@@ -951,8 +2092,76 @@ describe('WorkflowMain', () => {
 
     expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
       shouldApply: expect.any(Function),
+      onSuccess: expect.any(Function),
     })
-    expect(mockReplaceGraphFromReactFlow).toHaveBeenCalledWith(request)
+    expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({ enabled: true }),
+      }),
+    )
+    expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(123)
+    expect(mockSetToolPublished).toHaveBeenCalledWith(true)
+    expect(mockReplaceGraphFromServerDraft).toHaveBeenCalledWith(request, [], [], undefined)
+  })
+
+  it('invalidates a stale leader reload when an import arrives during its draft GET', async () => {
+    collaborationRuntime.isEnabled = true
+    const firstRequest = { generation: 2, token: 1, attempt: 0 }
+    const secondRequest = { generation: 2, token: 2, attempt: 0 }
+    let activeToken = 1
+    const completeFetches: Array<
+      (draft: { graph: { nodes: []; edges: [] }; last_replacement_id: string }) => void
+    > = []
+    hookFns.handleRefreshWorkflowDraft.mockImplementation(
+      (_notUpdateCanvas, options) =>
+        new Promise<boolean>((resolve) => {
+          completeFetches.push((draft) => {
+            if (!options.shouldApply()) {
+              resolve(false)
+              return
+            }
+            options.onSuccess(draft)
+            resolve(true)
+          })
+        }),
+    )
+    mockIsGraphReloadCurrent.mockImplementation((request) => request.token === activeToken)
+    let secondReload: void | Promise<void>
+    mockRefreshPendingGraphReload.mockImplementation(() => {
+      activeToken = 2
+      secondReload = collaborationListeners.graphReloadRequired?.(secondRequest)
+      return true
+    })
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    const firstReload = collaborationListeners.graphReloadRequired?.(firstRequest)
+    expect(completeFetches).toHaveLength(1)
+    act(() => {
+      collaborationListeners.workflowUpdate?.({
+        appId: 'app-1',
+        timestamp: 1,
+        replacementId: 'import-new',
+      })
+    })
+    expect(mockRefreshPendingGraphReload).toHaveBeenCalledWith('app-1', 'import-new')
+    expect(completeFetches).toHaveLength(2)
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+
+    await act(async () => {
+      completeFetches[1]?.({ graph: { nodes: [], edges: [] }, last_replacement_id: 'import-new' })
+      await secondReload
+    })
+    await act(async () => {
+      completeFetches[0]?.({ graph: { nodes: [], edges: [] }, last_replacement_id: 'import-old' })
+      await firstReload
+    })
+
+    expect(mockReplaceGraphFromServerDraft).toHaveBeenCalledExactlyOnceWith(
+      secondRequest,
+      [],
+      [],
+      'import-new',
+    )
   })
 
   it('rejects a directed save without importing an untrusted CRDT graph', () => {
@@ -992,7 +2201,9 @@ describe('WorkflowMain', () => {
 
   it('restores a local start placeholder for empty collaboration workflow updates', async () => {
     collaborationRuntime.isEnabled = true
+    const emit = vi.spyOn(eventEmitter, 'emit')
     mockFetchWorkflowDraft.mockResolvedValue({
+      last_replacement_id: 'restore-empty',
       features: {},
       conversation_variables: [],
       environment_variables: [],
@@ -1005,14 +2216,24 @@ describe('WorkflowMain', () => {
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    await collaborationListeners.workflowUpdate?.()
+    await collaborationListeners.workflowUpdate?.({
+      appId: 'app-1',
+      timestamp: 1,
+      replacementId: 'restore-empty',
+    })
 
     await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+      expect(emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'WORKFLOW_DRAFT_REPLACED',
+          payload: expect.objectContaining({
+            collaborationGraph: { nodes: [], edges: [] },
+            workflowData: expect.objectContaining({
+              nodes: [expect.objectContaining({ id: 'start-placeholder' })],
+            }),
+          }),
+        }),
+      )
     })
   })
 })

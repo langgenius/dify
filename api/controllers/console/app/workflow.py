@@ -1,8 +1,10 @@
 import json
 import logging
+import time
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal, NotRequired, Self, TypedDict
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -71,6 +73,7 @@ from core.workflow.llm_environment_variable import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_socketio import sio
 from factories import file_factory, variable_factory
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
@@ -107,6 +110,24 @@ from services.workflow_variable_reference_validator import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _notify_workflow_restore(app_id: str, account_id: str, replacement_id: str) -> None:
+    timestamp = int(time.time() * 1000)
+    try:
+        sio.emit(
+            "collaboration_update",
+            {
+                "type": "workflow_update",
+                "userId": account_id,
+                "data": {"appId": app_id, "replacementId": replacement_id, "timestamp": timestamp},
+                "timestamp": timestamp,
+            },
+            room=app_id,
+        )
+    except Exception:
+        logger.exception("Failed to notify collaborators of restored workflow for app %s", app_id)
+
 
 _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
@@ -359,6 +380,10 @@ class WorkflowResponse(ResponseModel):
         return [_serialize_environment_variable(item) for item in value]
 
 
+class DraftWorkflowResponse(WorkflowResponse):
+    last_replacement_id: str | None
+
+
 class WorkflowResponseSource:
     def __init__(self, workflow: Workflow, *, session: Session) -> None:
         self._workflow = workflow
@@ -421,6 +446,10 @@ class WorkflowRestoreResponse(ResponseModel):
     result: str
     hash: str
     updated_at: int
+
+
+class AppWorkflowRestoreResponse(WorkflowRestoreResponse):
+    replacement_id: UUID
 
 
 class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
@@ -494,6 +523,7 @@ register_response_schema_models(
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
     WorkflowResponse,
+    DraftWorkflowResponse,
     WorkflowPaginationResponse,
     WorkflowOnlineUser,
     WorkflowOnlineUsersByApp,
@@ -501,6 +531,7 @@ register_response_schema_models(
     WorkflowPublishResponse,
     SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
+    AppWorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
     DefaultBlockConfigResponse,
     HumanInputFormPreviewResponse,
@@ -585,7 +616,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow retrieved successfully",
-        console_ns.models[WorkflowResponse.__name__],
+        console_ns.models[DraftWorkflowResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
     @setup_required
@@ -610,7 +641,7 @@ class DraftWorkflowApi(Resource):
 
         # Return workflow with response-only Agent node job projection so the
         # front-end can treat draft graph node data as the editing source.
-        response = WorkflowResponse.model_validate(
+        response = DraftWorkflowResponse.model_validate(
             WorkflowResponseSource(workflow, session=session), from_attributes=True
         ).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
@@ -1559,7 +1590,7 @@ class DraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_workflow_to_draft")
     @console_ns.doc(description="Restore a published workflow version into the draft workflow")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
-    @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
+    @console_ns.response(200, "Workflow restored successfully", console_ns.models[AppWorkflowRestoreResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
     @setup_required
@@ -1571,14 +1602,26 @@ class DraftWorkflowRestoreApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
     def post(self, current_user: Account, app_model: App, workflow_id: str):
         workflow_service = WorkflowService()
+        app_id = app_model.id
+        account_id = current_user.id
 
         try:
-            workflow = workflow_service.restore_published_workflow_to_draft(
-                app_model=app_model,
-                workflow_id=workflow_id,
-                account=current_user,
-                session=db.session(),
-            )
+            with db.session() as session:
+                workflow = workflow_service.restore_published_workflow_to_draft(
+                    app_model=app_model,
+                    workflow_id=workflow_id,
+                    account=current_user,
+                    session=session,
+                )
+                response = dump_response(
+                    AppWorkflowRestoreResponse,
+                    {
+                        "result": "success",
+                        "hash": workflow.unique_hash,
+                        "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+                        "replacement_id": workflow.last_replacement_id,
+                    },
+                )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
@@ -1586,11 +1629,8 @@ class DraftWorkflowRestoreApi(Resource):
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        _notify_workflow_restore(app_id, account_id, response["replacement_id"])
+        return response
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")

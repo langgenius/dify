@@ -81,7 +81,7 @@ def test_import_transaction_and_response_contract(
     config_overrides(RBAC_ENABLED=True, DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr("services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *a, **k: True)
     app_id = str(uuid4())
-    result = Import(id="import-1", status=status, app_id=app_id)
+    result = Import(id="import-1", status=status, app_id=app_id, app_mode=AppMode.WORKFLOW)
     pending = PendingData(
         tenant_id=import_context.active_workspace_id,
         account_id=import_context.account_id,
@@ -111,6 +111,13 @@ def test_import_transaction_and_response_contract(
     monkeypatch.setattr(AppDslService, "confirm_import" if confirm else "import_app", persist)
     permissions: list[str] = []
     access_updates: list[tuple[str, str]] = []
+    notifications: list[tuple[str, object, str]] = []
+
+    def notify(event: str, payload: object, *, room: str) -> None:
+        assert not connections, "Collaboration notification must follow transaction completion"
+        notifications.append((event, payload, room))
+
+    monkeypatch.setattr(controller.sio, "emit", notify)
 
     def get_permissions(_self, context: RequestContext, imported_id: str) -> list[str]:
         assert not connections
@@ -144,12 +151,44 @@ def test_import_transaction_and_response_contract(
     with sqlite_session_factory() as session:
         assert (session.get(App, app_id) is not None) is (status != ImportStatus.FAILED)
     completed = status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+    if completed:
+        assert len(notifications) == 2
+        for event_name, payload, room in notifications:
+            assert event_name == "collaboration_update"
+            assert room == app_id
+            assert isinstance(payload, dict)
+            assert payload["userId"] == import_context.account_id
+        workflow_update = notifications[0][1]
+        metadata_update = notifications[1][1]
+        assert isinstance(workflow_update, dict)
+        assert workflow_update["type"] == "workflow_update"
+        assert workflow_update["data"]["appId"] == app_id
+        assert workflow_update["data"]["replacementId"] == "import-1"
+        assert isinstance(metadata_update, dict)
+        assert metadata_update["type"] == "app_meta_update"
+    else:
+        assert notifications == []
     assert permissions == ([app_id] if completed and not overwrite else [])
     assert response["permission_keys"] == (["app.acl.view_layout"] if permissions else [])
     assert access_updates == ([] if confirm else [(app_id, "private")])
     assert status_code == (
         400 if status == ImportStatus.FAILED else 202 if status == ImportStatus.PENDING and not confirm else 200
     )
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, None])
+def test_non_workflow_import_does_not_notify_collaborators(
+    monkeypatch: pytest.MonkeyPatch, mode: AppMode | None
+) -> None:
+    notifications: list[object] = []
+    monkeypatch.setattr(controller.sio, "emit", lambda *args, **kwargs: notifications.append((args, kwargs)))
+
+    controller._notify_workflow_import(
+        Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1", app_mode=mode),
+        "account-1",
+    )
+
+    assert notifications == []
 
 
 @pytest.mark.usefixtures("app_query_services")

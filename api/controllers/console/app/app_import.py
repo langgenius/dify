@@ -1,3 +1,5 @@
+import logging
+import time
 from http import HTTPStatus
 from typing import BinaryIO, cast
 
@@ -12,8 +14,10 @@ from controllers.console.explore.error import RecommendedAppNotFoundError as Rec
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
 from extensions.ext_application_services import application_services
+from extensions.ext_socketio import sio
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
@@ -32,6 +36,28 @@ register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesRe
 
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+_COMPLETED_IMPORT_STATUSES = frozenset({ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS})
+_WORKFLOW_MODES = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
+logger = logging.getLogger(__name__)
+
+
+def _notify_workflow_import(result: Import, account_id: str) -> None:
+    if result.status not in _COMPLETED_IMPORT_STATUSES or not result.app_id or result.app_mode not in _WORKFLOW_MODES:
+        return
+
+    timestamp = int(time.time() * 1000)
+    try:
+        for event_type, data in (
+            ("workflow_update", {"appId": result.app_id, "replacementId": result.id, "timestamp": timestamp}),
+            ("app_meta_update", {"timestamp": timestamp}),
+        ):
+            sio.emit(
+                "collaboration_update",
+                {"type": event_type, "userId": account_id, "data": data, "timestamp": timestamp},
+                room=result.app_id,
+            )
+    except Exception:
+        logger.exception("Failed to notify collaborators of committed DSL import for app %s", result.app_id)
 
 
 @console_ns.route("/apps/imports")
@@ -90,6 +116,7 @@ class AppImportApi(Resource):
             raise Forbidden(str(exc)) from exc
         except RecommendedAppNotFoundError:
             raise RecommendedAppNotFoundHttpError() from None
+        _notify_workflow_import(result, context.account_id)
         status_code = {ImportStatus.FAILED: HTTPStatus.BAD_REQUEST, ImportStatus.PENDING: HTTPStatus.ACCEPTED}.get(
             result.status, HTTPStatus.OK
         )
@@ -109,6 +136,7 @@ class AppImportConfirmApi(Resource):
             result = application_services().apps.console.confirm_import(context, import_id)
         except NoPermissionError as exc:
             raise Forbidden(str(exc)) from exc
+        _notify_workflow_import(result, context.account_id)
         status_code = HTTPStatus.BAD_REQUEST if result.status == ImportStatus.FAILED else HTTPStatus.OK
         return result.model_dump(mode="json"), status_code
 

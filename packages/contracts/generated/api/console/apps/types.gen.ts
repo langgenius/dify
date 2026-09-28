@@ -889,7 +889,7 @@ export type DefaultBlockConfigResponse = {
   [key: string]: unknown
 }
 
-export type WorkflowResponse = {
+export type DraftWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
   created_by?: SimpleAccountResponse | null
@@ -902,6 +902,7 @@ export type WorkflowResponse = {
   }
   hash: string
   id: string
+  last_replacement_id: string | null
   marked_comment: string
   marked_name: string
   rag_pipeline_variables: Array<PipelineVariableResponse>
@@ -1139,6 +1140,29 @@ export type WorkflowDraftVariableUpdatePayload = {
   value?: unknown | null
 }
 
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
+  version_number?: number | null
+}
+
 export type PublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
@@ -1167,8 +1191,9 @@ export type WorkflowUpdatePayload = {
   marked_name?: string | null
 }
 
-export type WorkflowRestoreResponse = {
+export type AppWorkflowRestoreResponse = {
   hash: string
+  replacement_id: string
   result: string
   updated_at: number
 }
@@ -6728,7 +6753,7 @@ export type GetAppsByAppIdWorkflowsDraftErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
-  200: WorkflowResponse
+  200: DraftWorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponse =
@@ -7642,7 +7667,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: WorkflowRestoreResponse
+  200: AppWorkflowRestoreResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse =

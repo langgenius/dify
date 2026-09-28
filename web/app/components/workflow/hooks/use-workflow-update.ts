@@ -13,13 +13,14 @@ export const useWorkflowUpdate = () => {
   const workflowStore = useWorkflowStore()
 
   const handleUpdateWorkflowCanvas = useCallback(
-    (payload: WorkflowDataUpdater) => {
+    (payload: WorkflowDataUpdater, options?: { authoritativeDraft?: true }) => {
       const { nodes, edges, viewport } = payload
 
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
           target: workflowStore,
+          authoritativeDraft: options?.authoritativeDraft,
           nodes: initialNodes(nodes, edges),
           edges: initialEdges(edges, nodes),
         },

@@ -472,6 +472,13 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
+    workflow.last_replacement_id = "00000000-0000-0000-0000-000000000002"
+
+    def assert_transaction_closed(*_args: object, **_kwargs: object) -> None:
+        assert not workflow_module.db.session().in_transaction()
+
+    emit = Mock(side_effect=assert_transaction_closed)
+    monkeypatch.setattr(workflow_module.sio, "emit", emit)
 
     monkeypatch.setattr(
         workflow_module,
@@ -495,9 +502,21 @@ def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: py
 
     assert response["result"] == "success"
     assert response["hash"] == workflow.unique_hash
+    assert response["replacement_id"] == workflow.last_replacement_id
+    emit.assert_called_once()
+    event, payload = emit.call_args.args
+    assert event == "collaboration_update"
+    assert emit.call_args.kwargs == {"room": "app"}
+    assert payload["type"] == "workflow_update"
+    assert payload["userId"] == "user-1"
+    assert payload["timestamp"] == payload["data"]["timestamp"]
+    assert payload["data"]["appId"] == "app"
+    assert payload["data"]["replacementId"] == workflow.last_replacement_id
 
 
 def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    emit = Mock()
+    monkeypatch.setattr(workflow_module.sio, "emit", emit)
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -522,6 +541,33 @@ def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: 
                 app_model=_app(tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
+    emit.assert_not_called()
+
+
+def test_restore_published_workflow_succeeds_when_notification_fails(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workflow = _make_workflow()
+    workflow.last_replacement_id = "00000000-0000-0000-0000-000000000002"
+    emit = Mock(side_effect=RuntimeError("socket unavailable"))
+    log_exception = Mock()
+    monkeypatch.setattr(workflow_module.sio, "emit", emit)
+    monkeypatch.setattr(workflow_module.logger, "exception", log_exception)
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(restore_published_workflow_to_draft=lambda **_kwargs: workflow),
+    )
+
+    api = workflow_module.DraftWorkflowRestoreApi()
+    handler = inspect.unwrap(api.post)
+    with app.test_request_context("/apps/app/workflows/published-workflow/restore", method="POST"):
+        response = handler(api, _account(), app_model=_app(), workflow_id="published-workflow")
+
+    assert response["result"] == "success"
+    assert response["replacement_id"] == workflow.last_replacement_id
+    emit.assert_called_once()
+    log_exception.assert_called_once()
 
 
 def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
@@ -643,6 +689,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     assert response["graph"] == {"nodes": [], "edges": []}
     assert response["features"] == {"file_upload": {"enabled": False}}
     assert response["hash"] == workflow.unique_hash
+    assert response["last_replacement_id"] is None
     assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}
     assert response["updated_by"] is None
     assert response["created_at"] == int(datetime(2024, 1, 1, 12, 0, 0).timestamp())
@@ -863,6 +910,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
             "edges": [],
         }
     )
+    workflow.last_replacement_id = "00000000-0000-0000-0000-000000000001"
     sqlite_session.add_all([_account(), workflow])
     sqlite_session.commit()
     projected_graph = {
@@ -901,6 +949,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
     response = handler(api, sqlite_session, app_model=_app())
 
     assert response["graph"] == projected_graph
+    assert response["last_replacement_id"] == workflow.last_replacement_id
 
 
 def test_advanced_chat_run_conversation_not_exists(

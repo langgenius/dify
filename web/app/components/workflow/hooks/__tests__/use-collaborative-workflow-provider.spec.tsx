@@ -1,4 +1,5 @@
 import type { Socket } from 'socket.io-client'
+import type { GraphReloadRequest } from '../../collaboration/types/collaboration'
 import type { Edge, Node } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, useReactFlow, useStoreApi } from 'reactflow'
@@ -32,15 +33,20 @@ const useCanvas = () => {
 
 describe('collaboration ownership across ReactFlow hooks', () => {
   const connections: string[] = []
+  let socketHandlers: Map<string, (data: unknown) => void>
   beforeEach(() => {
+    socketHandlers = new Map()
     const socket = {
       id: 'canvas-test-socket',
-      connected: false,
+      connected: true,
       emit: vi.fn(),
-      on: vi.fn(),
+      on: vi.fn((event: string, callback: (data: unknown) => void) => {
+        socketHandlers.set(event, callback)
+      }),
       off: vi.fn(),
     } as unknown as Socket
     vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket)
     vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {})
     vi.spyOn(collaborationManager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => {})
@@ -59,6 +65,12 @@ describe('collaboration ownership across ReactFlow hooks', () => {
     connections.push(await collaborationManager.connect('same-app', result.current.adapter))
 
     expect(collaborationManager.ownsReactFlowStore(result.current.consumerStore)).toBe(true)
+    const reloadRequests: GraphReloadRequest[] = []
+    collaborationManager.onGraphReloadRequired((request) => reloadRequests.push(request))
+    socketHandlers.get('status')?.({ isLeader: true })
+    expect(
+      collaborationManager.replaceGraphFromServerDraft(reloadRequests.at(-1)!, [], [], null),
+    ).toBe(true)
     const node = createNode({ id: 'same-canvas-node' })
     act(() => result.current.collaborative.setNodes([node]))
 
@@ -70,6 +82,7 @@ describe('collaboration ownership across ReactFlow hooks', () => {
         result.current.consumerStore,
         [node],
         [],
+        null,
       ),
     ).toBe(true)
   })
@@ -103,6 +116,7 @@ describe('collaboration ownership across ReactFlow hooks', () => {
         first.result.current.consumerStore,
         [firstNode],
         [],
+        null,
       ),
     ).toBe(false)
 

@@ -416,6 +416,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        import_id: str | None = None,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -466,6 +467,7 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
+                last_replacement_id=import_id,
                 environment_variables=initial_environment_variables,
                 conversation_variables=conversation_variables,
             )
@@ -475,6 +477,8 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
+            if import_id is not None:
+                workflow.last_replacement_id = import_id
             if not graph_only:
                 workflow.features = json.dumps(features)
                 workflow.conversation_variables = conversation_variables
@@ -644,7 +648,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -653,6 +657,7 @@ class WorkflowService:
             account=account,
             updated_at_factory=naive_utc_now,
         )
+        draft_workflow.last_replacement_id = str(uuid.uuid4())
 
         if is_new_draft:
             session.add(draft_workflow)

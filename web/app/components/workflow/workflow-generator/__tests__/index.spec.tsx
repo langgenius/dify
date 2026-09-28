@@ -49,7 +49,7 @@ vi.mock('@/service/workflow-generator', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 describe('WorkflowGeneratorModal', () => {

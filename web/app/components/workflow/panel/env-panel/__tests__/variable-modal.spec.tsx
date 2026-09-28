@@ -259,6 +259,28 @@ describe('VariableModal', () => {
     })
   })
 
+  it('preserves an existing nullable value while changing its name', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const env = createEnv({
+      id: 'env-null',
+      name: 'optional_value',
+      value: null,
+      value_type: 'string',
+    })
+
+    renderWithProviders(<VariableModal env={env} onClose={vi.fn()} onSave={onSave} />, {
+      storeState: { environmentVariables: [env] },
+    })
+
+    const nameInput = screen.getByPlaceholderText('workflow.env.modal.namePlaceholder')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'renamed_value')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onSave).toHaveBeenCalledWith({ ...env, name: 'renamed_value' })
+  })
+
   it('creates an LLM environment variable from the selected text-generation model', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()

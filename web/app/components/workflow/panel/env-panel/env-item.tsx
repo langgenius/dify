@@ -4,6 +4,8 @@ import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
+import { isEditableEnvironmentVariable } from '@/app/components/workflow/panel/env-panel/is-editable-environment-variable'
 import { useStore } from '@/app/components/workflow/store'
 
 type EnvItemProps = {
@@ -23,9 +25,13 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
   const displayValue =
     env.value_type === 'secret'
       ? envSecrets[env.id]
-      : typeof env.value === 'object'
+      : env.value_type === 'llm' && isLLMEnvironmentVariableValue(env.value)
         ? env.value.name
-        : env.value
+        : typeof env.value === 'string' || typeof env.value === 'number'
+          ? env.value
+          : env.value == null
+            ? ''
+            : JSON.stringify(env.value)
 
   return (
     <div
@@ -46,9 +52,11 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
             {env.value_type === 'secret' && <RiLock2Line className="size-3 text-text-tertiary" />}
           </div>
           <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
-            <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
-              <RiEditLine className="size-4" onClick={() => onEdit(env)} />
-            </div>
+            {isEditableEnvironmentVariable(env) && (
+              <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
+                <RiEditLine className="size-4" onClick={() => onEdit(env)} />
+              </div>
+            )}
             <div
               className="cursor-pointer rounded-lg p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
               onMouseOver={() => setDestructive(true)}

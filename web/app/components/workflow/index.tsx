@@ -107,7 +107,7 @@ import { setupScrollToNodeListener } from './utils/node-navigation'
 import { WorkflowContextmenu } from './workflow-contextmenu'
 import {
   isWorkflowDataUpdateEvent,
-  isWorkflowDSLImportCommittedEvent,
+  isWorkflowDraftReplacedEvent,
 } from './workflow-data-update-event'
 import 'reactflow/dist/style.css'
 import './style.css'
@@ -130,6 +130,8 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
+  onDraftReplacementApplied?: (replacementId: string) => void
+  onDraftReplacementListenerReadyChange?: (ready: boolean) => void
   isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
   myUserId?: string | null
@@ -143,6 +145,8 @@ export const Workflow: FC<WorkflowProps> = memo(
     viewport,
     children,
     onWorkflowDataUpdate,
+    onDraftReplacementApplied,
+    onDraftReplacementListenerReadyChange,
     isCollaborationEnabled = false,
     cursors,
     myUserId,
@@ -236,17 +240,18 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          if (!isEqual(nodes, importedNodes)) {
+          const currentGraph = store.getState()
+          if (!isEqual(reactflow.getNodes(), importedNodes)) {
             setNodes(importedNodes)
-            store.getState().setNodes(importedNodes)
+            currentGraph.setNodes(importedNodes)
           }
-          if (!isEqual(edges, importedEdges)) {
+          if (!isEqual(reactflow.getEdges(), importedEdges)) {
             setEdges(importedEdges)
-            store.getState().setEdges(importedEdges)
+            currentGraph.setEdges(importedEdges)
           }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [reactflow, setEdges, setNodes, store])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -315,24 +320,68 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     eventEmitter?.useSubscription((event) => {
       let payload: WorkflowDataUpdatePayload
+      let authoritativeDraft = false
       if (isWorkflowDataUpdateEvent(event)) {
-        const { target, ...data } = event.payload
+        const { target, authoritativeDraft: isAuthoritativeDraft, ...data } = event.payload
         if (target !== workflowStore) return
         payload = data
-      } else if (isWorkflowDSLImportCommittedEvent(event)) {
-        const { appId, workflowData } = event.payload
+        authoritativeDraft = isAuthoritativeDraft === true
+      } else if (isWorkflowDraftReplacedEvent(event)) {
+        const {
+          appId,
+          appliedReplacementId,
+          collaborationGraph,
+          workflowData,
+          draft,
+          workflowReplacementToken,
+        } = event.payload
         if (workflowStore.getState().appId !== appId) return
         if (
-          collaborationManager.ownsReactFlowStore(store) &&
-          collaborationManager.isConnected() &&
-          !collaborationManager.replaceGraphFromCommittedDraft(
-            appId,
-            store,
-            workflowData.nodes,
-            workflowData.edges,
-          )
+          workflowReplacementToken !== undefined &&
+          !collaborationManager.isWorkflowReplacementCurrent(appId, workflowReplacementToken)
         )
-          throw new Error('Collaborative graph is not ready to apply the imported draft.')
+          return
+        if (
+          appliedReplacementId &&
+          collaborationManager.hasAppliedReplacement(appId, appliedReplacementId)
+        ) {
+          if (workflowReplacementToken !== undefined) {
+            if (workflowStore.getState().lastAppliedReplacementId !== draft.last_replacement_id)
+              throw new Error('The committed draft has not finished loading in this canvas.')
+            collaborationManager.refreshGraphForAppliedReplacement(
+              appId,
+              store,
+              appliedReplacementId,
+            )
+            collaborationManager.completeWorkflowReplacement(appId, store, workflowReplacementToken)
+          }
+          return
+        }
+        if (collaborationManager.ownsReactFlowStore(store)) {
+          if (collaborationManager.isConnected()) {
+            if (
+              !collaborationManager.replaceGraphFromCommittedDraft(
+                appId,
+                store,
+                collaborationGraph.nodes,
+                collaborationGraph.edges,
+                draft.last_replacement_id,
+              )
+            )
+              throw new Error('Collaborative graph is not ready to apply the committed draft.')
+          } else if (
+            workflowReplacementToken === undefined
+              ? !collaborationManager.canUseLocalDraftFallback() ||
+                !collaborationManager.canApplyLocalGraphMutation()
+              : !collaborationManager.canApplyWorkflowReplacementToLocalFallback(
+                  appId,
+                  store,
+                  workflowReplacementToken,
+                )
+          ) {
+            throw new Error('Collaborative graph is not ready to apply the committed draft.')
+          }
+        }
         payload = workflowData
       } else {
         return
@@ -345,12 +394,36 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-      if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
-
       onWorkflowDataUpdate?.(payload)
+      if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+      if (authoritativeDraft || isWorkflowDraftReplacedEvent(event))
+        workflowStore.getState().advanceDraftReplacementEpoch()
+
+      if (isWorkflowDraftReplacedEvent(event)) {
+        const { appId, appliedReplacementId, replacementId, workflowReplacementToken, draft } =
+          event.payload
+        workflowStore.getState().setDraftUpdatedAt(draft.updated_at)
+        workflowStore.getState().setToolPublished(draft.tool_published)
+        workflowStore.getState().setLastAppliedReplacementId(draft.last_replacement_id)
+        collaborationManager.completeCommittedReplacement(
+          appId,
+          store,
+          draft.last_replacement_id,
+          replacementId,
+        )
+        if (workflowReplacementToken !== undefined)
+          collaborationManager.completeWorkflowReplacement(appId, store, workflowReplacementToken)
+        if (appliedReplacementId) onDraftReplacementApplied?.(appliedReplacementId)
+      }
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
+
+    useEffect(() => {
+      if (!eventEmitter) return
+      onDraftReplacementListenerReadyChange?.(true)
+      return () => onDraftReplacementListenerReadyChange?.(false)
+    }, [eventEmitter, onDraftReplacementListenerReadyChange])
 
     useEffect(() => {
       setAutoFreeze(false)

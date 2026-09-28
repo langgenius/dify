@@ -1,20 +1,27 @@
+import type { RefObject } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { isWorkflowDraftReplacedEvent } from '@/app/components/workflow/workflow-data-update-event'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import {
+  fetchAppWorkflowDraft,
+  fetchNodesDefaultConfigs,
+  syncWorkflowDraft,
+} from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const emptyAccount = {
@@ -24,8 +31,8 @@ const emptyAccount = {
 }
 
 const createLocalWorkflowDraft = (
-  graph: FetchWorkflowDraftResponse['graph'],
-): FetchWorkflowDraftResponse => ({
+  graph: FetchAppWorkflowDraftResponse['graph'],
+): FetchAppWorkflowDraftResponse => ({
   id: '',
   graph,
   features: {
@@ -34,11 +41,13 @@ const createLocalWorkflowDraft = (
   created_at: 0,
   created_by: emptyAccount,
   hash: '',
+  last_replacement_id: null,
   updated_at: 0,
   updated_by: emptyAccount,
   tool_published: false,
   environment_variables: [],
   conversation_variables: [],
+  rag_pipeline_variables: [],
   version: '',
   marked_name: '',
   marked_comment: '',
@@ -54,7 +63,23 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
   return edges.some((edge) => startNodeIds.includes(edge.source))
 }
 
-export const useWorkflowInit = () => {
+const isDraftWorkflowNotFoundError = async (error: unknown): Promise<boolean> => {
+  if (!(error instanceof Response) || error.status !== 404) return false
+
+  try {
+    const body: unknown = await error.clone().json()
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      'code' in body &&
+      body.code === 'draft_workflow_not_exist'
+    )
+  } catch {
+    return false
+  }
+}
+
+export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
   const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
   const appId = useStore((state) => state.appId)
@@ -76,8 +101,13 @@ export const useWorkflowInit = () => {
   )
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
-  const [data, setData] = useState<FetchWorkflowDraftResponse>()
+  const setLastAppliedReplacementId = useStore((s) => s.setLastAppliedReplacementId)
+  const [data, setData] = useState<FetchAppWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
+  const [initializationError, setInitializationError] = useState<Error>()
+  const [canvasInitEpoch, setCanvasInitEpoch] = useState(0)
+  const requestGenerationRef = useRef(0)
+  const { eventEmitter } = useEventEmitterContextContext()
   useEffect(() => {
     workflowStore.setState({ appName: appDetail.name })
   }, [appDetail.name, workflowStore])
@@ -92,18 +122,16 @@ export const useWorkflowInit = () => {
   const { data: fileUploadConfigResponse, isLoading: isFileUploadConfigLoading } =
     useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
-  const handleGetInitialWorkflowData = useCallback(async () => {
-    if (!appId) return
-    try {
-      const res = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+  const hydrateInitialWorkflowData = useCallback(
+    (draft: FetchAppWorkflowDraftResponse) => {
       const initialData = {
-        ...res,
+        ...draft,
         graph: {
-          ...getWorkflowDraftGraphForCanvas(res.graph, {
+          ...getWorkflowDraftGraphForCanvas(draft.graph, {
             localStartPlaceholderNodes: nodesTemplate,
           }),
           // Let the canvas fit the nodes when no saved viewport exists.
-          viewport: res.graph.viewport,
+          viewport: draft.graph.viewport,
         },
       }
 
@@ -126,79 +154,129 @@ export const useWorkflowInit = () => {
         isWorkflowDataLoaded: true,
       })
       setSyncWorkflowDraftHash(initialData.hash)
+      setLastAppliedReplacementId(initialData.last_replacement_id)
+      workflowStore.getState().advanceDraftReplacementEpoch()
+      setInitializationError(undefined)
       setIsLoading(false)
+    },
+    [
+      getWorkflowDraftGraphForCanvas,
+      nodesTemplate,
+      workflowStore,
+      setSyncWorkflowDraftHash,
+      setLastAppliedReplacementId,
+    ],
+  )
+
+  const handleGetInitialWorkflowData = useCallback(async () => {
+    if (!appId) return
+    const requestGeneration = ++requestGenerationRef.current
+    try {
+      const res = await fetchAppWorkflowDraft(appId)
+      if (requestGeneration !== requestGenerationRef.current) return
+      hydrateInitialWorkflowData(res)
     } catch (error: unknown) {
-      const responseError = error as {
-        bodyUsed?: boolean
-        json?: () => Promise<{ code?: string }>
+      if (requestGeneration !== requestGenerationRef.current) return
+      const draftNotFound = await isDraftWorkflowNotFoundError(error)
+      if (requestGeneration !== requestGenerationRef.current) return
+      if (!appDetail || !draftNotFound) {
+        setInitializationError(
+          error instanceof Error ? error : new Error('Failed to load the workflow draft.'),
+        )
+        return
       }
-      if (responseError.json && !responseError.bodyUsed && appDetail) {
-        responseError.json().then((err) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
-            const initialGraph = {
-              nodes: isAdvancedChat ? nodesTemplate : [],
-              edges: isAdvancedChat ? edgesTemplate : [],
-            }
-            workflowStore.setState({
-              notInitialWorkflow: true,
-              showOnboarding: false,
-              shouldAutoOpenStartNodeSelector: false,
-              hasSelectedStartNode: false,
-              hasShownOnboarding: !isAdvancedChat,
-            })
 
-            if (!appACLCapabilities.canEdit) {
-              const initialData = createLocalWorkflowDraft({
-                ...getWorkflowDraftGraphForCanvas(initialGraph, {
-                  localStartPlaceholderNodes: nodesTemplate,
-                }),
-                viewport: undefined,
-              })
-              setData(initialData)
-              workflowStore.setState({
-                envSecrets: {},
-                environmentVariables: [],
-                conversationVariables: [],
-                isWorkflowDataLoaded: true,
-              })
-              setSyncWorkflowDraftHash(initialData.hash)
-              setIsLoading(false)
-              return
-            }
+      const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+      const initialGraph = {
+        nodes: isAdvancedChat ? nodesTemplate : [],
+        edges: isAdvancedChat ? edgesTemplate : [],
+      }
+      workflowStore.setState({
+        notInitialWorkflow: true,
+        showOnboarding: false,
+        shouldAutoOpenStartNodeSelector: false,
+        hasSelectedStartNode: false,
+        hasShownOnboarding: !isAdvancedChat,
+      })
 
-            syncWorkflowDraft({
-              url: `/apps/${appId}/workflows/draft`,
-              params: {
-                graph: initialGraph,
-                features: {
-                  retriever_resource: { enabled: true },
-                },
-                conversation_variables: [],
-              },
-            }).then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash)
-              handleGetInitialWorkflowData()
-            })
-          }
+      if (!appACLCapabilities.canEdit) {
+        const initialData = createLocalWorkflowDraft({
+          ...getWorkflowDraftGraphForCanvas(initialGraph, {
+            localStartPlaceholderNodes: nodesTemplate,
+          }),
+          viewport: undefined,
         })
+        setData(initialData)
+        workflowStore.setState({
+          envSecrets: {},
+          environmentVariables: [],
+          conversationVariables: [],
+          isWorkflowDataLoaded: true,
+        })
+        setSyncWorkflowDraftHash(initialData.hash)
+        setLastAppliedReplacementId(initialData.last_replacement_id)
+        setIsLoading(false)
+        return
       }
+
+      syncWorkflowDraft({
+        url: `/apps/${appId}/workflows/draft`,
+        params: {
+          graph: initialGraph,
+          features: {
+            retriever_resource: { enabled: true },
+          },
+          conversation_variables: [],
+        },
+      })
+        .then((res) => {
+          if (requestGeneration !== requestGenerationRef.current) return
+          workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+          setSyncWorkflowDraftHash(res.hash)
+          void handleGetInitialWorkflowData()
+        })
+        .catch((error: unknown) => {
+          if (requestGeneration !== requestGenerationRef.current) return
+          if (error && typeof error === 'object' && 'status' in error && error.status === 409) {
+            workflowStore.setState({ notInitialWorkflow: false })
+            void handleGetInitialWorkflowData()
+            return
+          }
+          setInitializationError(
+            error instanceof Error ? error : new Error('Failed to create the workflow draft.'),
+          )
+        })
     }
   }, [
     appId,
     appACLCapabilities.canEdit,
     appDetail,
     getWorkflowDraftGraphForCanvas,
+    hydrateInitialWorkflowData,
     nodesTemplate,
     edgesTemplate,
     workflowStore,
     setSyncWorkflowDraftHash,
+    setLastAppliedReplacementId,
   ])
 
+  const loadInitialWorkflowData = useEffectEvent(handleGetInitialWorkflowData)
   useEffect(() => {
-    handleGetInitialWorkflowData()
+    const requestGeneration = requestGenerationRef
+    void loadInitialWorkflowData()
+    return () => {
+      requestGeneration.current++
+    }
   }, [])
+
+  eventEmitter?.useSubscription((event) => {
+    if (!isWorkflowDraftReplacedEvent(event)) return
+    if (event.payload.appId !== appId || canvasReadyRef.current) return
+
+    requestGenerationRef.current++
+    hydrateInitialWorkflowData(event.payload.draft)
+    setCanvasInitEpoch((epoch) => epoch + 1)
+  })
 
   const handleFetchPreloadData = useCallback(async () => {
     if (!appId) return
@@ -250,5 +328,7 @@ export const useWorkflowInit = () => {
     data,
     isLoading: isLoading || isFileUploadConfigLoading,
     fileUploadConfigResponse,
+    canvasInitEpoch,
+    initializationError,
   }
 }

@@ -2,10 +2,7 @@
 
 import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
-import type {
-  WorkflowDataUpdatePayload,
-  WorkflowDSLImportCommittedEvent,
-} from './workflow-data-update-event'
+import type { WorkflowDraftReplacedEvent } from './workflow-data-update-event'
 import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -16,21 +13,20 @@ import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { collaborationManager } from './collaboration/core/collaboration-manager'
-import { WORKFLOW_DSL_IMPORT_COMMITTED } from './constants'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
+import { createWorkflowDraftReplacedEvent } from './create-workflow-draft-replaced-event'
+import { useWorkflowDraftGraphForCanvas } from './hooks/use-workflow-draft-graph-for-canvas'
 import {
   getImportNotificationPayload,
   isImportCompleted,
-  normalizeWorkflowFeatures,
   validateDSLContent,
 } from './update-dsl-modal.helpers'
-import { initialEdges, initialNodes } from './utils'
 
 type UpdateDSLModalProps = {
   appId: string
@@ -42,12 +38,14 @@ type UpdateDSLModalProps = {
 
 type PreparedImport = {
   response: Import
-  workflowData?: WorkflowDataUpdatePayload
+  preparedEvent?: WorkflowDraftReplacedEvent
+  workflowReplacementToken?: number | null
   refreshError?: string
 }
 
 const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appMode)
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
   const { mutateAsync: requestImport } = useMutation(
@@ -67,25 +65,28 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const prepareImport = async (response: Import): Promise<PreparedImport> => {
     if (!isImportCompleted(response.status) || !response.app_id) return { response }
 
-    let workflowData: WorkflowDataUpdatePayload
+    const workflowReplacementToken = collaborationManager.beginWorkflowReplacement(response.app_id)
     try {
-      const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${response.app_id}/workflows/draft`)
-      const { nodes, edges, viewport } = graph
-      workflowData = {
-        nodes: initialNodes(nodes, edges),
-        edges: initialEdges(edges, nodes),
-        viewport,
-        features: normalizeWorkflowFeatures(features),
-        hash,
-        conversation_variables: conversation_variables || [],
-        environment_variables: environment_variables || [],
+      const draft = await fetchAppWorkflowDraft(response.app_id)
+      return {
+        response,
+        workflowReplacementToken,
+        preparedEvent: createWorkflowDraftReplacedEvent(
+          response.app_id,
+          draft,
+          getWorkflowDraftGraphForCanvas(draft.graph),
+          draft.last_replacement_id ?? undefined,
+          response.id,
+          workflowReplacementToken ?? undefined,
+        ),
       }
     } catch (error) {
-      return { response, refreshError: await getAppTransferErrorMessage(error) }
+      return {
+        response,
+        workflowReplacementToken,
+        refreshError: await getAppTransferErrorMessage(error),
+      }
     }
-
-    return { response, workflowData }
   }
 
   const dependencyMutation = useMutation({
@@ -106,7 +107,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
 
   const handleImportResponse = (result: PreparedImport | undefined) => {
     if (!result) return
-    const { response, workflowData, refreshError } = result
+    const { response, preparedEvent, refreshError, workflowReplacementToken } = result
     if (isImportCompleted(response.status)) {
       if (response.app_id !== appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
@@ -128,19 +129,25 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           : undefined,
       )
 
-      let applyError = refreshError
-      if (!applyError && workflowData) {
+      const isCurrentReplacement =
+        workflowReplacementToken === null ||
+        workflowReplacementToken === undefined ||
+        collaborationManager.isWorkflowReplacementCurrent(appId, workflowReplacementToken)
+      let applyError = isCurrentReplacement ? refreshError : undefined
+      if (!applyError && preparedEvent && isCurrentReplacement) {
         try {
-          eventEmitter?.emit({
-            type: WORKFLOW_DSL_IMPORT_COMMITTED,
-            payload: { appId, workflowData },
-          } satisfies WorkflowDSLImportCommittedEvent)
+          eventEmitter?.emit(preparedEvent)
+          if (
+            workflowReplacementToken !== null &&
+            workflowReplacementToken !== undefined &&
+            collaborationManager.isWorkflowReplacementCurrent(appId, workflowReplacementToken)
+          )
+            throw new Error('Workflow draft replacement listener did not apply the update.')
         } catch (error) {
           applyError = error instanceof Error ? error.message : String(error)
         }
       }
       if (applyError) {
-        collaborationManager.emitWorkflowUpdate(response.app_id)
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           { description: applyError },
@@ -150,7 +157,6 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         return
       }
 
-      collaborationManager.emitWorkflowUpdate(response.app_id)
       onImport?.()
       dependencyMutation.mutate(response.app_id, {
         onSuccess: ({ dependencies, error }) => {

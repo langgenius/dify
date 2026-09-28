@@ -4,7 +4,7 @@ import type { Features as FeaturesData } from '@/app/components/base/features/ty
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -28,7 +28,12 @@ import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
 
 const WorkflowAppWithAdditionalContext = () => {
-  const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
+  const canvasReadyRef = useRef(false)
+  const { data, isLoading, fileUploadConfigResponse, canvasInitEpoch, initializationError } =
+    useWorkflowInit(canvasReadyRef)
+  const handleDraftReplacementListenerReadyChange = useCallback((ready: boolean) => {
+    canvasReadyRef.current = ready
+  }, [])
   const workflowStore = useWorkflowStore()
   useEffect(
     () => () => {
@@ -119,6 +124,8 @@ const WorkflowAppWithAdditionalContext = () => {
     })
   }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
+  if (initializationError) throw initializationError
+
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
       <div className="relative flex size-full items-center justify-center">
@@ -133,9 +140,15 @@ const WorkflowAppWithAdditionalContext = () => {
   )
 
   return (
-    <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
+    <WorkflowWithDefaultContext key={canvasInitEpoch} edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
-        <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
+        <WorkflowAppMain
+          nodes={nodesData}
+          edges={edgesData}
+          viewport={data.graph.viewport}
+          initialReplacementId={data.last_replacement_id}
+          onDraftReplacementListenerReadyChange={handleDraftReplacementListenerReadyChange}
+        />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )

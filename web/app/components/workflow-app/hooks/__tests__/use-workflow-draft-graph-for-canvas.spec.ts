@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
+import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
 
 let generateNewNodeCalls: Array<Record<string, unknown>> = []
 

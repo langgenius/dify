@@ -26,7 +26,7 @@ vi.mock('@/service/base', async (importOriginal) => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
+  fetchAppWorkflowDraft: (appId: string) => mockFetchWorkflowDraft(appId),
   syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
 }))
 
@@ -226,7 +226,7 @@ describe('applyToCurrentApp', () => {
     const graph = makeGraph()
     await applyToCurrentApp({ appId: 'app-42', graph })
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('apps/app-42/workflows/draft')
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-42')
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/app-42/workflows/draft',
       params: expect.objectContaining({

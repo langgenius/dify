@@ -126,7 +126,7 @@ vi.mock('@/service/workflow', () => ({
     environmentVariables: EnvironmentVariable[]
     deletedEnvironmentVariableIds: string[]
   }) => mockUpdateEnvironmentVariables(payload),
-  fetchWorkflowDraft: () => mockFetchWorkflowDraft(),
+  fetchAppWorkflowDraft: () => mockFetchWorkflowDraft(),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({

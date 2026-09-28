@@ -13,6 +13,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
+import { isEditableConversationVariable } from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal.helpers'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { updateConversationVariables } from '@/service/workflow'
@@ -60,6 +61,7 @@ const ChatVariablePanel = () => {
   )
 
   const handleEdit = (chatVar: ConversationVariable) => {
+    if (!isEditableConversationVariable(chatVar)) return
     setCurrentVar(chatVar)
     setShowVariableModal(true)
   }

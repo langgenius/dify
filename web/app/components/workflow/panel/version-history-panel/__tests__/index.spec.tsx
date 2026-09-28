@@ -15,6 +15,7 @@ const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
+const mockRestoreAppWorkflow = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
@@ -23,7 +24,6 @@ const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
-const mockEmitWorkflowUpdate = vi.fn()
 const mockFetchNextPage = vi.fn()
 const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
@@ -88,6 +88,7 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
+  useRestoreAppWorkflow: () => ({ mutateAsync: mockRestoreAppWorkflow }),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
   useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
@@ -151,7 +152,6 @@ vi.mock('../../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitRestoreIntent: mockEmitRestoreIntent,
     emitRestoreComplete: mockEmitRestoreComplete,
-    emitWorkflowUpdate: mockEmitWorkflowUpdate,
   },
 }))
 
@@ -278,6 +278,7 @@ vi.mock('../version-history-item', () => ({
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRestoreAppWorkflow.mockResolvedValue({ replacement_id: 'replacement-C' })
     mockRestoreWorkflow.mockResolvedValue(undefined)
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
@@ -373,9 +374,10 @@ describe('VersionHistoryPanel', () => {
           id: 'published-version-id',
         }),
       )
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreAppWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+      })
+      expect(mockRestoreWorkflow).not.toHaveBeenCalled()
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ backupDraft: undefined })
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
@@ -471,15 +473,15 @@ describe('VersionHistoryPanel', () => {
     )
 
     vi.clearAllMocks()
-    mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
+    mockRestoreAppWorkflow.mockRejectedValueOnce(new Error('restore failed'))
 
     fireEvent.click(screen.getByText('restore-published-version-id'))
     fireEvent.click(screen.getByText('confirm restore'))
 
     await waitFor(() => {
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreAppWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+      })
     })
 
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })
