@@ -480,8 +480,8 @@ catalogs:
       specifier: 2.4.0
       version: 2.4.0
     eslint-markdown:
-      specifier: 0.17.1
-      version: 0.17.1
+      specifier: 0.18.1
+      version: 0.18.1
     eslint-plugin-antfu:
       specifier: 3.2.3
       version: 3.2.3
@@ -522,8 +522,8 @@ catalogs:
       specifier: 1.5.0
       version: 1.5.0
     eslint-plugin-unicorn:
-      specifier: 75.0.0
-      version: 75.0.0
+      specifier: 76.0.0
+      version: 76.0.0
     eslint-plugin-yml:
       specifier: 3.8.1
       version: 3.8.1
@@ -849,7 +849,7 @@ importers:
         version: 2.4.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-markdown:
         specifier: 'catalog:'
-        version: 0.17.1(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
+        version: 0.18.1(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-plugin-antfu:
         specifier: 'catalog:'
         version: 3.2.3(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
@@ -891,7 +891,7 @@ importers:
         version: 1.5.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint-plugin-unicorn:
         specifier: 'catalog:'
-        version: 75.0.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
+        version: 76.0.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-plugin-yml:
         specifier: 'catalog:'
         version: 3.8.1(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
@@ -6677,8 +6677,8 @@ packages:
       '@eslint/json':
         optional: true
 
-  eslint-markdown@0.17.1:
-    resolution: {integrity: sha512-2VtMU6dHMOyTLuAKUIaBss79kEXKaiZloigMe4KXQI+a95QtaA2qdOqVDalEenGucZzYkhEcQOsdKH6amY+dcA==}
+  eslint-markdown@0.18.1:
+    resolution: {integrity: sha512-dKQSmO5R2u3Wd+9YwtBK1O9Kqp8meZ2zCuPVXoZxUpSvvJH0ugx8rVkYPnvJ5FFaRKmVu77BMAVZX+H5Buw/Aw==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24.0.0}
     peerDependencies:
       '@eslint/markdown': ^8.0.3
@@ -6855,8 +6855,8 @@ packages:
     peerDependencies:
       eslint: '>=9.38.0'
 
-  eslint-plugin-unicorn@75.0.0:
-    resolution: {integrity: sha512-72I7eSn+/z5CpgValFBl9mp2JE5UPD+nUUyB/VIGUMF1rCP1i37mA05zfIAVIU312A+qCZ38T8tSZr3oaMv4Mw==}
+  eslint-plugin-unicorn@76.0.0:
+    resolution: {integrity: sha512-3ywJrCMHKYhcBP5yFzGaOOX3dY7+iR3hvpuoS/0EnhRFgVWLejly+t4fOdJvWQxJdHZl1C+QBW7hybXPDld4Pw==}
     engines: {node: '>=22'}
     peerDependencies:
       eslint: '>=10.4'
@@ -14240,7 +14240,7 @@ snapshots:
       esquery: 1.7.0
       jsonc-eslint-parser: 3.3.0
 
-  eslint-markdown@0.17.1(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0)):
+  eslint-markdown@0.18.1(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0)):
     dependencies:
       '@eslint/markdown': 8.0.3(supports-color@11.0.0)
       micromark-util-normalize-identifier: 2.0.1
@@ -14526,7 +14526,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-unicorn@75.0.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0)):
+  eslint-plugin-unicorn@76.0.0(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0)):
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@10.11.0(jiti@2.7.0)(supports-color@11.0.0))
       '@eslint/css-tree': 4.0.5
@@ -18152,7 +18152,7 @@ time:
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
   es-toolkit@1.52.0: '2026-08-28T07:22:17.687Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
-  eslint-markdown@0.17.1: '2026-09-17T11:48:23.776Z'
+  eslint-markdown@0.18.1: '2026-09-27T08:52:54.851Z'
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
   eslint-plugin-command@4.0.0: '2026-07-31T04:38:09.766Z'
@@ -18166,7 +18166,7 @@ time:
   eslint-plugin-regexp@3.3.1: '2026-09-20T04:28:02.918Z'
   eslint-plugin-storybook@10.6.0: '2026-09-02T14:01:21.299Z'
   eslint-plugin-toml@1.5.0: '2026-07-25T01:46:13.957Z'
-  eslint-plugin-unicorn@75.0.0: '2026-09-16T06:50:59.617Z'
+  eslint-plugin-unicorn@76.0.0: '2026-09-19T11:29:51.054Z'
   eslint-plugin-yml@3.8.1: '2026-08-05T03:50:22.441Z'
   eslint@10.11.0: '2026-09-18T20:15:36.485Z'
   eventsource-parser@4.1.1: '2026-09-15T18:30:29.195Z'
