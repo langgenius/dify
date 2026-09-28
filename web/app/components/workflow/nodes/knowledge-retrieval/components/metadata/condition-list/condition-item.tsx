@@ -183,7 +183,12 @@ const ConditionItem = ({
                 onValueMethodChange={handleValueMethodChange}
                 nodesOutputVars={availableNumberVars}
                 availableNodes={availableNumberNodesWithParent}
-                value={valueAndValueMethod.value}
+                value={
+                  typeof valueAndValueMethod.value === 'string' ||
+                  typeof valueAndValueMethod.value === 'number'
+                    ? valueAndValueMethod.value
+                    : undefined
+                }
                 onChange={handleValueChange}
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonNumberVars}
