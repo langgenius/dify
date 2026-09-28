@@ -1,9 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Sidebar, { AppCategories } from '../sidebar'
 
-vi.mock('@remixicon/react', () => ({
-  RiStickyNoteAddLine: () => <span>sticky</span>,
-}))
 describe('Sidebar', () => {
   it('renders recommended and custom categories', () => {
     render(<Sidebar current={AppCategories.RECOMMENDED} categories={['Cat A', 'Cat B']} />)
@@ -15,15 +12,7 @@ describe('Sidebar', () => {
 
   it('notifies callbacks when items are clicked', () => {
     const onClick = vi.fn()
-    const onCreate = vi.fn()
-    render(
-      <Sidebar
-        current="Cat A"
-        categories={['Cat A']}
-        onClick={onClick}
-        onCreateFromBlank={onCreate}
-      />,
-    )
+    render(<Sidebar current="Cat A" categories={['Cat A']} onClick={onClick} />)
 
     fireEvent.click(screen.getByText('app.newAppFromTemplate.sidebar.Recommended'))
     expect(onClick).toHaveBeenCalledWith(AppCategories.RECOMMENDED)
@@ -31,7 +20,8 @@ describe('Sidebar', () => {
     fireEvent.click(screen.getByText('Cat A'))
     expect(onClick).toHaveBeenCalledWith('Cat A')
 
-    fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-    expect(onCreate).toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'app.newApp.startFromBlank' }),
+    ).not.toBeInTheDocument()
   })
 })

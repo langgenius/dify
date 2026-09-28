@@ -1,6 +1,7 @@
 'use client'
 
 import type { CreateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import type { StarterAppMode } from './chat-input-starter'
 import type { CreateAppTypeDropdownProps } from './create-app-type-dropdown'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -25,9 +26,16 @@ import { CreateAppTypeDropdown } from './create-app-type-dropdown'
 
 const ChatInputStarter = dynamic(() => import('./chat-input-starter'), { ssr: false })
 
-export function CreateAppEntry(
-  props: Omit<CreateAppTypeDropdownProps, 'onSelectType' | 'disabled' | 'loading'>,
-) {
+type CreateAppCreationFlowProps = {
+  children: (controls: {
+    onSelectType: (mode: CreateAppPayload['mode']) => void
+    disabled: boolean
+    loading: boolean
+  }) => ReactNode
+  onCreateTemplate?: () => void
+}
+
+export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppCreationFlowProps) {
   const { t } = useTranslation(['app', 'billing', 'common'])
   const { push } = useRouter()
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
@@ -95,26 +103,23 @@ export function CreateAppEntry(
     }
   }
 
+  const onSelectType = (mode: CreateAppPayload['mode']) => {
+    if (unavailable || creatingRef.current) return
+    setError('')
+    if (isAppsFull) {
+      setShowQuota(true)
+      return
+    }
+    if (features.dify_builder_enabled && (mode === 'workflow' || mode === 'advanced-chat')) {
+      setStarter({ mode, open: true })
+      return
+    }
+    void create(mode)
+  }
+
   return (
     <>
-      <CreateAppTypeDropdown
-        {...props}
-        disabled={unavailable}
-        loading={isCreating}
-        onSelectType={(mode) => {
-          if (unavailable || creatingRef.current) return
-          setError('')
-          if (isAppsFull) {
-            setShowQuota(true)
-            return
-          }
-          if (features.dify_builder_enabled && (mode === 'workflow' || mode === 'advanced-chat')) {
-            setStarter({ mode, open: true })
-            return
-          }
-          void create(mode)
-        }}
-      />
+      {children({ onSelectType, disabled: unavailable, loading: isCreating })}
       {starter && (
         <ChatInputStarter
           show={starter.open && !!features?.dify_builder_enabled && canCreateApp}
@@ -127,10 +132,10 @@ export function CreateAppEntry(
             void create(starter.mode, prompt)
           }}
           onCreateTemplate={
-            props.onCreateTemplate &&
+            onCreateTemplate &&
             (() => {
               setStarter((current) => current && { ...current, open: false })
-              props.onCreateTemplate?.()
+              onCreateTemplate()
             })
           }
           isCreating={isCreating}
@@ -159,5 +164,22 @@ export function CreateAppEntry(
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export function CreateAppEntry(
+  props: Omit<CreateAppTypeDropdownProps, 'onSelectType' | 'disabled' | 'loading'>,
+) {
+  return (
+    <CreateAppCreationFlow onCreateTemplate={props.onCreateTemplate}>
+      {({ onSelectType, disabled, loading }) => (
+        <CreateAppTypeDropdown
+          {...props}
+          disabled={disabled}
+          loading={loading}
+          onSelectType={onSelectType}
+        />
+      )}
+    </CreateAppCreationFlow>
   )
 }

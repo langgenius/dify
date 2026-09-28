@@ -331,47 +331,13 @@ vi.mock('next/dynamic', async (importOriginal) => {
           )
         }
       }
-      if (fnString.includes('create-app-modal')) {
-        return function MockCreateAppModal({
-          show,
-          onClose,
-          onCreateFromTemplate,
-        }: {
-          show: boolean
-          onClose: () => void
-          onCreateFromTemplate: () => void
-        }) {
-          if (!show) return null
-          return React.createElement(
-            'div',
-            { 'data-testid': 'create-app-modal', role: 'dialog', 'aria-label': 'Create app' },
-            React.createElement(
-              'button',
-              { onClick: onClose, 'data-testid': 'close-create-modal' },
-              'Close',
-            ),
-            React.createElement(
-              'button',
-              { onClick: onClose, 'data-testid': 'success-create-modal' },
-              'Success',
-            ),
-            React.createElement(
-              'button',
-              { onClick: onCreateFromTemplate, 'data-testid': 'to-template-modal' },
-              'To Template',
-            ),
-          )
-        }
-      }
       if (fnString.includes('create-app-dialog')) {
         return function MockCreateAppTemplateDialog({
           show,
           onClose,
-          onCreateFromBlank,
         }: {
           show: boolean
           onClose: () => void
-          onCreateFromBlank: () => void
         }) {
           if (!show) return null
           return React.createElement(
@@ -386,11 +352,6 @@ vi.mock('next/dynamic', async (importOriginal) => {
               'button',
               { onClick: onClose, 'data-testid': 'success-template-dialog' },
               'Success',
-            ),
-            React.createElement(
-              'button',
-              { onClick: onCreateFromBlank, 'data-testid': 'to-blank-modal' },
-              'To Blank',
             ),
           )
         }
@@ -910,18 +871,25 @@ describe('List', () => {
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }),
+        screen.getByRole('button', { name: /app\.newApp\.menu\.startFromTemplate/ }),
       ).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
       )
-      expect(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /app\.types\.workflow/ })).toHaveAttribute(
         'data-step-by-step-tour-target',
-        STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyWorkflow,
       )
-      expect(screen.getByRole('button', { name: /app\.importApp/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /app\.firstEmpty\.importTitle/ })).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
+      )
+      expect(
+        screen.queryByRole('button', { name: /app\.newApp\.startFromBlank/ }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.newApp.menu.moreTypes' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
       )
       expect(
         screen
@@ -1022,19 +990,63 @@ describe('List', () => {
       expect(screen.getByTestId('empty-state')).toBeInTheDocument()
     })
 
-    it('should open create flows from first empty state actions', () => {
+    it('should open template and import flows from first empty state actions', async () => {
+      const user = userEvent.setup()
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+      await user.click(screen.getByRole('button', { name: /app\.newApp\.menu\.startFromTemplate/ }))
       expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
+      await user.click(screen.getByRole('button', { name: /app\.firstEmpty\.importTitle/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it.each([
+      ['app.types.workflow', 'workflow'],
+      ['app.types.advanced', 'advanced-chat'],
+      ['app.types.agent', 'agent-chat'],
+      ['app.newApp.completeApp', 'completion'],
+      ['app.types.chatbot', 'chat'],
+    ] as const)('creates %s through the same type flow as the header', async (label, mode) => {
+      const user = userEvent.setup()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      renderList()
+
+      if (mode === 'agent-chat' || mode === 'completion' || mode === 'chat') {
+        const moreTypes = screen.getByRole('button', { name: 'app.newApp.menu.moreTypes' })
+        await user.click(moreTypes)
+        expect(moreTypes).toHaveAttribute('aria-expanded', 'true')
+      }
+
+      await user.click(
+        screen.getByRole('button', { name: new RegExp(label.replaceAll('.', '\\.')) }),
+      )
+      await waitFor(() =>
+        expect(mockCreateApp).toHaveBeenCalledWith(
+          { body: expect.objectContaining({ mode }) },
+          expect.anything(),
+        ),
+      )
+      expect(mockCreateApp).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+      ['app.types.workflow', 'app.newApp.starter.workflowTitle'],
+      ['app.types.advanced', 'app.newApp.starter.chatflowTitle'],
+    ] as const)('opens the Builder starter for %s when enabled', async (label, title) => {
+      const user = userEvent.setup()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockAppBuilderEnabled = true
+      renderList()
+
+      await user.click(
+        screen.getByRole('button', { name: new RegExp(label.replaceAll('.', '\\.')) }),
+      )
+
+      expect(await screen.findByRole('dialog', { name: title })).toBeInTheDocument()
+      expect(mockCreateApp).not.toHaveBeenCalled()
     })
 
     it('should forward Learn Dify template interactions', async () => {

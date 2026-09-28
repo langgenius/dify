@@ -323,9 +323,6 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.guides.knowledge.withDatasets.manage.title':
         'Open and manage each knowledge base',
       'onboarding.stepByStepTour.guides.primaryActionLabel': 'Got it',
-      'onboarding.stepByStepTour.guides.studio.empty.blank.description':
-        'Start from an empty canvas when you already know what to build.',
-      'onboarding.stepByStepTour.guides.studio.empty.blank.title': 'Create from blank',
       'onboarding.stepByStepTour.guides.studio.empty.dsl.description':
         'Got a Dify DSL file? Import it here to restore an app you have shared or backed up.',
       'onboarding.stepByStepTour.guides.studio.empty.dsl.title': 'Import a DSL file',
@@ -335,6 +332,9 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.guides.studio.empty.template.description':
         'Browse Dify templates and pick one that matches what you want to build.',
       'onboarding.stepByStepTour.guides.studio.empty.template.title': 'Create from a template',
+      'onboarding.stepByStepTour.guides.studio.empty.workflow.description':
+        'Start a workflow that runs once and finishes.',
+      'onboarding.stepByStepTour.guides.studio.empty.workflow.title': 'Create a workflow',
       'onboarding.stepByStepTour.guides.studio.noCreate.empty.description':
         'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
       'onboarding.stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet',
@@ -1459,14 +1459,14 @@ describe('StepByStepTourMount', () => {
     })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate, 120),
-      createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank, 210),
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL, 300),
+      createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyWorkflow, 390),
     ]
 
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Import a DSL file' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Create a workflow' })).toBeInTheDocument()
       expect(screen.getByText('3 of 3')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))

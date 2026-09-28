@@ -32,10 +32,9 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
 type AppsProps = {
   onClose: () => void
-  onCreateFromBlank?: () => void
 }
 
-const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
+const Apps = ({ onClose }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -232,7 +231,6 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
               onClick={(category) => {
                 setCurrCategory(category)
               }}
-              onCreateFromBlank={onCreateFromBlank}
             />
           </div>
         )}

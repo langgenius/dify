@@ -3,7 +3,6 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 import { CreateAppEntry } from '@/app/components/app/create-app-entry'
-import CreateAppModal from '@/app/components/app/create-app-modal'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   builderDefaultModel,
@@ -104,7 +103,7 @@ vi.mock(
 
 const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: mocks.updateUrl })
 
-function CreationFlow({ legacy = false }: { legacy?: boolean }) {
+function CreationFlow() {
   const [created, setCreated] = useState(false)
   useEffect(() => {
     mocks.push.mockImplementation(() => setCreated(true))
@@ -126,8 +125,6 @@ function CreationFlow({ legacy = false }: { legacy?: boolean }) {
           <h1>New app editor</h1>
           <DifyBuilderComposer />
         </DifyBuilderProvider>
-      ) : legacy ? (
-        <CreateAppModal show onClose={() => setCreated(true)} />
       ) : (
         <CreateAppEntry />
       )}
@@ -154,44 +151,6 @@ describe('App Builder creation flow', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it('hands the submitted prompt from the creation dialog to the new app and opens its Builder panel', async () => {
-    const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationFlow legacy />, {
-      accountProfile: { id: 'user-1' },
-      features: { dify_builder_enabled: true },
-      workspacePermissionKeys: ['app.create_and_management'],
-      queryClient: createBuilderQueryClient(),
-    })
-
-    await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
-      '  Build an expense assistant  ',
-    )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
-
-    expect(await screen.findByRole('heading', { name: 'New app editor' })).toBeInTheDocument()
-    await waitFor(() =>
-      expect(mocks.startBuild).toHaveBeenCalledWith(
-        'created-app',
-        'Build an expense assistant',
-        builderModel,
-      ),
-    )
-    expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow')
-    expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(mocks.useSessionController).toHaveBeenCalledWith(mocks.syncDraft, {
-      ...mocks.runEvents,
-      onCanvasEvent: expect.any(Function),
-      reset: expect.any(Function),
-    })
-    expect(mocks.createApp).toHaveBeenCalledOnce()
-    expect(mocks.createApp).toHaveBeenCalledWith(
-      { body: expect.objectContaining({ name: 'app.newApp.defaultName', description: '' }) },
-      expect.anything(),
-    )
-    expect(mocks.startBuild).toHaveBeenCalledOnce()
-  })
-
   it('keeps the creation prompt when there is no default model and does not start when models later change', async () => {
     const user = userEvent.setup()
     const queryClient = createBuilderQueryClient({ defaultModel: null })
@@ -216,7 +175,9 @@ describe('App Builder creation flow', () => {
     })
     await waitFor(() => expect(composer).toHaveValue('Build an expense assistant'))
     expect(composer).toBeEnabled()
-    expect(composer).toHaveAccessibleDescription('workflow.workflowGenerator.modelRequired')
+    expect(composer).toHaveAccessibleDescription(
+      'workflowGenerator.workflowGenerator.modelRequired',
+    )
     expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
     await act(async () =>
       queryClient.setQueryData(builderModelListQueryKey, { data: builderModelList }),
@@ -224,7 +185,7 @@ describe('App Builder creation flow', () => {
     expect(mocks.startBuild).not.toHaveBeenCalled()
     expect(mocks.createApp).toHaveBeenCalledOnce()
 
-    await user.click(screen.getByRole('button', { name: 'common.modelProvider.model' }))
+    await user.click(screen.getByRole('button', { name: 'modelProvider.modelProvider.model' }))
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     await user.click(await screen.findByRole('button', { name: /gpt-4.1/ }))
     await user.keyboard('{Escape}')

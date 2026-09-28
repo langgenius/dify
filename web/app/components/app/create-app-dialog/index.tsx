@@ -6,10 +6,9 @@ import AppList from './app-list'
 type CreateAppDialogProps = {
   show: boolean
   onClose: () => void
-  onCreateFromBlank?: () => void
 }
 
-const CreateAppTemplateDialog = ({ show, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
+const CreateAppTemplateDialog = ({ show, onClose }: CreateAppDialogProps) => {
   const { t } = useTranslation(['app'])
 
   return (
@@ -18,7 +17,7 @@ const CreateAppTemplateDialog = ({ show, onClose, onCreateFromBlank }: CreateApp
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}
     >
-      <AppList onCreateFromBlank={onCreateFromBlank} onClose={onClose} />
+      <AppList onClose={onClose} />
     </CreateAppDialogShell>
   )
 }
