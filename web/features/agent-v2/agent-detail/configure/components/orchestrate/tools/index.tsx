@@ -542,8 +542,7 @@ export function AgentTools() {
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly ? (
             <AddToolMenu
@@ -626,8 +625,7 @@ export function AgentTemplateTools() {
       label={t(($) => $['agentDetail.configure.tools.label'])}
       labelId={labelId}
       tip={<AgentConfigureTipContent type="tools" />}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="flex flex-col gap-1 pb-4"
+      panelContentClassName="flex flex-col gap-1"
     >
       {displayTools.length === 0 ? (
         <ConfigureSectionEmpty

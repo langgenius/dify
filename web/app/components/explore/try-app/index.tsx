@@ -191,12 +191,7 @@ function TryApp({
                     </div>
                   )}
                   {appDetail && !hasLoadError && (
-                    <div
-                      className={cn(
-                        'size-full opacity-100 transition-opacity duration-150 motion-reduce:transition-none starting:opacity-0',
-                        hasAgentPreview && 'max-lg:h-auto',
-                      )}
-                    >
+                    <div className={cn('size-full', hasAgentPreview && 'max-lg:h-auto')}>
                       <Suspense
                         fallback={
                           <div className="flex h-full items-center justify-center">

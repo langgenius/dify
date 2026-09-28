@@ -41,7 +41,7 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
     (providerUnavailable && providerQuery.isError)
 
   return (
-    <Fieldset className="grid gap-0 pb-4">
+    <Fieldset className="grid gap-1 py-3">
       <FieldsetLegend className="mb-0 w-fit py-1 system-sm-semibold-uppercase! text-text-secondary">
         {t(($) => $['agentDetail.configure.model.label'])}
       </FieldsetLegend>

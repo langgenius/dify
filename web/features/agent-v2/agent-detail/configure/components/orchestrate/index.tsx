@@ -160,7 +160,7 @@ export function AgentOrchestratePanel({
               role="region"
             >
               <ScrollAreaContent className="flex min-h-full flex-col" style={{ minWidth: 0 }}>
-                <div className="flex-1 px-4 py-3">
+                <div className="flex-1 px-4">
                   <AgentConfigApiContextProvider value={configApiContext}>
                     <AgentOrchestrateAddActionsProvider>
                       <AgentBuildDraftChangedKeysProvider

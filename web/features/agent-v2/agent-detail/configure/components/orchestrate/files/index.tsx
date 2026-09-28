@@ -72,6 +72,7 @@ function AgentFileItem({
   file,
   files,
   apiContext,
+  canDownload,
   onRemove,
   selected,
 }: {
@@ -80,6 +81,7 @@ function AgentFileItem({
   file: AgentFileNode
   files: AgentFileNode[]
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
@@ -280,6 +282,7 @@ function AgentFileItem({
     },
     [downloadFile],
   )
+  const onDownloadFile = canDownload ? downloadFileAction : undefined
   const handleDownload = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       if (file.isMissing) return
@@ -340,7 +343,7 @@ function AgentFileItem({
               isImage: isImagePreviewFile,
               isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
-            onDownloadFile: () => downloadFileAction(selectedPreviewFile),
+            onDownloadFile: onDownloadFile ? () => onDownloadFile(selectedPreviewFile) : undefined,
             onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
             sections: [],
@@ -359,7 +362,7 @@ function AgentFileItem({
           file.isMissing ? 'right-7' : 'right-1',
         )}
       >
-        {!file.isMissing && (
+        {!file.isMissing && onDownloadFile && (
           <button
             type="button"
             aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
@@ -533,8 +536,6 @@ export function AgentFiles() {
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="pb-4"
         actions={
           !readOnly ? (
             <ConfigureSectionAddButton
@@ -565,6 +566,7 @@ export function AgentFiles() {
                   file={file}
                   files={previewFiles}
                   apiContext={apiContext}
+                  canDownload
                   selected={selected}
                   onRemove={removeFile}
                 >
@@ -600,8 +602,6 @@ export function AgentTemplateFiles() {
       label={t(($) => $['agentDetail.configure.files.label'])}
       labelId={labelId}
       tip={<AgentConfigureTipContent type="files" />}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="pb-4"
     >
       {visibleFiles.length === 0 ? (
         <ConfigureSectionEmpty
@@ -620,6 +620,7 @@ export function AgentTemplateFiles() {
               file={file}
               files={previewFiles}
               apiContext={apiContext}
+              canDownload={false}
               selected={selected}
               onRemove={noop}
             >
