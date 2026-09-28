@@ -20,7 +20,7 @@ import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
-import { AgentSkills } from '../index'
+import { AgentSkills, AgentTemplateSkills } from '../index'
 
 type ConfigSkillInspectQueryOptionsInput = {
   input: {
@@ -209,6 +209,24 @@ vi.mock('@/service/console', async (importOriginal) => ({
         },
       },
     },
+    trialApps: {
+      byAppId: {
+        agent: {
+          config: {
+            skills: {
+              byName: {
+                download: { get: { queryOptions: mocks.skillDownloadQueryOptions } },
+                inspect: { get: { queryOptions: mocks.inspectQueryOptions } },
+                files: {
+                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
+                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     workspaces: {
       current: {
         agents: {
@@ -311,11 +329,13 @@ function renderAgentSkills({
   },
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+  template = false,
   viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
+  template?: boolean
   viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
@@ -335,7 +355,7 @@ function renderAgentSkills({
             <AgentOrchestrateViewingVersionContext value={viewingVersion}>
               <AgentOrchestrateAddActionsProvider>
                 <AgentOrchestrateReadOnlyContext value={readOnly}>
-                  <AgentSkills />
+                  {template ? <AgentTemplateSkills /> : <AgentSkills />}
                   <ConfigSnapshotProbe />
                   <PromptSkillAddProbe />
                 </AgentOrchestrateReadOnlyContext>
@@ -1597,6 +1617,35 @@ describe('AgentSkills', () => {
 
     expect(screen.getByText('common.operation.download')).toBeInTheDocument()
     expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+  })
+
+  it('should preview template skill files without offering download actions', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      apiContext: { agentId: 'agent-1', trialAppId: 'trial-1' },
+      readOnly: true,
+      template: true,
+    })
+
+    expect(
+      screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.moreActions/ }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Tender Analyzer' }))
+    expect(await screen.findByText('# Skill')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common\.operation\.download/ }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('models'))
+    await user.click(screen.getByRole('button', { name: 'model.bin' }))
+    expect(
+      await screen.findByText(/agentDetail\.configure\.files\.preview\.unsupported/),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'common.operation.download' }),
+    ).not.toBeInTheDocument()
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 
   it('should download a whole workflow skill package with node_id', async () => {

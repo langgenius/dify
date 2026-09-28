@@ -137,6 +137,10 @@ class AppTransfers(Protocol):
 
     def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage: ...
 
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
+
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
+
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult: ...
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str: ...
@@ -203,6 +207,30 @@ class ConsoleAppService:
     def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
         if source is not None:
             return self._import_package(context, params, source)
+        if params.mode == "template":
+            if (
+                params.template_id is None
+                or params.version_id is None
+                or params.app_id
+                or any(value is not None for value in (params.package_url, params.yaml_content, params.yaml_url))
+            ):
+                raise InvalidRosterAgentPackageError(
+                    "template mode requires template_id and version_id without other sources"
+                )
+            self._access.require_import(context, "agent")
+            return self._import_agent_result(self._transfers.import_agent_template(context, params))
+        if params.mode == "ifpkg-url":
+            if (
+                not params.package_url
+                or params.app_id
+                or params.yaml_content is not None
+                or params.yaml_url is not None
+            ):
+                raise InvalidRosterAgentPackageError(
+                    "ifpkg-url requires package_url and does not accept YAML or app_id"
+                )
+            self._access.require_import(context, "agent")
+            return self._import_agent_result(self._transfers.import_agent_package_url(context, params))
         if params.mode == "yaml-url" and params.yaml_url:
             self._access.require_import(context, "url")
             with self._transfers.download_import(params.yaml_url) as downloaded:
@@ -225,6 +253,9 @@ class ConsoleAppService:
         if params.app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         result = self._transfers.import_agent_package(context, source)
+        return self._import_agent_result(result)
+
+    def _import_agent_result(self, result: ImportedAppPackage) -> Import:
         return Import(
             id=str(uuid4()),
             status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,

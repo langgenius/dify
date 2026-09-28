@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Не вдалося оновити навички робочого простору.",
   "agentDetail.configure.skills.workspaceSelector.search": "Пошук навичок...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Перейти в режим попереднього перегляду?",
+  "agentDetail.configure.templatePreview.agentUI": "Інтерфейс агента",
   "agentDetail.configure.title": "Налаштувати",
   "agentDetail.configure.tools.add": "Додати інструмент",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Для розробників",

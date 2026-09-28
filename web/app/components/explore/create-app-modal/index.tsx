@@ -41,6 +41,7 @@ export type CreateAppModalProps = {
   max_active_requests?: number | null
   onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
+  confirmLoading?: boolean
   onHide: () => void
 }
 
@@ -60,6 +61,7 @@ const CreateAppModal = ({
   max_active_requests,
   onConfirm,
   confirmDisabled,
+  confirmLoading,
   onHide,
 }: CreateAppModalProps) => {
   const nameInputId = React.useId()
@@ -121,7 +123,12 @@ const CreateAppModal = ({
     appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
-    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
+    if (
+      confirmLoading ||
+      confirmDisabled ||
+      (!isEditModal && (isAppQuotaUnavailable || isAppsFull))
+    )
+      return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -144,6 +151,7 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmLoading,
     confirmDisabled,
     isEditModal,
     isAppQuotaUnavailable,
@@ -173,6 +181,7 @@ const CreateAppModal = ({
             if (
               !show ||
               submitDisabled ||
+              confirmLoading ||
               showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
@@ -310,6 +319,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
+              loading={confirmLoading}
               disabled={submitDisabled}
               className="ml-2 w-24"
               variant="primary"
