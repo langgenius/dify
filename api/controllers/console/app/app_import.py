@@ -1,19 +1,16 @@
 from http import HTTPStatus
-from typing import BinaryIO, Literal, cast
+from typing import BinaryIO, cast
 
 from flask import request
 from flask_restx import Resource
-from pydantic import Field
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
-from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_application_services import application_services
-from fields.base import ResponseModel
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.agent.errors import InvalidRosterAgentPackageError
@@ -28,16 +25,8 @@ class AppImportPayload(AppImportParams):
     pass
 
 
-class RosterAgentPackageConflictResponse(ResponseModel):
-    code: str
-    message: str
-    status: Literal[HTTPStatus.CONFLICT] = HTTPStatus.CONFLICT
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
-
-
 register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
-register_response_schema_models(console_ns, RosterAgentPackageConflictResponse)
 
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
@@ -77,12 +66,8 @@ class AppImportApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Import completed", console_ns.models[Import.__name__])
     @console_ns.response(HTTPStatus.ACCEPTED, "Import pending confirmation", console_ns.models[Import.__name__])
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Import failed", console_ns.models[Import.__name__])
-    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient import or plugin installation permissions")
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "Agent name conflict or missing plugins",
-        console_ns.models[RosterAgentPackageConflictResponse.__name__],
-    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient import permissions")
+    @console_ns.response(HTTPStatus.CONFLICT, "Agent name conflict")
     @console_ns.response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Roster Agent package exceeds the size limit")
     @console_account_admission(allowed_roles=_EDIT_ROLES)
     def post(self, context: RequestContext):

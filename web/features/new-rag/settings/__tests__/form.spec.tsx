@@ -232,18 +232,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   },
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({
+vi.mock('@/app/components/base/icon-picker', () => ({
+  IconPickerDialog: ({
     open,
-    onSelect,
+    onConfirm,
   }: {
     open: boolean
-    onSelect?: (selection: { background: string; icon: string; type: 'emoji' }) => void
+    onConfirm?: (selection: { background: string; icon: string; type: 'emoji' }) => void
   }) =>
     open ? (
       <button
         type="button"
-        onClick={() => onSelect?.({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })}
+        onClick={() => onConfirm?.({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })}
       >
         Select camera style
       </button>

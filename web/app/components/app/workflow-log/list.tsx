@@ -1,11 +1,12 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type {
   WorkflowAppLogDetail,
   WorkflowLogsResponse,
   WorkflowRunTriggeredFrom,
 } from '@/models/log'
-import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,7 +31,7 @@ import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
-  appDetail?: App
+  appDetail?: AppDetailWithSite
   onRefresh: () => void
 }
 

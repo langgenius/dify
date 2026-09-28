@@ -3,6 +3,7 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from io import BytesIO
 from typing import cast
 from uuid import UUID
@@ -18,6 +19,7 @@ from controllers.console.app.error import AppNotFoundError
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
+from models.enums import CustomizeTokenStrategy
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.app.console_service import (
     AppExportPaidPlanRequiredError,
@@ -41,7 +43,33 @@ from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = UUID("11111111-1111-1111-1111-111111111111")
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
-RECORD = AppRecord(str(APP_ID), "Example", "chat")
+RECORD = AppRecord(
+    str(APP_ID), "Example", "chat", description="", created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)
+)
+SITE = {
+    "code": "site",
+    "title": "Example",
+    "icon_type": None,
+    "icon": None,
+    "icon_background": None,
+    "description": None,
+    "default_language": "en-US",
+    "chat_color_theme": None,
+    "chat_color_theme_inverted": False,
+    "customize_domain": None,
+    "copyright": None,
+    "privacy_policy": None,
+    "input_placeholder": None,
+    "custom_disclaimer": "",
+    "customize_token_strategy": CustomizeTokenStrategy.NOT_ALLOW,
+    "prompt_public": False,
+    "show_workflow_steps": False,
+    "use_icon_as_answer_icon": False,
+    "created_by": None,
+    "created_at": datetime(2024, 1, 1),
+    "updated_by": None,
+    "updated_at": datetime(2024, 1, 1),
+}
 
 
 @dataclass
@@ -133,7 +161,7 @@ def test_detail_resolves_urls_at_the_http_boundary(
         SERVICE_API_URL="https://api.example.com" if configured else "",
         APP_WEB_URL="https://apps.example.com" if configured else "",
     )
-    boundary.record = replace(RECORD, site={"code": "site", "title": "Example"})
+    boundary.record = replace(RECORD, site=SITE)
     with app.test_request_context("/", base_url="https://console.example.com/"):
         response = cast(dict[str, object], invoke(controller.AppApi, controller.AppApi.get, app_id=APP_ID))
     assert response["api_base_url"] == (

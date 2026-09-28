@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { DataSourceCredential } from './types'
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ type OperatorProps = {
   credentialItem: DataSourceCredential
   onAction: (action: string, credentialItem: DataSourceCredential) => void
   onRename?: () => void
+  triggerRef?: Ref<HTMLButtonElement>
   canUseCredential?: boolean
   canManageCredential?: boolean
 }
@@ -22,6 +24,7 @@ const Operator = ({
   credentialItem,
   onAction,
   onRename,
+  triggerRef,
   canUseCredential = false,
   canManageCredential = false,
 }: OperatorProps) => {
@@ -47,8 +50,9 @@ const Operator = ({
       <DropdownMenuTrigger
         render={
           <IconButton
+            ref={triggerRef}
             size="lg"
-            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            aria-label={`${t(($) => $['operation.more'], { ns: 'common' })} ${credentialItem.name}`}
             className="data-popup-open:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />

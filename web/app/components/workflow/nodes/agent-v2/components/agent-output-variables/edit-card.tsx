@@ -24,9 +24,7 @@ const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
 const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function ConfirmHotkeyHint() {
-  const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { separatorToken: ' ' })
-    .split(' ')
-    .filter(Boolean)
+  const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { parts: true })
 
   return (
     <KbdGroup aria-hidden="true">
@@ -58,7 +56,7 @@ export function OutputEditCard({
 }) {
   const { t } = useTranslation(['common', 'workflowAgent'])
   const nameErrorId = useId()
-  const editorRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<HTMLFormElement>(null)
   const [draft, setDraft] = useState(state.draft)
   const trimmedName = draft.name.trim()
   const duplicateName = existingOutputs.some(
@@ -77,129 +75,153 @@ export function OutputEditCard({
     if (confirmDisabled) return
     onConfirm(createOutputFromDraft(draft, { includeDefaultValue: allowDefaultValue }), state)
   }
-  useHotkey(CONFIRM_HOTKEY, handleConfirm, {
-    target: editorRef,
-    ignoreInputs: false,
-  })
-  useHotkey(CANCEL_HOTKEY, onCancel, { target: editorRef, ignoreInputs: false })
+  useHotkey(
+    CONFIRM_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      editorRef.current?.requestSubmit()
+    },
+    {
+      target: editorRef,
+      enabled: !confirmDisabled,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
+  useHotkey(
+    CANCEL_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      onCancel()
+    },
+    {
+      target: editorRef,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
   return (
-    <div ref={editorRef}>
-      <Form
-        aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflowAgent' })}
-        className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          handleConfirm()
-        }}
-      >
-        <div className="px-2 pt-2">
-          <div className="flex h-6 items-center gap-x-2">
-            <Field name="name" invalid={hasNameError} className="contents">
-              <FieldLabel className="sr-only">
-                {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
-              </FieldLabel>
-              <Input
-                aria-describedby={hasNameError ? nameErrorId : undefined}
-                // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
-                autoFocus
-                required
-                pattern={OUTPUT_NAME_PATTERN_SOURCE}
-                value={draft.name}
-                placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
-                  ns: 'workflowAgent',
-                })}
-                className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
-                onChange={(event) => updateDraft({ name: event.currentTarget.value })}
-              />
-            </Field>
-            <OutputTypeSelect
-              value={draft.type}
-              onChange={(value) => updateDraft({ type: value })}
-            />
-            <Field name="required" className="contents">
-              <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
-                <Switch
-                  size="xs"
-                  checked={draft.required}
-                  onCheckedChange={(required) => updateDraft({ required })}
-                />
-                {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflowAgent' })}
-              </FieldLabel>
-            </Field>
-          </div>
-          {hasNameError && (
-            <Field name="nameError" invalid className="contents">
-              <FieldError
-                id={nameErrorId}
-                match
-                className="mt-1 px-1 py-0 system-xs-regular text-text-destructive"
-              >
-                {duplicateName
-                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
-                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
-              </FieldError>
-            </Field>
-          )}
-          <Field name="description" className="contents">
+    <Form
+      ref={editorRef}
+      aria-label={t(($) => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflowAgent' })}
+      className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleConfirm()
+      }}
+    >
+      <div className="px-2 pt-2">
+        <div className="flex h-6 items-center gap-x-2">
+          <Field name="name" invalid={hasNameError} className="contents">
             <FieldLabel className="sr-only">
-              {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflowAgent' })}
+              {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
             </FieldLabel>
             <Input
-              value={draft.description}
-              placeholder={t(($) => $['nodes.agent.outputVars.descriptionPlaceholder'], {
+              aria-describedby={hasNameError ? nameErrorId : undefined}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
+              autoFocus
+              required
+              pattern={OUTPUT_NAME_PATTERN_SOURCE}
+              value={draft.name}
+              placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
                 ns: 'workflowAgent',
               })}
-              className="mt-2 h-5 rounded-md border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
-              onChange={(event) => updateDraft({ description: event.currentTarget.value })}
+              className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
+              onChange={(event) => updateDraft({ name: event.currentTarget.value })}
             />
           </Field>
-        </div>
-        {allowDefaultValue && (
-          <Collapsible>
-            <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset">
-              <span
-                aria-hidden="true"
-                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"
+          <OutputTypeSelect value={draft.type} onChange={(value) => updateDraft({ type: value })} />
+          <Field name="required" className="contents">
+            <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
+              <Switch
+                size="xs"
+                checked={draft.required}
+                onCheckedChange={(required) => updateDraft({ required })}
               />
-              {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflowAgent' })}
-            </CollapsibleTrigger>
-            <CollapsiblePanel className="border-t border-divider-subtle">
-              <div className="px-3 py-2">
-                <Field name="defaultValue">
-                  <FieldLabel className="system-xs-medium">
-                    {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], {
-                      ns: 'workflowAgent',
-                    })}
-                  </FieldLabel>
-                  <Textarea
-                    size="small"
-                    value={draft.defaultValue}
-                    placeholder={t(($) => $['nodes.agent.outputVars.defaultValuePlaceholder'], {
-                      ns: 'workflowAgent',
-                    })}
-                    className="min-h-6"
-                    onValueChange={(defaultValue) => updateDraft({ defaultValue })}
-                  />
-                  {defaultValueErrorKey && (
-                    <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                      {t(($) => $[defaultValueErrorKey], { ns: 'workflowAgent' })}
-                    </FieldError>
-                  )}
-                </Field>
-              </div>
-            </CollapsiblePanel>
-          </Collapsible>
-        )}
-        <div className="flex h-12 items-center justify-end gap-x-2 px-3">
-          <Button type="button" size="small" variant="secondary" onClick={onCancel}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
-            {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflowAgent' })}
-            <ConfirmHotkeyHint />
-          </Button>
+              {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflowAgent' })}
+            </FieldLabel>
+          </Field>
         </div>
-      </Form>
-    </div>
+        {hasNameError && (
+          <Field name="nameError" invalid className="contents">
+            <FieldError
+              id={nameErrorId}
+              match
+              className="mt-1 px-1 py-0 system-xs-regular text-text-destructive"
+            >
+              {duplicateName
+                ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
+                : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
+            </FieldError>
+          </Field>
+        )}
+        <Field name="description" className="contents">
+          <FieldLabel className="sr-only">
+            {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflowAgent' })}
+          </FieldLabel>
+          <Input
+            value={draft.description}
+            placeholder={t(($) => $['nodes.agent.outputVars.descriptionPlaceholder'], {
+              ns: 'workflowAgent',
+            })}
+            className="mt-2 h-5 rounded-md border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
+            onChange={(event) => updateDraft({ description: event.currentTarget.value })}
+          />
+        </Field>
+      </div>
+      {allowDefaultValue && (
+        <Collapsible>
+          <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset">
+            <span
+              aria-hidden="true"
+              className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"
+            />
+            {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflowAgent' })}
+          </CollapsibleTrigger>
+          <CollapsiblePanel className="border-t border-divider-subtle">
+            <div className="px-3 py-2">
+              <Field name="defaultValue">
+                <FieldLabel className="system-xs-medium">
+                  {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], {
+                    ns: 'workflowAgent',
+                  })}
+                </FieldLabel>
+                <Textarea
+                  size="small"
+                  value={draft.defaultValue}
+                  placeholder={t(($) => $['nodes.agent.outputVars.defaultValuePlaceholder'], {
+                    ns: 'workflowAgent',
+                  })}
+                  className="min-h-6"
+                  onValueChange={(defaultValue) => updateDraft({ defaultValue })}
+                />
+                {defaultValueErrorKey && (
+                  <FieldError match className="py-0 system-xs-regular text-text-destructive">
+                    {t(($) => $[defaultValueErrorKey], { ns: 'workflowAgent' })}
+                  </FieldError>
+                )}
+              </Field>
+            </div>
+          </CollapsiblePanel>
+        </Collapsible>
+      )}
+      <div className="flex h-12 items-center justify-end gap-x-2 px-3">
+        <Button type="button" size="small" variant="secondary" onClick={onCancel}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
+          {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflowAgent' })}
+          <ConfirmHotkeyHint />
+        </Button>
+      </div>
+    </Form>
   )
 }

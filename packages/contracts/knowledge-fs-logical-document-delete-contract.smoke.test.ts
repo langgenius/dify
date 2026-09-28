@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { logicalDocuments } from './generated/api/console/knowledge-fs/orpc.gen'
+import { describe, expect, it } from 'vite-plus/test'
+import { logicalDocuments } from './generated/api/console/knowledge-fs/orpc.gen.ts'
 import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
   zKnowledgeFsDocumentDeletePayload,
-} from './generated/api/console/knowledge-fs/zod.gen'
+} from './generated/api/console/knowledge-fs/zod.gen.ts'
 
 describe('generated KnowledgeFS logical document deletion contract', () => {
   it('exposes logical document deletion with revision and idempotency guards', () => {

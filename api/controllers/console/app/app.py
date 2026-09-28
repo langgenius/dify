@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import asdict
 from http import HTTPStatus
 from typing import Literal, Self, override
 
@@ -303,11 +304,12 @@ _ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 def _app_detail_response(app: AppRecord) -> AppDetailWithSite:
     """Resolve transport URLs here so repositories work without a Flask request."""
-    response = AppDetailWithSite.model_validate(app, from_attributes=True)
-    response.api_base_url = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
-    if response.site is not None:
-        response.site.app_base_url = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
-    return response
+    data = asdict(app)
+    data["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
+    data["app_id"] = None
+    if data["site"] is not None:
+        data["site"]["app_base_url"] = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
+    return AppDetailWithSite.model_validate(data)
 
 
 class AppResource(Resource):

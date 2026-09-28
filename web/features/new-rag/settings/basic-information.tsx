@@ -7,7 +7,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useMembers } from '@/service/use-common'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
@@ -199,12 +199,12 @@ export function BasicInformationSection() {
         </SettingsFieldRow>
       </section>
 
-      <AppIconPicker
+      <IconPickerDialog
         open={iconPickerOpen && !fieldsDisabled}
         enableImageUpload={false}
-        initialEmoji={{ background: current.iconBackground, icon: current.icon }}
+        defaultValue={{ type: 'emoji', background: current.iconBackground, icon: current.icon }}
         onOpenChange={setIconPickerOpen}
-        onSelect={(selection) => {
+        onConfirm={(selection) => {
           if (selection.type !== 'emoji' || fieldsDisabled) return
           updateDraft({
             icon: selection.icon,

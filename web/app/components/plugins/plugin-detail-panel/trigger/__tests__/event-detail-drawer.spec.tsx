@@ -1,6 +1,6 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { EventDetailDrawer } from '../event-detail-drawer'
@@ -205,7 +205,8 @@ describe('EventDetailDrawer', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when back clicked', () => {
+    it('should expose a focusable named back button that closes when activated', async () => {
+      const user = userEvent.setup()
       render(
         <EventDetailDrawer
           eventInfo={mockEventInfo}
@@ -214,7 +215,10 @@ describe('EventDetailDrawer', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText('plugin.detailPanel.operation.back'))
+      const backButton = screen.getByRole('button', { name: 'plugin.detailPanel.operation.back' })
+      backButton.focus()
+      expect(backButton).toHaveFocus()
+      await user.click(backButton)
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })

@@ -650,9 +650,10 @@ class TestDocumentResource(_UsesSQLiteSession):
             session=session,
         )
 
-    def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
+    def test_get_document_delegates_permission_check_in_rbac_mode(self, dataset):
         api = DocumentResource()
         session = self.session
+        user = make_account()
         with (
             config_overrides_context(RBAC_ENABLED=True),
             patch(
@@ -667,9 +668,9 @@ class TestDocumentResource(_UsesSQLiteSession):
                 return_value=make_document(),
             ),
         ):
-            api.get_document(session, "ds-1", "doc-1", make_account(), "tenant-1")
+            api.get_document(session, "ds-1", "doc-1", user, "tenant-1")
 
-        check_permission.assert_not_called()
+        check_permission.assert_called_once_with(dataset, user, session)
 
 
 class TestDocumentApi(_UsesSQLiteSession):

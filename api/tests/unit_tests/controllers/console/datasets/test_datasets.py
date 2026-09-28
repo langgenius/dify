@@ -1134,6 +1134,7 @@ class TestDatasetKnowledgeFSUpgradeApi:
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
             patch(
                 "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
                 return_value=snapshots,
@@ -1173,11 +1174,12 @@ class TestDatasetKnowledgeFSUpgradeApi:
 
         snapshots.assert_not_called()
 
-    def test_status_relies_on_rbac_decorator_when_enterprise_rbac_is_enabled(
+    def test_status_delegates_permission_check_when_enterprise_rbac_is_enabled(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch
     ):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        user = make_account()
         snapshots = MagicMock()
         snapshots.get.return_value = self._job(dataset_id)
         session_context = MagicMock()
@@ -1190,16 +1192,16 @@ class TestDatasetKnowledgeFSUpgradeApi:
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission") as legacy_permission,
+            patch.object(DatasetService, "check_dataset_permission") as permission_check,
             patch(
                 "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
                 return_value=snapshots,
             ),
         ):
-            response = method(api, "tenant-1", make_account(), dataset_id, "job-1")
+            response = method(api, "tenant-1", user, dataset_id, "job-1")
 
         assert response["id"] == "upgrade-job-1"
-        legacy_permission.assert_not_called()
+        permission_check.assert_called_once_with(dataset, user, session_context.__enter__.return_value)
 
     def test_retry_rejects_a_job_from_another_dataset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
@@ -1251,11 +1253,14 @@ class TestDatasetUseCheckApi(_UsesSQLiteSession):
         check_permission.assert_called_once_with(dataset, current_user, session)
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
-    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask, config_overrides: Callable[..., None]):
+    def test_get_use_check_delegates_permission_check_in_rbac_mode(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
         config_overrides(RBAC_ENABLED=True)
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-id")
+        current_user = make_account()
         session = self.session
         with (
             app.test_request_context("/datasets/dataset-id/use-check"),
@@ -1263,10 +1268,10 @@ class TestDatasetUseCheckApi(_UsesSQLiteSession):
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "dataset_use_check", return_value=False),
         ):
-            _, status = method(api, session, "tenant-1", make_account(), "dataset-id")
+            _, status = method(api, session, "tenant-1", current_user, "dataset-id")
 
         assert status == 200
-        check_permission.assert_not_called()
+        check_permission.assert_called_once_with(dataset, current_user, session)
 
 
 @pytest.mark.parametrize(

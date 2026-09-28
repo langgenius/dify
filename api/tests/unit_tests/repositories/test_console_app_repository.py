@@ -9,7 +9,7 @@ from flask import has_request_context
 from sqlalchemy import Engine, event, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from fields.app_fields import AppDetailWithSite, AppPagination
+from fields.app_fields import AppPagination
 from machinery.context import RequestContext
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
@@ -101,13 +101,11 @@ def test_all_single_app_operations_preserve_visibility(
     assert sqlite_session.scalar(select(func.count()).select_from(AppStar)) == 0
 
 
-def test_detail_is_serializable_after_repository_session_closes(
+def test_detail_is_materialized_after_repository_session_closes(
     repository: ConsoleAppRepository,
     sqlite_session: Session,
     sqlite_engine: Engine,
-    config_overrides: Callable[..., None],
 ) -> None:
-    config_overrides(SERVICE_API_URL="", APP_WEB_URL="")
     assert not has_request_context()
     app = persist_app(sqlite_session)
     config = AppModelConfig(app_id=app.id, model='{"provider":"openai","name":"example"}', pre_prompt="Prompt")
@@ -129,14 +127,16 @@ def test_detail_is_serializable_after_repository_session_closes(
 
     event.listen(sqlite_engine, "before_cursor_execute", reject_queries)
     try:
-        data = AppDetailWithSite.model_validate(record, from_attributes=True).model_dump(mode="json")
+        model_config = record.app_model_config
+        site_data = record.site
+        description = record.description
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", reject_queries)
-    assert data["model_config"]["model"] == {"provider": "openai", "name": "example"}
-    assert data["site"]["access_token"] == "site-code"
-    assert data["description"] == ""
-    assert data["api_base_url"] is None
-    assert data["site"]["app_base_url"] is None
+    assert model_config is not None
+    assert model_config["model"] == {"provider": "openai", "name": "example"}
+    assert site_data is not None
+    assert site_data["code"] == "site-code"
+    assert description == ""
 
 
 @pytest.mark.parametrize(

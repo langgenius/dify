@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.app.app_config.features.suggested_questions_after_answer.manager import (
+    SuggestedQuestionsAfterAnswerConfigManager,
+)
+from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.rbac import RBACPermission, RBACResourceScope
@@ -67,8 +71,10 @@ from services.entities.dsl_entities import (
     PendingImportOwner,
     make_app_dsl,
 )
+from services.entities.site_dsl import SiteDsl, apply_site_dsl
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.feature_service import FeatureService
 from services.icon_configuration import (
     DEFAULT_ICON,
     DEFAULT_ICON_TYPE,
@@ -84,6 +90,22 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+
+
+def missing_app_section_error(top_level_keys: list[str]) -> str:
+    """Explain a YAML that has no top-level ``app`` mapping.
+
+    The found keys are the caller's actual document, so a sketch of nodes is
+    not reported as a blank import failure.
+    """
+    found = ", ".join(key for key in top_level_keys if key != "app")
+    if len(found) > 80:
+        found = found[:80].rstrip(", ") + "…"
+    return (
+        "Missing app data in YAML content. "
+        "Not a valid Dify app DSL: the top-level 'app' section is required "
+        f"(found: {found or 'none'})."
+    )
 
 
 class PendingData(PendingImportOwner):
@@ -126,7 +148,7 @@ class AppDslService:
         import_app_id: str | None = None,
         package: AppImportPackage | None = None,
     ) -> Import:
-        """Import an App DSL, materializing validated archive resources before database writes."""
+        """Import an App DSL after checking Site entitlements and staging archive resources."""
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -205,6 +227,8 @@ class AppDslService:
                     error="Invalid YAML format: content must be a mapping",
                 )
 
+            original_top_level_keys = [key for key in data if isinstance(key, str)]
+
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
@@ -223,8 +247,16 @@ class AppDslService:
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
-                    error="Missing app data in YAML content",
+                    error=missing_app_section_error(original_top_level_keys),
                 )
+
+            allow_premium_site_settings = True
+            if status != ImportStatus.PENDING and data.get("site") is not None:
+                # Resolve billing before archive uploads or database writes.
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                allow_premium_site_settings = FeatureService.can_import_premium_site_settings(tenant_id)
 
             if package is not None and package.has_resources:
                 tenant_id = account.current_tenant_id
@@ -323,6 +355,7 @@ class AppDslService:
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
                 import_app_id=import_app_id,
+                allow_premium_site_settings=allow_premium_site_settings,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -390,6 +423,13 @@ class AppDslService:
             data = yaml.safe_load(pending_data.yaml_content)
             self._warnings = list(pending_data.warnings)
 
+            allow_premium_site_settings = True
+            if data.get("site") is not None:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                allow_premium_site_settings = FeatureService.can_import_premium_site_settings(tenant_id)
+
             app = None
             if pending_data.app_id:
                 app = self._load_app_for_overwrite(account, pending_data.app_id)
@@ -413,6 +453,7 @@ class AppDslService:
                 icon_type=pending_data.icon_type,
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
+                allow_premium_site_settings=allow_premium_site_settings,
             )
 
             # Delete import info from Redis
@@ -464,6 +505,14 @@ class AppDslService:
         )
         return CheckDependenciesResult(
             leaked_dependencies=leaked_dependencies,
+        )
+
+    @staticmethod
+    def cache_import_dependencies(*, app_id: str, dependencies: list[PluginDependency]) -> None:
+        redis_client.setex(
+            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
+            IMPORT_INFO_REDIS_EXPIRY,
+            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
         )
 
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
@@ -545,6 +594,7 @@ class AppDslService:
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
         import_app_id: str | None = None,
+        allow_premium_site_settings: bool = True,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -552,6 +602,7 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
 
@@ -607,13 +658,21 @@ class AppDslService:
             self._session.flush()
             app_was_created.send(app, account=account, session=self._session)
 
+        if site_data is not None:
+            site = app.site_with_session(session=self._session)
+            if site is None:
+                raise ValueError("App Site is unavailable")
+            apply_site_dsl(
+                site=site,
+                app=app,
+                data=site_data,
+                session=self._session,
+                allow_premium_settings=allow_premium_site_settings,
+            )
+
         # save dependencies
         if dependencies:
-            redis_client.setex(
-                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
-                IMPORT_INFO_REDIS_EXPIRY,
-                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
-            )
+            self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
 
         # Initialize app based on mode
         match app_mode:
@@ -712,6 +771,8 @@ class AppDslService:
                 model_config = data.get("model_config")
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
+                TextToSpeechConfigManager.validate_optional_fields(model_config)
                 # Initialize or update model config
                 app_model_config = (
                     self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
@@ -795,7 +856,7 @@ class AppDslService:
         version_id: uuid.UUID | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> AppDslExportData:
-        """Load portable data using the caller's transaction, without requesting plugin dependencies."""
+        """Load portable App and Site data without requesting plugin dependencies."""
         app_mode = AppMode.value_of(app_model.mode)
 
         if app_mode == AppMode.AGENT:
@@ -820,6 +881,11 @@ class AppDslService:
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
+
+        if (site := app_model.site_with_session(session=session)) is not None:
+            export_data["site"] = SiteDsl.from_site(site).model_dump(mode="json")
+        else:
+            export_data.pop("site", None)
 
         return AppDslExportData(app_model.tenant_id, export_data, dependencies)
 

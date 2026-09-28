@@ -1,16 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   deletionJobs,
   logicalDocuments,
   queryImages,
   researchTasks,
   sourceWorkflows,
-} from './generated/api/service/orpc.gen'
+} from './generated/api/service/orpc.gen.ts'
 import {
   zKnowledgeFsDocumentReindexResponse,
   zKnowledgeFsQueryAdmissionResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryHeaders,
-} from './generated/api/service/zod.gen'
+} from './generated/api/service/zod.gen.ts'
 
 describe('generated KnowledgeFS Service recovery contract', () => {
   it('exposes resource discovery and durable recovery routes', () => {

@@ -1,6 +1,5 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -62,7 +61,7 @@ export function EnvironmentWebAppCard({
     'navigation',
   ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
+  const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
@@ -174,7 +173,7 @@ export function EnvironmentWebAppCard({
             <AppIcon
               size="large"
               iconType={appInfo.icon_type}
-              icon={appInfo.icon}
+              icon={appInfo.icon ?? undefined}
               background={appInfo.icon_background}
               imageUrl={appInfo.icon_url}
             />
@@ -204,7 +203,7 @@ export function EnvironmentWebAppCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!appInfo || !siteQuery.isSuccess || !canManageAccessPoint}
+              disabled={!appInfo?.site || !siteQuery.isSuccess || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -248,11 +247,11 @@ export function EnvironmentWebAppCard({
           ))}
       </AccessPointCard>
 
-      {appInfo && (
+      {appInfo?.site && (
         <SettingsModal
           isChat={false}
           canDeploy
-          appInfo={appInfo}
+          appInfo={{ id: appInfo.id, mode: appInfo.mode, site: appInfo.site }}
           isShow={showSettings}
           onClose={() => setShowSettings(false)}
           onSave={actions.saveSiteConfig}

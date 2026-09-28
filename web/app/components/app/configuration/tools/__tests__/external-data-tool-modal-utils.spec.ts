@@ -34,6 +34,14 @@ const codeBasedExtensionList: { data: CodeBasedExtensionItem[] } = {
           options: [],
           label: i18n('API Key', '接口密钥'),
         },
+        {
+          variable: 'optional_token',
+          required: false,
+          type: 'text',
+          placeholder: '',
+          options: [],
+          label: i18n('Optional token'),
+        },
       ],
     },
   ],
@@ -59,7 +67,7 @@ describe('external-data-tool-modal-utils', () => {
     ])
 
     expect(getProviderDefaultConfig('api', providers)).toBeUndefined()
-    expect(getProviderDefaultConfig('code-tool', providers)).toEqual({
+    expect(getProviderDefaultConfig('code-tool', providers)).toStrictEqual({
       api_key: 'default-key',
     })
   })

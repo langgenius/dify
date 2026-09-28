@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { workflowImports } from './generated/api/console/knowledge-fs/orpc.gen'
+import { describe, expect, it } from 'vite-plus/test'
+import { workflowImports } from './generated/api/console/knowledge-fs/orpc.gen.ts'
 import {
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsBody,
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsHeaders,
-} from './generated/api/console/knowledge-fs/zod.gen'
+} from './generated/api/console/knowledge-fs/zod.gen.ts'
 
 describe('generated KnowledgeFS durable source import contract', () => {
   it('exposes the workflow import operation and preserves the discriminated item bodies', () => {

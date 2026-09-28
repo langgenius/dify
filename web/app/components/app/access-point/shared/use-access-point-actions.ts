@@ -1,15 +1,13 @@
 'use client'
 
-import type { ConfigParams } from '@/app/components/app/overview/settings'
-import type { App } from '@/types/app'
+import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
-import { fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 
 export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {
@@ -18,8 +16,8 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const refreshAppDetail = useCallback(async () => {
     try {
-      const appDetail = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...appDetail })
+      const appDetail = await consoleClient.apps.byAppId.get({ params: { app_id: appId } })
+      setAppDetail(appDetail)
     } catch (error) {
       console.error('Failed to refresh app detail:', error)
     }
@@ -41,13 +39,13 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
     [refreshAppDetail, t],
   )
   const saveSiteConfig = useCallback(
-    async (params: ConfigParams) => {
+    async (params: AppSiteUpdatePayload) => {
       if (!canManageAccessPoint) return
-      const [error] = await asyncRunSafe<App>(
-        updateAppSiteConfig({
-          url: `/apps/${appId}/site`,
+      const [error] = await asyncRunSafe(
+        consoleClient.apps.byAppId.site.post({
+          params: { app_id: appId },
           body: params,
-        }) as Promise<App>,
+        }),
       )
       if (!error) {
         void queryClient.invalidateQueries({

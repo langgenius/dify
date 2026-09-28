@@ -35,7 +35,6 @@ from .engine import db
 from .enums import (
     ApiTokenBindingResourceType,
     ApiTokenType,
-    AppMCPServerStatus,
     AppStatus,
     BannerStatus,
     ConversationFromSource,
@@ -100,6 +99,13 @@ class EnabledConfig(TypedDict):
     enabled: bool
 
 
+class TextToSpeechConfig(TypedDict):
+    enabled: bool
+    voice: NotRequired[str]
+    language: NotRequired[str]
+    autoPlay: NotRequired[Literal["enabled", "disabled"]]
+
+
 class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
     provider: str
     name: str
@@ -149,7 +155,7 @@ class AgentToolConfig(TypedDict):
 
 class AgentModeConfig(TypedDict):
     enabled: bool
-    strategy: str | None
+    strategy: NotRequired[str | None]
     tools: list[AgentToolConfig | dict[str, Any]]
     prompt: str | None
 
@@ -176,6 +182,9 @@ class ExternalDataToolConfig(TypedDict):
     variable: str
     type: str
     config: dict[str, Any]
+    label: NotRequired[str]
+    icon: NotRequired[str]
+    icon_background: NotRequired[str]
 
 
 class UserInputFormItemConfig(TypedDict):
@@ -188,6 +197,9 @@ class UserInputFormItemConfig(TypedDict):
     default: NotRequired[str]
     type: NotRequired[str]
     config: NotRequired[dict[str, Any]]
+    enabled: NotRequired[bool]
+    icon: NotRequired[str]
+    icon_background: NotRequired[str]
 
 
 # Each item is a single-key dict, e.g. {"text-input": UserInputFormItemConfig}
@@ -203,6 +215,7 @@ class DatasetConfigs(TypedDict):
     reranking_model: NotRequired[dict[str, Any] | None]
     weights: NotRequired[dict[str, Any] | None]
     reranking_enabled: NotRequired[bool]
+    reranking_enable: NotRequired[bool]
     reranking_mode: NotRequired[str]
     metadata_filtering_mode: NotRequired[str]
     metadata_model_config: NotRequired[dict[str, Any] | None]
@@ -244,7 +257,7 @@ class AppModelConfigDict(TypedDict):
     suggested_questions: list[str]
     suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
-    text_to_speech: EnabledConfig
+    text_to_speech: TextToSpeechConfig
     retriever_resource: EnabledConfig
     annotation_reply: AnnotationReplyConfig
     more_like_this: EnabledConfig
@@ -787,8 +800,8 @@ class AppModelConfig(TypeBase):
         return self._get_enabled_config(self.speech_to_text)
 
     @property
-    def text_to_speech_dict(self) -> EnabledConfig:
-        return self._get_enabled_config(self.text_to_speech)
+    def text_to_speech_dict(self) -> TextToSpeechConfig:
+        return cast(TextToSpeechConfig, self._get_enabled_config(self.text_to_speech))
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:
@@ -844,7 +857,7 @@ class AppModelConfig(TypeBase):
         if self.dataset_configs:
             dataset_configs = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
-                return {"retrieval_model": "single"}
+                return {**dataset_configs, "retrieval_model": "single"}
             else:
                 return cast(DatasetConfigs, dataset_configs)
         return {
@@ -1378,10 +1391,8 @@ class Conversation(Base):
             select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
         )
 
-    @property
-    def app(self) -> App | None:
-        with Session(db.engine, expire_on_commit=False) as session:
-            return session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
     def from_end_user_session_id_with_session(self, *, session: Session) -> str | None:
         if self.from_end_user_id:
@@ -2117,9 +2128,8 @@ class AppMCPServer(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[AppMCPServerStatus] = mapped_column(
-        EnumText(AppMCPServerStatus, length=255), nullable=False, server_default=sa.text("'normal'")
-    )
+    # The repository maps the stored value to the application-owned publication status.
+    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
     parameters: Mapped[str] = mapped_column(LongText, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(

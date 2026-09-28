@@ -16,7 +16,6 @@ const mockSetSettingsDestination = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
-let mockShowMessageLogModal = false
 let mockNodesReadOnly = false
 let mockCanRun = true
 let mockBuiltInTools = [
@@ -67,11 +66,8 @@ const mockLastRunState = {
 }
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: { showMessageLogModal: boolean; appDetail: { id: string } }) => unknown,
-  ) =>
+  useStore: (selector: (state: { appDetail: { id: string } }) => unknown) =>
     selector({
-      showMessageLogModal: mockShowMessageLogModal,
       appDetail: { id: 'app-1' },
     }),
 }))
@@ -386,7 +382,6 @@ const createData = (overrides: Record<string, unknown> = {}) => ({
 describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockShowMessageLogModal = false
     mockNodesReadOnly = false
     mockCanRun = true
     mockBuiltInTools = [
@@ -744,9 +739,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should stop a running node and offset when the log modal is visible', () => {
-    mockShowMessageLogModal = true
-
-    const { container } = renderWorkflowComponent(
+    const { container, store } = renderWorkflowComponent(
       <BasePanel
         id="node-1"
         data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
@@ -757,6 +750,12 @@ describe('workflow-panel index', () => {
         initialStoreState: {
           nodePanelWidth: 480,
           otherPanelWidth: 240,
+          messageLogItem: {
+            id: 'log-1',
+            isAnswer: true,
+            content: 'answer',
+            workflow_run_id: 'run-1',
+          },
         },
       },
     )
@@ -770,6 +769,8 @@ describe('workflow-panel index', () => {
     )
 
     expect(mockHandleStop).toHaveBeenCalledTimes(1)
+    act(() => store.getState().setMessageLogItem(undefined))
+    expect(root.style.right).toBe('0px')
   })
 
   it('should resize the node panel with the keyboard, persist its width, and allow focus to leave', async () => {
