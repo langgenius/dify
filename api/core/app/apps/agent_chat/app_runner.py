@@ -15,7 +15,7 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
+from core.model_manager import create_model_instance
 from core.moderation.base import ModerationError
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
@@ -66,9 +66,10 @@ class AgentChatAppRunner(AppRunner):
         memory = None
         if application_generate_entity.conversation_id:
             # get memory of conversation (read-only)
-            model_instance = ModelInstance(
+            model_instance = create_model_instance(
                 provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
                 model=application_generate_entity.model_conf.model,
+                credentials=application_generate_entity.model_conf.credentials,
             )
 
             memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
@@ -173,9 +174,13 @@ class AgentChatAppRunner(AppRunner):
         assert agent_entity is not None
 
         # init model instance
-        model_instance = ModelInstance(
+        from core.app.llm.message_billing import require_message_billing
+
+        model_instance = create_model_instance(
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
             model=application_generate_entity.model_conf.model,
+            credentials=application_generate_entity.model_conf.credentials,
+            message_billing=require_message_billing(application_generate_entity),
         )
         prompt_message, _ = self.organize_prompt_messages(
             app_record=app_record,

@@ -30,7 +30,7 @@ class TestPromptTransform:
         fake_model_instance = SimpleNamespace(
             model_type_instance=fake_model_type_instance,
             model_name="resolved-model",
-            credentials=None,
+            credentials={"api_key": "secret"},
             parameters=None,
             stop=None,
         )
@@ -44,13 +44,14 @@ class TestPromptTransform:
         )
 
         with patch(
-            "core.prompt.prompt_transform.ModelInstance", return_value=fake_model_instance
+            "core.prompt.prompt_transform.create_model_instance", return_value=fake_model_instance
         ) as model_instance_cls:
             model_instance, model_schema = transform._resolve_model_runtime(model_config=model_config)
 
         model_instance_cls.assert_called_once_with(
             provider_model_bundle=model_config.provider_model_bundle,
             model=model_config.model,
+            credentials=model_config.credentials,
         )
         fake_model_type_instance.get_model_schema.assert_called_once_with(
             model="resolved-model",

@@ -323,6 +323,19 @@ class PluginConfig(BaseSettings):
         default=False,
     )
 
+    TOKENER_LEGACY_MIGRATION_ENABLED: bool = Field(
+        description="Enable explicitly admitted legacy hosted-credit migrations; never rolls active tenants back",
+        default=False,
+    )
+    TOKENER_LEGACY_MIGRATION_ALLOWLIST: str = Field(
+        description="Comma-separated tenant UUIDs allowed to prepare and claim; empty denies all new migrations",
+        default="",
+    )
+    TOKENER_LEGACY_MODEL_MAPPING_JSON: str = Field(
+        description="Versioned hosted source to Tokener model mapping registry; empty registry cannot prepare",
+        default="[]",
+    )
+
     TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(
         description="Run event and worker processing for persisted Tokener tenant integrations",
         default=False,
@@ -1467,6 +1480,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK: bool = Field(
         description="Enable periodic recovery of incomplete new-tenant Tokener bootstraps",
         default=True,
+    )
+    ENABLE_TOKENER_MIGRATION_RECOVERY_TASK: bool = Field(
+        description="Recover prepared migration work and report claim-age attention every minute",
+        default=False,
     )
     TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL: PositiveInt = Field(
         description="Minimum age and periodic recovery interval for incomplete Tokener bootstraps, in minutes",

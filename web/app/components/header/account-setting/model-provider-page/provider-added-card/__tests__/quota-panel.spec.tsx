@@ -20,6 +20,7 @@ let mockWorkspaceData:
 }
 let mockWorkspaceIsPending = false
 let mockModelBillingSource: 'legacy_message_credits' | 'tokener' = 'legacy_message_credits'
+let mockMigrationStatus: ModelProviderCreditsResponse['model_billing_migration_status'] = 'none'
 let mockTokenerBootstrapStatus: 'pending' | 'ready' | 'failed' | null = null
 let mockTokenerMetering: NonNullable<ModelProviderCreditsResponse['tokener_metering']> | null = null
 let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
@@ -78,6 +79,7 @@ vi.mock('../use-trial-credits', () => ({
     const credits = isUnlimited ? -1 : Math.max(totalCredits - usedCredits, 0)
     return {
       modelBillingSource: mockModelBillingSource,
+      modelBillingMigrationStatus: mockMigrationStatus,
       tokenerBootstrapStatus: mockTokenerBootstrapStatus,
       tokenerMetering: mockTokenerMetering,
       credits,
@@ -165,6 +167,7 @@ describe('QuotaPanel', () => {
     }
     mockWorkspaceIsPending = false
     mockModelBillingSource = 'legacy_message_credits'
+    mockMigrationStatus = 'none'
     mockTokenerBootstrapStatus = null
     mockTokenerMetering = null
     mockTrialModels = ['langgenius/openai/openai']
@@ -235,6 +238,14 @@ describe('QuotaPanel', () => {
     expect(screen.getByLabelText(/modelProvider\.tokenerUsageTip/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.quotaLabel/)).not.toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
+  })
+
+  it('shows processing rather than the old balance while migration is claimed', () => {
+    mockMigrationStatus = 'processing'
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByRole('status').textContent).toMatch(/tokenerProcessing/)
+    expect(screen.queryByText('100')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.quota/)).not.toBeInTheDocument()
   })
 
   it('should show an active allowance separately without adding it to the Tokener balance', () => {

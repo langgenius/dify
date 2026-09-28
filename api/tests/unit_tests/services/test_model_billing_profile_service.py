@@ -20,6 +20,17 @@ from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationSta
 _CACHE_KEY = "tenant:model-billing-source:v1:tenant-1"
 
 
+def test_active_migration_cannot_be_reverted_by_a_late_legacy_cache_fill(mocker):
+    mocker.patch("core.model_invocation_routing.migration_routing_state", return_value={"phase": "active"})
+    cache = mocker.patch.object(service_module, "redis_client")
+    cache.get.return_value = b"legacy_message_credits"
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(status=TenantTokenerIntegrationStatus.READY)
+    result = ModelBillingProfileService.resolve("tenant-1", session=session)
+    assert result.uses_tokener
+    cache.get.assert_not_called()
+
+
 def _tenant(session: Session) -> Tenant:
     tenant = Tenant(name="Billing profile tenant")
     session.add(tenant)

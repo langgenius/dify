@@ -161,10 +161,29 @@ def handle(sender: Message, **kwargs):
         isinstance(application_generate_entity, AgentAppGenerateEntity)
         and application_generate_entity.agent_llm_gateway_enabled
     )
+    message_owner = application_generate_entity._classic_message_billing
+    if message_owner is not None:
+        message_owner.check_identity(tenant_id, provider_name, model_config.model)
+        if message_owner.message_id != message.id:
+            raise ValueError("Message billing receipt does not belong to this message")
+        if not agent_gateway_metered and message_owner.backend == "legacy_reserved":
+            # The message was admitted before cutover. Its existing receipt
+            # remains the settlement authority after the workspace changes mode.
+            message_owner.commit_reserved()
+        legacy_deduction_allowed = not message_owner.settled and (
+            message_owner.backend == "provider_free"
+            or (message_owner.backend == "legacy_event" and _legacy_message_credit_billing_allowed(tenant_id))
+        )
+    else:
+        legacy_deduction_allowed = (
+            not agent_gateway_metered
+            and provider_configuration.using_provider_type == ProviderType.SYSTEM
+            and _legacy_message_credit_billing_allowed(tenant_id)
+        )
     if (
         not agent_gateway_metered
         and provider_configuration.using_provider_type == ProviderType.SYSTEM
-        and _legacy_message_credit_billing_allowed(tenant_id)
+        and legacy_deduction_allowed
         and provider_configuration.system_configuration
         and provider_configuration.system_configuration.current_quota_type is not None
     ):
@@ -214,6 +233,8 @@ def handle(sender: Message, **kwargs):
     start_time = time_module.perf_counter()
     try:
         _execute_provider_updates(updates_to_perform)
+        if message_owner is not None:
+            message_owner.settled = True
 
         # Log successful completion with timing
         duration = time_module.perf_counter() - start_time

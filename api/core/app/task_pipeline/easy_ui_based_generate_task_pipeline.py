@@ -48,7 +48,7 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
-from core.model_manager import ModelInstance
+from core.model_manager import create_model_instance
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -131,10 +131,33 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
+        execution_owned = self.stream and self._application_generate_entity._classic_message_billing is not None
+        if execution_owned:
+            from core.app.apps.execution_stream import execution_owned_stream
+            from core.app.llm.message_billing import release_message_billing
+
+            def consumer_failed(error: Exception) -> None:
+                logger.error("Classic message execution consumer failed: %s", type(error).__name__)
+                self.queue_manager.request_abort("Classic message persistence failed")
+
+            generator = execution_owned_stream(
+                generator,
+                on_finished=lambda: release_message_billing(self._application_generate_entity),
+                on_failed=consumer_failed,
+            )
         if self.stream:
+            if execution_owned:
+                response = self._to_stream_response(generator, arm_close=True)
+                next(response)  # Consume the private cleanup-ready marker.
+                return response
             return self._to_stream_response(generator)
         else:
-            return self._to_blocking_response(generator)
+            try:
+                return self._to_blocking_response(generator)
+            finally:
+                from core.app.llm.message_billing import release_message_billing
+
+                release_message_billing(self._application_generate_entity)
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -185,26 +208,31 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         raise RuntimeError("queue listening stopped unexpectedly.")
 
     def _to_stream_response(
-        self, generator: Generator[StreamResponse, None, None]
+        self, generator: Generator[StreamResponse, None, None], *, arm_close: bool = False
     ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse, None, None]:
         """
         To stream response.
         :return:
         """
-        for stream_response in generator:
-            if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
-                yield CompletionAppStreamResponse(
-                    message_id=self._message_id,
-                    created_at=self._message_created_at,
-                    stream_response=stream_response,
-                )
-            else:
-                yield ChatbotAppStreamResponse(
-                    conversation_id=self._conversation_id,
-                    message_id=self._message_id,
-                    created_at=self._message_created_at,
-                    stream_response=stream_response,
-                )
+        try:
+            if arm_close:
+                yield cast(ChatbotAppStreamResponse, None)
+            for stream_response in generator:
+                if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
+                    yield CompletionAppStreamResponse(
+                        message_id=self._message_id,
+                        created_at=self._message_created_at,
+                        stream_response=stream_response,
+                    )
+                else:
+                    yield ChatbotAppStreamResponse(
+                        conversation_id=self._conversation_id,
+                        message_id=self._message_id,
+                        created_at=self._message_created_at,
+                        stream_response=stream_response,
+                    )
+        finally:
+            generator.close()
 
     def _listen_audio_msg(self, publisher: AppGeneratorTTSPublisher | None, task_id: str):
         if publisher is None:
@@ -285,6 +313,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
             match event:
                 case QueueErrorEvent():
+                    from core.app.llm.message_billing import release_message_billing
+
+                    release_message_billing(self._application_generate_entity)
                     with session_factory.create_session() as session:
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
@@ -506,8 +537,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         model_config = self._model_config
         model = model_config.model
 
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+        model_instance = create_model_instance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model,
+            credentials=model_config.credentials,
         )
 
         # calculate num tokens
@@ -519,7 +552,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
             completion_tokens = model_instance.get_llm_num_tokens([self._task_state.llm_result.message])
 
-        credentials = model_config.credentials
+        credentials = model_instance.credentials
 
         # transform usage
         model_type_instance = model_config.provider_model_bundle.model_type_instance

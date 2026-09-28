@@ -6,6 +6,7 @@ import CreditsExhaustedAlert from './credits-exhausted-alert'
 
 const baseCredits = {
   model_billing_source: 'legacy_message_credits',
+  model_billing_migration_status: 'none',
   tokener_bootstrap_status: null,
   pool_type: 'trial',
   quota_limit: 200,
@@ -25,6 +26,8 @@ function createSeededQueryClient(overrides?: Partial<ModelProviderCreditsRespons
     ...baseCredits,
     ...overrides,
     model_billing_source: overrides?.model_billing_source ?? baseCredits.model_billing_source,
+    model_billing_migration_status:
+      overrides?.model_billing_migration_status ?? baseCredits.model_billing_migration_status,
     tokener_bootstrap_status:
       overrides?.tokener_bootstrap_status ?? baseCredits.tokener_bootstrap_status,
   })

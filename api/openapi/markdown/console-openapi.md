@@ -19646,6 +19646,7 @@ Effective feature availability and limits for the current workspace.
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | Yes |
 | model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
@@ -20818,6 +20819,7 @@ Enum class for model property key.
 | exhausted_at | integer |  | Yes |
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
 | model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | next_credit_reset_date | integer |  | Yes |
 | pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |

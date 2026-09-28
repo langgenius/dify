@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
-from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
+from typing import IO, TYPE_CHECKING, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
 from uuid import UUID
 
 from configs import dify_config
@@ -39,6 +39,8 @@ from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from core.app.llm.message_billing import ClassicMessageBilling
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -61,6 +63,7 @@ class ModelInstance:
         if credentials is None:
             credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
         self.credentials = credentials
+        self._message_billing: ClassicMessageBilling | None = None
         self._request_metadata = dict(request_metadata) if request_metadata else None
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
@@ -435,6 +438,9 @@ class ModelInstance:
         :param kwargs: function kwargs
         :return:
         """
+        message_billing = getattr(self, "_message_billing", None)
+        if message_billing is not None:
+            message_billing.check_active()
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
@@ -505,6 +511,15 @@ class QuotaManagedModelInstance(ModelInstance):
         created_by: CreditUsageCreatedByInput = None,
     ):
         from core.app.llm.quota import reserve_model_quota_for_model
+        from core.model_invocation_routing import validate_invocation_admission
+
+        validate_invocation_admission(
+            self.credentials,
+            tenant_id=self.provider_model_bundle.configuration.tenant_id,
+            provider=self.provider,
+            model_type=self.model_type_instance.model_type,
+            model=self.model_name,
+        )
 
         if app_type is None:
             app_type = self._get_reservation_app_type(self._request_metadata)
@@ -519,6 +534,8 @@ class QuotaManagedModelInstance(ModelInstance):
             request_id=request_id,
             app_type=app_type,
             created_by=created_by,
+            provider_configuration=self.provider_model_bundle.configuration,
+            invocation_credentials=self.credentials,
         )
 
     @staticmethod
@@ -550,6 +567,8 @@ class QuotaManagedModelInstance(ModelInstance):
         return normalize_credit_usage_app_type(app_type)
 
     def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
+        # Validate the prepared binding, never mutate shared instance credentials
+        # between schema/token reads and this invocation's reservation.
         request_id = self._get_reservation_request_id(request_metadata)
         app_type = self._get_reservation_app_type(request_metadata)
         created_by = self._get_reservation_created_by(request_metadata)
@@ -820,6 +839,32 @@ class QuotaManagedModelInstance(ModelInstance):
             self.release_quota_safely(reservation)
 
 
+def create_model_instance(
+    provider_model_bundle: ProviderModelBundle,
+    model: str,
+    credentials: dict[str, Any] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
+    *,
+    message_billing: "ClassicMessageBilling | None" = None,
+) -> ModelInstance:
+    """One factory for production callers, including classic Chat/Agent apps."""
+    if message_billing is not None:
+        message_billing.check_identity(
+            provider_model_bundle.configuration.tenant_id, provider_model_bundle.configuration.provider.provider, model
+        )
+        # A classic Agent can invoke this model many times, but its legacy
+        # accounting unit remains the enclosing message's one durable receipt.
+        instance = ModelInstance(provider_model_bundle, model, credentials, request_metadata)
+        instance._message_billing = message_billing
+        return instance
+    instance_type = (
+        QuotaManagedModelInstance
+        if provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM
+        else ModelInstance
+    )
+    return instance_type(provider_model_bundle, model, credentials, request_metadata)
+
+
 class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
@@ -881,7 +926,11 @@ class ModelManager:
         if configuration.using_provider_type != ProviderType.SYSTEM:
             return
 
-        if ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener:
+        from core.model_invocation_routing import has_compatibility_route, migration_routing_state
+
+        if ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener and not has_compatibility_route(
+            migration_routing_state(configuration.tenant_id)
+        ):
             raise ModelCurrentlyNotSupportError(
                 f"Hosted SYSTEM model {model_type.value}/{model} is disabled for this workspace."
             )
@@ -939,6 +988,22 @@ class ModelManager:
         cred_cache_key = (tenant_id, provider, model_type.value, model)
 
         if cred_cache_key in self._credentials_cache:
+            from core.model_invocation_routing import ModelInvocationReprepare, validate_invocation_admission
+
+            try:
+                validate_invocation_admission(
+                    self._credentials_cache[cred_cache_key],
+                    tenant_id=tenant_id,
+                    provider=provider,
+                    model_type=model_type,
+                    model=model,
+                )
+            except ModelInvocationReprepare:
+                self._credentials_cache.pop(cred_cache_key, None)
+                self._provider_manager.clear_configurations_cache(tenant_id)
+                return self.get_model_instance(
+                    tenant_id, provider, model_type, model, request_metadata=request_metadata
+                )
             return model_instance_class(
                 provider_model_bundle,
                 model,

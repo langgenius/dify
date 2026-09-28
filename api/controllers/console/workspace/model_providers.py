@@ -144,6 +144,7 @@ class TokenerMeteringResponse(ResponseModel):
 
 class ModelProviderCreditsResponse(ResponseModel):
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     tokener_bootstrap_status: (
         Literal[
             "pending",

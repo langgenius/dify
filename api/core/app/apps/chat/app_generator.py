@@ -18,6 +18,7 @@ from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
@@ -204,6 +205,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 session=session,
             )
 
+            from core.app.llm.message_billing import begin_message_billing
+
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -230,19 +233,23 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
             worker_thread = threading.Thread(target=worker_with_context)
 
-            worker_thread.start()
+            try:
+                begin_message_billing(application_generate_entity, message.id)
+                worker_thread.start()
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    conversation=conversation,
+                    message=message,
+                    user=user,
+                    stream=streaming,
+                )
+                return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            except Exception:
+                from core.app.llm.message_billing import release_message_billing
 
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=streaming,
-            )
-
-            return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+                release_message_billing(application_generate_entity)
+                raise
 
     def _generate_worker(
         self,
@@ -262,6 +269,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
         with flask_app.app_context():
+            worker_failed = True
             try:
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
@@ -277,6 +285,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                         message=message,
                         session=session,
                     )
+                worker_failed = False
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -294,4 +303,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
+                if worker_failed and getattr(queue_manager, "execution_state", None) != AppExecutionState.TERMINAL:
+                    from core.app.llm.message_billing import release_message_billing
+
+                    release_message_billing(application_generate_entity)
                 db.session.close()

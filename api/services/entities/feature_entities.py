@@ -148,6 +148,7 @@ class FeatureModel(FeatureResponseModel):
     """Effective feature availability and limits for the current workspace."""
 
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True

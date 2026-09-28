@@ -31,6 +31,13 @@ from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import Provider, ProviderType
 
 
+@pytest.fixture(autouse=True)
+def legacy_routing_policy():
+    """This suite exercises legacy settlement; routed admission has its own suite."""
+    with patch("core.model_invocation_routing.routed_credentials", return_value=None):
+        yield
+
+
 @contextmanager
 def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
