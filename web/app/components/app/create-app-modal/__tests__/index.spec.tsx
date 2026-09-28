@@ -76,13 +76,6 @@ vi.mock('@/app/notifications', () => ({
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      open-icon-picker
-    </button>
-  ),
-}))
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
@@ -257,7 +250,7 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
-    fireEvent.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
@@ -306,7 +299,7 @@ describe('CreateAppModal', () => {
 
     renderModal()
 
-    fireEvent.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
