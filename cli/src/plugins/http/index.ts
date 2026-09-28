@@ -71,9 +71,11 @@ function parseServerErrorBody(raw: string): ServerErrorBody | undefined {
     return undefined
   }
   if (parsed === null || typeof parsed !== 'object') return undefined
-  const { code, message } = parsed as Record<string, unknown>
-  if (typeof code !== 'string' || typeof message !== 'string') return undefined
-  return parsed as ServerErrorBody
+  const record = parsed as Record<string, unknown>
+  if (record.code !== undefined && typeof record.code !== 'string') return undefined
+  const message = typeof record.message === 'string' ? record.message : record.error
+  if (typeof message !== 'string') return undefined
+  return { ...record, message } as ServerErrorBody
 }
 
 function appendQuery(url: URL, query: HttpRequest['query']): void {

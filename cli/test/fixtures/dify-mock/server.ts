@@ -670,7 +670,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'import-failed')
       return c.json(
         { id: 'imp-1', status: 'failed', error: 'unsupported DSL version' },
-        { status: 200 },
+        { status: 400 },
       )
     if (scenario === 'import-pending')
       return c.json(

@@ -9,7 +9,7 @@ export type ServerErrorDetail = {
 }
 
 export type ServerErrorBody = {
-  readonly code: string
+  readonly code?: string
   readonly message: string
   readonly status?: number
   readonly hint?: string
