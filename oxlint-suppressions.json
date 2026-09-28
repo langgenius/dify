@@ -3177,11 +3177,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/index.tsx": {
-    "eslint-react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/iteration/node.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
