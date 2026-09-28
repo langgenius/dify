@@ -915,7 +915,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     site = Site(
         app_id=agent.app_id,
         title="Agent Site",
-        default_language="en-US",
+        default_language="en",
         customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         icon_type=IconType.EMOJI,
         icon="S",
@@ -949,6 +949,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     assert app_model is not None
     standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
     assert standalone_dsl["site"]["title"] == "Agent Site"
+    assert standalone_dsl["site"]["default_language"] == "en-US"
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
@@ -959,6 +960,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             exported_app = AgentAppDsl.model_validate(app_data)
             assert exported_app.site is not None
             assert exported_app.site.title == "Agent Site"
+            assert exported_app.site.default_language == "en-US"
             assert exported_app.site.icon == "S"
             exported_soul = exported_app.package.soul
             assert exported_soul.model is not None

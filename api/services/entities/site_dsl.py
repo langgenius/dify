@@ -1,11 +1,13 @@
 """Portable, presentation-only Site settings for App DSL exports."""
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 from sqlalchemy.orm import Session
 
-from constants.languages import supported_language
+from constants.languages import get_valid_language, supported_language
 from models.model import App, IconType, Site
 from services.icon_configuration import is_valid_image_icon
+
+_SITE_EXPORT_CONTEXT = object()
 
 
 class SiteDsl(BaseModel):
@@ -19,7 +21,7 @@ class SiteDsl(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    title: str | None = Field(default=None, min_length=1, max_length=255)
+    title: str | None = Field(default=None, max_length=255)
     description: str | None = None
     icon_type: IconType | None = None
     icon: str | None = None
@@ -34,10 +36,19 @@ class SiteDsl(BaseModel):
     show_workflow_steps: bool | None = None
     use_icon_as_answer_icon: bool | None = None
 
+    @classmethod
+    def from_site(cls, site: Site) -> "SiteDsl":
+        """Export persisted Site values as an importable DSL, including legacy locales."""
+        return cls.model_validate(site, from_attributes=True, context=_SITE_EXPORT_CONTEXT)
+
     @field_validator("default_language")
     @classmethod
-    def validate_language(cls, value: str | None) -> str | None:
-        return supported_language(value) if value is not None else None
+    def validate_language(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value is None:
+            return None
+        if info.context is _SITE_EXPORT_CONTEXT:
+            return get_valid_language(value)
+        return supported_language(value)
 
     @model_validator(mode="after")
     def validate_required_values(self) -> "SiteDsl":

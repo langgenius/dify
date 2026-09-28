@@ -155,7 +155,7 @@ class RosterAgentPackageExporter:
             app = make_agent_app_dsl(app_model, package_ref="agent_1", packages={"agent_1": package}, dependencies=[])
             resources.collect_icon(session=session, tenant_id=tenant_id, metadata=app.app)
             if (site := app_model.site_with_session(session=session)) is not None:
-                site_data = SiteDsl.model_validate(site, from_attributes=True).model_dump(mode="json")
+                site_data = SiteDsl.from_site(site).model_dump(mode="json")
                 resources.collect_icon(session=session, tenant_id=tenant_id, metadata=site_data)
                 app.site = SiteDsl.model_validate(site_data)
             audit = RosterAgentPackageAudit(ref=agent.id)
