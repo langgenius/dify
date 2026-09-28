@@ -9,6 +9,9 @@ This test suite covers:
 - Embedding storage validation
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import pickle
 from datetime import UTC, datetime
@@ -124,6 +127,25 @@ def _make_segments(document: Document, hit_counts: list[int]) -> list[DocumentSe
         )
         for position, hit_count in enumerate(hit_counts, start=1)
     ]
+
+
+_SIGN_TIME = 1700000000
+_SIGN_NONCE = "01" * 16
+_FILE_A = "0a0a0a0a-0000-4000-8000-00000000000a"
+_FILE_B = "0b0b0b0b-0000-4000-8000-00000000000b"
+_TOOL_FILE = "0c0c0c0c-0000-4000-8000-00000000000c"
+
+
+def _signed_url(path: str, *, sign_kind: str, file_id: str) -> str:
+    """Return ``path`` with the query ``get_sign_content`` builds under the frozen clock, nonce and secret key."""
+    data_to_sign = f"{sign_kind}|{file_id}|{_SIGN_TIME}|{_SIGN_NONCE}"
+    sign = hmac.new(b"unit-secret", data_to_sign.encode(), hashlib.sha256).digest()
+    return f"{path}?timestamp={_SIGN_TIME}&nonce={_SIGN_NONCE}&sign={base64.urlsafe_b64encode(sign).decode()}"
+
+
+_SIGNED_FILE_A = _signed_url(f"/files/{_FILE_A}/file-preview", sign_kind="file-preview", file_id=_FILE_A)
+_SIGNED_IMAGE_B = _signed_url(f"/files/{_FILE_B}/image-preview", sign_kind="image-preview", file_id=_FILE_B)
+_SIGNED_TOOL_FILE = _signed_url(f"/files/tools/{_TOOL_FILE}.png", sign_kind="file-preview", file_id=_TOOL_FILE)
 
 
 class TestDatasetModelValidation:
@@ -1138,6 +1160,72 @@ class TestDocumentSegmentIndexing:
         assert query["timestamp"] == ["1700000000"]
         assert query["nonce"] == ["01010101010101010101010101010101"]
         assert query["sign"][0]
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            pytest.param(
+                f"![a](/files/{_FILE_A}/file-preview) ![b](/files/{_FILE_B}/image-preview)",
+                f"![a]({_SIGNED_FILE_A}) ![b]({_SIGNED_IMAGE_B})",
+                id="file-preview-before-image-preview",
+            ),
+            pytest.param(
+                f"![t](/files/tools/{_TOOL_FILE}.png) then ![a](/files/{_FILE_A}/file-preview)",
+                f"![t]({_SIGNED_TOOL_FILE}) then ![a]({_SIGNED_FILE_A})",
+                id="tool-file-before-file-preview",
+            ),
+            pytest.param(
+                f"![a](/files/{_FILE_A}/file-preview?timestamp=0&nonce=old&sign=old)",
+                f"![a]({_SIGNED_FILE_A})",
+                id="file-preview-with-existing-query",
+            ),
+            pytest.param(
+                f"![b](/files/{_FILE_B}/image-preview?timestamp=0&nonce=old&sign=old)",
+                f"![b]({_SIGNED_IMAGE_B})",
+                id="image-preview-with-existing-query",
+            ),
+            pytest.param(
+                f"see /files/{_FILE_A}/file-preview?timestamp=0&nonce=old&sign=old, then more",
+                f"see {_SIGNED_FILE_A}, then more",
+                id="comma-after-link-with-query",
+            ),
+            pytest.param(
+                f"/files/{_FILE_B}/image-preview?timestamp=0&nonce=old&sign=old图片说明",
+                f"{_SIGNED_IMAGE_B}图片说明",
+                id="cjk-text-after-link-with-query",
+            ),
+            pytest.param(
+                f"<td>/files/tools/{_TOOL_FILE}.png?timestamp=0&nonce=old&sign=old</td>"
+                f"<td>/files/{_FILE_A}/file-preview?timestamp=0&nonce=old&sign=old</td>",
+                f"<td>{_SIGNED_TOOL_FILE}</td><td>{_SIGNED_FILE_A}</td>",
+                id="adjacent-links-with-queries",
+            ),
+        ],
+    )
+    def test_document_segment_sign_content_signs_each_link_once_in_place(
+        self, monkeypatch: pytest.MonkeyPatch, content: str, expected: str
+    ):
+        """Test every file link gets exactly one fresh signed query and the text between links is untouched."""
+        # Arrange
+        segment = DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            position=1,
+            content=content,
+            word_count=1,
+            tokens=2,
+            created_by="user-1",
+        )
+        monkeypatch.setattr("models.dataset.time.time", lambda: _SIGN_TIME)
+        monkeypatch.setattr("models.dataset.os.urandom", lambda _: b"\x01" * 16)
+        apply_config_overrides(monkeypatch, SECRET_KEY="unit-secret")
+
+        # Act
+        sign_content = segment.get_sign_content()
+
+        # Assert
+        assert sign_content == expected
 
     def test_document_segment_error_tracking(self):
         """Test document segment error tracking."""

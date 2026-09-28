@@ -808,8 +808,12 @@ class DocumentSegment(TypeBase):
         signed_urls: list[tuple[int, int, str]] = []
         text = self.content
 
+        # An existing query ends where the URL ends: at the first character a signed query never contains (they only
+        # hold letters, digits and -_%=&), so a comma, CJK text or another link written straight after the URL is kept
+        query_pattern = r"(?:\?[A-Za-z0-9_%=&\-]*)?"
+
         # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+        pattern = r"/files/([a-f0-9\-]+)/image-preview" + query_pattern
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -826,7 +830,7 @@ class DocumentSegment(TypeBase):
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+        pattern = r"/files/([a-f0-9\-]+)/file-preview" + query_pattern
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -843,8 +847,7 @@ class DocumentSegment(TypeBase):
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
-        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)" + query_pattern
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -861,9 +864,9 @@ class DocumentSegment(TypeBase):
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
-        # Reconstruct the text with signed URLs
+        # Reconstruct the text with signed URLs, splicing in text order so the running offset stays valid
         offset = 0
-        for start, end, signed_url in signed_urls:
+        for start, end, signed_url in sorted(signed_urls):
             text = text[: start + offset] + signed_url + text[end + offset :]
             offset += len(signed_url) - (end - start)
 
