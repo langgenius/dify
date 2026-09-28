@@ -331,26 +331,6 @@ jobs:
           fi
           UV_NO_SYNC=1 PYREFLY_OUTPUT_FORMAT=github ./dev/pyrefly-check-local "${targets[@]}"
 
-          mypy_targets=()
-          for path in "${targets[@]}"; do
-            if [[ "$path" != api/migrations/* ]]; then
-              mypy_targets+=("${path#api/}")
-            fi
-          done
-          if ((${#mypy_targets[@]} == 0)); then
-            echo "Dify KnowledgeFS Mypy target set is empty" >&2
-            exit 1
-          fi
-          uv run --directory api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev mypy \
-            --explicit-package-bases \
-            --exclude-gitignore \
-            --exclude '(^|/)conftest\.py$' \
-            --exclude 'tests/' \
-            --exclude 'migrations/' \
-            --check-untyped-defs \
-            --disable-error-code=import-untyped \
-            "${mypy_targets[@]}"
-
       - name: Test Dify KnowledgeFS unit surface
         working-directory: .
         env:

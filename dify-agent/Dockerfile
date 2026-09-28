@@ -31,7 +31,8 @@ FROM base AS packages
 COPY dify-agent/pyproject.toml dify-agent/uv.lock dify-agent/README.md ./
 COPY dify-agent/src ./src
 # Trust the checked-in lock during image builds and install the server extra.
-RUN uv sync --frozen --no-dev --no-editable --extra server
+# Allow large native wheels such as openshell to finish downloading in CI.
+RUN UV_HTTP_TIMEOUT=120 uv sync --frozen --no-dev --no-editable --extra server
 
 
 # production stage
