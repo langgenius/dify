@@ -663,7 +663,11 @@ Get suggested questions for an Agent App message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
 | 404 | Agent, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
@@ -2510,7 +2514,11 @@ Get suggested questions for a message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 404 | Message or conversation not found |  |
+| 400 | App or model provider unavailable, or generation failed |  |
+| 401 | Account authentication required |  |
+| 403 | Insufficient permissions or suggested questions disabled |  |
+| 404 | App, message, or conversation not found |  |
+| 500 | Unexpected server error |  |
 
 ### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation

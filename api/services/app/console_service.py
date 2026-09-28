@@ -256,6 +256,10 @@ class ConsoleAppService:
         ):
             result.permission_keys = self._access.imported_permissions(context, result.app_id)
 
+    def get_reference(self, context: RequestContext, app_id: str) -> AppReference:
+        """Admit an existing console app without retaining its database session."""
+        return self._apps.get_reference(context, app_id)
+
     def check_import_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         self._apps.get_reference(context, app_id)
         return self._transfers.check_dependencies(context, app_id)
