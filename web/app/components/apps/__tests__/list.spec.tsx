@@ -55,6 +55,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
+
 const app = (overrides: Partial<AppPartial> = {}) => ({
   ...createAppDetailFixture({ id: 'app-1', name: 'Chat app', maintainer: 'creator-1' }),
   permission_keys: [AppACLPermission.Edit],
@@ -214,10 +216,13 @@ it('shows creation guidance only for an unfiltered empty workspace with creation
 
 it('does not offer creation to a user without workspace creation permission', async () => {
   api.apps.mockResolvedValue(page([]))
-  await setup('', { workspacePermissionKeys: [] })
+  await setup('?create=blank&mode=workflow', { workspacePermissionKeys: [] })
   expect(emptyStatus()).toHaveTextContent('app.filterEmpty.noApps')
   expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('dialog', { name: 'app.newApp.startFromBlank' }),
+  ).not.toBeInTheDocument()
 })
 
 it.each(['CLOUD', 'COMMUNITY'] as const)(
