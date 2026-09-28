@@ -1,18 +1,16 @@
 import type { NodeProps } from 'reactflow'
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import BaseNode from './_base/node'
 import { NodeComponentMap } from './components'
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
-  const NodeComponent = useMemo(() => NodeComponentMap[nodeData.type], [nodeData.type])!
+  const NodeComponent = NodeComponentMap[nodeData.type]!
 
   return (
-    <>
-      <BaseNode id={props.id} data={props.data}>
-        <NodeComponent />
-      </BaseNode>
-    </>
+    <BaseNode id={props.id} data={props.data}>
+      <NodeComponent />
+    </BaseNode>
   )
 }
 CustomNode.displayName = 'CustomNode'
