@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "به‌روزرسانی مهارت‌های فضای کاری ناموفق بود.",
   "agentDetail.configure.skills.workspaceSelector.search": "جستجوی مهارت‌ها...",
   "agentDetail.configure.switchToPreviewConfirm.title": "به حالت پیش‌نمایش بروید؟",
+  "agentDetail.configure.templatePreview.agentUI": "رابط کاربری عامل",
   "agentDetail.configure.title": "پیکربندی",
   "agentDetail.configure.tools.add": "افزودن ابزار",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "برای توسعه‌دهندگان",

@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Impossibile aggiornare le abilità del workspace.",
   "agentDetail.configure.skills.workspaceSelector.search": "Cerca abilità...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Passare alla modalità Anteprima?",
+  "agentDetail.configure.templatePreview.agentUI": "Interfaccia agente",
   "agentDetail.configure.title": "Configura",
   "agentDetail.configure.tools.add": "Aggiungi strumento",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Per sviluppatori",

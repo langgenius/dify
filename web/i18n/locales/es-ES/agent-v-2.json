@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "No se han podido actualizar las habilidades del espacio de trabajo.",
   "agentDetail.configure.skills.workspaceSelector.search": "Buscar habilidades...",
   "agentDetail.configure.switchToPreviewConfirm.title": "¿Cambiar al modo de vista previa?",
+  "agentDetail.configure.templatePreview.agentUI": "Interfaz del agente",
   "agentDetail.configure.title": "Configurar",
   "agentDetail.configure.tools.add": "Agregar herramienta",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Para desarrolladores",

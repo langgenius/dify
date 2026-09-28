@@ -357,6 +357,7 @@ export default interface Resources {
     'agentDetail.configure.skills.workspaceSelector.saveFailed': 'Failed to update workspace skills.'
     'agentDetail.configure.skills.workspaceSelector.search': 'Search skills...'
     'agentDetail.configure.switchToPreviewConfirm.title': 'Switch to Preview mode?'
+    'agentDetail.configure.templatePreview.agentUI': 'Agent UI'
     'agentDetail.configure.title': 'Configure'
     'agentDetail.configure.tools.add': 'Add tool'
     'agentDetail.configure.tools.addMenu.cliTool.badge': 'For developers'
