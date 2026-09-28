@@ -4,19 +4,19 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type EvaluationConfigResponse = {
-  customized_metrics?: CustomizedMetrics | null
-  default_metrics?: Array<DefaultMetric> | null
-  evaluation_model?: string | null
-  evaluation_model_provider?: string | null
-  judgment_config?: JudgmentConfig | null
-}
-
 export type EvaluationConfigPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
   evaluation_model?: string
   evaluation_model_provider?: string
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationConfigResponse = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric> | null
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
   judgment_config?: JudgmentConfig | null
 }
 
@@ -201,7 +201,7 @@ export type EvaluationMetric = {
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadData = {
-  body?: never
+  body: EvaluationConfigPayload
   path: {
     evaluate_target_id: string
     evaluate_target_type: string

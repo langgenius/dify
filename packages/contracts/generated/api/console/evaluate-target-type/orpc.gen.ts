@@ -17,6 +17,7 @@ import {
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdPath,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdQuery,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdResponse,
+  zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadBody,
   zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadPath,
   zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadResponse,
   zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoBody,
@@ -46,7 +47,10 @@ export const post = oc
     tags: ['console'],
   })
   .input(
-    z.object({ params: zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadPath }),
+    z.object({
+      body: zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadBody,
+      params: zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadPath,
+    }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadResponse)
 

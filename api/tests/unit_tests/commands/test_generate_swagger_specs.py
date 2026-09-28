@@ -925,6 +925,13 @@ def test_generate_specs_include_evaluation_console_contract(tmp_path: Path):
         response_content = paths[path]["post"]["responses"]["200"]["content"]
         assert response_content == {xlsx_media_type: {"schema": binary_schema}}
 
+    template_download_request = paths["/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download"]["post"][
+        "requestBody"
+    ]
+    assert template_download_request["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/EvaluationConfigPayload"
+    )
+
     for path in (
         "/datasets/{dataset_id}/evaluation/runs/{run_id}/retry",
         "/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry",

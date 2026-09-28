@@ -23,6 +23,7 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
+from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
@@ -33,7 +34,7 @@ from models.evaluation import (
     EvaluationRunItemStatus,
     EvaluationRunStatus,
 )
-from models.model import AppMode
+from models.model import App, AppMode
 from models.workflow import WorkflowKind, WorkflowType
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
@@ -45,15 +46,55 @@ def stub_evaluation_model_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(EvaluationService, "_validate_evaluation_model", MagicMock())
 
 
-def test_generated_template_uses_workflow_variable_names() -> None:
+def test_generated_template_uses_provided_column_names() -> None:
     content = EvaluationService._generate_xlsx_template(
-        [{"variable": "customer_question", "label": "Customer question"}],
+        [
+            {"name": "index", "type": "number"},
+            {"name": "customer_question", "type": "string"},
+        ],
         "App",
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
     assert worksheet is not None
     assert [cell.value for cell in worksheet[1]] == ["index", "customer_question"]
+
+
+def test_generated_template_includes_reference_columns_for_selected_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = App(name="Reference App", mode=AppMode.WORKFLOW.value)
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = True
+    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
+    monkeypatch.setattr(
+        EvaluationService,
+        "_get_app_input_fields",
+        MagicMock(return_value=[{"variable": "input", "label": "Input label", "type": "text-input"}]),
+    )
+    monkeypatch.setattr(
+        EvaluationManager,
+        "get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+
+    content, _ = EvaluationService.generate_dataset_template(
+        app,
+        "apps",
+        EvaluationConfigData(
+            default_metrics=[
+                DefaultMetric(
+                    metric="answer_correctness",
+                    node_info_list=[NodeInfo(node_id="llm-1", type="llm", title="Answer")],
+                )
+            ]
+        ),
+        MagicMock(spec=Session),
+    )
+    worksheet = load_workbook(io.BytesIO(content)).active
+
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == ["index", "input", "llm-1 : expected_output"]
 
 
 def test_parse_csv_dataset_preserves_node_id_scoped_references() -> None:

@@ -79,7 +79,7 @@ export const useInputFieldsActions = ({
 
   const handleDownloadTemplate = async () => {
     try {
-      const file = await evaluationActions.downloadTemplate()
+      const file = await evaluationActions.downloadTemplate(templateConfigPayload ?? {})
       downloadBlob({ data: file, fileName: templateFileName })
     } catch {
       toast.error(t(($) => $['batch.templateDownloadError']))
