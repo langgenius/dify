@@ -52,9 +52,10 @@ export function MainNavSearchButton({
         className="h-4.5 min-w-0 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary data-pending:invisible"
       >
         {displayPlatform !== null &&
-          GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-            <span key={key}>{formatForDisplay(key, { platform: displayPlatform })}</span>
-          ))}
+          formatForDisplay(GOTO_ANYTHING_HOTKEY, {
+            platform: displayPlatform,
+            parts: true,
+          }).map((key) => <span key={key}>{key}</span>)}
       </Kbd>
     </DialogTrigger>
   )

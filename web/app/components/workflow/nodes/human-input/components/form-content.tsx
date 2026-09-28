@@ -149,7 +149,7 @@ const FormContent: FC<FormContentProps> = ({
 
     return [
       {
-        hotkey: ['mod', '/'],
+        hotkey: 'Mod+/' as const,
         displayMode: 'workflow-panel-adjacent-center' as const,
         Popup: AddInputFieldShortcutPopup,
       },

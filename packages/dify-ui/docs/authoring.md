@@ -20,8 +20,8 @@ package components; consumers import only through public subpaths.
 
 Use the primitive name without a `Root` suffix for the canonical boundary and matching props type:
 `Select` and `SelectProps`, `Drawer` and `DrawerProps`. Keep `Root` only when the same subpath
-exports both low-level anatomy and a higher-level convenience component, such as `CheckboxRoot`
-and `Checkbox`.
+exports both low-level anatomy and a higher-level convenience component, such as `AvatarRoot`
+and `Avatar`.
 
 Every runtime component must have an accurate, importable props type with the matching name. Use a
 direct alias for an unchanged Base UI part. Define Dify-authored composite props at the Dify UI

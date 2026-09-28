@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
 import type { AppIconType } from '@/types/app'
@@ -9,7 +9,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import PermissionSelector from '../../permission-selector'
 
 const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
@@ -22,10 +22,10 @@ type BasicInfoSectionProps = {
   description: string
   setDescription: (value: string) => void
   iconInfo: IconInfo
-  showAppIconPicker: boolean
+  showIconPicker: boolean
   handleOpenAppIconPicker: () => void
-  handleSelectAppIcon: (icon: AppIconSelection) => void
-  setShowAppIconPicker: (show: boolean) => void
+  handleSelectAppIcon: (icon: IconPickerValue) => void
+  setShowIconPicker: (show: boolean) => void
   permission: DatasetPermission | undefined
   setPermission: (value: DatasetPermission | undefined) => void
   selectedMemberIDs: string[]
@@ -41,10 +41,10 @@ const BasicInfoSection = ({
   description,
   setDescription,
   iconInfo,
-  showAppIconPicker,
+  showIconPicker,
   handleOpenAppIconPicker,
   handleSelectAppIcon,
-  setShowAppIconPicker,
+  setShowIconPicker,
   permission,
   setPermission,
   selectedMemberIDs,
@@ -130,18 +130,20 @@ const BasicInfoSection = ({
         </div>
       </div>
 
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            iconInfo.icon_type === 'emoji'
-              ? { icon: iconInfo.icon, background: iconInfo.icon_background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={handleSelectAppIcon}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={
+          iconInfo.icon_type === 'emoji'
+            ? {
+                type: 'emoji',
+                icon: iconInfo.icon,
+                background: iconInfo.icon_background,
+              }
+            : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
+        }
+        onOpenChange={setShowIconPicker}
+        onConfirm={handleSelectAppIcon}
+      />
     </>
   )
 }
