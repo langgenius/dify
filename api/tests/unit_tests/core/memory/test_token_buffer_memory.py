@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import models.model as model_module
 from core.memory import token_buffer_memory as memory_module
@@ -43,7 +43,7 @@ class Database:
     """Typed SQLite binding plus executed SQL for query-count assertions."""
 
     engine: Engine
-    session: Session
+    session: scoped_session[Session]
     statements: list[tuple[str, object]]
 
 
@@ -59,12 +59,15 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
         statements.append((statement, parameters))
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
+    session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    try:
         database = Database(engine=sqlite_engine, session=session, statements=statements)
         monkeypatch.setattr(memory_module, "db", database)
         monkeypatch.setattr(model_module, "db", database)
         yield database
-    event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+    finally:
+        session.remove()
+        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
 
 def _make_app(*, app_id: str | None = None, mode: AppMode = AppMode.CHAT) -> App:
@@ -525,7 +528,7 @@ class TestBuildPromptMessageWithFiles:
 
     @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def test_workflow_mode_no_app_raises(self, mode, database: Database):
-        """Raises ValueError when conversation.app is falsy."""
+        """Raises ValueError when the app lookup returns None."""
         conv = _make_conversation(mode)
         mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
@@ -600,6 +603,11 @@ class TestBuildPromptMessageWithFiles:
         conv = _persist_conversation(database, mode)
         workflow_run = _make_workflow_run()
         workflow = _persist_workflow(database, workflow_id=workflow_run.workflow_id)
+        app = database.session.get(App, conv.app_id)
+        assert app is not None
+        # The repository lookup must see the caller's uncommitted app changes.
+        app.tenant_id = str(uuid4())
+        message = _make_message()
 
         mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
         mem._workflow_run_repo = MagicMock()
@@ -612,7 +620,7 @@ class TestBuildPromptMessageWithFiles:
             result = mem._build_prompt_message_with_files(
                 message_files=[],
                 text_content="wf text",
-                message=_make_message(),
+                message=message,
                 app_record=_make_app(),
                 is_user_message=True,
             )
@@ -620,6 +628,9 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result, UserPromptMessage)
         assert result.content == "wf text"
         assert database.session.get(Workflow, workflow.id) is workflow
+        mem._workflow_run_repo.get_workflow_run_by_id.assert_called_once_with(
+            tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+        )
 
     # ------------------------------------------------------------------
     # Invalid mode
@@ -655,6 +666,18 @@ class TestGetHistoryPromptMessages:
 
     def test_returns_empty_when_no_messages(self, database: Database) -> None:
         assert self._make_memory(database).get_history_prompt_messages() == []
+
+    def test_missing_app_preserves_text_history(self, database: Database) -> None:
+        conversation = _make_conversation()
+        mem = TokenBufferMemory(conversation=conversation, model_instance=_make_model_instance())
+        message = _persist_message(database, conversation.id, query="My query", answer="My answer")
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+
+        with patch("core.memory.token_buffer_memory.file_factory.build_from_message_file") as build_file:
+            result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["My query", "My answer"]
+        build_file.assert_not_called()
 
     def test_skips_newest_message_without_answer(self, database: Database) -> None:
         mem = self._make_memory(database)
@@ -734,6 +757,7 @@ class TestGetHistoryPromptMessages:
         build_prompt.assert_called_once()
         assert build_prompt.call_args.kwargs["message_files"] == [message_file]
         assert build_prompt.call_args.kwargs["is_user_message"] is is_user_message
+        assert build_prompt.call_args.kwargs["app_record"] is database.session.get(App, mem.conversation.app_id)
         assert built_prompt in result
 
     def test_message_files_are_batch_loaded_with_constant_query_count(self, database: Database) -> None:

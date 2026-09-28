@@ -1,3 +1,4 @@
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type {
   FormInputItem,
@@ -9,10 +10,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
@@ -29,6 +30,8 @@ import {
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import PrePopulate from './pre-populate'
 import TypeSwitch from './type-switch'
+
+const SAVE_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
@@ -48,6 +51,7 @@ const InputField: React.FC<InputFieldProps> = ({
   onChange,
   onCancel,
 }) => {
+  const rootRef = useRef<HTMLDivElement>(null)
   const outputVariableNameInputId = React.useId()
   const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
@@ -202,21 +206,35 @@ const InputField: React.FC<InputFieldProps> = ({
     })
   }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault()
-        handleSave()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleSave])
+  // Let child React handlers commit their input before claiming the field shortcut.
+  useHotkey(
+    SAVE_HOTKEY,
+    (event) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        !(event.target instanceof Node) ||
+        !rootRef.current?.contains(event.target)
+      )
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleSave()
+    },
+    {
+      enabled: nameValid,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   return (
-    <div className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+    <div
+      ref={rootRef}
+      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+    >
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
           {t(($) => $[`${i18nPrefix}.title`], { ns: 'workflowHumanInput' })}
@@ -353,9 +371,9 @@ const InputField: React.FC<InputFieldProps> = ({
             <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
               <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflowHumanInput' })}</span>
               <KbdGroup>
-                {['Mod', 'Enter'].map((key) => (
+                {formatForDisplay(SAVE_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>

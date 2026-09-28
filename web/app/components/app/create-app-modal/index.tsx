@@ -1,7 +1,7 @@
 'use client'
 
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppIconSelection } from '../../base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,6 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -29,7 +30,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
-import AppIconPicker from '../../base/app-icon-picker'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
@@ -52,14 +52,15 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const nameInputId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>({
+  const [appIcon, setAppIcon] = useState<IconPickerValue>({
     type: 'emoji',
     icon: '🤖',
     background: '#FFEAD5',
   })
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() =>
@@ -165,19 +166,30 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+  const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,
-    () => {
-      if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       handleCreateApp()
     },
     {
+      target: contentRef,
+      enabled: !createDisabled && !isCreating && !showIconPicker,
       ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
   return (
     <>
-      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
+      <div
+        ref={contentRef}
+        className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
+      >
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-34.75" />
@@ -320,23 +332,17 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   size="xxl"
                   className="cursor-pointer rounded-2xl"
                   onClick={() => {
-                    setShowAppIconPicker(true)
+                    setShowIconPicker(true)
                   }}
                 />
-                {showAppIconPicker && (
-                  <AppIconPicker
-                    open={showAppIconPicker}
-                    initialEmoji={
-                      appIcon.type === 'emoji'
-                        ? { icon: appIcon.icon, background: appIcon.background }
-                        : undefined
-                    }
-                    onOpenChange={setShowAppIconPicker}
-                    onSelect={(payload) => {
-                      setAppIcon(payload)
-                    }}
-                  />
-                )}
+                <IconPickerDialog
+                  open={showIconPicker}
+                  defaultValue={appIcon}
+                  onOpenChange={setShowIconPicker}
+                  onConfirm={(payload) => {
+                    setAppIcon(payload)
+                  }}
+                />
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
@@ -371,16 +377,16 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
-                  disabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull || !name}
+                  disabled={createDisabled}
                   loading={isCreating}
                   variant="primary"
                   onClick={handleCreateApp}
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
-                    {CREATE_APP_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

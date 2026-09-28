@@ -101,6 +101,10 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_variable_reference_validator import (
+    format_variable_reference_errors,
+    validate_variable_references,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -401,6 +405,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    warning: str | None = Field(
+        default=None,
+        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -1266,6 +1274,21 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
+def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
+    try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
@@ -1330,11 +1353,16 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            graph_text = workflow.graph
 
-        return {
+        warning = _advisory_variable_reference_warning(graph_text)
+        payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
         }
+        if warning:
+            payload["warning"] = warning
+        return payload
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

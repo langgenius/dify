@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from unittest.mock import PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -67,7 +68,9 @@ def test_get_conversation_variables_returns_paginated_response(
     assert response["limit"] == 100
     assert response["total"] == 1
     assert response["has_more"] is False
-    assert response["data"][0]["id"] == "var-1"
+    assert response["data"][0]["id"] == row.id
+    UUID(response["data"][0]["id"])
+    assert row.to_variable().id == "var-1"
     assert response["data"][0]["created_at"] == expected_created_at
     assert response["data"][0]["updated_at"] == expected_updated_at
 

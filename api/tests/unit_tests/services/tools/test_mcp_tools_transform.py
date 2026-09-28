@@ -402,3 +402,54 @@ class TestMCPToolTransform:
         assert result.original_headers == {"Authorization": "Bearer secret-token"}
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"
+
+    def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider):
+        """Tools where the server returned ``title: null`` should fall back to the tool name.
+
+        Regression test for langgenius/dify#42453: Exa's MCP server returns
+        ``title: null`` for some tools, breaking tool conversion when the
+        server-provided title is required.
+        """
+        tools = [
+            MCPTool(
+                name="search_web",
+                title=None,
+                description="Search the web",
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            MCPTool(
+                name="get_content",
+                description="Fetch page content",
+                inputSchema={"type": "object", "properties": {}},
+            ),
+        ]
+
+        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+
+        assert len(result) == 2
+        # title is explicitly null -> must fall back to ``name``
+        assert result[0].name == "search_web"
+        assert result[0].label.en_US == "search_web"
+        assert result[0].label.zh_Hans == "search_web"
+        # title key is absent entirely -> must also fall back to ``name``
+        assert result[1].name == "get_content"
+        assert result[1].label.en_US == "get_content"
+        assert result[1].label.zh_Hans == "get_content"
+
+    def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider):
+        """When the server provides a non-null title, it should be used for the label."""
+        tools = [
+            MCPTool(
+                name="search_web",
+                title="Search the Web",
+                description="Search the web",
+                inputSchema={"type": "object", "properties": {}},
+            )
+        ]
+
+        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+
+        assert len(result) == 1
+        assert result[0].name == "search_web"
+        assert result[0].label.en_US == "Search the Web"
+        assert result[0].label.zh_Hans == "Search the Web"

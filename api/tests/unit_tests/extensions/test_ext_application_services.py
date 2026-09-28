@@ -239,14 +239,19 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert redis.register_script.call_count == 3
 
-    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
-    installed_apps = services.installed_app_access._installed_apps
+    assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
+    installed_apps = services.installed_apps.access._installed_apps
     assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
-    assert services.installed_app_generation._usage is installed_apps
-    assert services.installed_apps._installed_apps is installed_apps
-    runtime = services.installed_app_generation._runtime
+    assert services.installed_apps.management._installed_apps is installed_apps
+    assert services.installed_apps.generation._usage is installed_apps
+    runtime = services.installed_apps.generation._runtime
     assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
     assert runtime._session_factory is sqlite_session_factory
+
+    trial_apps = services.trial_apps.usage
+    assert services.trial_apps.access._apps is trial_apps
+    assert services.trial_apps.generation._usage is trial_apps
+    assert services.recommended_app_queries._trial_apps is trial_apps
 
 
 @pytest.mark.parametrize(
@@ -866,7 +871,7 @@ def test_build_application_services_wires_trial_app_usage(
     app_id = str(uuid4())
     account_id = str(uuid4())
 
-    services.trial_app_usage.record(app_id=app_id, account_id=account_id)
+    services.trial_apps.usage.record(app_id=app_id, account_id=account_id)
 
     with sqlite_session_factory() as session:
         record = session.scalar(
@@ -919,7 +924,7 @@ def test_build_application_services_reuses_installed_app_generation_dependencies
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    assert services.installed_app_access._installed_apps is services.installed_app_generation._usage
+    assert services.installed_apps.access._installed_apps is services.installed_apps.generation._usage
 
 
 @pytest.mark.parametrize(
@@ -950,14 +955,14 @@ def test_build_application_services_wires_installed_app_admission(
         )
         if deployment_edition == DeploymentEdition.ENTERPRISE and not permission_result:
             with pytest.raises(InstalledAppAccessDeniedError):
-                services.installed_app_access.get_access(
+                services.installed_apps.access.get_access(
                     installed_app_id=installed_app_ref.id,
                     tenant_id=installed_app_ref.tenant_id,
                     account_id=account_id,
                 )
         else:
             assert (
-                services.installed_app_access.get_access(
+                services.installed_apps.access.get_access(
                     installed_app_id=installed_app_ref.id,
                     tenant_id=installed_app_ref.tenant_id,
                     account_id=account_id,
@@ -1000,7 +1005,7 @@ def test_installed_app_admission_normalizes_known_enterprise_errors(
             redis=MagicMock(spec=RedisClientWrapper),
         )
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.installed_app_access.get_access(
+            services.installed_apps.access.get_access(
                 installed_app_id=installed_app_ref.id,
                 tenant_id=installed_app_ref.tenant_id,
                 account_id=account_id,
@@ -1031,9 +1036,9 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
         session.add(account)
         session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
 
-    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    admitted = services.trial_apps.access.get_access(app_id=app_id, account_id=account_id)
     with patch.object(AppGenerateService, "generate", return_value={"answer": "hello"}):
-        response = services.trial_app_generation.generate_completion(
+        response = services.trial_apps.generation.generate_completion(
             trial_app=admitted, account_id=account_id, args={"inputs": {}}
         )
 
@@ -1088,7 +1093,7 @@ def test_app_audio_uses_the_configured_database_and_app_owner(
 
     monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
     monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
-    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    admitted = services.trial_apps.access.get_access(app_id=app_id, account_id=account_id)
     assert services.app_audio.transcript_asr(
         app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
         audio=AudioUpload(stream=BytesIO(b"audio"), mime_type="audio/mp3"),
@@ -1433,10 +1438,10 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
             assert services.webapp_access.batch_get_user_permissions(
                 user_id=account_id, app_ids=(installed_app_ref.app_id,)
             ) == {installed_app_ref.app_id: True}
-            assert services.installed_app_access.get_visible_app_ids(
+            assert services.installed_apps.access.get_visible_app_ids(
                 user_id=account_id, app_ids=(installed_app_ref.app_id,)
             ) == frozenset({installed_app_ref.app_id})
-        page = services.installed_apps.get_visible_page(
+        page = services.installed_apps.management.get_visible_page(
             tenant_id=installed_app_ref.tenant_id,
             user_id=account_id,
             cursor=None,
@@ -1456,8 +1461,8 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
             stored_membership = session.get(TenantAccountJoin, membership_id)
             assert stored_membership is not None
             stored_membership.role = TenantAccountRole.NORMAL
-        services.installed_apps.set_pinned(installed_app=installed_app_ref, is_pinned=True)
-        detail = services.installed_apps.get_detail(installed_app=installed_app_ref, account_id=account_id)
+        services.installed_apps.management.set_pinned(installed_app=installed_app_ref, is_pinned=True)
+        detail = services.installed_apps.management.get_detail(installed_app=installed_app_ref, account_id=account_id)
         assert detail.editable is False
         assert detail.installation.is_pinned is True
         assert detail.installation.id == installed_app_ref.id
@@ -1571,7 +1576,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
         redis=MagicMock(spec=RedisClientWrapper),
     )
     naming_app = Flask(__name__)
-    admitted_app = services.installed_app_access.get_access(
+    admitted_app = services.installed_apps.access.get_access(
         installed_app_id=installed_app_ref.id,
         tenant_id=installed_app_ref.tenant_id,
         account_id=account_id,
@@ -1582,7 +1587,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     previous_metadata = get_credit_usage_metadata()
     with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
         outer_session = db.session()
-        renamed = services.installed_app_conversations.rename(
+        renamed = services.installed_apps.conversations.rename(
             installed_app=admitted_app,
             account_id=account_id,
             conversation_id=conversation_id,
@@ -1596,7 +1601,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
         assert naming_sessions[0] is not outer_session
         assert not naming_sessions[0].in_transaction()
         assert db.session() is outer_session
-        services.installed_app_conversations.delete(
+        services.installed_apps.conversations.delete(
             installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
         )
     assert get_credit_usage_metadata() == previous_metadata
@@ -1654,7 +1659,7 @@ def test_installed_app_visibility_batches_settings_before_permissions_and_preser
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+        visible = services.installed_apps.access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
 
     assert visible == frozenset({"allowed", "truthy-permission"})
     assert enterprise_request.call_args_list == [
@@ -1685,7 +1690,7 @@ def test_installed_app_visibility_skips_and_logs_each_invalid_access_mode(
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+        visible = services.installed_apps.access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
 
     assert visible == frozenset(valid_ids)
     expected_calls = [call("POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)})]
@@ -1716,7 +1721,7 @@ def test_installed_app_visibility_skips_unnecessary_enterprise_requests(
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+        visible = services.installed_apps.access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
 
     assert visible == frozenset()
     if app_ids:
@@ -1747,7 +1752,7 @@ def test_installed_app_visibility_propagates_access_unavailable_with_original_ca
             redis=MagicMock(spec=RedisClientWrapper),
         )
         with pytest.raises(WebAppAccessUnavailableError) as caught:
-            services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=("app-1",))
+            services.installed_apps.access.get_visible_app_ids(user_id="viewer", app_ids=("app-1",))
 
     assert type(caught.value) is WebAppAccessUnavailableError
     assert caught.value.__cause__ is enterprise_error

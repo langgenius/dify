@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -36,7 +36,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -79,7 +79,7 @@ type SettingsSiteInfo = Pick<
 >
 
 type SettingsAppIconSelection =
-  | AppIconSelection
+  | IconPickerValue
   | {
       type: 'link'
       icon: string
@@ -202,7 +202,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
@@ -444,7 +444,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <AppIcon
                       size="xxl"
                       onClick={() => {
-                        setShowAppIconPicker(true)
+                        setShowIconPicker(true)
                       }}
                       className="mt-2 cursor-pointer"
                       iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
@@ -803,15 +803,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </Form>
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={showAppIconPicker}
-        initialEmoji={
-          appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined
-        }
-        onOpenChange={setShowAppIconPicker}
-        onSelect={setAppIcon}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon.type === 'link' ? undefined : appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setAppIcon}
       />
     </>
   )
