@@ -84,14 +84,8 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}"):
             result = api.get.__handler__(
                 api,
-<<<<<<< HEAD
                 context_for(account, session=db_session_with_containers),
-                query=AppListQuery(workspace_id=str(tenant.id), name=str(target.id)),
-=======
-                db_session_with_containers,
-                auth_data=auth_for(account),
                 query=AppListQuery(workspace_id=tenant.id, name=target.id),
->>>>>>> 493909dc14 (fix: fix ci)
             )
 
         assert result.total == 1
@@ -113,14 +107,8 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}"):
             result = api.get.__handler__(
                 api,
-<<<<<<< HEAD
                 context_for(outsider, session=db_session_with_containers),
-                query=AppListQuery(workspace_id=str(outsider_tenant.id), name=str(foreign_app.id)),
-=======
-                db_session_with_containers,
-                auth_data=auth_for(outsider),
                 query=AppListQuery(workspace_id=outsider_tenant.id, name=foreign_app.id),
->>>>>>> 493909dc14 (fix: fix ci)
             )
 
         assert result.total == 0
