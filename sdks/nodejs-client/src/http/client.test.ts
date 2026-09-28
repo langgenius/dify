@@ -367,6 +367,33 @@ describe('HttpClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it.each(['POST', 'PATCH', 'PUT', 'DELETE'] as const)(
+    'does not retry %s after a network failure',
+    async (method) => {
+      const fetchMock = stubFetch()
+      fetchMock.mockRejectedValueOnce(new Error('connection lost'))
+      const client = new HttpClient({ apiKey: 'test', maxRetries: 2, retryDelay: 0 })
+
+      await expect(
+        client.requestRaw({ method, path: '/workflows/run', data: { inputs: {} } }),
+      ).rejects.toBeInstanceOf(NetworkError)
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('does not retry a workflow POST after a timeout', async () => {
+    const fetchMock = stubFetch()
+    fetchMock.mockRejectedValueOnce(Object.assign(new Error('timeout'), { name: 'AbortError' }))
+    const client = new HttpClient({ apiKey: 'test', maxRetries: 2, retryDelay: 0 })
+
+    await expect(
+      client.requestRaw({ method: 'POST', path: '/workflows/run', data: { inputs: {} } }),
+    ).rejects.toBeInstanceOf(TimeoutError)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('does not retry non-replayable readable request bodies', async () => {
     const fetchMock = stubFetch()
     fetchMock.mockRejectedValueOnce(new Error('network'))
