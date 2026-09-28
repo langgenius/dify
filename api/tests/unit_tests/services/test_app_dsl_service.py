@@ -18,6 +18,7 @@ from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
+from services.entities.site_dsl import SiteDsl
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from tests.unit_tests.config_override import apply_config_overrides
@@ -611,14 +612,22 @@ def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatc
     assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
 
 
+@pytest.mark.parametrize(
+    ("title", "language", "expected_language"),
+    [("Exported Site", "en-US", "en-US"), ("", "en", "en-US")],
+)
 def test_load_export_data_includes_site_presentation_settings(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    title: str,
+    language: str,
+    expected_language: str,
 ) -> None:
     app = _app()
     site = Site(
         app_id=app.id,
-        title="Exported Site",
-        default_language="en-US",
+        title=title,
+        default_language=language,
         customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         icon_type=IconType.EMOJI,
         icon="🌱",
@@ -631,7 +640,9 @@ def test_load_export_data_includes_site_presentation_settings(
 
     data = AppDslService.load_export_data(app, session=sqlite_session).data
 
-    assert data["site"]["title"] == "Exported Site"
+    assert data["site"]["title"] == title
+    assert data["site"]["default_language"] == expected_language
+    assert SiteDsl.model_validate(data["site"]).title == title
     assert data["site"]["icon"] == "🌱"
     assert data["site"]["use_icon_as_answer_icon"] is True
     assert (

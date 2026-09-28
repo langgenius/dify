@@ -837,7 +837,7 @@ class AppDslService:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
 
         if (site := app_model.site_with_session(session=session)) is not None:
-            export_data["site"] = SiteDsl.model_validate(site, from_attributes=True).model_dump(mode="json")
+            export_data["site"] = SiteDsl.from_site(site).model_dump(mode="json")
         else:
             export_data.pop("site", None)
 

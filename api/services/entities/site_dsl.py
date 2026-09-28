@@ -3,7 +3,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
-from constants.languages import supported_language
+from constants.languages import get_valid_language, supported_language
 from models.model import App, IconType, Site
 from services.icon_configuration import is_valid_image_icon
 
@@ -19,7 +19,7 @@ class SiteDsl(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    title: str | None = Field(default=None, min_length=1, max_length=255)
+    title: str | None = Field(default=None, max_length=255)
     description: str | None = None
     icon_type: IconType | None = None
     icon: str | None = None
@@ -33,6 +33,13 @@ class SiteDsl(BaseModel):
     custom_disclaimer: str | None = Field(default=None, max_length=512)
     show_workflow_steps: bool | None = None
     use_icon_as_answer_icon: bool | None = None
+
+    @classmethod
+    def from_site(cls, site: Site) -> "SiteDsl":
+        """Export persisted Site values as an importable DSL, including legacy locales."""
+        values = {name: getattr(site, name) for name in cls.model_fields}
+        values["default_language"] = get_valid_language(site.default_language)
+        return cls.model_validate(values)
 
     @field_validator("default_language")
     @classmethod
