@@ -67,6 +67,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
   const setAdvancedEditing = useVisualEditorStore((state) => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
   const disableAddBtn =
@@ -227,7 +228,10 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
   })
 
   return (
-    <div className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4">
+    <div
+      ref={editorRef}
+      className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4"
+    >
       <div className="flex h-6 items-center pr-0.5 pl-1">
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
@@ -255,6 +259,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
         <Separator decorative orientation="vertical" className="mx-2 h-3" />
         {isAdvancedEditing ? (
           <AdvancedActions
+            target={editorRef}
             isConfirmDisabled={currentFields.name === ''}
             onCancel={handleCancel}
             onConfirm={handleConfirm}

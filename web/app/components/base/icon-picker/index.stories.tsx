@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { AppIconSelection } from '.'
+import type { IconPickerValue } from '.'
 import { useState } from 'react'
-import AppIconPicker from '.'
+import { IconPickerDialog } from '.'
 
 const meta = {
-  title: 'Base/Data Entry/AppIconPicker',
-  component: AppIconPicker,
+  title: 'Base/Data Entry/IconPickerDialog',
+  component: IconPickerDialog,
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -23,14 +23,14 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof AppIconPicker>
+} satisfies Meta<typeof IconPickerDialog>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-const AppIconPickerDemo = () => {
+const IconPickerDialogDemo = () => {
   const [open, setOpen] = useState(false)
-  const [selection, setSelection] = useState<AppIconSelection | null>(null)
+  const [selection, setSelection] = useState<IconPickerValue | null>(null)
 
   return (
     <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
@@ -49,7 +49,7 @@ const AppIconPickerDemo = () => {
         </pre>
       </div>
 
-      <AppIconPicker open={open} onOpenChange={setOpen} onSelect={setSelection} />
+      <IconPickerDialog open={open} onOpenChange={setOpen} onConfirm={setSelection} />
     </div>
   )
 }
@@ -58,23 +58,24 @@ export const Playground: Story = {
   args: {
     open: false,
     onOpenChange: () => {},
+    onConfirm: () => {},
   },
-  render: () => <AppIconPickerDemo />,
+  render: () => <IconPickerDialogDemo />,
   parameters: {
     docs: {
       source: {
         language: 'tsx',
         code: `
 const [open, setOpen] = useState(false)
-const [selection, setSelection] = useState<AppIconSelection | null>(null)
+const [selection, setSelection] = useState<IconPickerValue | null>(null)
 
 return (
   <>
     <button onClick={() => setOpen(true)}>Choose icon…</button>
-    <AppIconPicker
+    <IconPickerDialog
       open={open}
       onOpenChange={setOpen}
-      onSelect={setSelection}
+      onConfirm={setSelection}
     />
   </>
 )

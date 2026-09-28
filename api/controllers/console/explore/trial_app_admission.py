@@ -37,7 +37,7 @@ def get_trial_app[T, **P, R](
         if app_id is None:
             raise RuntimeError("The trial app admission route must provide app_id")
         try:
-            trial_app = application_services().trial_app_access.get_access(
+            trial_app = application_services().trial_apps.access.get_access(
                 app_id=str(app_id), account_id=request_context.account_id
             )
         except TrialAppUnavailableError as error:

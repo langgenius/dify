@@ -1,11 +1,11 @@
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -697,7 +697,7 @@ describe('MCPModal', () => {
         .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
       expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       await waitFor(() => {

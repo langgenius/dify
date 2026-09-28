@@ -1,9 +1,9 @@
 import type { DataSet } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import RenameDatasetModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -32,14 +32,17 @@ vi.mock('../../../base/app-icon', () => ({
   default: () => <span data-testid="app-icon">Icon</span>,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({
+vi.mock('@/app/components/base/icon-picker', () => ({
+  IconPickerDialog: ({
+    open,
     onOpenChange,
-    onSelect,
+    onConfirm,
   }: {
+    open: boolean
     onOpenChange: (open: boolean) => void
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
   }) => {
+    if (!open) return null
     let selectedBackground = '#FFEAD5'
     return (
       <div>
@@ -61,7 +64,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
         <button
           type="button"
           onClick={() => {
-            onSelect({ type: 'emoji', icon: '📊', background: selectedBackground })
+            onConfirm({ type: 'emoji', icon: '📊', background: selectedBackground })
             onOpenChange(false)
           }}
         >
