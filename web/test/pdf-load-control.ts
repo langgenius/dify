@@ -40,12 +40,20 @@ export function controlPdfLoad(url: string, drawnText: string): PdfLoadControl {
   const originalFetch = globalThis.fetch.bind(globalThis)
   let succeedFrom = 1
 
+  // A load is failed by serving a body pdfjs cannot parse, rather than by an
+  // HTTP error status. A non-2xx status makes `PDFFetchStream` reject outside
+  // the promise chain `PdfLoader` handles, which leaks an unhandled rejection
+  // and fails the run depending on timing. A parse failure travels the single
+  // `getDocument(...).promise` chain that `PdfLoader` already catches, so the
+  // library still takes its own error path and nothing dangles.
+  const UNPARSEABLE_BODY = 'this is not a pdf document'
+
   const serve = (succeed: boolean) =>
     succeed
       ? new Response(pdfBytes, { status: 200, headers: { 'Content-Type': 'application/pdf' } })
-      : new Response('injected load failure', {
-          status: 500,
-          statusText: 'Injected load failure',
+      : new Response(UNPARSEABLE_BODY, {
+          status: 200,
+          headers: { 'Content-Type': 'application/pdf' },
         })
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
