@@ -12,7 +12,7 @@ type PromptLogModalProps = {
   onCancel: () => void
 }
 const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 
@@ -43,7 +43,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCanc
         <div className="flex items-center">
           {currentLogItem.log?.length === 1 && (
             <>
-              <CopyFeedback className="size-6" content={currentLogItem.log[0]!.text} />
+              <CopyFeedback content={currentLogItem.log[0]!.text} />
               <div className="mx-2.5 h-3.5 w-px bg-divider-regular" />
             </>
           )}

@@ -1,5 +1,4 @@
 import io
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -22,12 +21,11 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
-from extensions.storage.storage_type import StorageType
 from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.enums import CreatorUserRole
 from models.model import UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def unwrap(func):
@@ -40,21 +38,13 @@ def unwrap(func):
 
 
 def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id="tenant-123",
-        storage_type=StorageType.LOCAL,
         key=f"upload/{file_id}/test.txt",
-        name="test.txt",
         size=size,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-123",
-        created_at=datetime(2024, 1, 1),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:

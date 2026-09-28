@@ -55,7 +55,7 @@ export type HumanInputV2DebugMode = {
 }
 
 export type HumanInputV2NodeType = HumanInputSharedNodeType & {
-  type: BlockEnum.HumanInput
+  type: typeof BlockEnum.HumanInput
   version: '2'
   recipients_spec: HumanInputV2Recipient[]
   message_template: HumanInputV2MessageTemplate

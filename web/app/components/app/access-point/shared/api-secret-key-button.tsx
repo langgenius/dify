@@ -6,7 +6,7 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ApiSecretKeyButtonProps = {
   appId: string
@@ -23,7 +23,7 @@ export function ApiSecretKeyButton({
   disabled = false,
   environmentId,
 }: ApiSecretKeyButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi'])
   const [modalOpen, setModalOpen] = useState(false)
   const isEnvironmentScope = Boolean(environmentId)
   const apiKeysQuery = useQuery(

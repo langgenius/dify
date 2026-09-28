@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -27,7 +27,7 @@ from tasks.document_indexing_task import (
     normal_document_indexing_task,
     priority_document_indexing_task,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.config_override import apply_config_overrides, config_overrides_context
 
 
 @pytest.fixture
@@ -68,13 +68,12 @@ def indexing_runner(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 def _features(
     *,
-    billing_enabled: bool = False,
     plan: CloudPlan = CloudPlan.PROFESSIONAL,
     vector_limit: int = 1000,
     vector_size: int = 0,
 ) -> SimpleNamespace:
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=billing_enabled, subscription=SimpleNamespace(plan=plan)),
+        billing=SimpleNamespace(subscription=SimpleNamespace(plan=plan)),
         vector_space=SimpleNamespace(limit=vector_limit, size=vector_size),
     )
 
@@ -137,6 +136,7 @@ def _persisted_documents(session: Session, document_ids: list[str]) -> list[Docu
 
 
 class TestTaskEnqueuing:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_self_hosted_dispatches_directly_to_priority_task(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
@@ -144,7 +144,6 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.enabled = False
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         task.delay.assert_called_once_with(
@@ -153,6 +152,7 @@ class TestTaskEnqueuing:
             document_ids=document_ids,
         )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @pytest.mark.parametrize(
         ("plan", "task_attribute"),
         [
@@ -173,13 +173,13 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
         ):
-            features.billing.enabled = True
             features.billing.subscription.plan = plan
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.setex.assert_called()
         task.delay.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_running_tenant_task_queues_followup_work(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
@@ -188,7 +188,6 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.enabled = True
             features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
@@ -285,12 +284,13 @@ class TestDocumentIndexing:
         get_features.assert_not_called()
         runner_class.assert_not_called()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @pytest.mark.parametrize(
         ("features", "batch_limit", "message"),
         [
-            (_features(billing_enabled=True), 1, "batch upload limit"),
-            (_features(billing_enabled=True, plan=CloudPlan.SANDBOX), 100, "does not support batch upload"),
-            (_features(billing_enabled=True, vector_limit=100, vector_size=100), 100, "over the limit"),
+            (_features(), 1, "batch upload limit"),
+            (_features(plan=CloudPlan.SANDBOX), 100, "does not support batch upload"),
+            (_features(vector_limit=100, vector_size=100), 100, "over the limit"),
         ],
     )
     def test_validation_failure_marks_every_scoped_document_error(

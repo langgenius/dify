@@ -63,10 +63,6 @@ vi.mock('@/features/human-input-form/form-status-card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading-v2-form</div>,
-}))
-
 describe('HumanInputV2Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -82,7 +78,7 @@ describe('HumanInputV2Form', () => {
 
     render(<HumanInputV2Form token="form-token" transport={transport} />)
 
-    expect(screen.getByText('loading-v2-form')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     const otpInput = await screen.findByLabelText('share.humanInputV2.otpLabel')
     const approve = screen.getByRole('button', { name: 'Approve' })
     expect(getForm).toHaveBeenCalledWith('form-token')

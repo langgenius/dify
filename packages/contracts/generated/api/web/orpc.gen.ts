@@ -97,7 +97,7 @@ import {
   zPostWorkflowsRunResponse,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Convert audio to text

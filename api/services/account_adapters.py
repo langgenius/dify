@@ -151,8 +151,8 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
 
         sync_joined_workspace_member_rbac_access_task.delay(
-            str(workspace_id),
-            str(account_id),
+            workspace_id,
+            account_id,
             operator_account_id=None,
         )
 
@@ -221,8 +221,8 @@ class TokenManagerChangeEmailTokenGateway(ChangeEmailTokenGateway):
             return None
         token_kwargs = {
             "account_id": token_data.account_id,
-            "email": str(token_data.email),
-            "old_email": str(token_data.old_email),
+            "email": token_data.email,
+            "old_email": token_data.old_email,
             "code": token_data.code,
         }
         if isinstance(token_data, ChangeEmailOldEmailToken):

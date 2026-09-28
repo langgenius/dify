@@ -44,8 +44,8 @@ export function ContactImBindingDialog({
   replacedIntegration,
   onOpenChange,
 }: ContactImBindingDialogProps) {
-  const { t } = useTranslation('contacts')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const adapter = resolveContactImProviderFormAdapter(provider)
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()

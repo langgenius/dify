@@ -26,7 +26,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { invalidateHumanInputContactQueries } from '@/service/client'
+import { invalidateHumanInputContactQueries } from '@/service/console'
 import {
   useContactsFeatureContext,
   useContactsManagementRepository,

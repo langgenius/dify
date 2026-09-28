@@ -5,9 +5,9 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
 type VersionInfoModalProps = {
   isOpen: boolean
@@ -25,7 +25,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   onClose,
   onPublish,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
   const [title, setTitle] = useState(versionInfo?.marked_name || '')
   const [releaseNotes, setReleaseNotes] = useState(versionInfo?.marked_comment || '')
   const [titleError, setTitleError] = useState(false)
@@ -36,7 +36,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       setTitleError(true)
       toast.error(
         t(($) => $['versionHistory.editField.titleLengthLimit'], {
-          ns: 'workflow',
+          ns: 'workflowHistory',
           limit: TITLE_MAX_LENGTH,
         }),
       )
@@ -49,7 +49,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       setReleaseNotesError(true)
       toast.error(
         t(($) => $['versionHistory.editField.releaseNotesLengthLimit'], {
-          ns: 'workflow',
+          ns: 'workflowHistory',
           limit: RELEASE_NOTES_MAX_LENGTH,
         }),
       )
@@ -77,8 +77,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         <div className="relative w-full p-6 pr-14 pb-4">
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
             {versionInfo?.marked_name
-              ? t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' })
-              : t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' })}
+              ? t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflowHistory' })
+              : t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}
           </div>
           <button
             type="button"
@@ -90,33 +90,31 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
-          <Field name="title" invalid={titleError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
-              {t(($) => $['versionHistory.editField.title'], { ns: 'workflow' })}
+          <Field name="title" invalid={titleError}>
+            <FieldLabel className="system-sm-semibold">
+              {t(($) => $['versionHistory.editField.title'], { ns: 'workflowHistory' })}
             </FieldLabel>
             <Input
               value={title}
-              placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
+              placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={setTitle}
             />
           </Field>
-          <Field name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
-              {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflow' })}
+          <Field name="releaseNotes" invalid={releaseNotesError}>
+            <FieldLabel className="system-sm-semibold">
+              {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflowHistory' })}
             </FieldLabel>
             <Textarea
               value={releaseNotes}
-              placeholder={`${t(($) => $['versionHistory.releaseNotesPlaceholder'], { ns: 'workflow' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
+              placeholder={`${t(($) => $['versionHistory.releaseNotesPlaceholder'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={handleDescriptionChange}
             />
           </Field>
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">
-            <Button nativeButton={false} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button nativeButton={false} variant="primary" onClick={handlePublish}>
+            <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handlePublish}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>

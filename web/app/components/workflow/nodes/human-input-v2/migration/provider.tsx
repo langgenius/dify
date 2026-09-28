@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import type { HumanInputMigrationBlocker } from './types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
@@ -13,6 +12,7 @@ import {
   WorkflowHistoryEvent,
 } from '@/app/components/workflow/hooks/use-workflow-history'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { HumanInputMigrationContext } from './context'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
@@ -66,7 +66,7 @@ const syncDraftOnce = async (
 }
 
 const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationProviderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes() as Node[]
   const store = useStoreApi()
   const collaborativeWorkflow = useCollaborativeWorkflow()

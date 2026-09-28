@@ -8,7 +8,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { DeliveryMethodType } from '../../../human-input/types'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from '../executor'
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: { current: { humanInput: { nodeDataMigration: { post: vi.fn() } } } },
   },

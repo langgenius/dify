@@ -28,7 +28,7 @@ export function SearchInput({
   'aria-describedby': ariaDescribedBy,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const isComposingRef = useRef<boolean>(false)
   const compositionCommitRef = useRef<string | null>(null)

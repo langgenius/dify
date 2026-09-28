@@ -103,7 +103,7 @@ vi.mock('@/app/components/workflow/panel/version-history-panel', () => ({
   ),
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {

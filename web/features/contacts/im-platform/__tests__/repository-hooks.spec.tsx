@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { ContactImPlatformRepository } from '../repository'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ContactsImPlatformProvider } from '../composition'
 import {
   CONTACT_IM_SYNC_POLL_INTERVAL_MS,

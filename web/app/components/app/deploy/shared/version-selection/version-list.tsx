@@ -12,7 +12,7 @@ import {
 import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import {
@@ -54,8 +54,8 @@ const VersionChoice = memo(
     disabled?: boolean
     onSelect: (version: DeploymentVersion) => void
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['workflow'])
     const { formatTimeFromNow } = useFormatTimeFromNow()
 
     return (
@@ -140,8 +140,8 @@ export function VersionList({
   publishHref?: string
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t } = useTranslation(['deployments'])
   const versions = useAtomValue(appWorkflowVersionsAtom)
   const versionsError = useAtomValue(appWorkflowVersionsErrorAtom)
   const fetchNextPage = useAtomValue(appWorkflowVersionsFetchNextPageAtom)
@@ -179,7 +179,7 @@ export function VersionList({
               versions={versions}
             />
           </div>
-          {isLoading && <Loading type="app" />}
+          {isLoading && <LoadingPlaceholder className="h-full" />}
           {!isLoading && versionsError && versions.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center px-2 py-6">
               <p role="alert" className="text-center system-xs-regular text-text-tertiary">
@@ -203,7 +203,7 @@ export function VersionList({
               )}
             </div>
           )}
-          {isFetchingNextPage && versions.length > 0 && <Loading className="h-8" />}
+          {isFetchingNextPage && versions.length > 0 && <LoadingPlaceholder className="h-8" />}
           <div ref={sentinelRef} aria-hidden className="h-px" />
         </ScrollAreaContent>
       </ScrollAreaViewport>

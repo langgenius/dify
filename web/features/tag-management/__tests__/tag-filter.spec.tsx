@@ -337,9 +337,20 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
     })
 
-    it('should handle value with non-existent tag ids gracefully', () => {
-      render(<TagFilter {...defaultProps} value={['non-existent-id']} />)
-      expect(screen.queryByText(i18n.placeholder)).not.toBeInTheDocument()
+    it('should name and preserve selected tag ids outside the current result set', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const selectedCountLabel = 'common.dynamicSelect.selected:{"count":1}'
+
+      render(<TagFilter {...defaultProps} value={['non-existent-id']} onChange={onChange} />)
+
+      const trigger = screen.getByRole('combobox', { name: selectedCountLabel })
+      expect(trigger).toHaveTextContent(selectedCountLabel)
+
+      await user.click(trigger)
+      await user.click(screen.getByRole('option', { name: /Frontend/i }))
+
+      expect(onChange).toHaveBeenCalledWith(['non-existent-id', 'tag-1'])
     })
 
     it('should not show count badge when only one tag is selected', () => {

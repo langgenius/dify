@@ -42,7 +42,7 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
 }
 
 export const TriggerEventsList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')

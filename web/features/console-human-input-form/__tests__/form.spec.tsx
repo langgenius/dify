@@ -22,7 +22,7 @@ type FormQueryOptions = Omit<
   context: { silent: boolean }
 }
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     form: {
       humanInput: {

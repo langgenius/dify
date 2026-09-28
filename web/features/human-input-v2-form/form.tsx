@@ -2,7 +2,7 @@
 import type { HumanInputV2ErrorCategory, HumanInputV2FormTransport } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import OtpVerification from './otp-verification'
@@ -30,7 +30,7 @@ const getBrandingOptions = (
 }
 
 const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInputV2FormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const contextTransport = useHumanInputV2FormTransport()
   const transport = injectedTransport ?? contextTransport
   const session = useHumanInputV2FormSession({
@@ -71,7 +71,7 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     }
   }
 
-  if (state.phase === 'loading-form') return <Loading type="app" />
+  if (state.phase === 'loading-form') return <LoadingPlaceholder className="h-full" />
 
   if (state.phase === 'success') {
     return (
@@ -115,7 +115,7 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     )
   }
 
-  if (!state.definition) return <Loading type="app" />
+  if (!state.definition) return <LoadingPlaceholder className="h-full" />
 
   const verificationError = state.error ? errorCopy(state.error) : undefined
 

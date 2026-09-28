@@ -1,5 +1,4 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -12,7 +11,7 @@ import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 
 export const useAvailableNodesMetaData = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
 
@@ -49,11 +48,7 @@ export const useAvailableNodesMetaData = () => {
       mergedNodesMetaData.map((node) => {
         const { metaData } = node
         const title = t(($) => $[`blocks.${metaData.type}`], { ns: 'workflow' })
-        const description = t(
-          ($) =>
-            $[`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
-          { ns: 'workflow' },
-        )
+        const description = t(($) => $[`blocksAbout.${metaData.type}`], { ns: 'workflow' })
         return {
           ...node,
           metaData: {

@@ -25,7 +25,7 @@ import type {
   UpgradeExternalContactsToWorkspaceCommand,
   UpgradeExternalContactsToWorkspaceResult,
 } from './types'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 /**
  * UI-facing repository boundary. Network-backed implementations map kind to group, search to

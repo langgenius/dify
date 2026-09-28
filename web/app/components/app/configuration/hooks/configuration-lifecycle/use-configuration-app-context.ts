@@ -8,7 +8,7 @@ import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/wor
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 export function useConfigurationAppContext() {

@@ -38,8 +38,8 @@ export function ContactEmailConfigDialog({
   provider,
   onOpenChange,
 }: ContactEmailConfigDialogProps) {
-  const { t } = useTranslation('contacts')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const formRef = useRef<HTMLFormElement>(null)
   const saveCredentials = useSaveContactImCredentials()

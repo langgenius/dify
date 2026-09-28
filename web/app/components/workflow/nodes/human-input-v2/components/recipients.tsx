@@ -8,6 +8,7 @@ import type { Node, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -15,14 +16,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
   addRecipient,
@@ -76,7 +76,7 @@ function RecipientContactPreview({
   contact: ContactRecipientOption
   children: ReactElement
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <Popover>
       <PopoverTrigger render={children} openOnHover delay={300} closeDelay={150} />
@@ -130,7 +130,7 @@ const RecipientsContent = ({
   workspace,
   availableNodes = [],
 }: RecipientsProps & { provider: ContactRecipientOptionProvider }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const [searchFromInput, setSearchFromInput] = useState(false)
   const [query, setQuery] = useState('')
@@ -367,8 +367,13 @@ const RecipientsContent = ({
         >
           {t(($) => $['nodes.humanInputV2.recipients.title'], { ns: 'workflow' })}
         </h3>
-        <Infotip aria-label={t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}>
-          {t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+        <Infotip>
+          <InfotipTrigger
+            aria-label={t(($) => $['nodes.humanInputV2.recipients.title'], { ns: 'workflow' })}
+          />
+          <InfotipContent>
+            {t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+          </InfotipContent>
         </Infotip>
       </div>
 
@@ -822,7 +827,7 @@ const RecipientsContent = ({
               value={[]}
               isShowNodeName
               filterVar={(variable: Var) =>
-                [VarType.string, VarType.secret].includes(variable.type)
+                variable.type === VarType.string || variable.type === VarType.secret
               }
               trigger={
                 <Button
@@ -847,10 +852,15 @@ const RecipientsContent = ({
               }}
             />
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <Infotip
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
-              >
-                {t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['nodes.humanInputV2.recipients.title'], {
+                    ns: 'workflow',
+                  })}
+                />
+                <InfotipContent>
+                  {t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+                </InfotipContent>
               </Infotip>
             </div>
           </div>
@@ -1019,7 +1029,7 @@ const RecipientsContent = ({
                 value={editor.draft.selector}
                 isShowNodeName
                 filterVar={(variable: Var) =>
-                  [VarType.string, VarType.secret].includes(variable.type)
+                  variable.type === VarType.string || variable.type === VarType.secret
                 }
                 trigger={
                   <Button size="small">

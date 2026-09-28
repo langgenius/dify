@@ -196,3 +196,15 @@ def test_extract_images_failures(mock_dependencies: _Dependencies):
     assert upload_file is not None
     assert f"![image](http://files.local/files/{upload_file.id}/file-preview)" in result
     assert mock_dependencies.storage.saves == [(upload_file.key, jpeg_bytes)]
+
+
+def test_extract_images_skipped_without_tenant_context():
+    """PDFs loaded from a URL have no tenant/user context; image extraction must be skipped."""
+    mock_page = MagicMock()
+
+    extractor = pe.PdfExtractor(file_path="test.pdf")
+
+    result = extractor._extract_images(mock_page)
+
+    assert result == ""
+    mock_page.get_objects.assert_not_called()

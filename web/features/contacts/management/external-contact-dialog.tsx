@@ -18,7 +18,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import { useCreateExternalContact, useUpdateExternalContact } from './hooks'
 
@@ -119,7 +119,7 @@ export function ExternalContactDialog({
   onOpenChange,
   open,
 }: ExternalContactDialogProps) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts', 'common'])
   const createExternalContact = useCreateExternalContact()
   const updateExternalContact = useUpdateExternalContact()
   const uploadAvatar = useMutation(consoleQuery.files.upload.post.mutationOptions())

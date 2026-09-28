@@ -25,7 +25,7 @@ const PluginTasks = ({
   dropdownAnchor,
   dropdownPlacement = 'bottom',
 }: PluginTasksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,

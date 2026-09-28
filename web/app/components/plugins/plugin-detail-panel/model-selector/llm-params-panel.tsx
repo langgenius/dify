@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import { getSupportedPresetConfig } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils'
@@ -29,7 +29,7 @@ const LLMParamsPanel = ({
   completionParams,
   onCompletionParamsChange,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
 
@@ -70,7 +70,7 @@ const LLMParamsPanel = ({
   if (isRulesLoading) {
     return (
       <div className="mt-5">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -79,7 +79,7 @@ const LLMParamsPanel = ({
     <>
       <div className="mb-2 flex items-center justify-between">
         <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>
-          {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+          {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
         </div>
         {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
           <PresetsParameter

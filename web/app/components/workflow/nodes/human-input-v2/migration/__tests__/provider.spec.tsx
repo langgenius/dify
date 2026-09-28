@@ -59,7 +59,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
   WorkflowHistoryEvent: { HumanInputMigration: 'HumanInputMigration' },
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {
@@ -71,7 +71,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mocks.toastError(...args),
     success: (...args: unknown[]) => mocks.toastSuccess(...args),

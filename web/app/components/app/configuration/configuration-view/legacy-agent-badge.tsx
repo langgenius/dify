@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 export function LegacyAgentBadge() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const description = t(($) => $['legacyAgentBadge.description'], { ns: 'appDebug' })
 
   return (

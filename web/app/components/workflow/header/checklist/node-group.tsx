@@ -21,7 +21,7 @@ export const ChecklistNodeGroup = memo(
     showGoTo: boolean
     onItemClick: (item: ChecklistItem) => void
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const goToEnabled = showGoTo && item.canNavigate && !item.disableGoTo
 
     const subItems = useMemo(() => {

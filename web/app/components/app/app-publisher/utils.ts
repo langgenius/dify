@@ -24,7 +24,7 @@ export const getDisabledFunctionTooltip = ({
   missingStartNode,
   noAccessPermission,
 }: {
-  t: TFunction
+  t: TFunction<['app']>
   publishedAt?: number
   missingStartNode: boolean
   noAccessPermission: boolean

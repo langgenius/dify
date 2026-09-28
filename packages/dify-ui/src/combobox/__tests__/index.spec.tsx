@@ -7,6 +7,7 @@ import {
   ComboboxChipRemove,
   ComboboxChips,
   ComboboxClear,
+  ComboboxCollection,
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -25,7 +26,55 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
 } from '../index'
+
+type ResourceOption = {
+  id: string
+  label: string
+}
+
+const resourceOptions: ResourceOption[] = [
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'dataset', label: 'Dataset' },
+]
+const resourceItems = createComboboxItems(resourceOptions, {
+  getValue: (item) => item.id,
+  getLabel: (item) => item.label,
+})
+
+function ComboboxTypeExamples() {
+  return (
+    <React.Fragment>
+      <Combobox<string, true, ResourceOption>
+        multiple
+        items={resourceItems}
+        value={['workflow']}
+        filter={(item, query) => item.label.includes(query)}
+        onValueChange={(value) => {
+          const selectedIds: string[] = value
+          void selectedIds
+        }}
+      >
+        <ComboboxValue<string, true>>{(value) => value?.join(', ') ?? ''}</ComboboxValue>
+        <ComboboxList<ResourceOption>>
+          {(item) => <ComboboxItem<string> value={item.id}>{item.label}</ComboboxItem>}
+        </ComboboxList>
+        <ComboboxGroup<ResourceOption> items={resourceOptions}>
+          <ComboboxCollection<ResourceOption>>
+            {(item) => <ComboboxItem<string> value={item.id}>{item.label}</ComboboxItem>}
+          </ComboboxCollection>
+        </ComboboxGroup>
+        {/* @ts-expect-error item anatomy accepts the derived string value, not the source object */}
+        <ComboboxItem<string> value={resourceOptions[0]} />
+      </Combobox>
+      {/* @ts-expect-error root value uses the derived string domain, not the source object */}
+      <Combobox<string, false, ResourceOption> items={resourceItems} value={resourceOptions[0]} />
+    </React.Fragment>
+  )
+}
+
+void ComboboxTypeExamples
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -112,6 +161,33 @@ describe('Combobox wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Resource type' }))
         .toBeInTheDocument()
+    })
+
+    it('should expose readonly styling state while allowing options to be inspected', async () => {
+      const screen = await render(
+        <Combobox readOnly defaultValue="workflow" items={['workflow', 'dataset']}>
+          <ComboboxTrigger aria-label="Resource type">
+            <ComboboxValue />
+          </ComboboxTrigger>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Resource type">
+                <ComboboxList>
+                  <ComboboxItem value="workflow">Workflow</ComboboxItem>
+                  <ComboboxItem value="dataset">Dataset</ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
+        </Combobox>,
+      )
+      const trigger = screen.getByRole('combobox', { name: 'Resource type' })
+
+      await expect.element(trigger).toHaveAttribute('data-readonly')
+      await trigger.click()
+      await expect.element(screen.getByRole('option', { name: 'Dataset' })).toBeVisible()
+      await screen.getByRole('option', { name: 'Dataset' }).click()
+      await expect.element(trigger).toHaveTextContent('workflow')
     })
   })
 
@@ -206,6 +282,35 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Popup anatomy and options', () => {
+    it('should render source objects while exposing primitive selected values', async () => {
+      const onValueChange = vi.fn()
+      const screen = await render(
+        <Combobox<string, false, ResourceOption>
+          defaultOpen
+          items={resourceItems}
+          defaultValue="workflow"
+          filter={(item, query) => item.label.toLowerCase().includes(query.toLowerCase())}
+          onValueChange={(nextValue) => onValueChange(nextValue)}
+        >
+          <ComboboxInput aria-label="Filter resources" />
+          <ComboboxList<ResourceOption>>
+            {(item) => (
+              <ComboboxItem<string> key={item.id} value={item.id}>
+                {item.label}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </Combobox>,
+      )
+
+      await expect
+        .element(screen.getByRole('option', { name: 'Workflow' }))
+        .toHaveAttribute('aria-selected', 'true')
+      await userEvent.click(screen.getByRole('option', { name: 'Dataset' }))
+
+      expect(onValueChange).toHaveBeenCalledWith('dataset')
+    })
+
     it('should use default overlay placement', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 

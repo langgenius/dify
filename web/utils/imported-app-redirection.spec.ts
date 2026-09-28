@@ -3,7 +3,7 @@ import { resolveImportedAppRedirectionTarget } from './imported-app-redirection'
 
 const mockFetchAppDetail = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {

@@ -29,7 +29,6 @@ type ContextBase = Pick<
   | 'isShowDocumentConfig'
   | 'isShowVisionConfig'
   | 'isTrailFinished'
-  | 'isAPIKeySet'
   | 'mode'
   | 'modelModeType'
   | 'prevPromptConfig'

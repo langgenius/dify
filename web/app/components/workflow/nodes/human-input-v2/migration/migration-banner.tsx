@@ -15,7 +15,7 @@ const HumanInputMigrationBanner = ({
   helpLink,
   onMigrate,
 }: HumanInputMigrationBannerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <aside

@@ -9,7 +9,7 @@ import {
   isMigrationEligibleHumanInputNodeData,
 } from '../policy'
 
-const data = (version?: unknown, type = BlockEnum.HumanInput) =>
+const data = (version?: unknown, type: BlockEnum = BlockEnum.HumanInput) =>
   ({
     type,
     title: 'Human Input',

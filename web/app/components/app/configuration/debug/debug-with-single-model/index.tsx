@@ -11,14 +11,13 @@ import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 
 type DebugWithSingleModelProps = {
@@ -49,7 +48,6 @@ const DebugWithSingleModel = ({
   } = useDebugConfigurationContext()
   const debugInputReadonly = !canTestAndRun
   const canManageAnnotation = !readonly && canTestAndRun
-  const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
@@ -140,7 +138,6 @@ const DebugWithSingleModel = ({
       modelConfig.mode,
       modelConfig.model_id,
       modelConfig.provider,
-      textGenerationModelList,
     ],
   )
 
@@ -164,7 +161,7 @@ const DebugWithSingleModel = ({
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
       icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons

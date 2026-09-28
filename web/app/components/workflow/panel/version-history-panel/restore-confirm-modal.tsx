@@ -26,7 +26,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
   onClose,
   onRestore,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
 
   return (
     <AlertDialog
@@ -40,26 +40,18 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(
               versionInfo,
-              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
+            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton
-            nativeButton={false}
-            variant="secondary"
-            closeProps={{ nativeButton: false }}
-          >
+          <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            nativeButton={false}
-            tone="default"
-            onClick={onRestore.bind(null, versionInfo)}
-          >
+          <AlertDialogConfirmButton tone="default" onClick={onRestore.bind(null, versionInfo)}>
             {t(($) => $['common.restore'], { ns: 'workflow' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

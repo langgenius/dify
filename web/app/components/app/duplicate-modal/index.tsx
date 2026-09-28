@@ -5,14 +5,17 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
-import AppIconPicker from '../../base/app-icon-picker'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 
 export type DuplicateAppModalProps = {
   appName: string
@@ -40,22 +43,34 @@ const DuplicateAppModal = ({
   onConfirm,
   onHide,
 }: DuplicateAppModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState(
     icon_type === 'image'
-      ? { type: 'image' as const, url: icon_url, fileId: icon }
+      ? { type: 'image' as const, url: icon_url ?? '', fileId: icon }
       : { type: 'emoji' as const, icon, background: icon_background },
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = () => {
-    if (isAppsFull) return
+    if (isAppQuotaUnavailable || isAppsFull) return
 
     if (!name.trim()) {
       toast.error(t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }))
@@ -97,8 +112,8 @@ const DuplicateAppModal = ({
             }}
           >
             <div className="mb-9 system-sm-regular text-text-secondary">
-              <Field className="gap-2" name="name">
-                <FieldLabel className="py-0 system-md-medium">
+              <Field name="name">
+                <FieldLabel className="system-md-medium">
                   {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
                 </FieldLabel>
                 <div className="flex items-center justify-between space-x-2">
@@ -106,7 +121,7 @@ const DuplicateAppModal = ({
                     type="button"
                     aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
                     onClick={() => {
-                      setShowAppIconPicker(true)
+                      setShowIconPicker(true)
                     }}
                     className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
@@ -130,7 +145,12 @@ const DuplicateAppModal = ({
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
             <div className="flex flex-row-reverse">
-              <Button type="submit" disabled={isAppsFull} className="ml-2 w-24" variant="primary">
+              <Button
+                type="submit"
+                disabled={isAppQuotaUnavailable || isAppsFull}
+                className="ml-2 w-24"
+                variant="primary"
+              >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
               <Button type="button" className="w-24" onClick={onHide}>
@@ -140,20 +160,14 @@ const DuplicateAppModal = ({
           </form>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={(payload) => {
+          setAppIcon(payload)
+        }}
+      />
     </>
   )
 }

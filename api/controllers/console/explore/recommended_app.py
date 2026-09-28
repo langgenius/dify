@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any
 from uuid import UUID
 
@@ -7,17 +8,17 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import RecommendedAppNotFoundError
-from controllers.console.wraps import account_initialization_required, model_validate, with_current_user
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import build_icon_url, dump_response
-from libs.login import login_required
-from models import Account
+from machinery.context import RequestContext
 from services.recommended_app_query_service import RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError
 
 
 class RecommendedAppsQuery(BaseModel):
-    language: str | None = Field(default=None, description="Language code for recommended app localization")
+    language: str = Field(default="en-US", description="Language code for recommended app localization")
 
 
 class RecommendedAppInfoResponse(ResponseModel):
@@ -96,17 +97,14 @@ register_response_schema_models(
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
-    @login_required
-    @account_initialization_required
-    @with_current_user
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppListResponse.__name__])
+    @console_account_admission()
     @model_validate(RecommendedAppsQuery)
-    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
+    def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
         return dump_response(
             RecommendedAppListResponse,
             application_services().recommended_app_queries.list_recommended(
-                requested_language=req_data.language,
-                interface_language=current_user.interface_language,
+                language=req_data.language,
             ),
         )
 
@@ -114,28 +112,24 @@ class RecommendedAppListApi(Resource):
 @console_ns.route("/explore/apps/learn-dify")
 class LearnDifyAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
-    @login_required
-    @account_initialization_required
-    @with_current_user
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
+    @console_account_admission()
     @model_validate(RecommendedAppsQuery)
-    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
+    def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
         return dump_response(
             LearnDifyAppListResponse,
             application_services().recommended_app_queries.list_learn_dify(
-                requested_language=req_data.language,
-                interface_language=current_user.interface_language,
+                language=req_data.language,
             ),
         )
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
-    @console_ns.response(404, "Recommended app not found")
-    @login_required
-    @account_initialization_required
-    def get(self, app_id: UUID):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Recommended app not found")
+    @console_account_admission()
+    def get(self, _request_context: RequestContext, app_id: UUID):
         try:
             result = application_services().recommended_app_queries.get_detail(str(app_id))
         except RecommendedAppQueryNotFoundError:

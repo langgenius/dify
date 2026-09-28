@@ -61,7 +61,12 @@ def testcontainers_network() -> Generator[Network, None, None]:
 @pytest.fixture(scope="session")
 def postgres_container(testcontainers_network: Network) -> Generator[PostgresContainer, None, None]:
     """Provide PostgreSQL and clean it up if any later setup step fails."""
-    postgres = PostgresContainer(image="postgres:14-alpine").with_network(testcontainers_network)
+    postgres = PostgresContainer(
+        image="postgres:14-alpine",
+        # This per-worker database is discarded after the session. Keep its
+        # data in bounded tmpfs to reduce I/O from full-schema TRUNCATE cleanup.
+        tmpfs={"/var/lib/postgresql/data": "rw,size=2g"},
+    ).with_network(testcontainers_network)
     postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
 
     with ExitStack() as stack:
@@ -128,7 +133,12 @@ def dify_sandbox_container(testcontainers_network: Network) -> Generator[DockerC
     sandbox = DockerContainer(image=sandbox_image).with_network(testcontainers_network)
     sandbox.with_exposed_ports(8194)
     sandbox.waiting_for(_wait_for_log_message("config init success", 60))
-    sandbox.env = {"API_KEY": "test_api_key"}
+    sandbox.env = {
+        "API_KEY": "test_api_key",
+        # Match Docker Compose: the image's 5-second limit can expire during
+        # Python/Jinja2 startup under parallel CI load.
+        "WORKER_TIMEOUT": "15",
+    }
 
     with ExitStack() as stack:
         sandbox = stack.enter_context(sandbox)

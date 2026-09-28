@@ -28,7 +28,7 @@ const HumanInputMigrationDialog = ({
   onOpenChange,
   onConfirm,
 }: HumanInputMigrationDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (pending) return

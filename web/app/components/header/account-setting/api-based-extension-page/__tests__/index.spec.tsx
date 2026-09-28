@@ -26,7 +26,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

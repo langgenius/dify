@@ -2,7 +2,6 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -17,6 +16,7 @@ import {
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { classifyHumanInputFormRoute } from '@/features/human-input-form/route-classifier'
 import { useHumanInputV2FormTransport } from '@/features/human-input-v2-form/transport-context'
 import {
@@ -61,7 +61,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
 }
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()

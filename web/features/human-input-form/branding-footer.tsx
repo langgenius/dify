@@ -13,7 +13,7 @@ const BrandingFooter = ({
   removeWebappBrand,
   replaceWebappLogo,
 }: BrandingFooterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   if (removeWebappBrand) return null
 

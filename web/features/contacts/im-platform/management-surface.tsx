@@ -44,8 +44,8 @@ type BindingTarget = {
 }
 
 export function ContactsImPlatformManagementSurface() {
-  const { t } = useTranslation('contacts')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const organization = useContactsImPlatformOrganization()
   const integrationsQuery = useContactImIntegrations()
   const providersQuery = useContactImProviderDefinitions()

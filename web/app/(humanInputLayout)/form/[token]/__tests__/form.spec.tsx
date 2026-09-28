@@ -13,7 +13,7 @@ const mockSubmitForm = vi.hoisted(() => vi.fn())
 const mockUseGetHumanInputForm = vi.hoisted(() => vi.fn())
 const mockExpirationTime = vi.hoisted(() => vi.fn())
 const mockContentItemState = vi.hoisted(() => ({
-  staleAttachmentInputChange: undefined as ((name: string, value: unknown) => void) | undefined,
+  staleAttachmentInputChange: undefined as ((files: unknown[]) => void) | undefined,
   uploadedFile: {
     id: 'file-1',
     name: 'review.pdf',
@@ -38,6 +38,7 @@ const mockContentItemState = vi.hoisted(() => ({
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'token-123' }),
+  usePathname: () => '/form/token-123',
 }))
 
 vi.mock('@/service/use-share', () => ({
@@ -55,59 +56,30 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
-vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
-  __esModule: true,
-  default: ({
-    content,
-    onInputChange,
-  }: {
-    content: string
-    onInputChange: (name: string, value: unknown) => void
-  }) => {
-    const isSummaryField = content.includes('summary')
-    const isAttachmentField = content.includes('attachments')
-
-    if (isAttachmentField && !mockContentItemState.staleAttachmentInputChange)
-      mockContentItemState.staleAttachmentInputChange = onInputChange
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: unknown[]) => void }) => {
+    if (!mockContentItemState.staleAttachmentInputChange)
+      mockContentItemState.staleAttachmentInputChange = onChange
 
     return (
-      <div data-testid="share-form-content-item">
-        {content}
-        {isSummaryField && (
-          <>
-            <button type="button" onClick={() => onInputChange('summary', '')}>
-              share-clear-summary
-            </button>
-            <button type="button" onClick={() => onInputChange('summary', 'updated summary')}>
-              share-update-summary
-            </button>
-          </>
-        )}
-        {isAttachmentField && (
-          <>
-            <button
-              type="button"
-              onClick={() =>
-                mockContentItemState.staleAttachmentInputChange?.('attachments', [
-                  mockContentItemState.uploadingFile,
-                ])
-              }
-            >
-              share-uploading-attachments
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                mockContentItemState.staleAttachmentInputChange?.('attachments', [
-                  mockContentItemState.uploadedFile,
-                ])
-              }
-            >
-              share-update-attachments
-            </button>
-          </>
-        )}
-      </div>
+      <>
+        <button
+          type="button"
+          onClick={() =>
+            mockContentItemState.staleAttachmentInputChange?.([mockContentItemState.uploadingFile])
+          }
+        >
+          share-uploading-attachments
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            mockContentItemState.staleAttachmentInputChange?.([mockContentItemState.uploadedFile])
+          }
+        >
+          share-update-attachments
+        </button>
+      </>
     )
   },
 }))
@@ -120,9 +92,8 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-t
   },
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  __esModule: true,
-  default: () => <div>loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading</div>,
 }))
 
 vi.mock('@/app/components/base/logo/dify-logo', () => ({
@@ -277,7 +248,9 @@ describe('Human input share form', () => {
 
     expect(mockExpirationTime).toHaveBeenCalledWith(60_000)
 
-    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    const summary = screen.getByRole('textbox', { name: 'summary' })
+    await user.clear(summary)
+    await user.type(summary, 'updated summary')
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
@@ -310,7 +283,9 @@ describe('Human input share form', () => {
 
     render(<FormContent />)
 
-    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    const summary = screen.getByRole('textbox', { name: 'summary' })
+    await user.clear(summary)
+    await user.type(summary, 'updated summary')
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
@@ -391,10 +366,12 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     expect(approveButton).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'share-clear-summary' }))
+    await user.clear(screen.getByRole('textbox', { name: 'summary' }))
     expect(approveButton).toBeDisabled()
 
-    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    const summary = screen.getByRole('textbox', { name: 'summary' })
+    await user.clear(summary)
+    await user.type(summary, 'updated summary')
     expect(approveButton).toBeEnabled()
   })
 

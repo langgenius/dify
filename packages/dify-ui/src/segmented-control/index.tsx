@@ -2,10 +2,11 @@
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
 import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
+import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
-import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 type SegmentedControlSelectionProps<Value> =
   | {
@@ -19,30 +20,25 @@ type SegmentedControlSelectionProps<Value> =
 
 type SegmentedControlProps<Value = string> = Omit<
   BaseRadioGroupNS.Props<Value>,
-  'className' | 'defaultValue' | 'value'
+  'defaultValue' | 'value'
 > &
-  SegmentedControlSelectionProps<Value> & {
-    className?: string
-  }
+  SegmentedControlSelectionProps<Value>
 
 function SegmentedControl<Value = string>({ className, ...props }: SegmentedControlProps<Value>) {
   return (
     <BaseRadioGroup<Value>
-      className={cn(
-        'inline-flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type SegmentedControlItemProps<Value = string> = Omit<
-  BaseRadioNS.Root.Props<Value>,
-  'className'
-> & {
-  className?: string
-}
+type SegmentedControlItemProps<Value = string> = BaseRadioNS.Root.Props<Value>
 
 function SegmentedControlItem<Value = string>({
   className,
@@ -54,10 +50,12 @@ function SegmentedControlItem<Value = string>({
     <BaseRadio.Root<Value>
       nativeButton={nativeButton}
       render={render}
-      className={cn(
-        'relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-components-segmented-control-item-active-border data-checked:bg-components-segmented-control-item-active-bg data-checked:text-text-accent-light-mode-only data-checked:shadow-xs data-checked:shadow-shadow-shadow-3 data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-components-segmented-control-item-active-border data-checked:bg-components-segmented-control-item-active-bg data-checked:text-text-accent-light-mode-only data-checked:shadow-xs data-checked:shadow-shadow-shadow-3 data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
@@ -70,7 +68,6 @@ type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'classNam
 function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
   return (
     <span
-      role="presentation"
       aria-hidden="true"
       className={cn('h-3.5 w-px shrink-0 bg-divider-regular', className)}
       {...props}

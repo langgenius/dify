@@ -9,28 +9,23 @@ import core.rag.extractor.extract_processor as processor_module
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
-from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _upload_file(*, key: str, file_id: str = "upload-file-1") -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id=file_id,
         key=key,
         name=Path(key).name,
         size=1,
         extension=Path(key).suffix.lstrip("."),
         mime_type="application/octet-stream",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime(2025, 1, 1),
         used=True,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 class _ExtractorFactory:
@@ -41,7 +36,7 @@ class _ExtractorFactory:
         calls = self.calls
 
         class DummyExtractor:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 calls.append((name, args, kwargs))
 
             def extract(self):
@@ -107,6 +102,16 @@ class TestExtractProcessorLoaders:
             ("https://example.com/no_suffix", {"Content-Type": "application/pdf"}, ".pdf"),
             (
                 "https://example.com/no_suffix",
+                {"Content-Type": "application/pdf; charset=binary"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/no_suffix",
+                {"Content-Type": "text/html; charset=utf-8"},
+                ".html",
+            ),
+            (
+                "https://example.com/no_suffix",
                 {"Content-Disposition": 'attachment; filename="report.md"'},
                 ".md",
             ),
@@ -115,6 +120,7 @@ class TestExtractProcessorLoaders:
                 {"Content-Disposition": 'attachment; filename="report"'},
                 "",
             ),
+            ("https://example.com/no_suffix", {}, ""),
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
@@ -151,6 +157,36 @@ class TestExtractProcessorLoaders:
         text = ExtractProcessor.load_from_url("https://example.com/response.txt", return_text=True)
 
         assert text == content
+
+    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+        response = SimpleNamespace(headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        factory = _patch_all_extractors(monkeypatch)
+        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+
+        text = ExtractProcessor.load_from_url("https://example.com/report", return_text=True)
+
+        assert text == "extracted-by-PdfExtractor"
+        name, args, kwargs = factory.calls[-1]
+        assert name == "PdfExtractor"
+        # no upload_file for URL-loaded files: tenant/user context must be None
+        assert args[1] is None
+        assert args[2] is None
+
+    def test_load_from_url_routes_parameterized_content_type(self, monkeypatch: pytest.MonkeyPatch):
+        # Servers commonly append parameters such as "; charset=binary" to
+        # Content-Type; the media type must be parsed before deriving the suffix.
+        response = SimpleNamespace(
+            headers={"Content-Type": "application/pdf; charset=binary"}, content=b"%PDF-1.1 body"
+        )
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        factory = _patch_all_extractors(monkeypatch)
+        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+
+        text = ExtractProcessor.load_from_url("https://example.com/report", return_text=True)
+
+        assert text == "extracted-by-PdfExtractor"
+        assert factory.calls[-1][0] == "PdfExtractor"
 
 
 class TestExtractProcessorFileRouting:

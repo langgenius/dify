@@ -1,8 +1,10 @@
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.console.workspace.models import (
     DefaultModelApi,
@@ -25,15 +27,17 @@ from controllers.console.workspace.models import (
     ParserSwitch,
     ParserValidate,
 )
+from core.entities.model_entities import DefaultModelSetting
+from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
+from models.provider import TenantDefaultModel
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Model User", email="model-user@example.com")
-    account.id = "u1"
-    return account
+    return make_account(account_id="u1", name="Model User", email="model-user@example.com")
 
 
 class TestDefaultModelApi:
@@ -79,11 +83,93 @@ class TestDefaultModelApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.models.ModelProviderService"),
+            patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
             result = method(api, ParserPostDefault.model_validate(payload), "tenant1")
 
         assert result["result"] == "success"
+        service.return_value.update_default_models.assert_called_once_with(
+            tenant_id="tenant1",
+            model_settings=[DefaultModelSetting(model_type=ModelType.LLM, provider="openai", model="gpt-4")],
+        )
+
+    @pytest.mark.parametrize(
+        "cleared_setting",
+        [
+            None,
+            {"model_type": ModelType.TEXT_EMBEDDING},
+            {"model_type": ModelType.TEXT_EMBEDDING, "provider": None, "model": None},
+            {"model_type": ModelType.TEXT_EMBEDDING, "model": "text-embedding-3-small"},
+            {"model_type": ModelType.TEXT_EMBEDDING, "provider": "openai"},
+        ],
+    )
+    def test_post_removes_unconfigured_defaults(
+        self, app: Flask, sqlite_session: Session, cleared_setting: dict[str, str | None] | None
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                TenantDefaultModel(
+                    tenant_id="tenant1",
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    provider_name="openai",
+                    model_name="text-embedding-3-small",
+                ),
+                TenantDefaultModel(
+                    tenant_id="other-tenant",
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    provider_name="openai",
+                    model_name="text-embedding-3-small",
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        model_settings: list[dict[str, str | None]] = [
+            {"model_type": ModelType.LLM, "provider": "openai", "model": "gpt-4"}
+        ]
+        if cleared_setting is not None:
+            model_settings.append(cleared_setting)
+        payload = ParserPostDefault.model_validate({"model_settings": model_settings})
+        manager = ProviderManager(model_runtime=Mock())
+        configurations = MagicMock()
+        configurations.__contains__.return_value = True
+        configurations.get_models.return_value = [Mock(model="gpt-4")]
+        api = DefaultModelApi()
+
+        with (
+            app.test_request_context("/"),
+            patch("services.model_provider_service.create_plugin_provider_manager", return_value=manager),
+            patch.object(manager, "get_configurations", return_value=configurations),
+        ):
+            result = unwrap(api.post)(api, payload, "tenant1")
+
+        assert result["result"] == "success"
+        sqlite_session.expire_all()
+        assert {
+            (record.tenant_id, record.model_type, record.model_name)
+            for record in sqlite_session.scalars(select(TenantDefaultModel))
+        } == {
+            ("tenant1", ModelType.LLM, "gpt-4"),
+            ("other-tenant", ModelType.TEXT_EMBEDDING, "text-embedding-3-small"),
+        }
+
+    def test_post_empty_settings_clears_defaults(self, app: Flask, sqlite_session: Session) -> None:
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id="tenant1", model_type=ModelType.LLM, provider_name="openai", model_name="gpt-4"
+            )
+        )
+        sqlite_session.commit()
+        manager = ProviderManager(model_runtime=Mock())
+        api = DefaultModelApi()
+
+        with (
+            app.test_request_context("/"),
+            patch("services.model_provider_service.create_plugin_provider_manager", return_value=manager),
+        ):
+            result = unwrap(api.post)(api, ParserPostDefault(model_settings=[]), "tenant1")
+
+        assert result["result"] == "success"
+        assert sqlite_session.scalar(select(TenantDefaultModel)) is None
 
     def test_get_returns_empty_when_no_default(self, app: Flask):
         api = DefaultModelApi()
@@ -148,6 +234,23 @@ class TestModelProviderModelApi:
 
         with (
             app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.models.ModelProviderService"),
+        ):
+            result, status = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
+
+        assert status == 204
+
+    def test_delete_model_via_query_params(self, app: Flask):
+        api = ModelProviderModelApi()
+        method = unwrap(api.delete)
+
+        payload = {
+            "model": "gpt-4",
+            "model_type": ModelType.LLM,
+        }
+
+        with (
+            app.test_request_context("/", method="DELETE", query_string=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
             result, status = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
@@ -256,6 +359,24 @@ class TestModelProviderModelCredentialApi:
 
         with (
             app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.models.ModelProviderService"),
+        ):
+            result, status = method(api, ParserDeleteCredential.model_validate(payload), "t1", "openai")
+
+        assert status == 204
+
+    def test_delete_credential_via_query_params(self, app: Flask):
+        api = ModelProviderModelCredentialApi()
+        method = unwrap(api.delete)
+
+        payload = {
+            "model": "gpt",
+            "model_type": ModelType.LLM,
+            "credential_id": "123e4567-e89b-12d3-a456-426614174000",
+        }
+
+        with (
+            app.test_request_context("/", method="DELETE", query_string=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
             result, status = method(api, ParserDeleteCredential.model_validate(payload), "t1", "openai")

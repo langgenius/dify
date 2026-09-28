@@ -21,7 +21,7 @@ import { useEffect, useRef } from 'react'
 import {
   invalidateHumanInputChannelQueries,
   invalidateHumanInputContactQueries,
-} from '@/service/client'
+} from '@/service/console'
 import {
   useContactsImPlatformOrganization,
   useContactsImPlatformRepository,

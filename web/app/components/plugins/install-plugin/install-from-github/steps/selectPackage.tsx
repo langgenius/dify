@@ -51,7 +51,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   onFailed,
   onBack,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
   const selectedVersionOption = versions.find((item) => item.value === selectedVersion) ?? null
@@ -128,7 +128,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       <Field name="package" className="gap-4 self-stretch">
         <Select
           value={selectedPackageOption?.value ?? null}
-          readOnly={!selectedVersion}
+          disabled={!selectedVersion}
           onValueChange={(value) => {
             if (value == null) return
             const selectedItem = packages.find((item) => item.value === value)

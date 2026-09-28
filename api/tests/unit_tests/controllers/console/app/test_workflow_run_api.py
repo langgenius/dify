@@ -3,24 +3,30 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from inspect import unwrap
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask_restx import marshal
 from sqlalchemy.orm import Session
 
+from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
+from extensions.ext_database import db
+from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from machinery.context import RequestContext
 from models import Account, App, AppMode
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import IconType
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowType,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _serialize_200_response(handler, payload: Any) -> Any:
@@ -35,26 +41,30 @@ def _serialize_200_response(handler, payload: Any) -> Any:
 
 
 def _account(session: Session) -> Account:
-    account = Account(name="Alice", email="alice@example.com")
-    account.id = "account-1"
+    account = make_account(name="Alice", email="alice@example.com")
     session.add(account)
     session.commit()
     return account
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow run app",
-        description="",
-        mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
+    return make_app(name="Workflow run app", mode=AppMode.WORKFLOW)
+
+
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
+
+
+def _mock_application_services(monkeypatch: pytest.MonkeyPatch, workflow_runs: Mock) -> None:
+    monkeypatch.setattr(
+        workflow_run_module,
+        "application_services",
+        lambda: SimpleNamespace(workflow_runs=workflow_runs),
     )
 
 
@@ -129,17 +139,14 @@ def test_workflow_run_list_returns_frontend_history_contract(
 ) -> None:
     _account(sqlite_session)
     workflow_run = _workflow_run_summary(sqlite_session)
-
-    class WorkflowRunService:
-        def get_paginate_workflow_runs(self, **_kwargs):
-            return {
-                "limit": 10,
-                "has_more": False,
-                "data": [workflow_run],
-            }
-
-    monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
-    monkeypatch.setattr(workflow_run_module.db, "session", sqlite_session)
+    workflow_runs = Mock()
+    workflow_runs.get_paginate_workflow_runs.return_value = SimpleNamespace(
+        limit=10,
+        has_more=False,
+        data=[workflow_run],
+    )
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunListApi()
     handler = unwrap(api.get)
@@ -147,7 +154,9 @@ def test_workflow_run_list_returns_frontend_history_contract(
     with app.test_request_context("/apps/app-1/workflow-runs?limit=10", method="GET"):
         payload = handler(
             api,
+            sqlite_session,
             workflow_run_module.WorkflowRunListQuery(limit=10),
+            request_context,
             app_model=_app(),
         )
 
@@ -168,6 +177,12 @@ def test_workflow_run_list_returns_frontend_history_contract(
         "exceptions_count": 0,
         "retry_index": 0,
     }
+    workflow_runs.get_paginate_workflow_runs.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        args={"limit": 10},
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+    )
 
 
 def test_advanced_chat_workflow_run_list_keeps_message_fields(
@@ -179,17 +194,14 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(
         conversation_id="conversation-1",
         message_id="message-1",
     )
-
-    class WorkflowRunService:
-        def get_paginate_advanced_chat_workflow_runs(self, **_kwargs):
-            return {
-                "limit": 1,
-                "has_more": True,
-                "data": [workflow_run],
-            }
-
-    monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
-    monkeypatch.setattr(workflow_run_module.db, "session", sqlite_session)
+    workflow_runs = Mock()
+    workflow_runs.get_paginate_advanced_chat_workflow_runs.return_value = SimpleNamespace(
+        limit=1,
+        has_more=True,
+        data=[workflow_run],
+    )
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
 
     api = workflow_run_module.AdvancedChatAppWorkflowRunListApi()
     handler = unwrap(api.get)
@@ -197,7 +209,9 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(
     with app.test_request_context("/apps/app-1/advanced-chat/workflow-runs?limit=1", method="GET"):
         payload = handler(
             api,
+            sqlite_session,
             workflow_run_module.WorkflowRunListQuery(limit=1),
+            request_context,
             app_model=_app(),
         )
 
@@ -205,6 +219,52 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(
 
     assert response["data"][0]["conversation_id"] == "conversation-1"
     assert response["data"][0]["message_id"] == "message-1"
+    workflow_runs.get_paginate_advanced_chat_workflow_runs.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        args={"limit": 1},
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+    )
+
+
+def test_workflow_run_count_passes_filters_to_application_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_runs = Mock()
+    workflow_runs.get_workflow_runs_count.return_value = {
+        "total": 2,
+        "running": 0,
+        "succeeded": 2,
+        "failed": 0,
+        "stopped": 0,
+        "partial-succeeded": 0,
+    }
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
+    query = workflow_run_module.WorkflowRunCountQuery(
+        status="succeeded",
+        time_range="7d",
+        triggered_from="app-run",
+    )
+
+    api = workflow_run_module.WorkflowRunCountApi()
+    handler = unwrap(api.get)
+    with app.test_request_context("/apps/app-1/workflow-runs/count", method="GET"):
+        payload = handler(api, query, request_context, app_model=_app())
+
+    assert payload == {
+        "total": 2,
+        "running": 0,
+        "succeeded": 2,
+        "failed": 0,
+        "stopped": 0,
+        "partial_succeeded": 0,
+    }
+    workflow_runs.get_workflow_runs_count.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        status="succeeded",
+        time_range="7d",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+    )
 
 
 def test_workflow_run_detail_returns_frontend_detail_contract(
@@ -212,19 +272,16 @@ def test_workflow_run_detail_returns_frontend_detail_contract(
 ) -> None:
     _account(sqlite_session)
     workflow_run = _workflow_run_summary(sqlite_session)
-
-    class WorkflowRunService:
-        def get_workflow_run(self, **_kwargs):
-            return workflow_run
-
-    monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
-    monkeypatch.setattr(workflow_run_module.db, "session", sqlite_session)
+    workflow_runs = Mock()
+    workflow_runs.get_workflow_run.return_value = workflow_run
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunDetailApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"):
-        payload = handler(api, app_model=_app(), run_id="run-1")
+        payload = handler(api, sqlite_session, request_context, app_model=_app(), run_id="run-1")
 
     response = _serialize_200_response(api.get, payload)
 
@@ -246,26 +303,52 @@ def test_workflow_run_detail_returns_frontend_detail_contract(
         "finished_at": 1767323045,
         "exceptions_count": 0,
     }
+    workflow_runs.get_workflow_run.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        run_id="run-1",
+    )
+
+
+def test_workflow_run_detail_maps_missing_run_to_not_found(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workflow_runs = Mock()
+    workflow_runs.get_workflow_run.return_value = None
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context(workspace_id="tenant-2")
+    api = workflow_run_module.WorkflowRunDetailApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"):
+        with pytest.raises(NotFoundError, match="Workflow run not found"):
+            handler(api, sqlite_session, request_context, app_model=_app(), run_id="run-1")
+
+    workflow_runs.get_workflow_run.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        run_id="run-1",
+    )
 
 
 def test_workflow_run_node_executions_return_frontend_trace_contract(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    account = _account(sqlite_session)
+    _account(sqlite_session)
     execution = _workflow_run_node_execution(sqlite_session)
-
-    class WorkflowRunService:
-        def get_workflow_run_node_executions(self, **_kwargs):
-            return [execution]
-
-    monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
-    monkeypatch.setattr(workflow_run_module.db, "session", sqlite_session)
+    workflow_runs = Mock()
+    workflow_runs.get_workflow_run_node_executions.return_value = [
+        node_execution_response_source(execution, session=sqlite_session)
+    ]
+    _mock_application_services(monkeypatch, workflow_runs)
+    monkeypatch.setattr(db, "session", lambda: sqlite_session)
+    request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunNodeExecutionListApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions", method="GET"):
-        payload = handler(api, account, app_model=_app(), run_id="run-1")
+        payload = handler(api, request_context, app_model=_app(), run_id="run-1")
 
     response = _serialize_200_response(api.get, payload)
 
@@ -297,3 +380,8 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
             }
         ]
     }
+    workflow_runs.get_workflow_run_node_executions.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        run_id="run-1",
+    )

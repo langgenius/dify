@@ -1,12 +1,9 @@
-import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { FileTypesRes } from './datasets'
 import type {
-  Model,
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   CodeBasedExtension,
   CommonResponse,
@@ -15,12 +12,12 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSetAtom } from 'jotai'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { authSessionRevisionAtom } from '@/context/auth-session-state'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
-import { consoleQuery } from './client'
 
 const NAME_SPACE = 'common'
 
@@ -32,7 +29,6 @@ export const commonQueryKeys = {
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
-  retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
@@ -108,13 +104,6 @@ export const useMailRegister = () => {
   })
 }
 
-export const useFileSupportTypes = () => {
-  return useQuery<FileTypesRes>({
-    queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
-  })
-}
-
 type MemberResponse = {
   accounts: Member[] | null
 }
@@ -159,6 +148,7 @@ export const useSchemaTypeDefinitions = () => {
 
 export const useLogout = () => {
   const queryClient = useQueryClient()
+  const advanceAuthSession = useSetAtom(authSessionRevisionAtom)
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
@@ -172,6 +162,8 @@ export const useLogout = () => {
       // need to be remembered here. systemFeatures (user-agnostic) just
       // refetches once on the way to /signin, which is cheap.
       queryClient.clear()
+      // Rebind account-scoped Jotai queries to the cleared cache.
+      advanceAuthSession((revision) => revision + 1)
     },
   })
 }
@@ -210,27 +202,6 @@ export const useModelProviderDetails = (enabled = true) => {
   return useQuery({
     ...modelProviderDetailsQueryOptions(),
     enabled,
-  })
-}
-
-export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = true) => {
-  return useQuery<{ data: Model[] }>({
-    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-      input: {
-        params: {
-          model_type: type,
-        },
-      },
-    }),
-    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
-    enabled,
-  })
-}
-
-export const useSupportRetrievalMethods = () => {
-  return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
-    queryKey: commonQueryKeys.retrievalMethods,
-    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
   })
 }
 

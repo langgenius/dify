@@ -1,222 +1,158 @@
-import type { ReactNode } from 'react'
 import type { DataSourceNodeType } from '../types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { useNodesReadOnly } from '../../../hooks/use-workflow'
-import useMatchSchemaType, {
-  getMatchedSchemaType,
-} from '../../_base/components/variable/use-match-schema-type'
-import ToolForm from '../../tool/components/tool-form'
-import { useConfig } from '../hooks/use-config'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
-const mockWrapStructuredVarItem = vi.hoisted(() => vi.fn((payload: unknown) => payload))
-
-vi.mock('@/app/components/base/tag-input', () => ({
-  __esModule: true,
-  default: ({
-    items,
-    onChange,
-    placeholder,
-  }: {
-    items: string[]
-    onChange: (items: string[]) => void
-    placeholder?: string
-  }) => (
-    <button type="button" onClick={() => onChange([...items, 'txt'])}>
-      {placeholder}
-    </button>
-  ),
+const { update, get } = vi.hoisted(() => ({
+  update: vi.fn(),
+  get: vi.fn(async (_url: string) => []),
+}))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get,
+}))
+vi.mock('../../../hooks/use-node-data-update', () => ({
+  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: update }),
+}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../hooks/use-workflow')>()),
+  useNodesReadOnly: () => ({ nodesReadOnly: false }),
+}))
+vi.mock('../../_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))
 
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: vi.fn(),
-}))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: vi.fn(),
-  }
-})
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/utils/tool', () => ({
-  wrapStructuredVarItem: (payload: unknown) => mockWrapStructuredVarItem(payload),
-}))
-
-vi.mock('../../_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
-}))
-
-vi.mock('../../_base/components/variable/object-child-tree-panel/show', () => ({
-  __esModule: true,
-  default: ({ payload }: { payload: { name: string } }) => <div>{payload.name}</div>,
-}))
-
-vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
-  __esModule: true,
-  default: vi.fn(),
-  getMatchedSchemaType: vi.fn(),
-}))
-
-vi.mock('../../tool/components/tool-form', () => ({
-  __esModule: true,
-  default: vi.fn(
-    ({
-      onChange,
-      onManageInputField,
-    }: {
-      onChange: (value: unknown) => void
-      onManageInputField?: () => void
-    }) => (
-      <div>
-        <button type="button" onClick={() => onChange({ dataset: 'docs' })}>
-          tool-form-change
-        </button>
-        <button type="button" onClick={() => onManageInputField?.()}>
-          manage-input-field
-        </button>
-      </div>
-    ),
-  ),
-}))
-
-vi.mock('../hooks/use-config', () => ({
-  useConfig: vi.fn(),
-}))
-
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseStore = vi.mocked(useStore)
-const mockUseConfig = vi.mocked(useConfig)
-const mockToolParametersToFormSchemas = vi.mocked(toolParametersToFormSchemas)
-const mockUseMatchSchemaType = vi.mocked(useMatchSchemaType)
-const mockGetMatchedSchemaType = vi.mocked(getMatchedSchemaType)
-const mockToolForm = vi.mocked(ToolForm)
-
-const setShowInputFieldPanel = vi.fn()
-
+const panelProps = {
+  getInputVars: () => [],
+  toVarInputs: () => [],
+  runInputData: {},
+  runInputDataRef: { current: {} },
+  setRunInputData: () => {},
+  runResult: null,
+}
 const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
   title: 'Datasource',
   desc: '',
   type: BlockEnum.DataSource,
-  plugin_id: 'plugin-1',
+  plugin_id: 'langgenius/file',
   provider_type: 'online_document',
-  provider_name: 'provider',
-  datasource_name: 'source-a',
-  datasource_label: 'Source A',
+  provider_name: 'file',
+  datasource_name: 'local-file',
+  datasource_label: 'File',
   datasource_parameters: {},
   datasource_configurations: {},
-  fileExtensions: ['pdf'],
   ...overrides,
 })
+const createProvider = () => {
+  const provider = createDatasourceProvider()
+  provider.declaration.datasources![0]!.parameters = [
+    {
+      name: 'count',
+      type: 'number',
+      required: true,
+      default: 0,
+      min: 0,
+      max: 10,
+      label: { en_US: 'Count', zh_Hans: null },
+      description: { en_US: 'How many documents' },
+    },
+    {
+      name: 'enabled',
+      type: 'boolean',
+      required: false,
+      default: false,
+      label: { en_US: 'Enabled' },
+      description: { en_US: 'Include archived documents' },
+    },
+  ]
+  return provider
+}
+beforeEach(() => vi.clearAllMocks())
 
-const panelProps = {} as NodePanelProps<DataSourceNodeType>['panelProps']
-
-describe('data-source/panel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseStore.mockImplementation((selector) => {
-      const select = selector as (state: unknown) => unknown
-      return select({
-        dataSourceList: [
-          {
-            plugin_id: 'plugin-1',
-            is_authorized: true,
-            tools: [
-              {
-                name: 'source-a',
-                parameters: [{ name: 'dataset' }],
-              },
-            ],
-          },
-        ],
-        pipelineId: 'pipeline-1',
-        setShowInputFieldPanel,
-      })
-    })
-    mockUseConfig.mockReturnValue({
-      handleFileExtensionsChange: vi.fn(),
-      handleParametersChange: vi.fn(),
-      outputSchema: [],
-      hasObjectOutput: false,
-    })
-    mockToolParametersToFormSchemas.mockReturnValue([{ name: 'dataset' }] as never)
-    mockUseMatchSchemaType.mockReturnValue({ schemaTypeDefinitions: {} } as ReturnType<
-      typeof useMatchSchemaType
-    >)
-    mockGetMatchedSchemaType.mockReturnValue('')
+it('renders real datasource fields and descriptions without tool dynamic requests, preserving numeric and boolean values', async () => {
+  const user = userEvent.setup()
+  const data = createData({
+    datasource_parameters: {
+      count: { type: VarKindType.constant, value: 0 },
+      enabled: { type: VarKindType.constant, value: false },
+    },
   })
-
-  it('renders the authorized tool form path and forwards parameter changes', () => {
-    const handleParametersChange = vi.fn()
-    mockUseConfig.mockReturnValueOnce({
-      handleFileExtensionsChange: vi.fn(),
-      handleParametersChange,
-      outputSchema: [
-        {
-          name: 'metadata',
-          value: { type: 'object' },
-        },
-      ],
-      hasObjectOutput: true,
-    })
-    mockGetMatchedSchemaType.mockReturnValueOnce('json')
-
-    render(<Panel id="data-source-node" data={createData()} panelProps={panelProps} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'tool-form-change' }))
-    fireEvent.click(screen.getByRole('button', { name: 'manage-input-field' }))
-
-    expect(handleParametersChange).toHaveBeenCalledWith({ dataset: 'docs' })
-    expect(setShowInputFieldPanel).toHaveBeenCalledWith(true)
-    expect(mockToolForm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        nodeId: 'data-source-node',
-        showManageInputField: true,
-        value: {},
+  renderWorkflowFlowComponent(<Panel id="datasource" data={data} panelProps={panelProps} />, {
+    nodes: [{ id: 'datasource', position: { x: 0, y: 0 }, data }],
+    initialStoreState: { dataSourceList: [createProvider()] },
+  })
+  expect(screen.getByText('How many documents')).toBeInTheDocument()
+  const count = screen.getByRole('textbox', { name: 'Count' })
+  expect(count).toHaveValue('0')
+  await user.click(count)
+  await user.keyboard('{ArrowDown}')
+  expect(count).toHaveValue('0')
+  await user.clear(count)
+  await user.type(count, '2')
+  expect(update).toHaveBeenLastCalledWith({
+    id: 'datasource',
+    data: expect.objectContaining({
+      datasource_parameters: expect.objectContaining({
+        count: { type: VarKindType.constant, value: 2 },
       }),
-      undefined,
-    )
-    expect(screen.getByText('metadata')).toBeInTheDocument()
+    }),
   })
-
-  it('renders the local-file path and updates supported file extensions', () => {
-    const handleFileExtensionsChange = vi.fn()
-    mockUseConfig.mockReturnValueOnce({
-      handleFileExtensionsChange,
-      handleParametersChange: vi.fn(),
-      outputSchema: [],
-      hasObjectOutput: false,
-    })
-
-    render(
-      <Panel
-        id="data-source-node"
-        data={createData({ provider_type: 'local_file' })}
-        panelProps={panelProps}
-      />,
-    )
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.dataSource.supportedFileFormatsPlaceholder',
+  await user.click(screen.getByRole('button', { name: 'False' }))
+  expect(update).toHaveBeenLastCalledWith({
+    id: 'datasource',
+    data: expect.objectContaining({
+      datasource_parameters: expect.objectContaining({
+        enabled: { type: VarKindType.constant, value: false },
       }),
-    )
-
-    expect(handleFileExtensionsChange).toHaveBeenCalledWith(['pdf', 'txt'])
-    expect(screen.getByText(`datasource_type:${VarType.string}`)).toBeInTheDocument()
-    expect(screen.getByText(`file:${VarType.file}`)).toBeInTheDocument()
+    }),
   })
+  expect(get.mock.calls.map((call) => call[0])).not.toContain(
+    '/workspaces/current/plugin/parameters/dynamic-options',
+  )
+})
+
+it('renders nested and unrestricted outputs while keeping unauthorized inputs hidden', async () => {
+  const user = userEvent.setup()
+  const provider = createProvider()
+  provider.is_authorized = false
+  provider.declaration.datasources![0]!.output_schema = {
+    properties: {
+      metadata: {
+        type: 'object',
+        properties: { title: { type: 'string' }, optional: true, nullable: null },
+      },
+      names: { type: 'array', items: { type: 'string' } },
+      unknown: false,
+    },
+  }
+  const data = createData()
+  renderWorkflowFlowComponent(<Panel id="datasource" data={data} panelProps={panelProps} />, {
+    nodes: [{ id: 'datasource', position: { x: 0, y: 0 }, data }],
+    initialStoreState: { dataSourceList: [provider] },
+  })
+  await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+  await waitFor(() => expect(screen.getByText('metadata')).toBeInTheDocument())
+  expect(screen.getByText('title')).toBeInTheDocument()
+  expect(screen.getByText('optional')).toBeInTheDocument()
+  expect(screen.getByText('nullable')).toBeInTheDocument()
+  expect(screen.getByText('array[string]')).toBeInTheDocument()
+  expect(screen.queryByRole('textbox', { name: 'Count' })).not.toBeInTheDocument()
+})
+
+it('keeps local-file controls available without plugin version metadata', async () => {
+  const user = userEvent.setup()
+  const data = createData({ provider_type: 'local_file', fileExtensions: ['pdf', 'csv'] })
+  renderWorkflowFlowComponent(<Panel id="datasource" data={data} panelProps={panelProps} />, {
+    nodes: [{ id: 'datasource', position: { x: 0, y: 0 }, data }],
+    initialStoreState: { dataSourceList: [createDatasourceProvider()] },
+  })
+  expect(screen.getByText('pdf')).toBeInTheDocument()
+  expect(screen.getByText('csv')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+  expect(screen.getByText('datasource_type')).toBeInTheDocument()
+  expect(screen.getByText('transfer_method')).toBeInTheDocument()
 })

@@ -4,11 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { submitHumanInputForm } from '@/service/workflow'
 import { normalizeConsoleFormDefinition } from './definition'
 
@@ -27,7 +27,7 @@ const getErrorKind = (error: unknown) => {
 }
 
 export default function ConsoleHumanInputForm({ formToken }: { formToken: string }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'share', 'common'])
   useDocumentTitle(t(($) => $['blocks.human-input'], { ns: 'workflow' }))
   const [submitError, setSubmitError] = useState<unknown>()
   const [now, setNow] = useState(Date.now)
@@ -74,7 +74,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
             ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
             : t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
 
-  if (form.isPending) return <Loading type="app" />
+  if (form.isPending) return <LoadingPlaceholder className="h-full" />
 
   if (submission.isSuccess) {
     return (

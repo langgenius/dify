@@ -13,7 +13,7 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import Recipients from '../components/recipients'
 
 const runtimeApi = vi.hoisted(() => ({
@@ -27,7 +27,7 @@ const runtimeApi = vi.hoisted(() => ({
   options: vi.fn<() => Promise<ListContactOptionsResponse>>(),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
   return {
     consoleQuery: createTanstackQueryUtils({

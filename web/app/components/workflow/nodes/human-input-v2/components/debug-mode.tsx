@@ -3,12 +3,12 @@
 import type { HumanInputV2DebugMode } from '../types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
 import { HUMAN_INPUT_V2_DEBUG_CHANNELS, isHumanInputV2DebugChannel } from '../types'
 
@@ -24,7 +24,7 @@ type DebugModeProps = {
 }
 
 const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const errorId = useId()
   const [open, setOpen] = useState(false)
   const channels = value.channels as string[]
@@ -65,8 +65,13 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
           <div className="truncate system-sm-medium text-text-secondary">
             {t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}
           </div>
-          <Infotip aria-label={t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}>
-            {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}
+            />
+            <InfotipContent>
+              {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <Popover open={open} onOpenChange={(nextOpen) => !readonly && setOpen(nextOpen)}>

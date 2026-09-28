@@ -9,6 +9,10 @@ class AccountNotFoundError(AccountApplicationError):
     """The admitted account no longer exists."""
 
 
+class AccountSessionNotFoundError(AccountApplicationError):
+    """The requested access session is not owned by the admitted account."""
+
+
 class CurrentAccountPasswordIncorrectError(AccountApplicationError):
     """The supplied current password does not match the account credential."""
 

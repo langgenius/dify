@@ -19,6 +19,7 @@ from fields.annotation_fields import (
     AnnotationList,
 )
 from libs.helper import dump_response
+from libs.pagination import clamp_pagination
 from models.model import App
 from services.annotation_service import (
     AppAnnotationService,
@@ -150,7 +151,6 @@ class AnnotationReplyActionStatusApi(Resource):
         responses={
             200: "Job status retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Job not found",
         }
     )
     @service_api_ns.response(
@@ -210,16 +210,17 @@ class AnnotationListApi(Resource):
     def get(self, query: AnnotationListQuery, session: Session, app_model: App):
         """List annotations for the application."""
 
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_model.id, query.page, query.limit, query.keyword, session
+            app_model.id, effective_page, effective_limit, query.keyword, session
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
             data=annotation_models,
-            has_more=len(annotation_list) == query.limit,
-            limit=query.limit,
+            has_more=effective_page * effective_limit < total,
+            limit=effective_limit,
             total=total,
-            page=query.page,
+            page=effective_page,
         ).model_dump(mode="json")
 
     @service_api_ns.doc(

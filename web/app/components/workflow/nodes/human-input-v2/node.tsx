@@ -15,7 +15,7 @@ const HumanInputV2NodeContent = ({
 }: NodeProps<HumanInputV2NodeType> & {
   provider: ContactRecipientOptionProvider
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { data } = props
   const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
   const contactIds = useMemo(

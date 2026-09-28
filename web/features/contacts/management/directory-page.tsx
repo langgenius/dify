@@ -30,7 +30,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
@@ -54,7 +54,7 @@ const contactIdParser = parseAsString
 const loadedPagesParser = parseAsInteger.withDefault(1)
 
 function ContactTypeLabel({ type }: { type: ContactView['type'] }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   return (
     <span className="system-sm-regular text-text-secondary">{t(($) => $[`type.${type}`])}</span>
   )
@@ -77,7 +77,7 @@ function ContactRow({
   selectionPending: boolean
   selectionEnabled: boolean
 }) {
-  const { i18n, t } = useTranslation('contacts')
+  const { i18n, t } = useTranslation(['contacts'])
   return (
     <tr className="h-12 shadow-[inset_0_-1px_0_0_var(--color-divider-subtle)] hover:bg-state-base-hover">
       {selectionEnabled && (
@@ -168,7 +168,7 @@ function DirectoryState({
 }
 
 export function ContactsDirectoryPage() {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
   const [browsing, setBrowsing] = useQueryStates({
@@ -534,7 +534,7 @@ export function ContactsDirectoryPage() {
                       ))}
                     </tbody>
                   </table>
-                  {directoryQuery.isFetchingNextPage && <Loading className="py-3" />}
+                  {directoryQuery.isFetchingNextPage && <LoadingPlaceholder className="py-3" />}
                   {directoryQuery.hasNextPage && (
                     <>
                       {directoryQuery.isFetchNextPageError && (

@@ -50,13 +50,13 @@ describe('permission', () => {
       expect(releaseCapabilities.canDeploy).toBe(false)
     })
 
-    it('allows Access Point managers to view the page without granting management to viewers', () => {
+    it('keeps Access Point view and management permissions independent', () => {
       const viewCapabilities = getAppACLCapabilities([AppACLPermission.AccessPointView])
       const manageCapabilities = getAppACLCapabilities([AppACLPermission.AccessPointManage])
 
       expect(viewCapabilities.canViewAccessPoint).toBe(true)
       expect(viewCapabilities.canManageAccessPoint).toBe(false)
-      expect(manageCapabilities.canViewAccessPoint).toBe(true)
+      expect(manageCapabilities.canViewAccessPoint).toBe(false)
       expect(manageCapabilities.canManageAccessPoint).toBe(true)
     })
 

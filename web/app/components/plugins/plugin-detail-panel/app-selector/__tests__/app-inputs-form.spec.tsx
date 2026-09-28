@@ -1,5 +1,7 @@
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import AppInputsForm from '../app-inputs-form'
@@ -27,6 +29,40 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   ),
 }))
 
+type AppInputsFormProps = ComponentProps<typeof AppInputsForm>
+
+const renderControlledForm = ({
+  inputsForms,
+  initialInputs,
+  onFormChange,
+}: {
+  inputsForms: AppInputsFormProps['inputsForms']
+  initialInputs: AppInputsFormProps['inputs']
+  onFormChange: AppInputsFormProps['onFormChange']
+}) => {
+  const Wrapper = () => {
+    const [inputs, setInputs] = useState(initialInputs)
+    const inputsRef = useRef(initialInputs)
+
+    const handleFormChange = (nextInputs: Record<string, unknown>) => {
+      inputsRef.current = nextInputs
+      setInputs(nextInputs)
+      onFormChange(nextInputs)
+    }
+
+    return (
+      <AppInputsForm
+        inputsForms={inputsForms}
+        inputs={inputs}
+        inputsRef={inputsRef}
+        onFormChange={handleFormChange}
+      />
+    )
+  }
+
+  return render(<Wrapper />)
+}
+
 describe('AppInputsForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,51 +81,41 @@ describe('AppInputsForm', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should update text input values', () => {
+  it('should update text input values', async () => {
+    const user = userEvent.setup()
     const onFormChange = vi.fn()
-    const inputsRef = { current: { question: '' } }
 
-    render(
-      <AppInputsForm
-        inputsForms={[
-          {
-            variable: 'question',
-            label: 'Question',
-            type: InputVarType.textInput,
-            required: false,
-          },
-        ]}
-        inputs={{ question: '' }}
-        inputsRef={inputsRef}
-        onFormChange={onFormChange}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('Question'), {
-      target: { value: 'hello' },
+    renderControlledForm({
+      inputsForms: [
+        {
+          variable: 'question',
+          label: 'Question',
+          type: InputVarType.textInput,
+          required: false,
+        },
+      ],
+      initialInputs: { question: '' },
+      onFormChange,
     })
+
+    await user.type(screen.getByRole('textbox', { name: 'Question' }), 'hello')
 
     expect(onFormChange).toHaveBeenCalledWith({ question: 'hello' })
   })
 
-  it('should update number input values', () => {
+  it('should update number input values', async () => {
+    const user = userEvent.setup()
     const onFormChange = vi.fn()
-    const inputsRef = { current: { count: '' } }
 
-    render(
-      <AppInputsForm
-        inputsForms={[
-          { variable: 'count', label: 'Count', type: InputVarType.number, required: false },
-        ]}
-        inputs={{ count: '' }}
-        inputsRef={inputsRef}
-        onFormChange={onFormChange}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('Count'), {
-      target: { value: '42' },
+    renderControlledForm({
+      inputsForms: [
+        { variable: 'count', label: 'Count', type: InputVarType.number, required: false },
+      ],
+      initialInputs: { count: '' },
+      onFormChange,
     })
+
+    await user.type(screen.getByRole('spinbutton', { name: 'Count' }), '42')
 
     expect(onFormChange).toHaveBeenCalledWith({ count: '42' })
   })
@@ -116,7 +142,7 @@ describe('AppInputsForm', () => {
       />,
     )
 
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'Tone' }))
     await user.click(await screen.findByRole('option', { name: 'formal' }))
 
     expect(onFormChange).toHaveBeenCalledWith({ tone: 'formal' })
@@ -152,29 +178,24 @@ describe('AppInputsForm', () => {
     })
   })
 
-  it('should update paragraph fields and preserve sibling input values', () => {
+  it('should update paragraph fields and preserve sibling input values', async () => {
+    const user = userEvent.setup()
     const onFormChange = vi.fn()
-    const inputsRef = { current: { description: 'old', topic: 'existing' } }
 
-    render(
-      <AppInputsForm
-        inputsForms={[
-          {
-            variable: 'description',
-            label: 'Description',
-            type: InputVarType.paragraph,
-            required: false,
-          },
-        ]}
-        inputs={{ description: '' }}
-        inputsRef={inputsRef}
-        onFormChange={onFormChange}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('Description'), {
-      target: { value: 'updated paragraph' },
+    renderControlledForm({
+      inputsForms: [
+        {
+          variable: 'description',
+          label: 'Description',
+          type: InputVarType.paragraph,
+          required: false,
+        },
+      ],
+      initialInputs: { description: '', topic: 'existing' },
+      onFormChange,
     })
+
+    await user.type(screen.getByRole('textbox', { name: 'Description' }), 'updated paragraph')
 
     expect(onFormChange).toHaveBeenCalledWith({
       description: 'updated paragraph',

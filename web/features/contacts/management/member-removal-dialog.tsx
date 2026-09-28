@@ -28,7 +28,7 @@ export function MemberRemovalContactImpactDialog({
   onRemoved: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
   const removal = useRemoveContactMember()
   const [keepAsPlatformContact, setKeepAsPlatformContact] = useState(true)

@@ -26,7 +26,7 @@ export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-2.5'
 
 export function NewKnowledgeLoadingState() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} role="status" aria-label={t(($) => $.loading)}>
@@ -86,7 +86,7 @@ function EmptyAction({
   recommended?: boolean
   title: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const unavailable = t(($) => $['cornerLabel.unavailable'])
   const recommendedLabel = t(($) => $['firstEmpty.recommended'])
   const descriptionId = useId()
@@ -210,7 +210,7 @@ export function NewKnowledgeEmptyState({
   canConnect: boolean
   canCreate: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const canStart = canCreate
 
   return (

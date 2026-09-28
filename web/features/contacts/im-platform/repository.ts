@@ -21,7 +21,7 @@ import type {
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,

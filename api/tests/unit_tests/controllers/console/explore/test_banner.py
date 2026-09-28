@@ -110,13 +110,21 @@ class TestExploreBannerQueryService:
         assert service.list_for_language("fr-FR") == (record,)
         assert banners.requested_languages == ["fr-FR"]
 
-    def test_falls_back_to_en_us(self) -> None:
+    def test_falls_back_to_en_us_when_requested_translation_is_missing(self) -> None:
         record = _record(title="fallback")
         banners = FakeExploreBannerQuery({"en-US": (record,)})
         service = ExploreBannerQueryService(banners=banners, enabled=True)
 
         assert service.list_for_language("es-ES") == (record,)
         assert banners.requested_languages == ["es-ES", "en-US"]
+
+    def test_invalid_language_uses_en_us(self) -> None:
+        record = _record(title="fallback")
+        banners = FakeExploreBannerQuery({"en-US": (record,)})
+        service = ExploreBannerQueryService(banners=banners, enabled=True)
+
+        assert service.list_for_language("invalid") == (record,)
+        assert banners.requested_languages == ["en-US"]
 
     def test_does_not_repeat_default_language_query(self) -> None:
         banners = FakeExploreBannerQuery()

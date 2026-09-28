@@ -1,4 +1,5 @@
-import type { QuestionClassifierNodeType, Topic } from '../types'
+import type { QuestionClassifierNodeType } from '../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'

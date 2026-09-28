@@ -53,9 +53,7 @@ describe('StatusContainer', () => {
       </StatusContainer>,
     )
 
-    await user.click(
-      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(copy).toHaveBeenCalledWith('Execution failed')
   })

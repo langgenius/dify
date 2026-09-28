@@ -22,6 +22,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +30,7 @@ import { LogSourceIcon } from './source-icon'
 
 export type SourceFilterValue = AgentLogSourceResponse['id'][]
 
-const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<'agentV2'>) => {
+const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<['agentV2']>) => {
   if (group.type === 'webapp') return t(($) => $['agentDetail.logs.filters.source.webapp'])
   if (group.type === 'workflow') return t(($) => $['agentDetail.logs.filters.source.workflow'])
   return group.label
@@ -56,25 +57,35 @@ export function AgentLogSourcePicker({
   onRetry: () => void
   onChange: (value: SourceFilterValue) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [inputValue, setInputValue] = useState('')
   const sourceGroups = useMemo<AgentLogSourceComboboxGroup[]>(
     () => groups.map(({ sources, ...group }) => ({ ...group, items: sources ?? [] })),
     [groups],
   )
-  const sources = sourceGroups.flatMap((group) => group.items)
-  const selectedSources = sources.filter((source) => value.includes(source.id))
+  const sourceItems = useMemo(
+    () =>
+      createComboboxItems(sourceGroups, {
+        getValue: (source) => source.id,
+        getLabel: getSourceLabel,
+      }),
+    [sourceGroups],
+  )
+  const sourceById = useMemo(
+    () =>
+      new Map(sourceGroups.flatMap((group) => group.items).map((source) => [source.id, source])),
+    [sourceGroups],
+  )
 
   return (
-    <Combobox<AgentLogSourceResponse, true>
+    <Combobox<AgentLogSourceResponse['id'], true, AgentLogSourceResponse>
       multiple
-      items={sourceGroups}
-      value={selectedSources}
-      itemToStringLabel={getSourceLabel}
-      onValueChange={(nextSources) => {
+      items={sourceItems}
+      value={value}
+      onValueChange={(nextValue) => {
         setInputValue('')
-        onChange(nextSources.map((source) => source.id))
+        onChange(nextValue)
       }}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
@@ -83,12 +94,17 @@ export function AgentLogSourcePicker({
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
         className="mt-0 w-fit max-w-full min-w-22"
       >
-        <ComboboxValue<AgentLogSourceResponse, true>
+        <ComboboxValue<AgentLogSourceResponse['id'], true>
           placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
         >
           {(selectedValue) => {
             if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
-            if (selectedValue.length === 1) return selectedValue[0]!.app_name
+            if (selectedValue.length === 1) {
+              return (
+                sourceById.get(selectedValue[0]!)?.app_name ??
+                tCommon(($) => $['dynamicSelect.selected'], { count: 1 })
+              )
+            }
             return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
           }}
         </ComboboxValue>
@@ -135,15 +151,15 @@ export function AgentLogSourcePicker({
             {!isLoading && !isError && (
               <ComboboxList<AgentLogSourceComboboxGroup> className="max-h-69 p-2 pt-1">
                 {(group) => (
-                  <ComboboxGroup key={group.type} items={group.items}>
+                  <ComboboxGroup<AgentLogSourceResponse> key={group.type} items={group.items}>
                     <ComboboxGroupLabel className="px-1 pt-2 pb-1">
                       {getSourceGroupLabel(group, t)}
                     </ComboboxGroupLabel>
                     <ComboboxCollection<AgentLogSourceResponse>>
                       {(source) => (
-                        <ComboboxItem
+                        <ComboboxItem<AgentLogSourceResponse['id']>
                           key={source.id}
-                          value={source}
+                          value={source.id}
                           className="min-h-7 grid-cols-[1fr] gap-0 px-1 py-1"
                           render={(props, state) => (
                             <div {...props} className={props.className}>

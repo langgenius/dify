@@ -31,11 +31,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
@@ -161,7 +161,7 @@ function ContactIMBindingEditor({
   onSave: (identityId: string) => void
   onRestore: () => void
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const providerLabel = getContactChannelLabel(provider)
   const [mode, setMode] = useState(binding?.scope === 'workspace' ? 'workspace' : 'organization')
   const [search, setSearch] = useState('')
@@ -404,7 +404,7 @@ function ContactIMChannels({
   canManage: boolean
   removing: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
@@ -439,8 +439,11 @@ function ContactIMChannels({
         <h3 className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['details.channels'])}
         </h3>
-        <Infotip aria-label={t(($) => $['details.channels'])}>
-          {t(($) => $['details.channelsHelp'])}
+        <Infotip>
+          <InfotipTrigger aria-label={t(($) => $['details.channels'])} />
+          <InfotipContent aria-label={t(($) => $['details.channels'])}>
+            {t(($) => $['details.channelsHelp'])}
+          </InfotipContent>
         </Infotip>
       </div>
       <div className="space-y-1">
@@ -588,7 +591,7 @@ export function ContactDetailsPanel({
   onClose: () => void
   onRemove: () => void
 }) {
-  const { i18n, t } = useTranslation('contacts')
+  const { i18n, t } = useTranslation(['contacts'])
 
   return (
     <aside

@@ -88,7 +88,7 @@ class MCPAppApi(Resource):
             self._validate_server_status(mcp_server)
 
             # Get user input form
-            user_input_form = self._get_user_input_form(app)
+            user_input_form = self._get_user_input_form(app, session)
 
             # Handle notification vs request differently
             return self._process_mcp_message(
@@ -180,17 +180,19 @@ class MCPAppApi(Resource):
 
         return helper.compact_generate_response(result.model_dump(by_alias=True, mode="json", exclude_none=True))
 
-    def _get_user_input_form(self, app: App) -> list[VariableEntity]:
+    def _get_user_input_form(self, app: App, session: Session) -> list[VariableEntity]:
         """Get and convert user input form"""
         # Get raw user input form based on app mode
         if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            if not app.workflow:
+            workflow = app.workflow_with_session(session=session)
+            if not workflow:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            raw_user_input_form = app.workflow.user_input_form(to_old_structure=True)
+            raw_user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            if not app.app_model_config:
+            app_model_config = app.app_model_config_with_session(session=session)
+            if not app_model_config:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app.app_model_config.to_dict()
+            features_dict = app_model_config.to_dict()
             raw_user_input_form = features_dict.get("user_input_form", [])
 
         # Convert to VariableEntity objects

@@ -1,4 +1,5 @@
 import type { HumanInputSharedNodeType } from '../../shared/types'
+import { detectPlatform } from '@tanstack/react-hotkeys'
 import { useState } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -36,8 +37,8 @@ vi.mock('@/service/use-plugins', () => ({
   useFetchDynamicOptions: () => ({ mutateAsync: vi.fn() }),
 }))
 
-const fieldLabel = 'workflow.nodes.humanInput.insertInputField.saveResponseAs'
-const insertLabel = /workflow\.nodes\.humanInput\.insertInputField\.insert/
+const fieldLabel = 'workflowHumanInput.nodes.humanInput.insertInputField.saveResponseAs'
+const insertLabel = /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/
 
 function placeCaretAtText(editor: Element, text: string, offset: number) {
   const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT)
@@ -90,44 +91,44 @@ describe('Human input output-variable insertion', () => {
   it('inserts at the saved cursor position after editing the popup and retains earlier fields', async () => {
     // Native contenteditable selection changes when the popup input takes focus.
     // Chromium must exercise that transition; a command-only test skips the regression.
+    const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    const shortcut = `{${modifier}>}/{/${modifier}}`
     const screen = await render(<FormContentHarness />)
     const content = screen.getByRole('region', { name: 'Form content' })
     const editor = content.getByRole('textbox')
     await editor.click()
     placeCaretAtText(editor.element(), 'Before After', 'Before '.length)
-    await userEvent.keyboard('{Control>}/{/Control}')
+    await userEvent.keyboard(shortcut)
     await page.getByRole('textbox', { name: fieldLabel, exact: false }).fill('first_response')
     await page.getByRole('button', { name: insertLabel }).click()
 
     await expect.element(content.getByText('first_response', { exact: true })).toBeVisible()
-    await expect
-      .element(screen.getByRole('status', { name: 'Saved form content' }))
-      .toHaveTextContent(/Before\s+\{\{#\$output.first_response#\}\}\s+After/)
+    expect(
+      screen.getByRole('status', { name: 'Saved form content' }).element().textContent,
+    ).toMatch(/Before\s+\{\{#\$output.first_response#\}\}\s+After/)
     await expect
       .element(screen.getByRole('status', { name: 'Saved fields' }))
-      .toHaveTextContent(/^first_response$/)
+      .toHaveTextContent('first_response')
 
     await content.getByText('After', { exact: true }).click()
     placeCaretAtText(editor.element(), 'After', 'After'.length)
-    await userEvent.keyboard('{Control>}/{/Control}')
+    await userEvent.keyboard(shortcut)
     await page.getByRole('textbox', { name: fieldLabel, exact: false }).fill('second_response')
     await page.getByRole('button', { name: insertLabel }).click()
     await expect.element(content.getByText('first_response', { exact: true })).toBeVisible()
     await expect.element(content.getByText('second_response', { exact: true })).toBeVisible()
     await expect
       .element(screen.getByRole('status', { name: 'Saved fields' }))
-      .toHaveTextContent(/^first_response,second_response$/)
+      .toHaveTextContent('first_response,second_response')
     const savedContent = screen.getByRole('status', { name: 'Saved form content' })
-    await expect
-      .element(savedContent)
-      .toHaveTextContent(
-        /Before\s+\{\{#\$output.first_response#\}\}\s+After\s+\{\{#\$output.second_response#\}\}/,
-      )
+    expect(savedContent.element().textContent).toMatch(
+      /Before\s+\{\{#\$output.first_response#\}\}\s+After\s+\{\{#\$output.second_response#\}\}/,
+    )
     const contentBeforeCancel = savedContent.element().textContent
 
     await content.getByText('After', { exact: true }).click()
     placeCaretAtText(editor.element(), 'After', 'After'.length)
-    await userEvent.keyboard('{Control>}/{/Control}')
+    await userEvent.keyboard(shortcut)
     await page.getByRole('textbox', { name: fieldLabel, exact: false }).fill('cancelled_response')
     await page.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect
@@ -135,7 +136,7 @@ describe('Human input output-variable insertion', () => {
       .not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('status', { name: 'Saved fields' }))
-      .toHaveTextContent(/^first_response,second_response$/)
+      .toHaveTextContent('first_response,second_response')
     expect(savedContent.element().textContent).toBe(contentBeforeCancel)
   })
 })

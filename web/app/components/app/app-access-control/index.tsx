@@ -6,14 +6,14 @@ import type {
   AccessControlSubjectsStatus,
 } from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AccessControlForm } from './access-control-form'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {
@@ -32,7 +32,7 @@ export default function AccessControl(props: AccessControlProps) {
 }
 
 function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [accessMode, setAccessMode] = useState(
     () =>

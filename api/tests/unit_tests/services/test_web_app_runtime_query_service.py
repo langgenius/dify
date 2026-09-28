@@ -2,8 +2,10 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
+from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.errors.file import FileNotExistsError
 from services.file_service import FileService
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -62,6 +64,7 @@ def _runtime_record(
 def _service(
     runtime: MagicMock,
     *,
+    deployment_edition: DeploymentEdition = DeploymentEdition.COMMUNITY,
     file_service: MagicMock | None = None,
     workspace_features: MagicMock | None = None,
 ) -> WebAppRuntimeQueryService:
@@ -75,6 +78,7 @@ def _service(
         file_service=file_service,
         workspace_features=workspace_features,
         files_url=_FILES_URL,
+        deployment_edition=deployment_edition,
     )
 
 
@@ -87,13 +91,25 @@ def test_get_bootstrap_rejects_unavailable_runtime(record: WebAppRuntimeRecord |
         _service(runtime).get_bootstrap("app-1")
 
 
+@pytest.mark.parametrize(
+    ("deployment_edition", "copyright_enabled", "expected_copyright", "expected_placeholder"),
+    [
+        (DeploymentEdition.CLOUD, False, None, None),
+        (DeploymentEdition.CLOUD, True, "Copyright", "Ask anything"),
+        (DeploymentEdition.COMMUNITY, False, "Copyright", "Ask anything"),
+        (DeploymentEdition.ENTERPRISE, False, "Copyright", "Ask anything"),
+    ],
+)
 def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     workspace_features: MagicMock,
+    deployment_edition: DeploymentEdition,
+    copyright_enabled: bool,
+    expected_copyright: str | None,
+    expected_placeholder: str | None,
 ) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     record = _runtime_record()
-    features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=False)
-    features.billing.enabled = True
+    features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=copyright_enabled)
     events: list[str] = []
     runtime.get_runtime_record.side_effect = lambda _app_id: events.append("record") or record
     workspace_features.side_effect = lambda _tenant_id, **_kwargs: events.append("features") or features
@@ -104,6 +120,7 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
         runtime,
         file_service=file_service,
         workspace_features=workspace_features,
+        deployment_edition=deployment_edition,
     ).get_bootstrap("app-1")
 
     assert result == WebAppBootstrap(
@@ -112,8 +129,8 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
         enable_site=True,
         site={
             **record.site._asdict(),
-            "copyright": None,
-            "input_placeholder": None,
+            "copyright": expected_copyright,
+            "input_placeholder": expected_placeholder,
             "icon_url": "https://icon",
         },
         plan="pro",
@@ -142,3 +159,17 @@ def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
     assert result.site == {**record.site._asdict(), "icon_url": None}
     assert result.can_replace_logo is False
     assert result.custom_config is None
+
+
+def test_get_bootstrap_falls_back_when_site_icon_is_unavailable() -> None:
+    runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
+    runtime.get_runtime_record.return_value = _runtime_record()
+    file_service = MagicMock(spec=FileService)
+    file_service.get_icon_url.side_effect = FileNotExistsError("File reference not found")
+
+    result = _service(runtime, file_service=file_service).get_bootstrap("app-1")
+
+    assert result.site["icon_type"] == "emoji"
+    assert result.site["icon"] == "🤖"
+    assert result.site["icon_background"] == "#FFEAD5"
+    assert result.site["icon_url"] is None

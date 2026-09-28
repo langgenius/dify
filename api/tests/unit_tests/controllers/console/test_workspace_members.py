@@ -9,12 +9,11 @@ from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import MemberInviteEmailApi
 from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountRole
+from tests.unit_tests.model_factories import make_tenant
 
 
 def _tenant() -> Tenant:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "tenant-1"
-    return tenant
+    return make_tenant(name="Test Tenant")
 
 
 @pytest.fixture
@@ -29,7 +28,6 @@ def _build_feature_flags():
     placeholder_quota = SimpleNamespace(limit=0, size=0)
     workspace_members = SimpleNamespace(enabled=False, is_available=lambda count: True)
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=False),
         workspace_members=workspace_members,
         members=placeholder_quota,
         apps=placeholder_quota,

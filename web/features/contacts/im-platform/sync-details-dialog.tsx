@@ -63,8 +63,8 @@ export function ContactImSyncDetailsDialog({
   runId: string
   onOpenChange: (open: boolean) => void
 }) {
-  const { t, i18n } = useTranslation('contacts')
-  const { t: tCommon } = useTranslation('common')
+  const { t, i18n } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const repository = useContactsImPlatformRepository()
   const reportDownload = useMutation({
     mutationFn: (id: string) => loadContactImSyncReport(repository, id),

@@ -31,7 +31,8 @@ class CSVExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
         self.source_column = source_column
-        self.csv_args = csv_args or {}
+        # Preserve source text for indexing unless the caller requests type or NA conversion.
+        self.csv_args: dict[str, Any] = {"dtype": str, "keep_default_na": False, **(csv_args or {})}
 
     @override
     def extract(self) -> list[Document]:

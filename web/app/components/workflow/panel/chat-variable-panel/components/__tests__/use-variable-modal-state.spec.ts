@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { ChangeEvent } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -8,7 +9,7 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createOptions = (overrides: Partial<Parameters<typeof useVariableModalState>[0]> = {}) => ({
   chatVar: undefined,

@@ -5,6 +5,7 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import HumanInputDefault from '../../nodes/human-input/default'
 import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
@@ -1488,7 +1489,7 @@ describe('useNodesInteractions', () => {
     })
 
     const pasteNodeIntoContainer = async (
-      containerType: BlockEnum.Iteration | BlockEnum.Loop,
+      containerType: typeof BlockEnum.Iteration | typeof BlockEnum.Loop,
       nodeType: BlockEnum,
     ) => {
       runtimeNodesMetaDataMap.value = {
@@ -1526,6 +1527,7 @@ describe('useNodesInteractions', () => {
             id: `${nodeType}-clipboard-node`,
             position: { x: 100, y: 100 },
             data: {
+              ...(nodeType === BlockEnum.HumanInput ? HumanInputDefault.defaultValue : {}),
               type: nodeType,
               title: `${nodeType} clipboard node`,
               desc: '',

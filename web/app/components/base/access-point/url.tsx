@@ -60,7 +60,7 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const detailsAvailable = !loading && !unavailable
   const disabledOpenButton = (
     <Button
@@ -77,7 +77,7 @@ export function AccessPointUrl({
   const disabledOpenAction = openDisabledReason ? (
     <Tooltip>
       <TooltipTrigger render={disabledOpenButton} />
-      <TooltipContent role="tooltip">{openDisabledReason}</TooltipContent>
+      <TooltipContent>{openDisabledReason}</TooltipContent>
     </Tooltip>
   ) : (
     disabledOpenButton
@@ -119,7 +119,6 @@ export function AccessPointUrl({
       ) : (
         <CopyFeedback
           content={value}
-          className="size-6"
           copyLabel={copyLabel}
           copiedLabel={copiedLabel}
           onCopyError={onCopyError}

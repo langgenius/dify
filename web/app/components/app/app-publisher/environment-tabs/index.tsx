@@ -32,7 +32,7 @@ export function PublisherEnvironmentTabs({
   onAddEnvironment,
   onSelectEnvironment,
 }: PublisherEnvironmentTabsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'workflow'])
   const builtInLabel = t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })
   const moreLabel = t(($) => $['operation.more'], { ns: 'common' })
   const moreEnvironmentsLabel = t(($) => $['studio.moreEnvironments'], {
@@ -144,9 +144,7 @@ export function PublisherEnvironmentTabs({
                   <TooltipTrigger
                     render={<span className="min-w-0 truncate">{triggerLabel}</span>}
                   />
-                  <TooltipContent role="tooltip">
-                    {selectedOverflowEnvironment?.name}
-                  </TooltipContent>
+                  <TooltipContent>{selectedOverflowEnvironment?.name}</TooltipContent>
                 </Tooltip>
                 <span aria-hidden className="i-ri-arrow-down-s-line size-3.5 shrink-0" />
               </button>

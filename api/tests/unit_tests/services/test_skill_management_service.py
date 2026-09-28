@@ -1150,6 +1150,80 @@ def test_replace_agent_bindings_rejects_skill_name_conflict_with_agent_config_sk
     assert exc_info.value.details == {"names": ["finance-sop"]}
 
 
+@pytest.mark.parametrize(
+    ("snapshot_has_skill", "draft_has_skill", "debug_has_skill", "expect_conflict"),
+    [
+        (True, False, False, False),
+        (True, False, True, False),
+        (False, True, False, True),
+        (True, True, False, True),
+        (False, None, True, False),
+        (True, None, True, True),
+    ],
+)
+def test_replace_agent_bindings_checks_editable_config(
+    snapshot_has_skill: bool,
+    draft_has_skill: bool | None,
+    debug_has_skill: bool,
+    expect_conflict: bool,
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    skill_ref = AgentConfigSkillRefConfig(name="finance-sop", description="Embedded skill.", file_id="tool-file-1")
+    with session_factory.create_session() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if snapshot_has_skill else []),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        if draft_has_skill is not None:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    draft_owner_key="",
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if draft_has_skill else []),
+                    created_by=USER,
+                )
+            )
+        if debug_has_skill:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=USER,
+                    draft_owner_key=USER,
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref]),
+                    created_by=USER,
+                )
+            )
+        session.commit()
+
+    if expect_conflict:
+        with pytest.raises(SkillManagementServiceError) as exc_info:
+            service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+        assert exc_info.value.code == "agent_skill_name_conflict"
+        assert exc_info.value.details == {"names": ["finance-sop"]}
+    else:
+        result = service.replace_agent_bindings(
+            tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]]
+        )
+        assert result["skill_ids"] == [created["id"]]
+        assert service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]["id"] == created["id"]
+
+
 def test_replace_agent_bindings_allows_existing_bound_workspace_skill_name_in_agent_config() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
@@ -2419,7 +2493,7 @@ def test_apply_draft_file_operation_conflict_includes_current_file_version() -> 
     assert exc_info.value.details["current_file_content"] == skill_md["content"]
 
 
-def test_duplicate_skill_copies_latest_published_content_without_history() -> None:
+def test_duplicate_skill_copies_current_draft_without_history() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
@@ -2469,6 +2543,19 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     )
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
 
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
     with patch("services.skill_management_service.storage.load_once", return_value=captured["archive"]):
         duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
 
@@ -2477,11 +2564,42 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     assert duplicated["tags"] == ["Finance"]
     assert duplicated["latest_published_version_id"] is None
     assert "name: finance-sop-copy" in duplicated["files"][0]["content"]
-    assert "# Published body" in duplicated["files"][0]["content"]
+    assert "# Latest draft body" in duplicated["files"][0]["content"]
     references = next(file for file in duplicated["files"] if file["path"] == "references")
     assert references["kind"] == "directory"
-    assert any(file["path"] == "references/policy.md" for file in duplicated["files"])
+    assert any(file["path"] == "references/draft.md" for file in duplicated["files"])
+    assert not any(file["path"] == "references/policy.md" for file in duplicated["files"])
     assert service.list_versions(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
+
+
+@pytest.mark.parametrize("published", [False, True])
+def test_export_skill_uses_current_draft(published: bool) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    if published:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
+    result = service.export_draft_archive(tenant_id=TENANT, skill_id=created["id"])
+
+    assert result.filename == "finance-sop.zip"
+    assert result.mime_type == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(result.payload)) as archive:
+        assert set(archive.namelist()) == {"SKILL.md", "references/", "references/draft.md"}
+        assert "# Latest draft body" in archive.read("SKILL.md").decode()
+        assert archive.read("references/draft.md") == b"Draft policy."
+    assert len(service.list_versions(tenant_id=TENANT, skill_id=created["id"])["data"]) == int(published)
 
 
 def test_duplicate_skill_does_not_copy_agent_references() -> None:
@@ -2664,6 +2782,89 @@ def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None
     assert exc_info.value.code == "skill_name_conflict"
 
 
+def test_import_skill_package_accepts_crlf_skill_md() -> None:
+    """Windows CRLF SKILL.md must not blank out the frontmatter name on import."""
+    skill_md = (
+        "---\r\n"
+        "name: expense-sop\r\n"
+        "description: Expenses\r\n"
+        "metadata:\r\n"
+        "  display-name: Expense SOP\r\n"
+        "---\r\n"
+        "\r\n"
+        "# Expenses\r\n"
+    )
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("expense-sop/SKILL.md", skill_md.encode("utf-8"))
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    assert imported["display_name"] == "Expense SOP"
+    assert imported["description"] == "Expenses"
+    skill_md_file = next(item for item in imported["files"] if item["path"] == "SKILL.md")
+    assert "\r" not in skill_md_file["content"]
+    assert skill_md_file["content"].startswith("---\nname: expense-sop\n")
+
+
+@pytest.mark.parametrize("include_empty_directory", [False, True])
+def test_import_skill_package_drops_explicit_wrapper_directory(include_empty_directory: bool) -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("critical-thinking/", "")
+        archive.writestr("__MACOSX/._critical-thinking", b"\x00")
+        archive.writestr(
+            "critical-thinking/SKILL.md",
+            "---\nname: critical-thinking\ndescription: Critical thinking\n---\n# Critical thinking",
+        )
+        archive.writestr("__MACOSX/critical-thinking/._SKILL.md", b"\x00")
+        if include_empty_directory:
+            archive.writestr("critical-thinking/references/", "")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="critical-thinking.zip"),
+    )
+
+    expected_paths = ["SKILL.md", "references"] if include_empty_directory else ["SKILL.md"]
+    assert [item["path"] for item in imported["files"]] == expected_paths
+
+
+def test_import_skill_package_strips_root_alongside_macos_metadata_folder() -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr(
+            "expense-sop/SKILL.md",
+            "---\nname: expense-sop\ndescription: Expenses\n---\n# Expenses",
+        )
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+        # macOS Finder "Compress" adds an AppleDouble metadata sibling folder
+        # for archives whose source files carry extended attributes.
+        archive.writestr("__MACOSX/expense-sop/._SKILL.md", b"\x00")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    imported_paths = [item["path"] for item in imported["files"]]
+    assert "SKILL.md" in imported_paths
+    assert "references/policy.md" in imported_paths
+    assert not any(path.startswith("__MACOSX") for path in imported_paths)
+
+
 def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:
@@ -2697,21 +2898,27 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_import_skill_package_rejects_zip_bomb_before_reading_members() -> None:
+def test_import_skill_package_rejects_excessive_expansion_before_reading_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024 * 1024)
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("payload.bin", b"\x00" * (8 * 1024 * 1024))
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
+    with (
+        patch.object(zipfile.ZipFile, "read", side_effect=AssertionError("member read before size validation")),
+        pytest.raises(SkillManagementServiceError) as exc_info,
+    ):
         service._draft_payload_from_zip(
             tenant_id=TENANT,
             user_id=USER,
             archive_bytes=package.getvalue(),
         )
 
-    assert exc_info.value.code == "invalid_skill_package"
+    assert exc_info.value.code == "skill_too_large"
 
 
 def test_publish_and_export_include_binary_tool_files() -> None:
@@ -3141,6 +3348,7 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
         description="draft description",
     )
     version = SimpleNamespace(
+        id="version-1",
         archive_tool_file_id="archive-1",
         archive_size=10,
         hash_code="hash-1",
@@ -3151,8 +3359,10 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             description="published description",
         ),
     )
+    binding = SimpleNamespace(priority=0)
+    tool_file = SimpleNamespace(file_key="tools/archive-1.zip")
     session = MagicMock()
-    session.execute.return_value = [(SimpleNamespace(), skill, version)]
+    session.execute.return_value = [(binding, skill, version, tool_file)]
 
     with patch("services.skill_management_service.session_factory.create_session") as create_session:
         create_session.return_value.__enter__.return_value = session
@@ -3226,6 +3436,29 @@ def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load()
 
     assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
 
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        next_snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=2,
+            config_snapshot=AgentSoulConfig(),
+            created_by=USER,
+        )
+        session.add(next_snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = next_snapshot.id
+        session.commit()
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
+    historical_skills = service.list_runtime_agent_skills(
+        tenant_id=TENANT, agent_id=AGENT, config_snapshot_id=snapshot_id
+    )
+    assert [skill["name"] for skill in historical_skills] == ["finance-sop"]
+    draft_skills = service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT, include_draft=True)
+    assert [skill["name"] for skill in draft_skills] == ["finance-sop"]
+
 
 def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:
     archive_buffer = io.BytesIO()
@@ -3246,3 +3479,14 @@ def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metad
         assert "description: Published description" in skill_md
         assert "display-name: Published Name" in skill_md
         assert archive.read("references/example.md") == b"Example"
+
+
+def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("data.bin", b"x" * (1024 * 1024))
+    with zipfile.ZipFile(io.BytesIO(output.getvalue())) as archive:
+        assert SkillManagementService._validate_archive_limits(archive)[0].file_size == 1024 * 1024
+        apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
+        with pytest.raises(SkillManagementServiceError, match="uncompressed size limit"):
+            SkillManagementService._validate_archive_limits(archive)

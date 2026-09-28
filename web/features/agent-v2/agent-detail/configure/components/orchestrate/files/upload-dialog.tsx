@@ -19,14 +19,14 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 import { getFileIconType } from './file-icon'
@@ -49,9 +49,9 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 }
 
 function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: File) => void }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tAppDebug } = useTranslation('appDebug')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
+  const { t: tCommon } = useTranslation(['common'])
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
     useFileSizeLimit(fileUploadConfig)
@@ -222,8 +222,8 @@ export function AgentFileUploadDialog({
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
   const commitAgentFileMutation = useMutation(

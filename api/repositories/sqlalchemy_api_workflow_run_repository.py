@@ -22,10 +22,10 @@ Implementation Notes:
 import json
 import logging
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, cast, override
+from typing import Any, NamedTuple, cast, override
 
 import sqlalchemy as sa
 from pydantic import ValidationError
@@ -33,6 +33,7 @@ from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
@@ -55,6 +56,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
+from models import Message
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
@@ -74,6 +76,18 @@ from services.retention.workflow_run.tenant_prefix import tenant_prefix_conditio
 
 logger = logging.getLogger(__name__)
 _HITL_REASON_TYPES = frozenset({PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED, PauseReasonType.HITL_REQUIRED})
+
+
+class WorkflowRunMessageRef(NamedTuple):
+    message_id: str
+    conversation_id: str
+
+
+class WorkflowRunPauseRecord(NamedTuple):
+    status: WorkflowExecutionStatus
+    paused_at: datetime | None
+    reasons: tuple[DifyPauseReason, ...]
+    form_tokens: Mapping[str, str]
 
 
 class _WorkflowRunError(Exception):
@@ -183,6 +197,31 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             session_maker: SQLAlchemy sessionmaker for database connections
         """
         self._session_maker = session_maker
+
+    def get_message_refs(
+        self,
+        *,
+        app_id: str,
+        workflow_run_ids: Sequence[str],
+    ) -> dict[str, WorkflowRunMessageRef]:
+        if not workflow_run_ids:
+            return {}
+
+        stmt = select(Message.workflow_run_id, Message.id, Message.conversation_id).where(
+            Message.app_id == app_id,
+            Message.workflow_run_id.in_(workflow_run_ids),
+        )
+        with self._session_maker() as session:
+            rows = session.execute(stmt).all()
+
+        messages_by_run_id: dict[str, WorkflowRunMessageRef] = {}
+        for workflow_run_id, message_id, conversation_id in rows:
+            if workflow_run_id is not None:
+                messages_by_run_id.setdefault(
+                    workflow_run_id,
+                    WorkflowRunMessageRef(message_id=message_id, conversation_id=conversation_id),
+                )
+        return messages_by_run_id
 
     @override
     def get_paginated_workflow_runs(
@@ -1151,6 +1190,48 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             reason_models=pause_reason_models,
             pause_reasons=pause_reasons,
         )
+
+    def get_pause_record(
+        self,
+        *,
+        workspace_id: str,
+        workflow_run_id: str,
+    ) -> WorkflowRunPauseRecord | None:
+        stmt = (
+            select(WorkflowRun)
+            .options(selectinload(WorkflowRun.pause))
+            .where(
+                WorkflowRun.tenant_id == workspace_id,
+                WorkflowRun.id == workflow_run_id,
+            )
+        )
+        with self._session_maker() as session:
+            workflow_run = session.scalar(stmt)
+            if workflow_run is None:
+                return None
+            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+                return WorkflowRunPauseRecord(
+                    status=workflow_run.status,
+                    paused_at=None,
+                    reasons=(),
+                    form_tokens={},
+                )
+
+            pause_model = workflow_run.pause
+            if pause_model is None:
+                reasons: tuple[DifyPauseReason, ...] = ()
+            else:
+                reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
+                reasons = tuple(self._hydrate_pause_reasons(session, reason_models))
+            form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
+            form_tokens = load_form_tokens_by_form_id(form_ids, session=session)
+
+            return WorkflowRunPauseRecord(
+                status=workflow_run.status,
+                paused_at=pause_model.created_at if pause_model is not None else None,
+                reasons=reasons,
+                form_tokens=form_tokens,
+            )
 
     @override
     def resume_workflow_pause(

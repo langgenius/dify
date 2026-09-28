@@ -5,8 +5,8 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import ReasoningConfigForm from '../reasoning-config-form'
 
@@ -259,7 +259,7 @@ describe('ReasoningConfigForm', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }),
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.clickToViewParameterSchema' }),
     )
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))

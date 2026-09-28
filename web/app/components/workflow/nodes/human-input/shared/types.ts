@@ -51,12 +51,12 @@ type BaseFormInputItem = {
 }
 
 export type ParagraphFormInput = BaseFormInputItem & {
-  type: InputVarType.paragraph
+  type: typeof InputVarType.paragraph
   default: StringDefault
 }
 
 export type SelectFormInput = BaseFormInputItem & {
-  type: InputVarType.select
+  type: typeof InputVarType.select
   option_source: StringListSource
 }
 
@@ -67,12 +67,12 @@ type SharedFileFormInput = Pick<
 
 export type FileFormInput = BaseFormInputItem &
   SharedFileFormInput & {
-    type: InputVarType.singleFile
+    type: typeof InputVarType.singleFile
   }
 
 export type FileListFormInput = BaseFormInputItem &
   SharedFileFormInput & {
-    type: InputVarType.multiFiles
+    type: typeof InputVarType.multiFiles
     number_limits?: UploadFileSetting['number_limits']
   }
 

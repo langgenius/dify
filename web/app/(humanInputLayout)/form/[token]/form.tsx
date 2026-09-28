@@ -3,7 +3,7 @@ import type { LegacyHumanInputFormData } from '@/features/human-input-form/types
 import type { HumanInputFormError } from '@/service/use-share'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import { normalizeLegacyHumanInputForm } from '@/features/human-input-form/normalize-legacy-definition'
@@ -15,7 +15,7 @@ import { useFormSubmit } from './use-form-submit'
 export type FormData = LegacyHumanInputFormData
 
 const FormContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
 
   const { token } = useParams<{ token: string }>()
 
@@ -46,7 +46,7 @@ const FormContent = () => {
   useDocumentTitle(documentTitle)
 
   if (isLoading) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (success) {

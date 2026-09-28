@@ -1,7 +1,7 @@
 import type { HumanInputV2FormTransport } from './types'
 import { zHumanInputV2FormSubmitRequest } from '@dify/contracts/api/web/zod.gen'
 import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
-import { humanInputV2FormClient } from '@/service/client'
+import { humanInputV2FormClient } from '@/service/human-input-v2'
 import { createHumanInputV2Error } from './errors'
 
 export const getHumanInputV2Paths = (token: string) => {

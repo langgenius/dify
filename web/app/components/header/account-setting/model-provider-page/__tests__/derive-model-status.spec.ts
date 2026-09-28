@@ -1,4 +1,8 @@
-import type { Model, ModelItem, ModelProvider } from '../declarations'
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ModelProvider } from '../declarations'
 import type { CredentialPanelState } from '../provider-added-card/use-credential-panel-state'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { deriveModelStatus } from '../derive-model-status'
@@ -17,7 +21,9 @@ const createCredentialState = (
   ...overrides,
 })
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'text-embedding-3-large',
   label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
   model_type: ModelTypeEnum.textEmbedding,
@@ -30,7 +36,10 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
 
 const createModelProvider = (): ModelProvider => ({ provider: 'openai' }) as ModelProvider
 
-const createModel = (overrides: Partial<Model> = {}): Model => ({
+const createModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },

@@ -140,7 +140,7 @@ Dify welcomes contributions of all kinds:
 
 - **Code**: Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
-- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) to add or update a locale.
+- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
 ### Contributors

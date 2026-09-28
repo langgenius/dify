@@ -17,8 +17,8 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
@@ -50,7 +50,7 @@ function getLegacyRoleDescriptionKey(role: Role) {
 }
 
 export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission', 'workspaceMembers'])
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
@@ -128,13 +128,13 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
 
     switch (getLegacyRoleDescriptionKey(role)) {
       case 'admin':
-        return t(($) => $['members.adminTip'], { ns: 'common' })
+        return t(($) => $['members.adminTip'], { ns: 'workspaceMembers' })
       case 'editor':
-        return t(($) => $['members.editorTip'], { ns: 'common' })
+        return t(($) => $['members.editorTip'], { ns: 'workspaceMembers' })
       case 'normal':
-        return t(($) => $['members.normalTip'], { ns: 'common' })
+        return t(($) => $['members.normalTip'], { ns: 'workspaceMembers' })
       case 'dataset_operator':
-        return t(($) => $['members.datasetOperatorTip'], { ns: 'common' })
+        return t(($) => $['members.datasetOperatorTip'], { ns: 'workspaceMembers' })
     }
 
     return t(($) => $['role.noDescription'], { ns: 'permission' })
@@ -152,9 +152,11 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
         itemToStringValue={(role) => role.id}
         isItemEqualToValue={(role, selectedRole) => role.id === selectedRole.id}
       >
-        <SelectLabel>{t(($) => $['members.role'], { ns: 'common' })}</SelectLabel>
+        <SelectLabel>{t(($) => $['members.role'], { ns: 'workspaceMembers' })}</SelectLabel>
         <SelectTrigger>
-          <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
+          <SelectValue
+            placeholder={t(($) => $['members.selectRole'], { ns: 'workspaceMembers' })}
+          />
         </SelectTrigger>
         <SelectPortal>
           <SelectPositioner>
@@ -199,7 +201,7 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
         <FieldError />
       ) : (
         <FieldError match="valueMissing">
-          {t(($) => $['members.selectRole'], { ns: 'common' })}
+          {t(($) => $['members.selectRole'], { ns: 'workspaceMembers' })}
         </FieldError>
       )}
     </Field>

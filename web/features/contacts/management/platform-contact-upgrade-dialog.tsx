@@ -24,21 +24,17 @@ export function PlatformContactUpgradeDialog({
   open: boolean
   pending: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {conflictCount === 1
-              ? t(($) => $['platformPicker.upgrade.title_one'])
-              : t(($) => $['platformPicker.upgrade.title_other'])}
+            {t(($) => $['platformPicker.upgrade.title'], { count: conflictCount })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
-            {conflictCount === 1
-              ? t(($) => $['platformPicker.upgrade.description_one'])
-              : t(($) => $['platformPicker.upgrade.description_other'], { count: conflictCount })}
+            {t(($) => $['platformPicker.upgrade.description'], { count: conflictCount })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>

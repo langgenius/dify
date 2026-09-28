@@ -19,7 +19,7 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ doSyncWorkflowDraft: mockSyncDraft }),
 }))
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {

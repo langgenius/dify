@@ -62,11 +62,11 @@ const ActionPanel = () => {
 
 const getActionIds = () =>
   screen.getAllByRole('textbox', {
-    name: 'workflow.nodes.humanInput.userActions.actionNamePlaceholder',
+    name: 'workflowHumanInput.nodes.humanInput.userActions.actionNamePlaceholder',
   })
 const getActionTitles = () =>
   screen.getAllByRole('textbox', {
-    name: 'workflow.nodes.humanInput.userActions.buttonTextPlaceholder',
+    name: 'workflowHumanInput.nodes.humanInput.userActions.buttonTextPlaceholder',
   })
 
 describe('HumanInputSharedPanelSections action editing', () => {

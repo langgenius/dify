@@ -1,6 +1,6 @@
 import i18next from 'i18next'
-import enShare from '@/i18n/en-US/share.json'
-import zhHansShare from '@/i18n/zh-Hans/share.json'
+import enShare from '@/i18n/locales/en-US/share.json'
+import zhHansShare from '@/i18n/locales/zh-Hans/share.json'
 
 const V2_KEYS = [
   'humanInputV2.accessRateLimited',

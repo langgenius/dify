@@ -8,17 +8,20 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import AppIconPicker from '../../base/app-icon-picker'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -68,15 +71,15 @@ const CreateAppModal = ({
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
   const [appIcon, setAppIcon] = useState(() =>
     appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
+      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl ?? '' }
       : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
   )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -86,10 +89,24 @@ const CreateAppModal = ({
       : '',
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && !isEditModal,
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && !isEditModal && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
+    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -103,7 +120,7 @@ const CreateAppModal = ({
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_background: appIcon.type === 'emoji' ? (appIcon.background ?? undefined) : undefined,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
@@ -112,6 +129,10 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmDisabled,
+    isEditModal,
+    isAppQuotaUnavailable,
+    isAppsFull,
     name,
     appIcon,
     description,
@@ -124,21 +145,33 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useHotkey(
-    SUBMIT_APP_HOTKEY,
-    () => {
-      handleSubmit()
-    },
-    {
-      enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
-      ignoreInputs: false,
-    },
-  )
+  const submitDisabled =
+    isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
 
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
-        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
+        <DialogContent
+          onKeyDown={(event) => {
+            if (
+              !show ||
+              submitDisabled ||
+              showIconPicker ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            handleSubmit()
+          }}
+          backdropProps={{ forceRender: true }}
+          className="px-8"
+        >
           <DialogClose
             render={
               <IconButton
@@ -173,7 +206,7 @@ const CreateAppModal = ({
                 <AppIcon
                   size="large"
                   onClick={() => {
-                    setShowAppIconPicker(true)
+                    setShowIconPicker(true)
                   }}
                   className="cursor-pointer"
                   iconType={appIcon.type}
@@ -254,7 +287,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
-              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
+              disabled={submitDisabled}
               className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
@@ -265,9 +298,9 @@ const CreateAppModal = ({
                   : t(($) => $['operation.save'], { ns: 'common' })}
               </span>
               <KbdGroup>
-                {SUBMIT_APP_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>
@@ -278,20 +311,14 @@ const CreateAppModal = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={(payload) => {
+          setAppIcon(payload)
+        }}
+      />
     </>
   )
 }

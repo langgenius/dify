@@ -75,7 +75,7 @@ const rehypeFormLayout = () => (tree: MarkdownNode) => {
 const formMarkdownPlugins = [rehypeFormLayout]
 
 const FormImage = ({ src, alt, compact }: { src: string; alt: string; compact: boolean }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [preview, setPreview] = useState(false)
   const [failed, setFailed] = useState(false)
   if (!src || failed) return null

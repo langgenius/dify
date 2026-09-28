@@ -1,8 +1,47 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { ToastManager, ToastViewportProps } from '.'
 import * as React from 'react'
 import { expect, within } from 'storybook/test'
-import { toast, ToastHost } from '.'
+import {
+  createToast,
+  createToastManager,
+  ToastCard,
+  ToastPortal,
+  ToastProvider,
+  ToastViewport,
+  useToastManager,
+} from '.'
 import { Button } from '../button'
+
+function ToastCards() {
+  const { toasts } = useToastManager<Record<string, never>>()
+  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
+}
+
+function ExampleToastHost({
+  manager,
+  timeout,
+  limit,
+  offset,
+}: {
+  manager: ToastManager
+  timeout?: number
+  limit?: number
+  offset?: ToastViewportProps['offset']
+}) {
+  return (
+    <ToastProvider toastManager={manager} timeout={timeout} limit={limit}>
+      <ToastPortal>
+        <ToastViewport offset={offset}>
+          <ToastCards />
+        </ToastViewport>
+      </ToastPortal>
+    </ToastProvider>
+  )
+}
+
+const manager = createToastManager()
+const toast = createToast(manager)
 
 const longToastTitle =
   'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
@@ -329,7 +368,7 @@ const UpdateExamples = () => {
 const ToastDocsDemo = () => {
   return (
     <React.Fragment>
-      <ToastHost />
+      <ExampleToastHost manager={manager} />
       <div className="min-h-screen bg-background-default-subtle px-6 py-12">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
           <div className="space-y-3">

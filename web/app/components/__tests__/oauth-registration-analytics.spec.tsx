@@ -145,6 +145,38 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(window.location.search).toBe('?source=signin')
   })
 
+  it('reads marketplace utm_source from the landing URL when the utm cookie is missing', async () => {
+    setSearchParams('oauth_new_user=true&utm_source=dify_marketplace&client_id=marketplace')
+
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => {
+      expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
+        method: 'oauth',
+        utmInfo: { utm_source: 'dify_marketplace' },
+      })
+    })
+    expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
+      method: 'oauth',
+      utm_source: 'dify_marketplace',
+    })
+    expect(window.location.search).toBe('?utm_source=dify_marketplace&client_id=marketplace')
+  })
+
+  it('lets the current URL overwrite a stale utm cookie so marketplace last-touch wins', async () => {
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'linkedin', slug: 'old-campaign' }))
+    setSearchParams('oauth_new_user=true&utm_source=dify_marketplace')
+
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => {
+      expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
+        method: 'oauth',
+        utmInfo: { utm_source: 'dify_marketplace', slug: 'old-campaign' },
+      })
+    })
+  })
+
   it('uses the base event and cleans up when the UTM cookie is malformed', async () => {
     Cookies.set('utm_info', '{invalid-json')
     setSearchParams('oauth_new_user=true')
