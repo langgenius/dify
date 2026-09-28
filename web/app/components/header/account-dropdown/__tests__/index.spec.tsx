@@ -1,34 +1,21 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import AccountAvatar from '@/app/account/(commonLayout)/avatar'
-import { resetUser } from '@/app/components/base/amplitude/utils'
 import AccountSection from '@/app/components/main-nav/components/account-section'
+import EducationUserInfo from '@/app/education/user-info'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountDropdown from '../index'
 
-const { mockBasePath, mockResetUser, mockSetSettingsDestination } = vi.hoisted(() => ({
-  mockBasePath: { value: '' },
-  mockResetUser: vi.fn(),
+const { mockSetSettingsDestination } = vi.hoisted(() => ({
   mockSetSettingsDestination: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/amplitude/utils', () => ({
-  resetUser: mockResetUser,
 }))
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
-}))
-
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  get basePath() {
-    return mockBasePath.value
-  },
 }))
 
 vi.mock('nuqs', async (importOriginal) => {
@@ -71,9 +58,8 @@ describe('AccountDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockBasePath.value = ''
     vi.mocked(useLogout).mockReturnValue({
-      mutateAsync: mockLogout,
+      mutate: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
   })
 
@@ -159,49 +145,35 @@ describe('AccountDropdown', () => {
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
 
-  describe.each(['main navigation', 'account page'] as const)('%s logout', (surface) => {
-    it.each(['', '/console'])(
-      'replaces the document after logout with base path "%s"',
-      async (path) => {
-        const user = userEvent.setup()
-        const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-        mockBasePath.value = path
-        let resolveLogout!: () => void
-        mockLogout.mockReturnValue(
-          new Promise<void>((resolve) => {
-            resolveLogout = resolve
-          }),
-        )
-
-        if (surface === 'main navigation') {
-          renderAccountDropdown()
-        } else {
-          renderWithConsoleQuery(<AccountAvatar />, {
+  it.each(['main navigation', 'account page', 'education'] as const)(
+    'logs out through the shared session boundary from %s',
+    async (surface) => {
+      const user = userEvent.setup()
+      if (surface === 'main navigation') {
+        renderAccountDropdown()
+      } else {
+        renderWithConsoleQuery(
+          surface === 'account page' ? <AccountAvatar /> : <EducationUserInfo />,
+          {
             queryClient: createAccountProfileQueryClient(userProfile),
             features: { education: { enabled: false } },
-          })
-        }
-
+          },
+        )
+      }
+      if (surface !== 'education') {
         await user.click(
           screen.getByRole('button', {
             name:
               surface === 'main navigation' ? 'accountSettings.account.account' : 'Current User',
           }),
         )
-        await user.click(await screen.findByRole('menuitem', { name: 'common.userProfile.logout' }))
-
-        expect(mockLogout).toHaveBeenCalledOnce()
-        expect(resetUser).not.toHaveBeenCalled()
-        expect(replace).not.toHaveBeenCalled()
-
-        await act(async () => resolveLogout())
-
-        await waitFor(() => {
-          expect(resetUser).toHaveBeenCalledOnce()
-          expect(replace).toHaveBeenCalledExactlyOnceWith(`${path}/signin`)
-        })
-        replace.mockRestore()
-      },
-    )
-  })
+      }
+      await user.click(
+        await screen.findByRole(surface === 'education' ? 'button' : 'menuitem', {
+          name: 'common.userProfile.logout',
+        }),
+      )
+      expect(mockLogout).toHaveBeenCalledExactlyOnceWith()
+    },
+  )
 })

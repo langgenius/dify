@@ -114,7 +114,7 @@ function AppearanceSubmenu() {
 }
 
 type MainNavMenuContentProps = {
-  onLogout: () => Promise<void>
+  onLogout: () => void
 }
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
@@ -197,7 +197,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         <DropdownMenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
-            void onLogout()
+            onLogout()
           }}
         >
           <MenuItemContent

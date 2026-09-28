@@ -8,9 +8,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resetUser } from '@/app/components/base/amplitude/utils'
 import { useLogout } from '@/service/use-common'
-import { basePath } from '@/utils/var'
 import { MainNavMenuContent } from './main-nav-menu-content'
 
 type AccountDropdownProps = {
@@ -32,16 +30,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
   )
   const { t } = useTranslation(['accountSettings'])
 
-  const { mutateAsync: logout } = useLogout()
-
-  const handleLogout = async () => {
-    await logout()
-    resetUser()
-    // Tokens are now stored in cookies and cleared by backend
-
-    // Start a new document so account-scoped stores and query observers cannot survive logout.
-    window.location.replace(`${basePath}/signin`)
-  }
+  const { mutate: logout } = useLogout()
 
   return (
     <div>
@@ -58,7 +47,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
           alignOffset={4}
           className={mainNavMenuPopupClassName}
         >
-          <MainNavMenuContent onLogout={handleLogout} />
+          <MainNavMenuContent onLogout={() => logout()} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

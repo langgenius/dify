@@ -12,12 +12,13 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { authSessionRevisionAtom } from '@/context/auth-session-state'
+import { resetUser } from '@/app/components/base/amplitude/utils'
+import { basePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
+import { consoleQuery } from './console'
 
 const NAME_SPACE = 'common'
 
@@ -146,26 +147,17 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
-export const useLogout = () => {
-  const queryClient = useQueryClient()
-  const advanceAuthSession = useSetAtom(authSessionRevisionAtom)
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
-    onSuccess: () => {
-      discardRegistrationSessionState()
-      // Drop all cached queries so the post-logout /signin probe doesn't read
-      // the previous user's profile (the userProfile queryKey is shared with
-      // the (commonLayout) tree, which keeps observing it during React's
-      // concurrent transition — gcTime: 0 is not enough on its own).
-      // Nuclear over targeted: every new user-scoped query would otherwise
-      // need to be remembered here. systemFeatures (user-agnostic) just
-      // refetches once on the way to /signin, which is cheap.
-      queryClient.clear()
-      // Rebind account-scoped Jotai queries to the cleared cache.
-      advanceAuthSession((revision) => revision + 1)
-    },
-  })
+export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = {}) => {
+  return useMutation(
+    consoleQuery.logout.post.mutationOptions({
+      onSuccess: () => {
+        discardRegistrationSessionState()
+        resetUser()
+        // A new document resets all account-scoped stores and query observers.
+        window.location.replace(`${basePath}${redirectTo}`)
+      },
+    }),
+  )
 }
 
 type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }

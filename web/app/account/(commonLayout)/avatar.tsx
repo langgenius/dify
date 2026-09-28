@@ -9,12 +9,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
-import { basePath } from '@/utils/var'
 
 export default function AppSelector() {
   const { t } = useTranslation(['common'])
@@ -33,19 +31,9 @@ export default function AppSelector() {
     }),
   )
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutate: logout } = useLogout()
 
   if (!userProfile) return null
-
-  const handleLogout = async () => {
-    await logout()
-
-    resetUser()
-    // Tokens are now stored in cookies and cleared by backend
-
-    // Start a new document so account-scoped stores and query observers cannot survive logout.
-    window.location.replace(`${basePath}/signin`)
-  }
 
   return (
     <DropdownMenu modal={false}>
@@ -83,7 +71,7 @@ export default function AppSelector() {
           </div>
         </div>
         <div className="p-1">
-          <DropdownMenuItem className="h-9 justify-start px-3" onClick={handleLogout}>
+          <DropdownMenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
               className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"

@@ -4342,11 +4342,6 @@
       "count": 3
     }
   },
-  "web/service/common.spec.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
   "web/service/common.ts": {
     "no-restricted-imports": {
       "count": 1
