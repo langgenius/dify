@@ -324,17 +324,22 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                     placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
-                <AppIcon
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
-                  background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                  size="xxl"
-                  className="cursor-pointer rounded-2xl"
-                  onClick={() => {
-                    setShowIconPicker(true)
-                  }}
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowIconPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    iconType={appIcon.type}
+                    icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
+                    background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+                    imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                    size="xxl"
+                    className="rounded-2xl"
+                  />
+                </button>
                 <IconPickerDialog
                   open={showIconPicker}
                   defaultValue={appIcon}

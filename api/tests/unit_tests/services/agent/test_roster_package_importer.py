@@ -62,6 +62,7 @@ from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAgentPackageSource
@@ -403,6 +404,9 @@ def test_local_template_copies_published_resources_without_outer_archive(
     target = Tenant(name="Target workspace")
     target.id = str(uuid4())
     with sqlite_session_factory() as session:
+        source_site = session.scalar(select(Site).where(Site.app_id == original.app_id))
+        assert source_site is not None
+        source_site.title = "Template site"
         draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == original.agent_id))
         assert draft is not None
         snapshot = AgentConfigSnapshot(
@@ -456,6 +460,9 @@ def test_local_template_copies_published_resources_without_outer_archive(
         assert app is not None
         assert app.tenant_id == target.id
         assert app.name == "Local copy"
+        site = session.scalar(select(Site).where(Site.app_id == result.app_id))
+        assert site is not None
+        assert site.title == "Template site"
         copied_agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
         assert copied_agent is not None
         copied_draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == copied_agent.id))
@@ -1024,9 +1031,18 @@ def test_import_restores_app_and_agent_image_icons(
     app = yaml.safe_load(members["app.yaml"])
     app["app"].update(icon_type="image", icon="i_000001")
     agent_icon = "i_000001" if shared_icon else "i_000002"
+    site_icon = "i_000001" if shared_icon else "i_000003"
+    app["site"] = {
+        "title": "Imported Site",
+        "icon_type": "image",
+        "icon": site_icon,
+        "use_icon_as_answer_icon": True,
+        "copyright": "Source copyright",
+        "input_placeholder": "Source placeholder",
+    }
     app["agent_packages"]["agent_1"]["metadata"].update(icon_type="image", icon=agent_icon)
     manifest["icons"] = []
-    for icon_id in sorted({"i_000001", agent_icon}):
+    for icon_id in sorted({"i_000001", agent_icon, site_icon}):
         payload = f"image-{icon_id}".encode()
         members[f"{icon_id}.png"] = payload
         manifest["icons"].append(
@@ -1042,6 +1058,7 @@ def test_import_restores_app_and_agent_image_icons(
     members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     storage = _MemoryStorage()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(FeatureService, "can_import_premium_site_settings", lambda _tenant_id: False)
     importer = RosterAgentPackageImporter(storage_backend=storage)
     if duplicate_name:
         importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
@@ -1049,9 +1066,11 @@ def test_import_restores_app_and_agent_image_icons(
     with sqlite_session_factory() as session:
         imported_app = session.get(App, result.app_id)
         agent = session.get(Agent, result.agent_id)
+        site = session.scalar(select(Site).where(Site.app_id == result.app_id))
         assert imported_app is not None
         assert agent is not None
-        for owner, original_id in [(imported_app, "i_000001"), (agent, agent_icon)]:
+        assert site is not None
+        for owner, original_id in [(imported_app, "i_000001"), (agent, agent_icon), (site, site_icon)]:
             assert owner.icon_type == "image"
             upload = session.get(UploadFile, owner.icon)
             assert upload is not None
@@ -1060,3 +1079,8 @@ def test_import_restores_app_and_agent_image_icons(
             assert storage.files[upload.key] == members[f"{original_id}.png"]
         assert imported_app.name == agent.name == ("Imported Agent import" if duplicate_name else "Imported Agent")
         assert (imported_app.icon == agent.icon) is shared_icon
+        assert site.title == "Imported Site"
+        assert site.use_icon_as_answer_icon is True
+        assert (site.icon == imported_app.icon) is shared_icon
+        assert site.copyright is None
+        assert site.input_placeholder is None

@@ -101,11 +101,9 @@ def test_app_message_routes_pass_injected_session(
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     list_messages = MagicMock(return_value={"data": []})
     update_feedback = MagicMock(return_value={"result": "success"})
-    get_suggested_questions = MagicMock(return_value={"data": ["next"]})
     get_message_detail = MagicMock(return_value={"id": message_id})
     monkeypatch.setattr(message_module, "_list_chat_messages", list_messages)
     monkeypatch.setattr(message_module, "_update_message_feedback", update_feedback)
-    monkeypatch.setattr(message_module, "_get_message_suggested_questions", get_suggested_questions)
     monkeypatch.setattr(message_module, "_get_message_detail", get_message_detail)
 
     assert unwrap(message_module.ChatMessageListApi.get)(
@@ -122,16 +120,12 @@ def test_app_message_routes_pass_injected_session(
         current_user,
         app_model,
     ) == {"result": "success"}
-    assert unwrap(message_module.MessageSuggestedQuestionApi.get)(
-        message_module.MessageSuggestedQuestionApi(), session, current_user, app_model, message_id
-    ) == {"data": ["next"]}
     assert unwrap(message_module.MessageApi.get)(message_module.MessageApi(), session, app_model, message_id) == {
         "id": message_id
     }
 
     assert list_messages.call_args.kwargs["session"] is session
     assert update_feedback.call_args.kwargs["session"] is session
-    assert get_suggested_questions.call_args.kwargs["session"] is session
     assert get_message_detail.call_args.kwargs["session"] is session
 
 

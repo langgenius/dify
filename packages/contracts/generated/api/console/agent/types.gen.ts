@@ -2642,7 +2642,11 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
   404: unknown
+  500: unknown
 }
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses = {

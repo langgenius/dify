@@ -169,17 +169,21 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => {
-                  setShowIconPicker(true)
-                }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
+              <button
+                type="button"
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={() => setShowIconPicker(true)}
+              >
+                <AppIcon
+                  decorative
+                  size="large"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                />
+              </button>
               <Input
                 id={nameInputId}
                 value={name}
