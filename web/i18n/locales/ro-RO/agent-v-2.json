@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Actualizarea abilităților din spațiul de lucru a eșuat.",
   "agentDetail.configure.skills.workspaceSelector.search": "Caută abilități...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Comuți la modul Previzualizare?",
+  "agentDetail.configure.templatePreview.agentUI": "Interfața agentului",
   "agentDetail.configure.title": "Configurare",
   "agentDetail.configure.tools.add": "Adaugă instrument",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Pentru dezvoltatori",

@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "تعذّر تحديث مهارات مساحة العمل.",
   "agentDetail.configure.skills.workspaceSelector.search": "البحث عن المهارات...",
   "agentDetail.configure.switchToPreviewConfirm.title": "التبديل إلى وضع المعاينة؟",
+  "agentDetail.configure.templatePreview.agentUI": "واجهة الوكيل",
   "agentDetail.configure.title": "تكوين",
   "agentDetail.configure.tools.add": "إضافة أداة",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "للمطورين",

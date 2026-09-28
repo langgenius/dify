@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Gagal memperbarui keterampilan workspace.",
   "agentDetail.configure.skills.workspaceSelector.search": "Cari keterampilan...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Beralih ke mode Pratinjau?",
+  "agentDetail.configure.templatePreview.agentUI": "Antarmuka agen",
   "agentDetail.configure.title": "Konfigurasi",
   "agentDetail.configure.tools.add": "Tambahkan alat",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Untuk pengembang",

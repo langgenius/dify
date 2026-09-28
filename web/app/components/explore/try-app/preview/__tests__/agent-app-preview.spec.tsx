@@ -96,7 +96,15 @@ describe('AgentAppPreview', () => {
       </QueryClientTestProvider>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Tender Analyst' })).toBeInTheDocument()
+    const agentUI = screen.getByRole('region', {
+      name: 'agentV2.agentDetail.configure.templatePreview.agentUI',
+    })
+    expect(within(agentUI).getByRole('heading', { name: 'Tender Analyst' })).toBeInTheDocument()
+    expect(within(agentUI).getByText('How can I help?')).toBeInTheDocument()
+    expect(within(agentUI).getByRole('listitem')).toHaveTextContent('Summarize the requirements')
+    expect(within(agentUI).queryByText('Review tender documents')).not.toBeInTheDocument()
+    expect(within(agentUI).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(within(agentUI).queryByRole('button')).not.toBeInTheDocument()
     const model = screen.getByRole('group', {
       name: 'agentV2.agentDetail.configure.model.label',
     })
@@ -110,8 +118,6 @@ describe('AgentAppPreview', () => {
     expect(screen.getByRole('button', { name: 'Tender Analyzer' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'README.md' })).toBeInTheDocument()
     expect(screen.getByText('Web Search')).toBeInTheDocument()
-    expect(screen.getByText('How can I help?')).toBeInTheDocument()
-    expect(screen.getByText('Summarize the requirements')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }),
     ).not.toBeInTheDocument()

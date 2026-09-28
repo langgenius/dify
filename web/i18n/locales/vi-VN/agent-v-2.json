@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Không thể cập nhật kỹ năng của workspace.",
   "agentDetail.configure.skills.workspaceSelector.search": "Tìm kiếm kỹ năng...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Chuyển sang chế độ Xem trước?",
+  "agentDetail.configure.templatePreview.agentUI": "Giao diện tác nhân",
   "agentDetail.configure.title": "Cấu hình",
   "agentDetail.configure.tools.add": "Thêm công cụ",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Dành cho nhà phát triển",
