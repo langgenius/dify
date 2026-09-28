@@ -4801,6 +4801,7 @@ Model class for i18n object.
 | progress_failed | integer |  | Yes |
 | progress_percent | integer |  | Yes |
 | progress_total | integer |  | Yes |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
 | source_id | string |  | No |
 | source_title | string |  | No |
 | state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
@@ -5080,6 +5081,7 @@ Model class for i18n object.
 | phase | string |  | No |
 | progress_percent | integer |  | Yes |
 | retry_at | string |  | No |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
 | stage | string, <br>**Available values:** "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
 | state | string, <br>**Available values:** "canceled", "dispatch_pending", "failed", "queued", "retry_wait", "running", "succeeded", "superseded" | *Enum:* `"canceled"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"`, `"succeeded"`, `"superseded"` | Yes |
 | updated_at | dateTime |  | Yes |
@@ -5541,6 +5543,20 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | revision | integer |  | No |
 | score_threshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
 | top_k | integer |  | Yes |
+
+#### KnowledgeFSSemanticEnrichmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| nodes_completed | integer |  | Yes |
+| nodes_total | integer |  | No |
+| provider_calls | integer |  | No |
+| provider_calls_maximum | integer |  | No |
+| state | string, <br>**Available values:** "disabled", "failed", "not_scheduled", "pending", "ready", "running" | *Enum:* `"disabled"`, `"failed"`, `"not_scheduled"`, `"pending"`, `"ready"`, `"running"` | Yes |
+| updated_at | string |  | No |
 
 #### KnowledgeFSServiceQueryImageUploadResponse
 

@@ -1853,3 +1853,34 @@ def test_document_task_preserves_graph_repair_for_service_consumers() -> None:
     ).model_dump(mode="json")
     assert response["state"] == "succeeded"
     assert response["semantic_enrichment"]["state"] == "pending"
+
+
+@pytest.mark.parametrize(
+    ("metadata", "status", "reason"),
+    [
+        ({"lifecycleStatus": "active", "sourceAvailability": "disabled"}, "paused", "source-disabled"),
+        ({"lifecycleStatus": "active"}, "active", None),
+        (
+            {"lifecycleStatus": "stale", "staleReason": "source-deleted", "sourceAvailability": "disabled"},
+            "stale",
+            "source-deleted",
+        ),
+        ({"lifecycleStatus": "draft", "sourceAvailability": "disabled"}, "draft", None),
+    ],
+)
+def test_golden_question_source_lifecycle(metadata: dict[str, str], status: str, reason: str | None) -> None:
+    response = KnowledgeFSGoldenQuestionResponse.model_validate(
+        {
+            "id": "question-1",
+            "question": "Question",
+            "annotation": "Keep notes",
+            "tags": ["tag"],
+            "expectedEvidenceIds": ["node-1"],
+            "metadata": metadata,
+            "createdAt": "2026-09-28T00:00:00Z",
+            "updatedAt": "2026-09-28T00:00:00Z",
+        }
+    )
+    assert response.status == status
+    assert response.status_reason == reason
+    assert response.expected_evidence_ids == ["node-1"]

@@ -392,7 +392,8 @@ export type KnowledgeFsGoldenQuestionResponse = {
   id: string
   match_policy?: 'all' | 'any'
   question: string
-  status: 'active' | 'draft' | 'stale'
+  status: 'active' | 'draft' | 'paused' | 'stale'
+  status_reason?: 'source-deleted' | 'source-disabled' | null
   tags: Array<string>
   updated_at: string
 }

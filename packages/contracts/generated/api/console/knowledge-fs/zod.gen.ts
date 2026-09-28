@@ -157,7 +157,8 @@ export const zKnowledgeFsGoldenQuestionResponse = z.object({
   id: z.string(),
   match_policy: z.enum(['all', 'any']).optional().default('all'),
   question: z.string(),
-  status: z.enum(['active', 'draft', 'stale']),
+  status: z.enum(['active', 'draft', 'paused', 'stale']),
+  status_reason: z.enum(['source-deleted', 'source-disabled']).nullish(),
   tags: z.array(z.string()),
   updated_at: z.iso.datetime(),
 })
