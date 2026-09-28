@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from types import SimpleNamespace
 from typing import Any, Literal
 from unittest.mock import MagicMock
@@ -8,7 +9,12 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 import core.rag.datasource.keyword.jieba.jieba as jieba_module
-from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
+from core.rag.datasource.keyword.jieba.jieba import (
+    Jieba,
+    KeywordSearchDiagnostics,
+    dumps_with_sets,
+    set_orjson_default,
+)
 from core.rag.models.document import Document
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 from tests.unit_tests.model_factories import make_dataset
@@ -352,6 +358,67 @@ def test_search_does_not_warn_when_all_unfiltered_hits_are_materialized(
     logger.warning.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("keyword_hits", "materialized", "filter_applied", "status", "filtered_out", "unresolved"),
+    [
+        (0, 0, False, "empty_valid", 0, 0),
+        (0, 0, True, "empty_valid", 0, 0),
+        (2, 2, False, "ok", 0, 0),
+        (2, 2, True, "ok", 0, 0),
+        (2, 1, False, "partial", 0, 1),
+        (2, 0, False, "broken_empty", 0, 2),
+        (2, 1, True, "filter_indeterminate", None, None),
+        (2, 0, True, "filter_indeterminate", None, None),
+    ],
+)
+def test_search_diagnostics_distinguish_known_and_ambiguous_outcomes(
+    keyword_hits, materialized, filter_applied, status, filtered_out, unresolved
+):
+    diagnostics = KeywordSearchDiagnostics.from_counts(
+        keyword_hits=keyword_hits, materialized=materialized, filter_applied=filter_applied
+    )
+
+    assert asdict(diagnostics) == {
+        "keyword_hits": keyword_hits,
+        "materialized": materialized,
+        "filtered_out": filtered_out,
+        "unresolved": unresolved,
+        "filter_applied": filter_applied,
+        "status": status,
+    }
+
+
+def test_search_keeps_partial_results_and_reports_structured_diagnostics(
+    monkeypatch: pytest.MonkeyPatch, patched_runtime
+):
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
+    patched_runtime.session.add(_segment(index_node_id="present-node"))
+    patched_runtime.session.flush()
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["present-node", "missing-node"]))
+
+    documents = keyword.search("query", session=patched_runtime.session, top_k=2)
+
+    assert [document.metadata["doc_id"] for document in documents] == ["present-node"]
+    logger.warning.assert_called_once_with(
+        "Keyword index consistency check failed for dataset %s: %d of %d matched node IDs could not be materialized.",
+        "dataset-1",
+        1,
+        2,
+        extra={
+            "keyword_search_diagnostics": {
+                "keyword_hits": 2,
+                "materialized": 1,
+                "filtered_out": 0,
+                "unresolved": 1,
+                "filter_applied": False,
+                "status": "partial",
+            }
+        },
+    )
+
+
 def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.MonkeyPatch, patched_runtime):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     logger = MagicMock()
@@ -382,11 +449,79 @@ def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.Monk
     assert documents == []
     logger.warning.assert_not_called()
     logger.debug.assert_called_once_with(
-        "Keyword search for dataset %s had %d matched node IDs before document filtering, "
-        "but no documents remained after applying %d document ID filters.",
+        "Keyword search for dataset %s materialized %d of %d matched node IDs with %d "
+        "document ID filters active; excluded and unresolved hits cannot be separated at this stage.",
+        "dataset-1",
+        0,
+        1,
+        1,
+        extra={
+            "keyword_search_diagnostics": {
+                "keyword_hits": 1,
+                "materialized": 0,
+                "filtered_out": None,
+                "unresolved": None,
+                "filter_applied": True,
+                "status": "filter_indeterminate",
+            }
+        },
+    )
+
+
+def test_search_keeps_filtered_partial_results_without_extra_materialization_queries(
+    monkeypatch: pytest.MonkeyPatch, patched_runtime, sqlite_engine
+):
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
+    segment = _segment(index_node_id="included-node")
+    child_chunk = ChildChunk(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="doc-other",
+        segment_id="segment-other",
+        position=1,
+        content="excluded-child",
+        word_count=1,
+        created_by="user-1",
+        index_node_id="excluded-node",
+        index_node_hash="excluded-hash",
+    )
+    patched_runtime.session.add_all([segment, child_chunk])
+    patched_runtime.session.flush()
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["included-node", "excluded-node"]))
+    statements: list[str] = []
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_sql)
+    try:
+        documents = keyword.search("query", session=patched_runtime.session, document_ids_filter=["doc-2"])
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_sql)
+
+    assert [document.metadata["doc_id"] for document in documents] == ["included-node"]
+    assert len([statement for statement in statements if "FROM child_chunks" in statement]) == 1
+    assert len([statement for statement in statements if "FROM document_segments" in statement]) == 1
+    logger.warning.assert_not_called()
+    logger.debug.assert_called_once_with(
+        "Keyword search for dataset %s materialized %d of %d matched node IDs with %d "
+        "document ID filters active; excluded and unresolved hits cannot be separated at this stage.",
         "dataset-1",
         1,
+        2,
         1,
+        extra={
+            "keyword_search_diagnostics": {
+                "keyword_hits": 2,
+                "materialized": 1,
+                "filtered_out": None,
+                "unresolved": None,
+                "filter_applied": True,
+                "status": "filter_indeterminate",
+            }
+        },
     )
 
 
@@ -424,6 +559,16 @@ def test_search_ignores_child_chunks_from_other_datasets_and_missing_nodes(
         "dataset-1",
         2,
         2,
+        extra={
+            "keyword_search_diagnostics": {
+                "keyword_hits": 2,
+                "materialized": 0,
+                "filtered_out": 0,
+                "unresolved": 2,
+                "filter_applied": False,
+                "status": "broken_empty",
+            }
+        },
     )
 
 
