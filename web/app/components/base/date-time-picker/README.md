@@ -1,20 +1,22 @@
 # Web date and time pickers
 
-Use the local `date-picker`, `time-picker`, or `date-time-picker` root in Web. Import Label,
-Trigger, Value, Clear and Content directly from the matching `@langgenius/dify-ui` subpath.
+Use the local `date-picker`, `time-picker`, or `date-time-picker` entry in Web. Each exports
+the localized Root plus the matching Dify UI Label, Trigger, Value, Clear, Content and prop types.
 
 These roots own application language, calendar-locale mapping, direction, translated actions,
 validation messages and default placeholders. They preserve the library props and caller overrides.
 They do not own values, time zones, popup state, selection logic or business serialization.
-Do not pass a repeated locale bundle at each call site or re-export the library parts here.
+Parts and types are re-exported unchanged; only Root integrates application defaults. Import the
+whole composition from its matching Web entry, without a shared barrel for all three pickers.
+Do not pass a repeated locale bundle at each call site.
 
 ```tsx
 import {
+  DatePicker,
   DatePickerContent,
   DatePickerLabel,
   DatePickerTrigger,
-} from '@langgenius/dify-ui/date-picker'
-import { DatePicker } from '@/app/components/base/date-time-picker/date-picker'
+} from '@/app/components/base/date-time-picker/date-picker'
 
 ;<DatePicker value={date} onValueChange={setDate}>
   <DatePickerLabel>{fieldTitle}</DatePickerLabel>

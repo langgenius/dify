@@ -3,16 +3,16 @@ import type { AutoUpdateConfig } from '@/app/components/plugins/reference-settin
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useQueryState } from 'nuqs'
+import { useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import {
+  TimePicker,
   TimePickerContent,
   TimePickerLabel,
   TimePickerTrigger,
   TimePickerValue,
-} from '@langgenius/dify-ui/time-picker'
-import { useQueryState } from 'nuqs'
-import { useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { TimePicker } from '@/app/components/base/date-time-picker/time-picker'
+} from '@/app/components/base/date-time-picker/time-picker'
 import {
   settingsQueryParamName,
   settingsQueryParser,

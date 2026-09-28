@@ -1,15 +1,18 @@
 'use client'
 
-import type { DatePickerProps, DatePickerTriggerProps } from '@langgenius/dify-ui/date-picker'
+import type {
+  DatePickerProps,
+  DatePickerTriggerProps,
+} from '@/app/components/base/date-time-picker/date-picker'
+import { useTranslation } from 'react-i18next'
 import {
+  DatePicker,
   DatePickerClear,
   DatePickerContent,
   DatePickerLabel,
   DatePickerTrigger,
   DatePickerValue,
-} from '@langgenius/dify-ui/date-picker'
-import { useTranslation } from 'react-i18next'
-import { DatePicker } from '@/app/components/base/date-time-picker/date-picker'
+} from '@/app/components/base/date-time-picker/date-picker'
 import { parseDateValue } from '@/app/components/base/date-time-picker/date-value'
 
 type Props = Pick<DatePickerProps, 'placeholder' | 'readOnly' | 'minDate' | 'maxDate'> &

@@ -1,15 +1,15 @@
 'use client'
 import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import {
+  DatePicker,
   DatePickerContent,
   DatePickerLabel,
   DatePickerTrigger,
   DatePickerValue,
-} from '@langgenius/dify-ui/date-picker'
-import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
-import { useLocale } from '#i18n'
-import { DatePicker } from '@/app/components/base/date-time-picker/date-picker'
+} from '@/app/components/base/date-time-picker/date-picker'
 import { formatToLocalTime } from '@/utils/format'
 type Props = {
   start: Dayjs

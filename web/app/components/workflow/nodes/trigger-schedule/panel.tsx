@@ -3,15 +3,15 @@ import type { ScheduleTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
+  TimePicker,
   TimePickerContent,
   TimePickerLabel,
   TimePickerTrigger,
   TimePickerValue,
-} from '@langgenius/dify-ui/time-picker'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import { TimePicker } from '@/app/components/base/date-time-picker/time-picker'
+} from '@/app/components/base/date-time-picker/time-picker'
 import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import FrequencySelector from './components/frequency-selector'
 import ModeToggle from './components/mode-toggle'

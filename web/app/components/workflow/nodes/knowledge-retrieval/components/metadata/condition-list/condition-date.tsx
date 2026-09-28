@@ -1,12 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
+  DateTimePicker,
   DateTimePickerClear,
   DateTimePickerContent,
   DateTimePickerLabel,
   DateTimePickerTrigger,
-} from '@langgenius/dify-ui/date-time-picker'
-import { useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { DateTimePicker } from '@/app/components/base/date-time-picker/date-time-picker'
+} from '@/app/components/base/date-time-picker/date-time-picker'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type ConditionDateProps = { value?: number; disabled?: boolean; onChange: (date?: number) => void }

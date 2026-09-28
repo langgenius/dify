@@ -17,3 +17,22 @@ export function DateTimePicker(props: DateTimePickerProps) {
     />
   )
 }
+
+/* oxlint-disable no-barrel-files/no-barrel-files -- Keep this localized picker and its unchanged parts/types in one component entry. */
+export {
+  DateTimePickerClear,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+  DateTimePickerValue,
+} from '@langgenius/dify-ui/date-time-picker'
+/** @public Prop types for the complete localized picker composition. */
+export type {
+  DateTimePickerClearProps,
+  DateTimePickerContentProps,
+  DateTimePickerLabelProps,
+  DateTimePickerProps,
+  DateTimePickerTriggerProps,
+  DateTimePickerValueProps,
+} from '@langgenius/dify-ui/date-time-picker'
+/* oxlint-enable no-barrel-files/no-barrel-files */

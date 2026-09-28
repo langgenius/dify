@@ -16,3 +16,22 @@ export function TimePicker(props: TimePickerProps) {
     />
   )
 }
+
+/* oxlint-disable no-barrel-files/no-barrel-files -- Keep this localized picker and its unchanged parts/types in one component entry. */
+export {
+  TimePickerClear,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+  TimePickerValue,
+} from '@langgenius/dify-ui/time-picker'
+/** @public Prop types for the complete localized picker composition. */
+export type {
+  TimePickerClearProps,
+  TimePickerContentProps,
+  TimePickerLabelProps,
+  TimePickerProps,
+  TimePickerTriggerProps,
+  TimePickerValueProps,
+} from '@langgenius/dify-ui/time-picker'
+/* oxlint-enable no-barrel-files/no-barrel-files */

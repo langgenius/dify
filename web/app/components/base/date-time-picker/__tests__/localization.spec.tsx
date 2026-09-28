@@ -1,25 +1,28 @@
-import {
-  DatePickerContent,
-  DatePickerLabel,
-  DatePickerTrigger,
-} from '@langgenius/dify-ui/date-picker'
-import { DateTimePickerLabel, DateTimePickerTrigger } from '@langgenius/dify-ui/date-time-picker'
-import {
-  TimePickerContent,
-  TimePickerLabel,
-  TimePickerTrigger,
-} from '@langgenius/dify-ui/time-picker'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
+import {
+  DatePicker,
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-picker'
+import {
+  DateTimePicker,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-time-picker'
+import {
+  TimePicker,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+} from '@/app/components/base/date-time-picker/time-picker'
 import en from '@/i18n/locales/en-US/time.json'
 import fa from '@/i18n/locales/fa-IR/time.json'
 import lo from '@/i18n/locales/lo-LA/time.json'
 import zh from '@/i18n/locales/zh-Hans/time.json'
-import { DatePicker } from '../date-picker'
-import { DateTimePicker } from '../date-time-picker'
-import { TimePicker } from '../time-picker'
 
 vi.unmock('react-i18next')
 
