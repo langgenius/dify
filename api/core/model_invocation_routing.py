@@ -25,6 +25,8 @@ from werkzeug.exceptions import ServiceUnavailable
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.model_billing_migration_protocol import canonical_hash
+from core.repositories.model_billing_migration_repository import get_routing_state
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from models.provider import ProviderCredential, ProviderType
 from models.provider_ids import ModelProviderID
@@ -78,10 +80,8 @@ def settlement_owner(system: SystemConfiguration, provider_type: ProviderType) -
 
 def migration_routing_state(tenant_id: str) -> dict[str, Any] | None:
     # Do not use the legacy billing-source TTL cache for cutover admission.
-    from services.model_billing_migration_service import ModelBillingMigrationService
-
     try:
-        return ModelBillingMigrationService.get_routing_state(tenant_id)
+        return get_routing_state(tenant_id)
     except Exception:
         # Never expose SQL/connection detail, or treat a failed lookup as a
         # legacy decision that could reopen admission after cutover.
@@ -401,8 +401,6 @@ def _valid_credential_fingerprint(value: Any) -> TypeGuard[str]:
 
 
 def _credential_fingerprint(encrypted_config: str) -> str:
-    from services.entities.model_billing_migration import canonical_hash
-
     return canonical_hash({"encrypted_config": encrypted_config})
 
 
@@ -513,7 +511,6 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
     """Export a non-secret source inventory before preparing a target plugin."""
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
-    from services.entities.model_billing_migration import canonical_hash
 
     registry = model_mappings()
     client = PluginModelClient()

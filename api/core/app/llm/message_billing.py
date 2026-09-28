@@ -27,10 +27,10 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderType
 from models.provider_ids import ModelProviderID
-from services.credit_pool_service import CreditPoolReservation, CreditPoolService
 
 if TYPE_CHECKING:
     from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity
+    from core.app.llm.quota import MessageQuotaReservation
 
 logger = logging.getLogger(__name__)
 MESSAGE_RESERVATION_HEARTBEAT_SECONDS = 20
@@ -43,7 +43,7 @@ class ClassicMessageBilling:
     provider: str
     model: str
     backend: Literal["legacy_event", "legacy_reserved", "tokener", "provider_free", "custom", "unmetered"]
-    reservation: CreditPoolReservation | None = field(default=None, repr=False)
+    reservation: MessageQuotaReservation | None = field(default=None, repr=False)
     settled: bool = field(default=False, init=False)
     _commit_attempted: bool = field(default=False, init=False, repr=False)
     _lock: Any = field(default_factory=RLock, init=False, repr=False)
@@ -116,7 +116,7 @@ class ClassicMessageBilling:
 
 def begin_message_billing(entity: EasyUIBasedAppGenerateEntity, message_id: str) -> ClassicMessageBilling:
     from core.app.entities.app_invoke_entities import get_credit_usage_app_type, get_credit_usage_created_by
-    from extensions.ext_database import db
+    from core.app.llm.quota import reserve_message_quota_for_model
 
     existing = entity._classic_message_billing
     if existing is not None:
@@ -154,27 +154,17 @@ def begin_message_billing(entity: EasyUIBasedAppGenerateEntity, message_id: str)
             }:
                 if not isinstance(credentials, LegacyModelCredentials):
                     raise ModelInvocationReprepare
-                amount = dify_config.get_model_credits(model) if quota.quota_unit == QuotaUnit.CREDITS else 1
-                if amount <= 0:
-                    owner.backend = "unmetered"
-                    entity._classic_message_billing = owner
-                    return owner
-                owner.reservation = CreditPoolService.reserve_credits_capped(
+                owner.reservation = reserve_message_quota_for_model(
                     tenant_id=tenant_id,
-                    credits_required=amount,
-                    pool_type=system.current_quota_type.value,
-                    request_id=message_id,
-                    session_factory=db.session,
-                    meta={
-                        "source": "message.created",
-                        "provider": provider,
-                        "model": model,
-                        "model_type": ModelType.LLM.value,
-                        "app_type": get_credit_usage_app_type(entity.app_config.app_mode),
-                        "created_by": get_credit_usage_created_by(entity.app_config.app_mode),
-                    },
+                    provider=provider,
+                    model=model,
+                    quota_type=system.current_quota_type,
+                    quota_unit=quota.quota_unit,
+                    message_id=message_id,
+                    app_type=get_credit_usage_app_type(entity.app_config.app_mode),
+                    created_by=get_credit_usage_created_by(entity.app_config.app_mode),
                 )
-                owner.backend = "legacy_reserved"
+                owner.backend = "legacy_reserved" if owner.reservation is not None else "unmetered"
     entity._classic_message_billing = owner
     owner.start_heartbeat()
     return owner

@@ -7,7 +7,7 @@ helpers remain LLM-specific because token-based settlement requires LLM usage.
 import warnings
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -112,6 +112,60 @@ class ModelQuotaReservation:
 # Compatibility aliases for callers that still import the LLM-specific names.
 LLMQuotaReservationState = ModelQuotaReservationState
 LLMQuotaReservation = ModelQuotaReservation
+
+
+class MessageQuotaReservation(Protocol):
+    """The receipt operations owned by a Classic message, not an LLM turn."""
+
+    @property
+    def reservation_id(self) -> str | None: ...
+
+    def renew(self) -> None: ...
+
+    def commit(self) -> None: ...
+
+    def release(self) -> None: ...
+
+
+def reserve_message_quota_for_model(
+    *,
+    tenant_id: str,
+    provider: str,
+    model: str,
+    quota_type: ProviderQuotaType,
+    quota_unit: QuotaUnit,
+    message_id: str,
+    app_type: CreditUsageAppTypeInput,
+    created_by: CreditUsageCreatedByInput,
+) -> MessageQuotaReservation | None:
+    """Reserve the legacy capped charge once using the durable message ID.
+
+    Classic messages retain their capped per-message charge rather than the
+    strict per-invocation reservation used by workflow model nodes. A nonpositive
+    configured charge remains unmetered, without creating a financial receipt.
+    """
+    if quota_type not in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+        raise ValueError("Message reservations require a shared credit pool.")
+    if quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}:
+        raise ValueError("Message reservations require credits or times quota.")
+    amount = dify_config.get_model_credits(model) if quota_unit == QuotaUnit.CREDITS else 1
+    if amount <= 0:
+        return None
+    return CreditPoolService.reserve_credits_capped(
+        tenant_id=tenant_id,
+        credits_required=amount,
+        pool_type=quota_type.value,
+        request_id=message_id,
+        session_factory=db.session,
+        meta={
+            "source": "message.created",
+            "provider": provider,
+            "model": model,
+            "model_type": ModelType.LLM.value,
+            "app_type": app_type,
+            "created_by": created_by,
+        },
+    )
 
 
 def _get_provider_configuration(*, tenant_id: str, provider: str):

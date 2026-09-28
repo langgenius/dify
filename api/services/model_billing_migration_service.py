@@ -22,7 +22,9 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.model_billing_migration_protocol import canonical_hash
 from core.model_billing_profile import ModelBillingProfileService
+from core.repositories.model_billing_migration_repository import get_routing_state
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
@@ -38,7 +40,6 @@ from services.entities.model_billing_migration import (
     MigrationSourceProviderOwnership,
     OperationPayload,
     PrepareMigrationPayload,
-    canonical_hash,
 )
 
 logger = logging.getLogger(__name__)
@@ -149,43 +150,8 @@ class ModelBillingMigrationService:
 
     @classmethod
     def get_routing_state(cls, tenant_id: str) -> dict[str, Any] | None:
-        """Read only the narrow admission projection, never the control journal.
-
-        PostgreSQL stores the new table's state as JSONB. Extracting these fields
-        avoids fetching/deserializing manifests, operations, and receipt history
-        on every model invocation. SQLite uses the JSON variant for unit tests.
-        """
-        with session_factory.create_session() as session:
-            model = TenantModelBillingMigration
-            row = (
-                session.execute(
-                    select(
-                        model.tenant_id,
-                        model.migration_id,
-                        model.phase,
-                        model.route_epoch,
-                        model.claimed_at,
-                        model.state["blocked_from"].as_string().label("blocked_from"),
-                        model.state["model_mapping_version"].as_string().label("model_mapping_version"),
-                        model.state["preparation"].label("preparation"),
-                        model.state["provisioned_binding"].label("provisioned_binding"),
-                        model.state["source_ownership"].label("source_ownership"),
-                        model.state["ever_activated"].as_boolean().label("ever_activated"),
-                    ).where(model.tenant_id == tenant_id)
-                )
-                .mappings()
-                .one_or_none()
-            )
-            if row is None:
-                return None
-            result = {str(key): value for key, value in row.items()}
-            result["preparation"] = result["preparation"] or {}
-            result["provisioned_binding"] = result["provisioned_binding"] or {}
-            result["source_ownership"] = result["source_ownership"] or {}
-            result["ever_activated"] = bool(result["ever_activated"])
-            if result["claimed_at"] is not None:
-                result["claimed_at"] = _timestamp(result["claimed_at"])
-            return result
+        """Delegate the shared runtime projection without loading control state."""
+        return get_routing_state(tenant_id)
 
     @classmethod
     def _replay(cls, row: TenantModelBillingMigration, payload: OperationPayload) -> dict[str, Any] | None:

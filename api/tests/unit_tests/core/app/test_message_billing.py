@@ -84,7 +84,7 @@ def billing(mocker, config_overrides):
     mocker.patch("core.model_invocation_routing.migration_routing_state", side_effect=lambda _: state)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch.object(type(dify_config), "get_model_credits", return_value=9)
-    reserve = mocker.patch("core.app.llm.message_billing.CreditPoolService.reserve_credits_capped")
+    reserve = mocker.patch("core.app.llm.quota.CreditPoolService.reserve_credits_capped")
     reserve.return_value.amount = 1  # Atomic capped tail balance, not the requested 9.
     reserve.return_value.reservation_id = None
     per_call = mocker.patch("core.app.llm.quota.reserve_model_quota_for_model")
@@ -106,6 +106,14 @@ def test_classic_message_reserves_once_and_commits_original_receipt_after_cutove
     assert billing.reserve.call_args.kwargs["credits_required"] == 9
     assert billing.reserve.call_args.kwargs["request_id"] == MESSAGE
     assert billing.reserve.call_args.kwargs["pool_type"] == "paid"
+    assert billing.reserve.call_args.kwargs["meta"] == {
+        "source": "message.created",
+        "provider": PROVIDER,
+        "model": "gpt-4o",
+        "model_type": "llm",
+        "app_type": "agent" if agent else "chatbot",
+        "created_by": "app",
+    }
     billing.reserve.assert_called_once()
     instance = create_model_instance(
         app.model_conf.provider_model_bundle, "gpt-4o", credentials=app.model_conf.credentials, message_billing=owner
@@ -274,6 +282,21 @@ def test_zero_credit_model_does_not_create_an_invalid_zero_hold(billing, mocker)
     owner = begin_message_billing(app, MESSAGE)
     assert owner.backend == "unmetered"
     billing.reserve.assert_not_called()
+
+
+@pytest.mark.parametrize("quota_type", [ProviderQuotaType.PAID, ProviderQuotaType.TRIAL])
+@pytest.mark.parametrize(("quota_unit", "amount"), [(QuotaUnit.CREDITS, 9), (QuotaUnit.TIMES, 1)])
+def test_message_quota_adapter_preserves_bucket_and_charge(billing, quota_type, quota_unit, amount):
+    app = entity(quota_type=quota_type)
+    quota = app.model_conf.provider_model_bundle.configuration.system_configuration.quota_configurations[0]
+    quota.quota_unit = quota_unit
+    owner = begin_message_billing(app, MESSAGE)
+    assert owner.backend == "legacy_reserved"
+    assert billing.reserve.call_args.kwargs["pool_type"] == quota_type.value
+    assert billing.reserve.call_args.kwargs["credits_required"] == amount
+    assert billing.reserve.call_args.kwargs["request_id"] == MESSAGE
+    billing.reserve.assert_called_once()
+    release_message_billing(app)
 
 
 @pytest.mark.parametrize("worker_fails", [False, True])
