@@ -44,6 +44,7 @@ export const zNotionIntegrateWorkspaceResponse = z.object({
  * NotionIntegrateInfoListResponse
  */
 export const zNotionIntegrateInfoListResponse = z.object({
+  next_cursor: z.string().nullish(),
   notion_info: z.array(zNotionIntegrateWorkspaceResponse),
 })
 
@@ -64,6 +65,8 @@ export const zGetNotionPagesByPageIdByPageTypePreviewResponse = zTextContentResp
 export const zGetNotionPreImportPagesQuery = z.object({
   credential_id: z.string().min(1),
   dataset_id: z.string().optional(),
+  page_size: z.int().gte(1).lte(100).optional(),
+  start_cursor: z.string().optional(),
 })
 
 /**

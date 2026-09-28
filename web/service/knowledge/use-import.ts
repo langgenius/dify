@@ -1,5 +1,6 @@
 import type { DataSourceNotionWorkspace } from '@/models/common'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { get } from '../base'
 
 type PreImportNotionPagesParams = {
@@ -7,24 +8,79 @@ type PreImportNotionPagesParams = {
   credentialId: string
 }
 
+type PreImportNotionPagesResponse = {
+  notion_info: DataSourceNotionWorkspace[]
+  next_cursor?: string | null
+}
+
 const PRE_IMPORT_NOTION_PAGES_QUERY_KEY = 'notion-pre-import-pages'
+const NOTION_PRE_IMPORT_PAGE_SIZE = 50
+
+const mergeNotionPreImportPages = (
+  pages: PreImportNotionPagesResponse[],
+): DataSourceNotionWorkspace[] => {
+  const byWorkspace = new Map<string, DataSourceNotionWorkspace>()
+  for (const batch of pages) {
+    for (const workspace of batch.notion_info) {
+      const key = workspace.workspace_id ?? ''
+      const existing = byWorkspace.get(key)
+      if (existing) {
+        existing.pages = [...existing.pages, ...workspace.pages]
+      } else {
+        byWorkspace.set(key, { ...workspace, pages: [...workspace.pages] })
+      }
+    }
+  }
+  return [...byWorkspace.values()]
+}
 
 export const usePreImportNotionPages = ({
   datasetId,
   credentialId,
 }: PreImportNotionPagesParams) => {
-  return useQuery({
+  const {
+    data,
+    dataUpdatedAt,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
     queryKey: [PRE_IMPORT_NOTION_PAGES_QUERY_KEY, datasetId, credentialId],
-    queryFn: async () => {
-      return get<{ notion_info: DataSourceNotionWorkspace[] }>('/notion/pre-import/pages', {
+    queryFn: async ({ pageParam }: { pageParam?: string }) => {
+      return get<PreImportNotionPagesResponse>('/notion/pre-import/pages', {
         params: {
           dataset_id: datasetId,
           credential_id: credentialId,
+          page_size: NOTION_PRE_IMPORT_PAGE_SIZE,
+          ...(pageParam ? { start_cursor: pageParam } : {}),
         },
       })
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     retry: 0,
+    enabled: Boolean(credentialId),
   })
+
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isLoading) {
+      void fetchNextPage()
+    }
+  }, [dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
+
+  const notion_info = useMemo(
+    () => (data ? mergeNotionPreImportPages(data.pages) : undefined),
+    [data],
+  )
+
+  return {
+    data: notion_info ? { notion_info } : undefined,
+    isFetching: isLoading,
+    isFetchingNextPage,
+    isError,
+  }
 }
 
 export const useInvalidPreImportNotionPages = () => {

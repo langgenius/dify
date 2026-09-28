@@ -55,6 +55,8 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
+    page_size: int | None = Field(default=None, ge=1, le=100, description="Notion search page size")
+    start_cursor: str | None = Field(default=None, description="Notion search pagination cursor")
 
 
 class DataSourceNotionPreviewQuery(BaseModel):
@@ -119,6 +121,7 @@ class NotionIntegrateWorkspaceResponse(ResponseModel):
 
 class NotionIntegrateInfoListResponse(ResponseModel):
     notion_info: list[NotionIntegrateWorkspaceResponse]
+    next_cursor: str | None = None
 
 
 register_schema_models(console_ns, NotionEstimatePayload)
@@ -286,16 +289,22 @@ class DataSourceNotionListApi(Resource):
         if credential:
             datasource_runtime.runtime.credentials = credential
         datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+        datasource_parameters: dict[str, Any] = {}
+        if req_data.page_size is not None:
+            datasource_parameters["page_size"] = req_data.page_size
+        if req_data.start_cursor:
+            datasource_parameters["start_cursor"] = req_data.start_cursor
         online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
             datasource_runtime.get_online_document_pages(
                 user_id=current_user.id,
-                datasource_parameters={},
+                datasource_parameters=datasource_parameters,
                 provider_type=datasource_runtime.datasource_provider_type(),
             )
         )
         try:
             pages = []
             workspace_info = {}
+            next_cursor: str | None = None
             for message in online_document_result:
                 result = message.result
                 for info in result:
@@ -314,10 +323,19 @@ class DataSourceNotionListApi(Resource):
                             "page_icon": page.page_icon,
                         }
                         pages.append(page_info)
+                if req_data.page_size is not None:
+                    next_cursor = message.next_cursor
+                    break
         except Exception as e:
             raise e
         notion_info = [{**workspace_info, "pages": pages}] if workspace_info else []
-        return dump_response(NotionIntegrateInfoListResponse, {"notion_info": notion_info}), 200
+        return (
+            dump_response(
+                NotionIntegrateInfoListResponse,
+                {"notion_info": notion_info, "next_cursor": next_cursor},
+            ),
+            200,
+        )
 
 
 @console_ns.route("/notion/pages/<uuid:page_id>/<string:page_type>/preview")

@@ -213,8 +213,9 @@ def test_online_document_models():
     info = OnlineDocumentInfo(workspace_id="w1", workspace_name="name", workspace_icon="icon", total=1, pages=[page])
     assert info.total == 1
 
-    msg = OnlineDocumentPagesMessage(result=[info])
+    msg = OnlineDocumentPagesMessage(result=[info], next_cursor="cursor-1")
     assert msg.result == [info]
+    assert msg.next_cursor == "cursor-1"
 
     req = GetOnlineDocumentPageContentRequest(workspace_id="w1", page_id="p1", type="page")
     assert req.workspace_id == "w1"
