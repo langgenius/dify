@@ -291,13 +291,15 @@ describe('question-classifier path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
+      await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
       await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
       expect(
-        screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
       ).not.toBeInTheDocument()
       await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
-      expect(screen.getByText('workflow.nodes.questionClassifiers.addClass')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowModels.nodes.questionClassifiers.addClass'),
+      ).toBeInTheDocument()
       expect(container.querySelector('.handle')).not.toBeNull()
 
       expect(onChange).toHaveBeenCalled()
@@ -343,7 +345,7 @@ describe('question-classifier path', () => {
       )
 
       expect(
-        screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
       ).not.toBeInTheDocument()
       expect(container.querySelector('.handle')).toBeNull()
     })

@@ -1,6 +1,5 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -53,9 +52,16 @@ export function EnvironmentWebAppCard({
   canManageAccessPoint,
   highlighted,
 }: EnvironmentWebAppCardProps) {
-  const { t } = useTranslation(['agentV2', 'app', 'appOverview', 'common', 'deployments'])
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
+  const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
@@ -201,7 +207,7 @@ export function EnvironmentWebAppCard({
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
+              {t(($) => $['settings.settings'], { ns: 'navigation' })}
             </Button>
           </>
         }

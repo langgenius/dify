@@ -24,7 +24,7 @@ type FormItemProps = {
   onChange: (value: any) => void
 }
 const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
   const { value_type, var_type, value } = item
   const valueLabel = item.label || t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })
   const normalizedVarValue = useMemo(() => {
@@ -74,7 +74,9 @@ const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
           value={normalizedVarValue}
           onChange={handleChange}
           filterVar={filterVar}
-          placeholder={t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string}
+          placeholder={
+            t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' }) as string
+          }
         />
       )}
       {value_type === ValueType.constant && var_type === VarType.string && (

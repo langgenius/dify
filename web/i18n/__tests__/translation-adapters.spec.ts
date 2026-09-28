@@ -33,7 +33,7 @@ describe('translation adapter contracts', () => {
     },
   )
 
-  it.each([{ ns: ['common'] }, { ns: ['common', 'plugin'] }, { ns: undefined }] as const)(
+  it.each([{ ns: ['common'] }, { ns: ['common', 'plugin'] }] as const)(
     'loads the server namespace %s with the current locale',
     async ({ ns }) => {
       const { useTranslation } = await import('../lib.server')

@@ -34,7 +34,7 @@ const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
 }
 
 export default function RosterPage() {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
@@ -79,7 +79,7 @@ export default function RosterPage() {
 
   const rosterItems = rosterPages?.pages.flatMap((page) => page.data) ?? []
   const publicationCounts = rosterPages?.pages[0]?.publication_counts ?? EMPTY_PUBLICATION_COUNTS
-  const pageTitle = t(($) => $['roster.title'])
+  const pageTitle = t(($) => $['roster.title'], { ns: 'agentRoster' })
   const pageTitleId = useId()
   const listState: AgentRosterListState = isLoadingError
     ? { status: 'error', onRetry: () => void refetch() }
@@ -122,7 +122,7 @@ export default function RosterPage() {
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
           >
-            {t(($) => $['roster.learnMore'])}
+            {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
             <span aria-hidden className="i-ri-external-link-line size-3" />
           </a>
         </div>
@@ -143,7 +143,10 @@ export default function RosterPage() {
               className="min-h-full w-full max-w-full px-8 pt-2 pb-8"
               style={{ minWidth: 0 }}
             >
-              <AgentRosterList label={t(($) => $['roster.listLabel'])} state={listState} />
+              <AgentRosterList
+                label={t(($) => $['roster.listLabel'], { ns: 'agentRoster' })}
+                state={listState}
+              />
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>

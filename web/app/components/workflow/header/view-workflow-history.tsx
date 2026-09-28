@@ -26,7 +26,7 @@ type ChangeHistoryList = {
 }
 
 const ViewWorkflowHistory = () => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
   const [open, setOpen] = useState(false)
 
   const { nodesReadOnly } = useNodesReadOnly()
@@ -73,7 +73,7 @@ const ViewWorkflowHistory = () => {
       if (!index) return
 
       const count = index < 0 ? index * -1 : index
-      return `${index > 0 ? t(($) => $['changeHistory.stepForward'], { ns: 'workflow', count }) : t(($) => $['changeHistory.stepBackward'], { ns: 'workflow', count })}`
+      return `${index > 0 ? t(($) => $['changeHistory.stepForward'], { ns: 'workflowHistory', count }) : t(($) => $['changeHistory.stepBackward'], { ns: 'workflowHistory', count })}`
     },
     [t],
   )
@@ -146,7 +146,7 @@ const ViewWorkflowHistory = () => {
         setOpen(nextOpen)
       }}
     >
-      <TipPopup title={t(($) => $['changeHistory.title'], { ns: 'workflow' })}>
+      <TipPopup title={t(($) => $['changeHistory.title'], { ns: 'workflowHistory' })}>
         {/* Tooltip and Popover share data-popup-open on this button, so read Popover state directly. */}
         <PopoverTrigger
           className={({ open: popoverOpen }) =>
@@ -160,7 +160,7 @@ const ViewWorkflowHistory = () => {
               size="lg"
               disabled={nodesReadOnly}
               focusableWhenDisabled
-              aria-label={t(($) => $['changeHistory.title'], { ns: 'workflow' })}
+              aria-label={t(($) => $['changeHistory.title'], { ns: 'workflowHistory' })}
               className="rounded-md"
               onClick={() => {
                 if (nodesReadOnly) return
@@ -177,7 +177,7 @@ const ViewWorkflowHistory = () => {
         <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
             <div className="grow text-text-secondary">
-              {t(($) => $['changeHistory.title'], { ns: 'workflow' })}
+              {t(($) => $['changeHistory.title'], { ns: 'workflowHistory' })}
             </div>
             <PopoverClose
               render={
@@ -209,7 +209,7 @@ const ViewWorkflowHistory = () => {
                   className="mx-auto mb-2 i-ri-history-line block size-8 text-text-tertiary"
                 />
                 <div className="text-center text-[13px] text-text-tertiary">
-                  {t(($) => $['changeHistory.placeholder'], { ns: 'workflow' })}
+                  {t(($) => $['changeHistory.placeholder'], { ns: 'workflowHistory' })}
                 </div>
               </div>
             )}
@@ -236,11 +236,11 @@ const ViewWorkflowHistory = () => {
                       {composeHistoryItemLabel(
                         item?.state?.workflowHistoryEventMeta?.nodeTitle,
                         item?.label ||
-                          t(($) => $['changeHistory.sessionStart'], { ns: 'workflow' }),
+                          t(($) => $['changeHistory.sessionStart'], { ns: 'workflowHistory' }),
                       )}{' '}
                       ({calculateStepLabel(item?.index)}
                       {item?.index === currentHistoryStateIndex &&
-                        t(($) => $['changeHistory.currentState'], { ns: 'workflow' })}
+                        t(($) => $['changeHistory.currentState'], { ns: 'workflowHistory' })}
                       )
                     </div>
                   </div>
@@ -268,7 +268,7 @@ const ViewWorkflowHistory = () => {
                       {composeHistoryItemLabel(
                         item?.state?.workflowHistoryEventMeta?.nodeTitle,
                         item?.label ||
-                          t(($) => $['changeHistory.sessionStart'], { ns: 'workflow' }),
+                          t(($) => $['changeHistory.sessionStart'], { ns: 'workflowHistory' }),
                       )}{' '}
                       ({calculateStepLabel(item?.index)})
                     </div>
@@ -293,7 +293,7 @@ const ViewWorkflowHistory = () => {
               >
                 <div>
                   <div className={cn('flex items-center text-[13px] leading-4.5 font-medium')}>
-                    {t(($) => $['changeHistory.clearHistory'], { ns: 'workflow' })}
+                    {t(($) => $['changeHistory.clearHistory'], { ns: 'workflowHistory' })}
                   </div>
                 </div>
               </button>
@@ -301,10 +301,10 @@ const ViewWorkflowHistory = () => {
           )}
           <div className="w-60 px-3 py-2 text-xs text-text-tertiary">
             <div className="mb-1 flex h-5.5 items-center font-medium uppercase">
-              {t(($) => $['changeHistory.hint'], { ns: 'workflow' })}
+              {t(($) => $['changeHistory.hint'], { ns: 'workflowHistory' })}
             </div>
             <div className="mb-1 leading-4.5 text-text-tertiary">
-              {t(($) => $['changeHistory.hintText'], { ns: 'workflow' })}
+              {t(($) => $['changeHistory.hintText'], { ns: 'workflowHistory' })}
             </div>
           </div>
         </div>

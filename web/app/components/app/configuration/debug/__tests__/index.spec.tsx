@@ -983,7 +983,9 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.modelProvider.addModel(1/4)' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel(1/4)' }),
+      )
       expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(true, [
         { id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} },
         expect.objectContaining({ model: '', provider: '', parameters: {} }),
@@ -1004,7 +1006,7 @@ describe('Debug', () => {
       })
 
       expect(
-        screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' }),
+        screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel(4/4)' }),
       )!.toBeDisabled()
     })
 
@@ -1025,7 +1027,7 @@ describe('Debug', () => {
       })
 
       const addModelButton = screen.getByRole('button', {
-        name: 'common.modelProvider.addModel(1/4)',
+        name: 'modelProvider.modelProvider.addModel(1/4)',
       })
       expect(addModelButton).toBeDisabled()
       fireEvent.click(addModelButton)

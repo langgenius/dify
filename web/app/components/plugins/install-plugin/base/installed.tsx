@@ -67,13 +67,15 @@ const Installed: FC<Props> = ({
   installContextCategory,
   onCancel,
 }) => {
-  const { t } = useTranslation(['plugin', 'common'])
+  const { t } = useTranslation(['plugin', 'common', 'navigation'])
   const installedCategory = payload?.category
   const categoryTarget =
     !isFailed && installContextCategory && installedCategory !== installContextCategory
       ? categoryTargetMap[installedCategory as PluginCategoryEnum]
       : undefined
-  const categoryName = categoryTarget ? t(($) => $[categoryTarget.labelKey], { ns: 'common' }) : ''
+  const categoryName = categoryTarget
+    ? t(($) => $[categoryTarget.labelKey], { ns: 'navigation' })
+    : ''
 
   const handleClose = () => {
     onCancel()

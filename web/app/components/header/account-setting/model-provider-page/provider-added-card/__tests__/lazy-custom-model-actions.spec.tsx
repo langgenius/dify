@@ -70,7 +70,7 @@ describe('LazyCustomModelActions', () => {
     expect(mockLoadProviderDetail).not.toHaveBeenCalled()
 
     await user.click(
-      screen.getByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     )
 
     expect(await screen.findByTestId('manage-custom-model')).toHaveAttribute('data-open', 'true')
@@ -81,10 +81,10 @@ describe('LazyCustomModelActions', () => {
     render(<LazyCustomModelActions provider={createProvider(false)} />)
 
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
   })
 })

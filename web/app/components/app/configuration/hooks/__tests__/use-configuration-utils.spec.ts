@@ -27,7 +27,9 @@ const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
-const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'common']>
+const t = withSelectorKey((key: string) => key) as TFunction<
+  ['appDebug', 'common', 'modelProvider']
+>
 
 const baseVisionConfig: VisionSettings = {
   enabled: false,

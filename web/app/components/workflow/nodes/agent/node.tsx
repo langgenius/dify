@@ -18,7 +18,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     props.data,
   )
   const renderI18nObject = useRenderI18nObject()
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
   const models = useMemo(() => {
     if (!inputs) return []
     // if selected, show in node
@@ -68,14 +68,14 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     <div className="mb-1 space-y-1 px-3">
       {inputs.agent_strategy_name ? (
         <SettingItem
-          label={t(($) => $['nodes.agent.strategy.shortLabel'], { ns: 'workflow' })}
+          label={t(($) => $['nodes.agent.strategy.shortLabel'], { ns: 'workflowAgent' })}
           status={
             currentStrategyStatus && !currentStrategyStatus.isExistInPlugin ? 'error' : undefined
           }
           tooltip={
             currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
               ? t(($) => $['nodes.agent.strategyNotInstallTooltip'], {
-                  ns: 'workflow',
+                  ns: 'workflowAgent',
                   plugin: pluginDetail?.declaration.label
                     ? renderI18nObject(pluginDetail?.declaration.label)
                     : undefined,
@@ -87,13 +87,13 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           {inputs.agent_strategy_label}
         </SettingItem>
       ) : (
-        <SettingItem label={t(($) => $['nodes.agent.strategyNotSet'], { ns: 'workflow' })} />
+        <SettingItem label={t(($) => $['nodes.agent.strategyNotSet'], { ns: 'workflowAgent' })} />
       )}
       {models.length > 0 && (
         <Group
           label={
             <GroupLabel className="mt-1">
-              {t(($) => $['nodes.agent.model'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.model'], { ns: 'workflowAgent' })}
             </GroupLabel>
           }
         >
@@ -106,7 +106,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         <Group
           label={
             <GroupLabel className="mt-1">
-              {t(($) => $['nodes.agent.toolbox'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.toolbox'], { ns: 'workflowAgent' })}
             </GroupLabel>
           }
         >

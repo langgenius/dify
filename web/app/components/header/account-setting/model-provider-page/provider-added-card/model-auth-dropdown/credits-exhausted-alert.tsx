@@ -21,7 +21,7 @@ export default function CreditsExhaustedAlert({
   credits: creditsOverride,
   totalCredits: totalCreditsOverride,
 }: CreditsExhaustedAlertProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -47,12 +47,12 @@ export default function CreditsExhaustedAlert({
     <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
         <div className="system-sm-medium text-text-primary">
-          {t(($) => $[titleKey], { ns: 'common' })}
+          {t(($) => $[titleKey], { ns: 'modelProvider' })}
         </div>
         <div className="system-xs-regular text-text-tertiary">
           <Trans
             i18nKey={($) => $[descriptionKey]}
-            ns="common"
+            ns="modelProvider"
             components={{
               upgradeLink:
                 deploymentEdition === 'CLOUD' ? (
@@ -71,7 +71,7 @@ export default function CreditsExhaustedAlert({
       <Meter value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <MeterLabel className="system-xs-medium text-text-tertiary">
-            {t(($) => $['modelProvider.card.usageLabel'], { ns: 'common' })}
+            {t(($) => $['modelProvider.card.usageLabel'], { ns: 'modelProvider' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
             <span

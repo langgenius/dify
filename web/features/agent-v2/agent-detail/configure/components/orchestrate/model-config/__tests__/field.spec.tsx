@@ -99,11 +99,11 @@ describe('AgentModelField', () => {
       screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
     )
     expect(modelGroup).toContainElement(
-      screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
     )
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
     ).toBeDisabled()
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
 
@@ -137,7 +137,9 @@ describe('AgentModelField', () => {
     )
     const { onSelect } = renderField({ provider: 'openai', model: 'gpt-4' })
     const trigger = screen.getByRole('button', { name: 'gpt-4' })
-    const settings = screen.getByRole('button', { name: 'common.modelProvider.modelSettings' })
+    const settings = screen.getByRole('button', {
+      name: 'modelProvider.modelProvider.modelSettings',
+    })
     const modelGroup = screen.getByRole('group', {
       name: 'agentV2.agentDetail.configure.model.label',
     })
@@ -163,7 +165,9 @@ describe('AgentModelField', () => {
     await waitFor(() => {
       expect(trigger).toBeEnabled()
     })
-    expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+    ).toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
 

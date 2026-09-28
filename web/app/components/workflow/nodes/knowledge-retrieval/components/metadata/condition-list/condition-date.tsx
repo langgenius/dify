@@ -13,7 +13,7 @@ type ConditionDateProps = {
   onChange: (date?: number) => void
 }
 const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowModels'])
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,
@@ -34,7 +34,9 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
         ? dayjs(value * 1000)
             .tz(timezone)
             .format('MMMM DD YYYY HH:mm A')
-        : t(($) => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], { ns: 'workflow' })
+        : t(($) => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], {
+            ns: 'workflowModels',
+          })
 
       return (
         <div className={cn('group flex items-center', props.className)}>

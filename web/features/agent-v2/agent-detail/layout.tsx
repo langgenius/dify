@@ -18,7 +18,7 @@ type AgentDetailLayoutProps = {
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const pathname = usePathname()
   const router = useRouter()
   const { t: tCommon } = useTranslation(['common'])
@@ -56,7 +56,7 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
   if (agentQuery.isError) {
     return (
       <div role="alert" className="flex h-full items-center justify-center gap-3">
-        <span>{t(($) => $['roster.loadingError'])}</span>
+        <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
         <Button onClick={() => void agentQuery.refetch()}>
           {tCommon(($) => $['operation.retry'])}
         </Button>

@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -92,7 +92,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       ...(datasetACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/datasets/${datasetId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',
@@ -146,7 +146,10 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
         <div className="py-2">
           <DatasetInfo expand={expand} />
         </div>
-        <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
+        <nav
+          aria-label={datasetRes.name}
+          className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}
+        >
           {navigation.map((item) => (
             <NavLink
               key={item.href}

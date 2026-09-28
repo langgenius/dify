@@ -51,7 +51,7 @@ function ModelSelectorTrigger({
   showModelMeta = true,
   isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const valueId = useId()
 
   const showClear = !!defaultModel && !!onClear
@@ -86,14 +86,14 @@ function ModelSelectorTrigger({
   const tooltipI18nKey =
     DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
   const statusLabel = !isModelCompatible
-    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'modelProvider' })
     : statusI18nKey
-      ? t(($) => $[statusI18nKey], { ns: 'common' })
+      ? t(($) => $[statusI18nKey], { ns: 'modelProvider' })
       : undefined
   const tooltipLabel = !isModelCompatible
-    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'modelProvider' })
     : tooltipI18nKey
-      ? t(($) => $[tooltipI18nKey], { ns: 'common' })
+      ? t(($) => $[tooltipI18nKey], { ns: 'modelProvider' })
       : statusLabel
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible

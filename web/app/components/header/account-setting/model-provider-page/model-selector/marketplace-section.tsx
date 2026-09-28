@@ -29,7 +29,7 @@ function MarketplaceSection({
   onInstallPlugin,
   onOpenMarketplace,
 }: MarketplaceSectionProps) {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['plugin', 'modelProvider'])
   const headingId = useId()
 
   if (marketplaceProviders.length === 0) return null
@@ -49,7 +49,7 @@ function MarketplaceSection({
             id={headingId}
             className="group/marketplace flex min-h-0 w-full flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-primary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
-            {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
+            {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'modelProvider' })}
             <span
               aria-hidden="true"
               className={cn(
@@ -106,7 +106,7 @@ function MarketplaceSection({
                       <span id={installButtonLabelId}>
                         {isInstalling
                           ? t(($) => $['installModal.installing'], { ns: 'plugin' })
-                          : t(($) => $['modelProvider.selector.install'], { ns: 'common' })}
+                          : t(($) => $['modelProvider.selector.install'], { ns: 'modelProvider' })}
                       </span>
                     </Button>
                   )}
@@ -124,7 +124,7 @@ function MarketplaceSection({
               >
                 <span className="flex-1 system-xs-regular text-text-accent">
                   {t(($) => $['modelProvider.selector.discoverMoreInMarketplace'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                   })}
                 </span>
                 <span
@@ -141,7 +141,7 @@ function MarketplaceSection({
               >
                 <span className="flex-1 system-xs-regular text-text-accent">
                   {t(($) => $['modelProvider.selector.discoverMoreInMarketplace'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                   })}
                 </span>
                 <span

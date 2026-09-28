@@ -40,7 +40,7 @@ function AppDeployContent({
 }) {
   const { t } = useTranslation(['deployments'])
   const { t: tCommon } = useTranslation(['common'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
@@ -98,7 +98,7 @@ function AppDeployContent({
         environmentId,
         initialVersion: toDeploymentVersion(
           version,
-          tWorkflow(($) => $['versionHistory.defaultName']),
+          tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
         ),
         kind: 'redeploy',
       })

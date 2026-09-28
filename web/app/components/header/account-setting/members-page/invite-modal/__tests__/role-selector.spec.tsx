@@ -109,9 +109,11 @@ describe('RoleSelector', () => {
 
     await user.click(getTrigger())
 
-    expect(within(getListbox()).getByText(/common\.members\.adminTip/i)).toBeInTheDocument()
     expect(
-      within(getListbox()).getByText(/common\.members\.datasetOperatorTip/i),
+      within(getListbox()).getByText(/workspaceMembers\.members\.adminTip/i),
+    ).toBeInTheDocument()
+    expect(
+      within(getListbox()).getByText(/workspaceMembers\.members\.datasetOperatorTip/i),
     ).toBeInTheDocument()
   })
 

@@ -1652,7 +1652,7 @@ describe('AppCard', () => {
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
       expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
 
     it('should hide resource access option when RBAC is disabled', async () => {
@@ -1669,7 +1669,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
 
     it('should navigate to app access config when resource access is clicked', async () => {
@@ -1682,7 +1682,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+        fireEvent.click(screen.getByText('navigation.settings.resourceAccess'))
       })
 
       expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/access-config')

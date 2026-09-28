@@ -84,7 +84,7 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
+from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
@@ -274,6 +274,7 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     permission_keys: list[str]
+    bound_agent_id: str | None = None
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -404,16 +405,15 @@ def _serialize_agent_app_detail(
     roster persona fields without widening the shared /apps detail schema.
     """
 
-    app_model = AppService().get_app(app_model, session=session)
+    access_mode = None
     if SystemFeatureService.is_webapp_auth_enabled():
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-        app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
+        access_mode = app_setting.access_mode
 
     roster_service = _agent_roster_service(session)
     payload = GenericAppDetailWithSite.model_validate(
-        app_model,
+        AppResponseView(app_model, session=session, account=current_user, access_mode=access_mode),
         from_attributes=True,
-        context={"session": session},
     ).model_dump(mode="json")
     agent = (
         session.scalar(
@@ -506,9 +506,8 @@ def _serialize_agent_app_pagination(
             "limit": app_pagination.per_page,
             "total": app_pagination.total,
             "has_more": app_pagination.has_next,
-            "data": app_pagination.items,
+            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
         },
-        context={"session": session},
     ).model_dump(mode="json")
     payload["publication_counts"] = {
         "published": publication_counts.published,

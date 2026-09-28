@@ -168,7 +168,7 @@ describe('Status', () => {
     render(<Status status="paused" workflowRunId="run-3" />)
 
     expect(screen.getByText('appLog.status.paused')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.log.reason')).toBeInTheDocument()
+    expect(screen.getByText('workflowHumanInput.nodes.humanInput.log.reason')).toBeInTheDocument()
     expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(3)
     expect(mockUseWorkflowPausedDetails).toHaveBeenCalledWith({
       workflowRunId: 'run-3',
@@ -204,8 +204,12 @@ describe('Status', () => {
 
     render(<Status status="paused" workflowRunId="run-4" />)
 
-    expect(screen.getByText('workflow.nodes.humanInput.log.reasonContent')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.log.backstageInputURL')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.log.backstageInputURL'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'https://example.com/a' })).toHaveAttribute(
       'href',
       'https://example.com/a',

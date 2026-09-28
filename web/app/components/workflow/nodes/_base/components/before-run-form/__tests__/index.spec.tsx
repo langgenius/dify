@@ -142,7 +142,7 @@ describe('BeforeRunForm', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' }),
+      screen.getByRole('button', { name: 'workflowHumanInput.nodes.humanInput.singleRun.button' }),
     )
 
     expect(handleShowGeneratedForm).toHaveBeenCalledWith({ query: 'hello' })
@@ -242,7 +242,7 @@ describe('BeforeRunForm', () => {
 
     expect(handleShowGeneratedForm).toHaveBeenCalledWith({})
     expect(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' }),
+      screen.getByRole('button', { name: 'workflowHumanInput.nodes.humanInput.singleRun.button' }),
     ).toBeInTheDocument()
   })
 

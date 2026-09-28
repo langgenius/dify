@@ -36,7 +36,7 @@ const AgentStrategyList = dynamic(
 
 const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
   return (
     <Infotip>
       <InfotipTrigger
@@ -51,7 +51,7 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
           <p>{description}</p>
           <p>
             <Link href="/plugins" className="text-text-accent">
-              {t(($) => $['nodes.agent.linkToPlugin'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.linkToPlugin'], { ns: 'workflowAgent' })}
             </Link>
           </p>
         </div>
@@ -112,7 +112,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const icon = selectedProvider?.declaration.identity.icon
     ? getIconUrl(selectedProvider.declaration.identity.icon)
     : undefined
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
@@ -156,7 +156,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               )}
             >
               {value?.agent_strategy_label ||
-                t(($) => $['nodes.agent.strategy.selectTip'], { ns: 'workflow' })}
+                t(($) => $['nodes.agent.strategy.selectTip'], { ns: 'workflowAgent' })}
             </p>
             <div className="ml-auto flex items-center gap-1">
               {showInstallButton && value?.plugin_unique_identifier && (
@@ -168,15 +168,17 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               )}
               {showPluginNotInstalledWarn ? (
                 <NotFoundWarn
-                  title={t(($) => $['nodes.agent.pluginNotInstalled'], { ns: 'workflow' })}
+                  title={t(($) => $['nodes.agent.pluginNotInstalled'], { ns: 'workflowAgent' })}
                   description={t(($) => $['nodes.agent.pluginNotInstalledDesc'], {
-                    ns: 'workflow',
+                    ns: 'workflowAgent',
                   })}
                 />
               ) : showUnsupportedStrategy ? (
                 <NotFoundWarn
-                  title={t(($) => $['nodes.agent.unsupportedStrategy'], { ns: 'workflow' })}
-                  description={t(($) => $['nodes.agent.strategyNotFoundDesc'], { ns: 'workflow' })}
+                  title={t(($) => $['nodes.agent.unsupportedStrategy'], { ns: 'workflowAgent' })}
+                  description={t(($) => $['nodes.agent.strategyNotFoundDesc'], {
+                    ns: 'workflowAgent',
+                  })}
                 />
               ) : (
                 <span
@@ -190,11 +192,11 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                   tooltip={
                     <div className="w-45 space-y-1 text-xs">
                       <h3 className="font-semibold text-text-primary">
-                        {t(($) => $['nodes.agent.unsupportedStrategy'], { ns: 'workflow' })}
+                        {t(($) => $['nodes.agent.unsupportedStrategy'], { ns: 'workflowAgent' })}
                       </h3>
                       <p className="text-text-tertiary">
                         {t(($) => $['nodes.agent.strategyNotFoundDescAndSwitchVersion'], {
-                          ns: 'workflow',
+                          ns: 'workflowAgent',
                         })}
                       </p>
                     </div>
@@ -217,7 +219,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           <header className="flex gap-1 p-2">
             <SearchInput
               placeholder={t(($) => $['nodes.agent.strategy.searchPlaceholder'], {
-                ns: 'workflow',
+                ns: 'workflowAgent',
               })}
               value={query}
               onValueChange={setQuery}

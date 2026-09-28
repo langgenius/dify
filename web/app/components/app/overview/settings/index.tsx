@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -36,7 +36,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -79,7 +79,7 @@ type SettingsSiteInfo = Pick<
 >
 
 type SettingsAppIconSelection =
-  | AppIconSelection
+  | IconPickerValue
   | {
       type: 'link'
       icon: string
@@ -89,7 +89,6 @@ type SettingsAppIconSelection =
 export type SettingsAppInfo = {
   id: string
   mode: AppModeEnum
-  enable_sso?: boolean
   site: SettingsSiteInfo
 }
 
@@ -109,7 +108,6 @@ export type ConfigParams = {
   icon_background?: string
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
-  enable_sso?: boolean
 }
 
 const INPUT_PLACEHOLDER_MAX_LENGTH = 64
@@ -153,7 +151,6 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
-    enable_sso: appInfo.enable_sso,
   }
 }
 
@@ -170,7 +167,6 @@ const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIcon
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
   JSON.stringify([
     appInfo.id,
-    appInfo.enable_sso,
     appInfo.site.title,
     appInfo.site.description,
     appInfo.site.chat_color_theme,
@@ -206,7 +202,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
@@ -348,7 +344,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
-      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -449,7 +444,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <AppIcon
                       size="xxl"
                       onClick={() => {
-                        setShowAppIconPicker(true)
+                        setShowIconPicker(true)
                       }}
                       className="mt-2 cursor-pointer"
                       iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
@@ -808,15 +803,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </Form>
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={showAppIconPicker}
-        initialEmoji={
-          appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined
-        }
-        onOpenChange={setShowAppIconPicker}
-        onSelect={setAppIcon}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon.type === 'link' ? undefined : appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setAppIcon}
       />
     </>
   )

@@ -57,7 +57,7 @@ type ModerationSettingModalProps = {
 }
 
 const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCancel, onSave }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'navigation'])
   const docLink = useDocLink()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading } = useModelProviderDetails()
@@ -361,7 +361,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                       onClick={handleOpenSettingsModal}
                     >
                       &nbsp;
-                      {t(($) => $['settings.provider'], { ns: 'common' })}
+                      {t(($) => $['settings.provider'], { ns: 'navigation' })}
                       &nbsp;
                     </button>
                     {t(($) => $['feature.moderation.modal.openaiNotConfig.after'], {

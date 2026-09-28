@@ -147,7 +147,7 @@ it('keeps the search input focused when a refresh removes all apps', async () =>
     await queryClient.invalidateQueries({ queryKey: ['installed-apps'] })
   })
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('common.mainNav.webApps.noResults'),
+    expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
   )
   expect(search).toHaveFocus()
 })
@@ -159,7 +159,7 @@ it('keeps focus when clearing empty search results after the unfiltered cache ex
   service.list.mockResolvedValue({ installed_apps: [], has_more: false, next_cursor: null })
   await user.type(screen.getByRole('searchbox'), 'missing app')
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('common.mainNav.webApps.noResults'),
+    expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
   )
   queryClient.removeQueries({ queryKey: ['installed-apps', ''] })
   let finish!: (value: InstalledAppListResponse) => void

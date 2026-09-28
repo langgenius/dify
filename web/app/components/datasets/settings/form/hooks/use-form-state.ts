@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
@@ -64,7 +64,7 @@ export const useFormState = () => {
 
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
@@ -127,10 +127,10 @@ export const useFormState = () => {
 
   // Icon handlers
   const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
+    setShowIconPicker(true)
   }, [])
 
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     const newIconInfo: IconInfo = {
       icon_type: icon.type,
       icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
@@ -274,8 +274,8 @@ export const useFormState = () => {
 
     // Icon
     iconInfo,
-    showAppIconPicker,
-    setShowAppIconPicker,
+    showIconPicker,
+    setShowIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
 

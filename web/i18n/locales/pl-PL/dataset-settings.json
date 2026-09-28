@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Gdy model osadzania obsługuje wielomodalność, proszę wybrać model wielomodalny do ponownego rankingu w celu uzyskania lepszej wydajności.",
   "form.retrievalSetting.title": "Ustawienia doboru",
   "form.save": "Zapisz",
-  "form.searchModel": "Szukaj modelu",
   "form.summaryAutoGen": "Automatyczne Generowanie Podsumowania",
   "form.summaryAutoGenEnableTip": "Po włączeniu podsumowania będą generowane automatycznie dla nowo dodanych dokumentów. Istniejące dokumenty nadal mogą być podsumowywane ręcznie.",
   "form.summaryAutoGenTip": "Podsumowania są generowane automatycznie dla nowo dodanych dokumentów. Istniejące dokumenty nadal mogą być podsumowywane ręcznie.",

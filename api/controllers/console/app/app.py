@@ -1,18 +1,14 @@
-import logging
 import uuid
-from collections.abc import Sequence
-from datetime import datetime
-from typing import Any, Literal, Self
+from dataclasses import asdict
+from http import HTTPStatus
+from typing import Literal, Self, override
 
-from flask import send_file
+from flask import request, send_file
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, field_validator, model_validator
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -23,54 +19,66 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import TracingProviderUnavailableError
-from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.app.error import AppNotFoundError, TracingProviderUnavailableError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
-    cloud_edition_billing_resource_check,
-    edit_permission_required,
-    enterprise_license_required,
-    is_admin_or_owner_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-    with_current_user_id,
+    validate_request,
 )
 from core.file.remote_file_metadata import FileInfo
-from core.ops.exceptions import TraceProviderNotInstalledError
-from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.trigger.constants import TRIGGER_NODE_TYPES
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
-from fields.base import ResponseModel
+from fields.app_fields import (
+    AppDetail,
+    AppDetailSiteResponse,
+    AppDetailWithSite,
+    AppExportResponse,
+    AppImportResponse,
+    AppModelConfigResponse,
+    AppPagination,
+    AppPartial,
+    AppTraceResponse,
+    DeletedTool,
+    ModelConfigPartial,
+    RecentAppListResponse,
+    RecentAppResponse,
+    Tag,
+    WorkflowPartial,
+)
 from graphon.enums import WorkflowExecutionStatus
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
-from libs.helper import build_icon_url, dump_response, to_timestamp
-from libs.login import login_required
-from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import AppMode, IconType
-from services.agent.roster_package_exporter import RosterAgentPackageExporter
-from services.app_dsl_service import AppDslService
-from services.app_package_service import AppPackageService
-from services.app_service import (
+from libs.helper import dump_response
+from libs.url_utils import normalize_api_base_url
+from machinery.context import RequestContext
+from models import DatasetPermissionEnum
+from models.account import TenantAccountRole
+from models.model import IconType
+from services.app.console_service import (
+    AppExportAgentNotFoundError,
+    AppExportPaidPlanRequiredError,
+    ConsoleAppNotFoundError,
+    CreatorsPlatformDisabledError,
+    InvalidAppAccessModesError,
+    InvalidAppExportError,
+)
+from services.app_tracing_config_service import (
+    AppTracingConfigInvalidProviderError,
+    AppTracingConfigProviderUnavailableError,
+)
+from services.entities.app_entities import (
+    AppExportOptions,
     AppListParams,
     AppListSortBy,
-    AppResponseView,
-    AppService,
+    AppRecord,
+    AppTraceSettings,
+    CopyAppParams,
     CreateAppParams,
-    RecentAppMode,
     StarredAppListParams,
+    UpdateAppParams,
 )
-from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import DslImportWarning, ImportStatus
+from services.entities.dsl_entities import ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -84,15 +92,9 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
-from services.feature_service import FeatureService
-from services.system_feature_service import SystemFeatureService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
-
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
 
-_logger = logging.getLogger(__name__)
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
 APP_LIST_QUERY_ARRAY_FIELDS = ("tag_ids", "creator_ids")
@@ -238,348 +240,6 @@ class AppTracePayload(BaseModel):
         return value
 
 
-class AppTraceResponse(ResponseModel):
-    enabled: bool = False
-    tracing_provider: str | None = None
-
-
-class Tag(ResponseModel):
-    id: str
-    name: str
-    type: str
-
-
-class WorkflowPartial(ResponseModel):
-    id: str
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class ModelConfigPartial(ResponseModel):
-    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
-    pre_prompt: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class AppModelConfigResponse(ResponseModel):
-    opening_statement: str | None = None
-    suggested_questions: Any | None = Field(
-        default=None, validation_alias=AliasChoices("suggested_questions_list", "suggested_questions")
-    )
-    suggested_questions_after_answer: Any | None = Field(
-        default=None,
-        validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
-    )
-    speech_to_text: Any | None = Field(
-        default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
-    )
-    text_to_speech: Any | None = Field(
-        default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
-    )
-    retriever_resource: Any | None = Field(
-        default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
-    )
-    annotation_reply: Any | None = Field(
-        default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
-    )
-    more_like_this: Any | None = Field(
-        default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
-    )
-    sensitive_word_avoidance: Any | None = Field(
-        default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
-    )
-    external_data_tools: Any | None = Field(
-        default=None, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
-    )
-    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
-    user_input_form: Any | None = Field(
-        default=None, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
-    )
-    dataset_query_variable: str | None = None
-    pre_prompt: str | None = None
-    agent_mode: Any | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
-    prompt_type: str | None = None
-    chat_prompt_config: Any | None = Field(
-        default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
-    )
-    completion_prompt_config: Any | None = Field(
-        default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
-    )
-    dataset_configs: Any | None = Field(
-        default=None, validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs")
-    )
-    file_upload: Any | None = Field(default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload"))
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class AppDetailSiteResponse(ResponseModel):
-    access_token: str | None = Field(default=None, validation_alias="code")
-    code: str | None = None
-    title: str | None = None
-    icon_type: str | IconType | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    description: str | None = None
-    default_language: str | None = None
-    chat_color_theme: str | None = None
-    chat_color_theme_inverted: bool | None = None
-    customize_domain: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    input_placeholder: str | None = None
-    custom_disclaimer: str | None = None
-    customize_token_strategy: str | None = None
-    prompt_public: bool | None = None
-    app_base_url: str | None = None
-    show_workflow_steps: bool | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
-
-    @field_validator("icon_type", mode="before")
-    @classmethod
-    def _normalize_icon_type(cls, value: str | IconType | None) -> str | None:
-        if isinstance(value, IconType):
-            return value.value
-        return value
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class DeletedTool(ResponseModel):
-    type: str
-    tool_name: str
-    provider_id: str
-
-
-class AppResponseModel(ResponseModel):
-    @model_validator(mode="before")
-    @classmethod
-    def _use_request_session(cls, value: Any, info: ValidationInfo) -> Any:
-        if not isinstance(value, App):
-            return value
-        if info.context is None or "session" not in info.context:
-            raise ValueError("session context is required to serialize an App")
-        return AppResponseView(value, session=info.context["session"])
-
-
-class AppPartial(AppResponseModel):
-    id: str
-    name: str
-    max_active_requests: int | None = None
-    description: str | None = Field(default=None, validation_alias=AliasChoices("desc_or_prompt", "description"))
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    model_config_: ModelConfigPartial | None = Field(
-        default=None,
-        validation_alias=AliasChoices("app_model_config", "model_config"),
-        alias="model_config",
-    )
-    workflow: WorkflowPartial | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-    tags: list[Tag] = Field(default_factory=list)
-    access_mode: str | None = None
-    create_user_name: str | None = None
-    author_name: str | None = None
-    has_draft_trigger: bool | None = None
-    permission_keys: list[str] = Field(default_factory=list)
-    # For Agent App type: the roster Agent backing this app (None otherwise).
-    bound_agent_id: str | None = None
-    # For Agent App responses exposed through /agent.
-    app_id: str | None = None
-    is_starred: bool = False
-    maintainer: str | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class RecentAppResponse(ResponseModel):
-    id: str
-    name: str
-    icon_type: IconType | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    mode: RecentAppMode
-    author_name: str | None = None
-    updated_at: int
-    permission_keys: list[str] = Field(default_factory=list)
-    maintainer: str | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
-
-    @field_validator("updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int) -> int:
-        return to_timestamp(value)
-
-
-class RecentAppListResponse(ResponseModel):
-    data: list[RecentAppResponse]
-
-
-class AppDetail(AppResponseModel):
-    id: str
-    name: str
-    description: str | None = None
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon: str | None = None
-    icon_background: str | None = None
-    enable_site: bool
-    enable_api: bool
-    model_config_: AppModelConfigResponse | None = Field(
-        default=None,
-        validation_alias=AliasChoices("app_model_config", "model_config"),
-        alias="model_config",
-    )
-    workflow: WorkflowPartial | None = None
-    tracing: Any | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-    access_mode: str | None = None
-    tags: list[Tag] = Field(default_factory=list)
-    permission_keys: list[str] = Field(default_factory=list)
-    maintainer: str | None = None
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class AppDetailWithSite(AppDetail):
-    icon_type: str | None = None
-    api_base_url: str | None = None
-    max_active_requests: int | None = None
-    deleted_tools: list[DeletedTool] = Field(default_factory=list)
-    site: AppDetailSiteResponse | None = None
-    # For Agent App type: the roster Agent backing this app (None otherwise).
-    bound_agent_id: str | None = None
-    # For Agent App responses exposed through /agent.
-    app_id: str | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
-
-
-class AppPagination(ResponseModel):
-    page: int
-    limit: int = Field(validation_alias=AliasChoices("per_page", "limit"))
-    total: int
-    has_more: bool = Field(validation_alias=AliasChoices("has_next", "has_more"))
-    data: list[AppPartial] = Field(validation_alias=AliasChoices("items", "data"))
-
-
-class AppExportResponse(ResponseModel):
-    data: str
-
-
-class AppImportResponse(ResponseModel):
-    id: str
-    status: ImportStatus
-    app_id: str | None = None
-    app_mode: str | None = None
-    current_dsl_version: str
-    imported_dsl_version: str = ""
-    error: str = ""
-    warnings: list[DslImportWarning] = Field(default_factory=list)
-
-
-def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
-    if SystemFeatureService.is_webapp_auth_enabled():
-        app_ids = [str(app.id) for app in apps]
-        res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
-        if len(res) != len(app_ids):
-            raise BadRequest("Invalid app id in webapp auth")
-
-        for app in apps:
-            if str(app.id) in res:
-                app.access_mode = res[str(app.id)].access_mode
-
-    workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
-    draft_trigger_app_ids: set[str] = set()
-    if workflow_capable_app_ids:
-        draft_workflows = (
-            session.execute(
-                select(Workflow).where(
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                    Workflow.app_id.in_(workflow_capable_app_ids),
-                    Workflow.tenant_id == tenant_id,
-                )
-            )
-            .scalars()
-            .all()
-        )
-        trigger_node_types = TRIGGER_NODE_TYPES
-        for workflow in draft_workflows:
-            node_id = None
-            try:
-                for node_id, node_data in workflow.walk_nodes():
-                    if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
-                        break
-            except Exception:
-                _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
-                continue
-
-    for app in apps:
-        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
-
-
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
 register_response_schema_models(
     console_ns,
@@ -638,414 +298,210 @@ register_response_schema_models(
 )
 
 
+_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+_ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+
+
+def _app_detail_response(app: AppRecord) -> AppDetailWithSite:
+    """Resolve transport URLs here so repositories work without a Flask request."""
+    data = asdict(app)
+    data["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
+    data["app_id"] = None
+    if data["site"] is not None:
+        data["site"]["app_base_url"] = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
+    return AppDetailWithSite.model_validate(data)
+
+
+class AppResource(Resource):
+    """Translate application failures at the HTTP boundary for all app routes."""
+
+    @override
+    def dispatch_request(self, *args, **kwargs):
+        try:
+            return super().dispatch_request(*args, **kwargs)
+        except AppExportAgentNotFoundError as error:
+            raise NotFound(str(error)) from error
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except (InvalidAppExportError, InvalidAppAccessModesError) as error:
+            raise BadRequest(str(error)) from error
+        except (AppExportPaidPlanRequiredError, NoPermissionError) as error:
+            raise Forbidden(str(error)) from error
+        except CreatorsPlatformDisabledError as error:
+            return {"error": str(error)}, HTTPStatus.FORBIDDEN
+        except AppTracingConfigInvalidProviderError as error:
+            raise ValueError(str(error)) from error
+
+
 @console_ns.route("/apps")
-class AppListApi(Resource):
+class AppListApi(AppResource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
     @console_ns.doc(params=query_params_from_model(AppListQuery))
-    @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_session(write=False)
-    @with_current_user_id
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
-        """Get app list"""
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppPagination.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, context: RequestContext):
         args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
-        params = AppListParams(
-            page=args.page,
-            limit=args.limit,
-            mode=args.mode,
-            sort_by=args.sort_by,
-            name=args.name,
-            tag_ids=args.tag_ids,
-            creator_ids=args.creator_ids,
-            is_created_by_me=args.is_created_by_me,
-        )
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            current_tenant_id,
-            current_user_id,
-            session=session,
-        )
-        if dify_config.RBAC_ENABLED:
-            access_filter = resolve_app_access_filter(
-                current_tenant_id,
-                current_user_id,
-                session=session,
-                permissions=permissions,
-            )
-            access_filter.apply_to_params(params)
-
-        # get app list
-        app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, session)
-        if not app_pagination:
-            response = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
-            return response.model_dump(mode="json"), 200
-
-        app_ids = [str(app.id) for app in app_pagination.items]
-        permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
-        _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
-
-        pagination_model = AppPagination.model_validate(
-            app_pagination,
-            from_attributes=True,
-            context={"session": session},
-        )
-        if app_pagination.items:
-            pagination_model = pagination_model.model_copy(
-                update={
-                    "data": [
-                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
-                        for item in pagination_model.data
-                    ]
-                }
-            )
-        return pagination_model.model_dump(mode="json"), 200
+        params = AppListParams.model_validate(args.model_dump())
+        return dump_response(
+            AppPagination, application_services().apps.console.list_apps(context, params)
+        ), HTTPStatus.OK
 
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
     @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
-    @console_ns.response(201, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace()))
-    @cloud_edition_billing_resource_check("apps")
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    @model_validate(CreateAppPayload)
-    def post(self, req_data: CreateAppPayload, session: Session, current_tenant_id: str, current_user: Account):
-        """Create app"""
-        params = CreateAppParams(
-            name=req_data.name,
-            description=req_data.description,
-            mode=req_data.mode,
-            icon_type=req_data.icon_type,
-            icon=req_data.icon,
-            icon_background=req_data.icon_background,
-        )
-
-        app_service = AppService()
-        app = app_service.create_app(current_tenant_id, params, current_user, session=session)
-        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            current_tenant_id,
-            current_user.id,
-            [str(app.id)],
-            session=session,
-        )
-        app_detail = AppDetailWithSite.model_validate(
-            app,
-            from_attributes=True,
-            context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
-
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                current_tenant_id,
-                current_user.id,
-                str(app.id),
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-            )
-
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
-
-        return app_detail.model_dump(mode="json"), 201
+    @console_ns.response(HTTPStatus.CREATED, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        billing_resource="apps",
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace())],
+    )
+    def post(self, context: RequestContext):
+        payload = validate_request(CreateAppPayload)
+        params = CreateAppParams.model_validate(payload.model_dump())
+        response = _app_detail_response(application_services().apps.console.create(context, params))
+        return dump_response(AppDetailWithSite, response), HTTPStatus.CREATED
 
 
 @console_ns.route("/apps/recent")
-class RecentAppListApi(Resource):
+class RecentAppListApi(AppResource):
     @console_ns.doc("list_recent_apps")
     @console_ns.doc(description="Get recently modified apps for the home Continue Work section")
     @console_ns.doc(params=query_params_from_model(RecentAppListQuery))
-    @console_ns.response(200, "Success", console_ns.models[RecentAppListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_session(write=False)
-    @with_current_user_id
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
-        """Return the lightweight app cards needed by the Explore home page."""
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecentAppListResponse.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, context: RequestContext):
         args = query_params_from_request(RecentAppListQuery)
-        params = AppListParams(limit=args.limit)
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            current_tenant_id,
-            current_user_id,
-            session=session,
-        )
-        if dify_config.RBAC_ENABLED:
-            access_filter = resolve_app_access_filter(
-                current_tenant_id,
-                current_user_id,
-                session=session,
-                permissions=permissions,
-            )
-            access_filter.apply_to_params(params)
-
-        recent_apps = AppService().get_recent_apps(current_user_id, current_tenant_id, params, session)
-        permission_keys_map = permissions.app.permission_keys_by_resource_ids([app.id for app in recent_apps])
-        response_items = [
-            RecentAppResponse.model_validate(app, from_attributes=True).model_copy(
-                update={"permission_keys": permission_keys_map.get(app.id, [])}
-            )
-            for app in recent_apps
-        ]
-        return dump_response(RecentAppListResponse, {"data": response_items}), 200
+        return dump_response(
+            RecentAppListResponse, {"data": application_services().apps.console.recent(context, args.limit)}
+        ), HTTPStatus.OK
 
 
 @console_ns.route("/apps/starred")
-class StarredAppListApi(Resource):
+class StarredAppListApi(AppResource):
     @console_ns.doc("list_starred_apps")
     @console_ns.doc(description="Get applications starred by the current account")
     @console_ns.doc(params=query_params_from_model(StarredAppListQuery))
-    @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_session(write=False)
-    @with_current_user_id
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppPagination.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, context: RequestContext):
         args = query_params_from_request(StarredAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
-        params = StarredAppListParams(
-            page=args.page,
-            limit=args.limit,
-            mode=args.mode,
-            sort_by=args.sort_by,
-            name=args.name,
-            tag_ids=args.tag_ids,
-            creator_ids=args.creator_ids,
-            is_created_by_me=args.is_created_by_me,
-        )
-
-        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, session)
-        if not app_pagination:
-            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
-            return empty.model_dump(mode="json"), 200
-
-        _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
-        return (
-            AppPagination.model_validate(
-                app_pagination,
-                from_attributes=True,
-                context={"session": session},
-            ).model_dump(mode="json"),
-            200,
-        )
+        params = StarredAppListParams.model_validate(args.model_dump())
+        return dump_response(
+            AppPagination, application_services().apps.console.list_apps(context, params)
+        ), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/star")
-class AppStarApi(Resource):
+class AppStarApi(AppResource):
     @console_ns.doc("star_app")
     @console_ns.doc(description="Star an application for the current account")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "App not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_current_user_id
-    @with_session
-    @get_app_model(mode=None)
-    def post(self, session: Session, current_user_id: str, app_model: App):
-        AppService.star_app(app=app_model, account_id=current_user_id, session=session)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_account_admission(require_valid_enterprise_license=True)
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        application_services().apps.console.set_starred(context, str(app_id), True)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.doc("unstar_app")
     @console_ns.doc(description="Remove the current account's star from an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "App not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_current_user_id
-    @with_session
-    @get_app_model(mode=None)
-    def delete(self, session: Session, current_user_id: str, app_model: App):
-        AppService.unstar_app(app=app_model, account_id=current_user_id, session=session)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_account_admission(require_valid_enterprise_license=True)
+    def delete(self, context: RequestContext, app_id: uuid.UUID):
+        application_services().apps.console.set_starred(context, str(app_id), False)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>")
-class AppApi(Resource):
+class AppApi(AppResource):
     @console_ns.doc("get_app_detail")
     @console_ns.doc(description="Get application details")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Success", console_ns.models[AppDetailWithSite.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    @get_app_model(mode=None)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
-        """Get app detail"""
-        app_service = AppService()
-
-        app_model = app_service.get_app(app_model, session=session)
-
-        if SystemFeatureService.is_webapp_auth_enabled():
-            app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            current_tenant_id,
-            current_user.id,
-            app_id=str(app_model.id),
-            session=session,
-        )
-        permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
-
-        response_model = AppDetailWithSite.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app_model.id), [])})
-        return response_model.model_dump(mode="json")
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppDetailWithSite.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, context: RequestContext, app_id: uuid.UUID):
+        response = _app_detail_response(application_services().apps.console.get(context, str(app_id)))
+        return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("update_app")
     @console_ns.doc(description="Update application details")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
-    @console_ns.response(200, "App updated successfully", console_ns.models[AppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    @console_ns.response(HTTPStatus.OK, "App updated successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_EDIT, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(UpdateAppPayload)
-    def put(self, req_data: UpdateAppPayload, session: Session, app_model: App):
-        """Update app"""
-
-        app_service = AppService()
-
-        args_dict: AppService.ArgsDict = {
-            "name": req_data.name,
-            "description": req_data.description or "",
-            "icon_type": req_data.icon_type,
-            "icon": req_data.icon or "",
-            "icon_background": req_data.icon_background or "",
-            "use_icon_as_answer_icon": req_data.use_icon_as_answer_icon or False,
-            "max_active_requests": req_data.max_active_requests or 0,
-        }
-        app_model = app_service.update_app(app_model, args_dict, session=session)
-        return AppDetailWithSite.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_dump(mode="json")
+    def put(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(UpdateAppPayload)
+        params = UpdateAppParams(
+            name=payload.name,
+            description=payload.description or "",
+            icon_type=payload.icon_type,
+            icon=payload.icon or "",
+            icon_background=payload.icon_background or "",
+            use_icon_as_answer_icon=payload.use_icon_as_answer_icon or False,
+            max_active_requests=payload.max_active_requests or 0,
+        )
+        response = _app_detail_response(application_services().apps.console.update(context, str(app_id), params))
+        return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("delete_app")
     @console_ns.doc(description="Delete application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(204, "App deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_DELETE, PlainApp()), RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp())
+    @console_ns.response(HTTPStatus.NO_CONTENT, "App deleted successfully")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_DELETE, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model
-    def delete(self, session: Session, app_model: App):
-        """Delete app"""
-        app_service = AppService()
-        app_service.delete_app(app_model, session=session)
-
-        return "", 204
+    def delete(self, context: RequestContext, app_id: uuid.UUID):
+        application_services().apps.console.delete(context, str(app_id))
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/apps/<uuid:app_id>/copy")
-class AppCopyApi(Resource):
+class AppCopyApi(AppResource):
     @console_ns.doc("copy_app")
     @console_ns.doc(description="Create a copy of an existing application")
     @console_ns.doc(params={"app_id": "Application ID to copy"})
     @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
-    @console_ns.response(201, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
-    @console_ns.response(202, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(CopyAppPayload)
-    def post(
-        self,
-        req_data: CopyAppPayload,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        app_model: App,
-    ):
-        """Copy app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-
-        import_service = AppDslService(session)
-        try:
-            result, app = import_service.copy_app(
-                app_model=app_model,
-                account=current_user,
-                tenant_id=current_tenant_id,
-                name=req_data.name,
-                description=req_data.description,
-                icon_type=req_data.icon_type,
-                icon=req_data.icon,
-                icon_background=req_data.icon_background,
-            )
-        except NoPermissionError as e:
-            raise Forbidden(str(e))
-        if result.status == ImportStatus.FAILED:
-            return dump_response(AppImportResponse, result), 400
-        if result.status == ImportStatus.PENDING:
-            return dump_response(AppImportResponse, result), 202
-        if not app:
-            raise NotFound("App not found")
-
-        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            current_tenant_id,
-            current_user.id,
-            [str(app.id)],
-            session=session,
+    @console_ns.response(HTTPStatus.CREATED, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(
+        HTTPStatus.ACCEPTED, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())]
+    )
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(CopyAppPayload)
+        result, copied = application_services().apps.console.copy(
+            context, str(app_id), CopyAppParams.model_validate(payload.model_dump())
         )
-        response_model = AppDetailWithSite.model_validate(
-            app,
-            from_attributes=True,
-            context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
-        return response_model.model_dump(mode="json"), 201
+        if result.status == ImportStatus.FAILED:
+            return dump_response(AppImportResponse, result), HTTPStatus.BAD_REQUEST
+        if result.status == ImportStatus.PENDING:
+            return dump_response(AppImportResponse, result), HTTPStatus.ACCEPTED
+        assert copied is not None
+        return dump_response(AppDetailWithSite, _app_detail_response(copied)), HTTPStatus.CREATED
 
 
 @console_ns.route("/apps/<uuid:app_id>/export")
-class AppExportApi(Resource):
+class AppExportApi(AppResource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
@@ -1054,277 +510,173 @@ class AppExportApi(Resource):
         produces=["application/json", "application/zip"],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
     )
-    @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
-        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+    @console_ns.response(HTTPStatus.OK, "App exported successfully", console_ns.models[AppExportResponse.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        ],
     )
-    @get_app_model
-    @model_validate(AppExportQuery)
-    def get(self, req_data: AppExportQuery, app_model: App):
-        """Export app"""
-
-        if req_data.version_id is not None:
-            if app_model.mode != AppMode.AGENT:
-                raise BadRequest("version_id is only available for Agent Apps")
-            if (
-                dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-                and not FeatureService.get_workspace_plan(app_model.tenant_id).is_paid
-            ):
-                raise Forbidden("This feature requires a paid plan.")
-
-        if req_data.format != "yaml":
-            if app_model.mode == AppMode.AGENT:
-                agent_id = app_model.bound_agent_id_with_session(session=db.session())
-                if agent_id is None:
-                    raise NotFound("Agent not found")
-                exported = RosterAgentPackageExporter().export(
-                    tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
-                )
-            else:
-                exported = AppPackageService().export_app(
-                    app_model=app_model,
-                    include_secret=req_data.include_secret,
-                    workflow_id=req_data.workflow_id,
-                )
-            try:
-                archive_response = send_file(
-                    exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
-                )
-            except Exception:
-                exported.close()
-                raise
-            archive_response.call_on_close(exported.close)
-            return archive_response
-
-        response = AppExportResponse(
-            data=AppDslService.export_dsl(
-                app_model=app_model,
-                session=db.session(),
-                include_secret=req_data.include_secret,
-                workflow_id=req_data.workflow_id,
-                version_id=req_data.version_id,
-            )
+    def get(self, context: RequestContext, app_id: uuid.UUID):
+        query = validate_request(AppExportQuery)
+        exported = application_services().apps.console.export(
+            context, str(app_id), AppExportOptions(**query.model_dump())
         )
-        return response.model_dump(mode="json")
+        if isinstance(exported, str):
+            return AppExportResponse(data=exported).model_dump(mode="json")
+        try:
+            response = send_file(
+                exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+            )
+        except Exception:
+            exported.close()
+            raise
+        response.call_on_close(exported.close)
+        return response
 
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
-class AppPublishToCreatorsPlatformApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
-        RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentBehindApp()),
+class AppPublishToCreatorsPlatformApi(AppResource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RedirectUrlResponse.__name__])
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentBehindApp()),
+        ],
     )
-    @with_current_user_id
-    @get_app_model(mode=None)
-    def post(self, current_user_id: str, app_model: App):
-        """Publish app to Creators Platform"""
-        from core.helper.creators import get_redirect_url, upload_dsl
-
-        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
-            return {"error": "Creators Platform features are not enabled"}, 403
-
-        dsl_content = AppDslService.export_dsl(app_model=app_model, session=db.session(), include_secret=False)
-        dsl_bytes = dsl_content.encode("utf-8")
-
-        claim_code = upload_dsl(dsl_bytes)
-        # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
-        # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
-        oauth_code = None
-        client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
-        if client_id:
-            authorization = application_services().oauth_server.issue_authorization_code(
-                client_id=client_id,
-                account_id=current_user_id,
-            )
-            oauth_code = authorization.code
-        redirect_url = get_redirect_url(claim_code, oauth_code=oauth_code)
-
-        return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        url = application_services().apps.console.publish(context, str(app_id))
+        return RedirectUrlResponse(redirect_url=url).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
-class AppNameApi(Resource):
+class AppNameApi(AppResource):
     @console_ns.doc("check_app_name")
     @console_ns.doc(description="Check if app name is available")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppNamePayload.__name__])
-    @console_ns.response(200, "Name availability checked", console_ns.models[AppDetail.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    @console_ns.response(HTTPStatus.OK, "Name availability checked", console_ns.models[AppDetail.__name__])
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_EDIT, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(AppNamePayload)
-    def post(self, req_data: AppNamePayload, session: Session, app_model: App):
-
-        app_service = AppService()
-        app_model = app_service.update_app_name(app_model, req_data.name, session=session)
-        return AppDetail.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_dump(mode="json")
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(AppNamePayload)
+        return dump_response(AppDetail, application_services().apps.console.rename(context, str(app_id), payload.name))
 
 
 @console_ns.route("/apps/<uuid:app_id>/icon")
-class AppIconApi(Resource):
+class AppIconApi(AppResource):
     @console_ns.doc("update_app_icon")
     @console_ns.doc(description="Update application icon")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppIconPayload.__name__])
-    @console_ns.response(200, "Icon updated successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    @console_ns.response(HTTPStatus.OK, "Icon updated successfully", console_ns.models[AppDetail.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_EDIT, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(AppIconPayload)
-    def post(self, req_data: AppIconPayload, session: Session, app_model: App):
-
-        app_service = AppService()
-        app_model = app_service.update_app_icon(
-            app_model,
-            req_data.icon or "",
-            req_data.icon_background or "",
-            req_data.icon_type,
-            session=session,
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(AppIconPayload)
+        result = application_services().apps.console.update_icon(
+            context,
+            str(app_id),
+            icon=payload.icon or "",
+            icon_background=payload.icon_background or "",
+            icon_type=payload.icon_type,
         )
-        return AppDetail.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_dump(mode="json")
+        return dump_response(AppDetail, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site-enable")
-class AppSiteStatus(Resource):
+class AppSiteStatus(AppResource):
     @console_ns.doc("update_app_site_status")
     @console_ns.doc(description="Enable or disable app site")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppSiteStatusPayload.__name__])
-    @console_ns.response(200, "Site status updated successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
-        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    @console_ns.response(HTTPStatus.OK, "Site status updated successfully", console_ns.models[AppDetail.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(AppSiteStatusPayload)
-    def post(self, req_data: AppSiteStatusPayload, session: Session, app_model: App):
-
-        app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, req_data.enable_site, session=session)
-        return AppDetail.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_dump(mode="json")
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(AppSiteStatusPayload)
+        return dump_response(
+            AppDetail, application_services().apps.console.set_site_enabled(context, str(app_id), payload.enable_site)
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/api-enable")
-class AppApiStatus(Resource):
+class AppApiStatus(AppResource):
     @console_ns.doc("update_app_api_status")
     @console_ns.doc(description="Enable or disable app API")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppApiStatusPayload.__name__])
-    @console_ns.response(200, "API status updated successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @account_initialization_required
-    @rbac_permission_required(
-        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
-        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    @console_ns.response(HTTPStatus.OK, "API status updated successfully", console_ns.models[AppDetail.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_ADMIN_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ],
     )
-    @with_session
-    @get_app_model(mode=None)
-    @model_validate(AppApiStatusPayload)
-    def post(self, req_data: AppApiStatusPayload, session: Session, app_model: App):
-
-        app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, req_data.enable_api, session=session)
-        return AppDetail.model_validate(
-            app_model,
-            from_attributes=True,
-            context={"session": session},
-        ).model_dump(mode="json")
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(AppApiStatusPayload)
+        return dump_response(
+            AppDetail, application_services().apps.console.set_api_enabled(context, str(app_id), payload.enable_api)
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace")
-class AppTraceApi(Resource):
+class AppTraceApi(AppResource):
     @console_ns.doc("get_app_trace")
     @console_ns.doc(description="Get app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trace configuration retrieved successfully",
         console_ns.models[AppTraceResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_session
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
-    def get(self, session: Session, app_model: App):
-        """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
-
-        return dump_response(AppTraceResponse, app_trace_config)
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
+    def get(self, context: RequestContext, app_id: uuid.UUID):
+        return dump_response(AppTraceResponse, application_services().apps.console.get_trace(context, str(app_id)))
 
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trace configuration updated successfully",
         console_ns.models[SimpleResultResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
-    @get_app_model
-    @model_validate(AppTracePayload)
-    def post(self, req_data: AppTracePayload, app_model: App):
-        # add app trace
-
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())]
+    )
+    def post(self, context: RequestContext, app_id: uuid.UUID):
+        payload = validate_request(AppTracePayload)
         try:
-            OpsTraceManager.update_app_tracing_config(
-                app_id=app_model.id,
-                enabled=req_data.enabled,
-                tracing_provider=req_data.tracing_provider,
+            application_services().apps.console.set_trace(
+                context,
+                str(app_id),
+                AppTraceSettings(**payload.model_dump()),
             )
-        except TraceProviderNotInstalledError as error:
+        except AppTracingConfigProviderUnavailableError as error:
             raise TracingProviderUnavailableError() from error
-
         return SimpleResultResponse(result="success").model_dump(mode="json")

@@ -650,7 +650,7 @@ export function AgentPromptEditor() {
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     handledEditorMenuKeyRef.current = false
 
-    if (readOnly) return
+    if (readOnly || event.nativeEvent.isComposing) return
 
     if (event.key === 'Escape' && isSlashMenuOpen) {
       event.preventDefault()
@@ -849,7 +849,7 @@ export function AgentPromptEditor() {
     [configuredReferenceIds, t, tools],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen) return
 
     const rootElement = positioningRootRef.current
@@ -887,6 +887,8 @@ export function AgentPromptEditor() {
     if (!menuElement) return
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.isComposing) return
+
       const activeElement = menuElement.ownerDocument.activeElement
       if (!menuElement.contains(activeElement)) return
 

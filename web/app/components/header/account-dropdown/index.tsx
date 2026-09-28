@@ -31,7 +31,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
     getHydrationSnapshot,
     getServerHydrationSnapshot,
   )
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['accountSettings'])
 
   const { mutateAsync: logout } = useLogout()
 
@@ -49,7 +49,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
         <DropdownMenuTrigger
           disabled={isHydrating}
           render={trigger({
-            ariaLabel: t(($) => $['account.account'], { ns: 'common' }),
+            ariaLabel: t(($) => $['account.account'], { ns: 'accountSettings' }),
           })}
         />
         <DropdownMenuContent

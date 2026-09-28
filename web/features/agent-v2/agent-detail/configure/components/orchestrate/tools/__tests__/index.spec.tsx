@@ -70,7 +70,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button'
     onSuccess?: () => void
   }) => (
     <button type="button" data-unique-identifier={uniqueIdentifier} onClick={onSuccess}>
-      workflow.nodes.agent.pluginInstaller.install
+      workflowAgent.nodes.agent.pluginInstaller.install
     </button>
   ),
 }))
@@ -721,7 +721,7 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
 
       const installButton = screen.getByRole('button', {
-        name: 'workflow.nodes.agent.pluginInstaller.install',
+        name: 'workflowAgent.nodes.agent.pluginInstaller.install',
       })
       expect(installButton).toHaveAttribute(
         'data-unique-identifier',
@@ -752,7 +752,7 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
-          name: 'workflow.nodes.agent.pluginInstaller.install',
+          name: 'workflowAgent.nodes.agent.pluginInstaller.install',
         }),
       ).toHaveAttribute('data-unique-identifier', 'langgenius/google:0.0.1@fallback')
     })

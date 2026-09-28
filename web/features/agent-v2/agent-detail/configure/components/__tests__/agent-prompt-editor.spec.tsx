@@ -732,6 +732,30 @@ describe('AgentPromptEditor', () => {
       })
     })
 
+    it('should leave slash-menu navigation and selection to IME while composing', async () => {
+      const user = userEvent.setup()
+      const { store } = renderAgentPromptEditor('Review /')
+      const textbox = screen.getByRole('textbox')
+
+      textbox.focus()
+      const menu = await openSlashMenuFromEditor(textbox)
+      await user.keyboard('{ArrowDown}{ArrowRight}{ArrowDown}')
+      const skill = screen.getByRole('button', { name: 'Library Skill' })
+      expect(skill).toHaveAttribute('data-agent-prompt-menu-active')
+
+      for (const key of ['ArrowDown', 'Enter', 'Escape'])
+        fireEvent.keyDown(textbox, { key, isComposing: true })
+
+      expect(menu).toBeInTheDocument()
+      expect(skill).toHaveAttribute('data-agent-prompt-menu-active')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review /')
+
+      await user.keyboard('{Enter}')
+      expect(store.get(agentComposerPromptAtom)).toBe(
+        'Review [§skill:library-skill:Library Skill§] ',
+      )
+    })
+
     it('should keep editor focus when selecting slash menu items with a pointer', async () => {
       const user = userEvent.setup()
       const { store } = renderAgentPromptEditor('Review these tenders /')
@@ -1209,12 +1233,17 @@ describe('AgentPromptEditor', () => {
       try {
         renderAgentPromptEditor('Review /')
 
-        await openSlashMenuFromEditor()
+        const textbox = screen.getByRole('textbox')
+        textbox.focus()
+        expect(textbox).toHaveFocus()
+
+        await openSlashMenuFromEditor(textbox)
         expect(
           screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
         ).toBeInTheDocument()
 
-        fireEvent.focusIn(outsideButton)
+        outsideButton.focus()
+        expect(outsideButton).toHaveFocus()
 
         await waitFor(() => {
           expect(

@@ -94,7 +94,7 @@ type BasePanelProps = {
 }
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const panelId = useId()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
@@ -517,7 +517,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   const runThisStepLabel = t(($) => $['panel.runThisStep'], { ns: 'workflow' })
   const singleRunActionLabel = isSingleRunning
-    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
     : runThisStepLabel
   const nodePanelRightOffset = !showMessageLogModal ? '4px' : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
@@ -537,10 +537,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const panelTabs = (
     <TabsList>
       <TabsTab value={TabType.settings}>
-        {t(($) => $['debug.settingsTab'], { ns: 'workflow' }).toLocaleUpperCase()}
+        {t(($) => $['debug.settingsTab'], { ns: 'workflowDebug' }).toLocaleUpperCase()}
       </TabsTab>
       <TabsTab value={TabType.lastRun}>
-        {t(($) => $['debug.lastRunTab'], { ns: 'workflow' }).toLocaleUpperCase()}
+        {t(($) => $['debug.lastRunTab'], { ns: 'workflowDebug' }).toLocaleUpperCase()}
       </TabsTab>
     </TabsList>
   )

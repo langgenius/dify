@@ -11,7 +11,7 @@ type ConditionInputProps = {
   availableNodes: Node[]
 }
 const ConditionInput = ({ value, onChange, disabled, availableNodes }: ConditionInputProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
@@ -21,7 +21,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
+      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
       workflowVariableBlock={{
         show: true,
         variables: [],

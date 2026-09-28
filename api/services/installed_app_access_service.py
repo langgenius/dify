@@ -10,11 +10,16 @@ from services.webapp_access_query_service import WebAppAccessModesQuery, WebAppU
 
 @dataclass(frozen=True, slots=True)
 class InstalledAppRef:
-    """Installation identity and app mode captured during request admission."""
+    """Installation and app identity captured during request admission.
+
+    tenant_id identifies the installing workspace; app_owner_tenant_id is the
+    actual app owner's workspace and may differ for cross-workspace installs.
+    """
 
     id: str
     app_id: str
     tenant_id: str
+    app_owner_tenant_id: str
     app_mode: str
 
 

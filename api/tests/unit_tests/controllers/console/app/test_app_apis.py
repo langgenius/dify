@@ -15,7 +15,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.console import console_ns
 from controllers.console.app import (
     annotation as annotation_module,
 )
@@ -85,7 +84,6 @@ from services.app_tracing_config_service import (
     AppTracingConfigNotFoundError,
     AppTracingConfigVerificationFailedError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -256,131 +254,6 @@ class TestCompletionEndpoints:
                 _make_account(),
                 app_model=_make_app(),
             )
-
-
-class TestAppEndpoints:
-    def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
-        self,
-        database_app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        api = app_module.AppPublishToCreatorsPlatformApi()
-        method = unwrap(api.post)
-        oauth_server = MagicMock()
-        oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
-        services = MagicMock(oauth_server=oauth_server)
-
-        apply_config_overrides(
-            monkeypatch,
-            CREATORS_PLATFORM_FEATURES_ENABLED=True,
-            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-1",
-        )
-        monkeypatch.setattr(app_module, "application_services", lambda: services)
-        monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
-
-        with (
-            database_app.test_request_context(),
-            patch("core.helper.creators.upload_dsl", return_value="claim-1"),
-            patch("core.helper.creators.get_redirect_url", return_value="https://creators.example.com") as redirect,
-        ):
-            response = method(api, USER_ID, _make_app())
-
-        assert response == {"redirect_url": "https://creators.example.com"}
-        oauth_server.issue_authorization_code.assert_called_once_with(
-            client_id="client-1",
-            account_id=USER_ID,
-        )
-        redirect.assert_called_once_with("claim-1", oauth_code="oauth-code-1")
-
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        api = app_module.AppApi()
-        method = unwrap(api.put)
-        payload = {
-            "name": "Updated App",
-            "description": "Updated description",
-            "icon": "🤖",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(
-                api,
-                app_module.UpdateAppPayload(
-                    name="Updated App",
-                    description="Updated description",
-                    icon="🤖",
-                    icon_background="#FFFFFF",
-                ),
-                unbound_session,
-                app_model=_make_app(icon_type=app_module.IconType.EMOJI),
-            )
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app.call_args.args[1]["icon_type"] is None
-
-    def test_update_app_payload_should_reject_empty_icon_type(self):
-        with pytest.raises(ValidationError):
-            app_module.UpdateAppPayload.model_validate(
-                {
-                    "name": "Updated App",
-                    "description": "Updated description",
-                    "icon_type": "",
-                    "icon": "🤖",
-                    "icon_background": "#FFFFFF",
-                }
-            )
-
-    def test_app_icon_post_should_forward_icon_type(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        api = app_module.AppIconApi()
-        method = unwrap(api.post)
-        payload = {
-            "icon": "https://example.com/icon.png",
-            "icon_type": "image",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app_icon.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(
-                api,
-                app_module.AppIconPayload(
-                    icon="https://example.com/icon.png",
-                    icon_type=app_module.IconType.IMAGE,
-                    icon_background="#FFFFFF",
-                ),
-                unbound_session,
-                app_model=_make_app(),
-            )
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app_icon.call_args.args[1:] == (
-            payload["icon"],
-            payload["icon_background"],
-            app_module.IconType.IMAGE,
-        )
 
 
 class TestOpsTraceEndpoints:

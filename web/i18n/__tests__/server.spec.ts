@@ -83,7 +83,7 @@ describe('server translations', () => {
 
   it('keeps fallback and cross-namespace translations available', async () => {
     const { getTranslation } = await import('../server')
-    const { t } = await getTranslation('zh-Hans')
+    const { t } = await getTranslation('zh-Hans', 'common')
 
     expect(t(($) => $['operation.save'], { ns: 'common' })).toBe('保存')
     expect(t(($) => $['operation.cancel'], { ns: 'common' })).toBe('Cancel')

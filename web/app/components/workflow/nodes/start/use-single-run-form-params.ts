@@ -16,7 +16,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const isChatMode = useIsChatMode()
 
   const forms = (() => {
@@ -45,7 +45,7 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
     })
 
     forms.push({
-      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
+      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflowModels' })!,
       inputs,
       values: runInputData,
       onChange: setRunInputData,

@@ -76,7 +76,7 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
@@ -116,7 +116,7 @@ function BuilderModelSelector({
           trigger={
             <button
               type="button"
-              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
               className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />

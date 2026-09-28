@@ -27,7 +27,7 @@ function HomeCatalogNavigation({
   catalogTrailing,
   isMarketplacePlatform,
 }: HomeCatalogNavigationProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['navigation'])
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
   const isPinnedRef = useRef(isPinned)
@@ -98,7 +98,7 @@ function HomeCatalogNavigation({
         </div>
       </div>
       <section
-        aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+        aria-label={t(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
         className={cn(
           'w-full shrink-0 bg-background-default',
           styles.catalogNavigation,

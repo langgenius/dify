@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
@@ -42,7 +42,7 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
             <RiContactsBookLine className="size-4" />
             <div>
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </Button>

@@ -46,7 +46,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   isLast,
   hideActionMenu,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
@@ -119,15 +119,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             )}
           >
             {isDraft
-              ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
+              ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })
               : getWorkflowVersionName(
                   item,
-                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
                 )}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
-              {t(($) => $['versionHistory.latest'], { ns: 'workflow' })}
+              {t(($) => $['versionHistory.latest'], { ns: 'workflowHistory' })}
             </div>
           )}
         </div>

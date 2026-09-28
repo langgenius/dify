@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import type { SettingsAppInfo } from '../index'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
@@ -75,6 +74,7 @@ vi.mock('@/context/i18n', async () => {
 })
 
 const mockAppInfo = {
+  id: 'test-app',
   site: {
     title: 'Test App',
     icon_type: 'emoji',
@@ -93,10 +93,9 @@ const mockAppInfo = {
     use_icon_as_answer_icon: true,
   },
   mode: AppModeEnum.ADVANCED_CHAT,
-  enable_sso: false,
-} as unknown as AppDetailResponse & Partial<AppSSO>
+} satisfies SettingsAppInfo
 
-const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
+const renderSettingsModal = (appInfo: SettingsAppInfo = mockAppInfo, canDeploy = false) =>
   render(
     <SettingsModal
       isChat
@@ -235,7 +234,6 @@ describe('SettingsModal', () => {
         icon_background: mockAppInfo.site.icon_background,
         show_workflow_steps: mockAppInfo.site.show_workflow_steps,
         use_icon_as_answer_icon: mockAppInfo.site.use_icon_as_answer_icon,
-        enable_sso: mockAppInfo.enable_sso,
       }),
     )
     expect(mockOnClose).toHaveBeenCalled()
@@ -322,15 +320,13 @@ describe('SettingsModal', () => {
         isChat
         canDeploy={false}
         isShow={true}
-        appInfo={
-          {
-            ...mockAppInfo,
-            site: {
-              ...mockAppInfo.site,
-              input_placeholder: 'Updated prompt',
-            },
-          } as typeof mockAppInfo
-        }
+        appInfo={{
+          ...mockAppInfo,
+          site: {
+            ...mockAppInfo.site,
+            input_placeholder: 'Updated prompt',
+          },
+        }}
         onClose={mockOnClose}
         onSave={mockOnSave}
       />,
@@ -423,7 +419,7 @@ describe('SettingsModal', () => {
         icon_background: null,
         icon_url: 'https://example.com/uploaded.png',
       },
-    } as typeof mockAppInfo
+    } satisfies SettingsAppInfo
 
     renderSettingsModal(imageAppInfo)
 

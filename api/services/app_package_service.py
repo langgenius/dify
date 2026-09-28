@@ -73,6 +73,10 @@ class PreparedAppPackage(PreparedPackageArchive):
     agent_resources: dict[str, AgentPackageResources]
     icons: list[PackageIcon] = field(default_factory=list)
 
+    @property
+    def has_resources(self) -> bool:
+        return bool(self.agent_resources or self.icons)
+
     def materialize_icons(self, *, data: dict[str, Any], tenant_id: str, account_id: str) -> None:
         importer = AgentPackageResourceImporter()
         for ref, resources in self.agent_resources.items():
@@ -211,20 +215,20 @@ class AppPackageService(RosterAgentPackageReader):
 
         resources = AgentPackageResourceExporter()
         with session_factory.create_session() as session:
-            data = AppDslService.export_data(
+            prepared = AppDslService.load_export_data(
                 app_model=app_model,
                 session=session,
                 include_secret=include_secret,
                 workflow_id=workflow_id,
                 resource_exporter=resources,
             )
-            resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=data["app"])
+            resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
         resources.collect_workspace_skills()
         if resources.packages:
-            data["agent_packages"] = {
+            prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
             }
-        return self.export(dsl=yaml.dump(data, allow_unicode=True), name=app_model.name, resources=resources)
+        return self.export(dsl=AppDslService.serialize_export_data(prepared), name=app_model.name, resources=resources)
 
     def export(
         self, *, dsl: str, name: str, resources: AgentPackageResourceExporter | None = None

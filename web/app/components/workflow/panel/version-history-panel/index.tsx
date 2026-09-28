@@ -96,7 +96,7 @@ export const VersionHistoryPanel = ({
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
-  const { t } = useTranslation(['billing', 'common', 'workflow'])
+  const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
 
   const {
     data: versionHistory,
@@ -154,7 +154,9 @@ export const VersionHistoryPanel = ({
     (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
       if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
         toast.error(
-          t(($) => $['versionHistory.action.deleteDeployedVersionError'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.action.deleteDeployedVersionError'], {
+            ns: 'workflowHistory',
+          }),
         )
         return
       }
@@ -177,7 +179,9 @@ export const VersionHistoryPanel = ({
           break
         case VersionHistoryContextMenuOptions.copyId:
           copy(item.id)
-          toast.success(t(($) => $['versionHistory.action.copyIdSuccess'], { ns: 'workflow' }))
+          toast.success(
+            t(($) => $['versionHistory.action.copyIdSuccess'], { ns: 'workflowHistory' }),
+          )
           break
         case VersionHistoryContextMenuOptions.exportDSL:
           if (isPlanUnavailable) return
@@ -216,7 +220,7 @@ export const VersionHistoryPanel = ({
           versionId: item.id,
           versionName: getWorkflowVersionName(
             item,
-            t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+            t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
           ),
           initiatorUserId: userProfile.id,
           initiatorName: userProfile.name,
@@ -272,13 +276,15 @@ export const VersionHistoryPanel = ({
         workflowStore.setState({ isRestoring: false })
         workflowStore.setState({ backupDraft: undefined })
         handleRefreshWorkflowDraft()
-        toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflow' }))
+        toast.success(
+          t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflowHistory' }),
+        )
         deleteAllInspectVars()
         invalidAllLastRun()
         await emitRestoreComplete(item, true)
         await emitWorkflowUpdate()
       } catch {
-        toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflow' }))
+        toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
         await emitRestoreComplete(item, false, 'restore failed')
       } finally {
         resetWorkflowVersionHistory()
@@ -308,13 +314,15 @@ export const VersionHistoryPanel = ({
       await deleteWorkflow(deleteVersionUrl?.(id) || '', {
         onSuccess: () => {
           setDeleteConfirmOpen(false)
-          toast.success(t(($) => $['versionHistory.action.deleteSuccess'], { ns: 'workflow' }))
+          toast.success(
+            t(($) => $['versionHistory.action.deleteSuccess'], { ns: 'workflowHistory' }),
+          )
           resetWorkflowVersionHistory()
           deleteAllInspectVars()
           invalidAllLastRun()
         },
         onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflow' }))
+          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
         },
         onSettled: () => {
           setDeleteConfirmOpen(false)
@@ -347,7 +355,9 @@ export const VersionHistoryPanel = ({
         {
           onSuccess: () => {
             setEditModalOpen(false)
-            toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
+            toast.success(
+              t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
+            )
             if (
               id === latestVersionId &&
               configsMap?.flowType === FlowType.appFlow &&
@@ -356,7 +366,9 @@ export const VersionHistoryPanel = ({
               invalidateAppWorkflow(configsMap.flowId)
           },
           onError: () => {
-            toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
+            toast.error(
+              t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+            )
           },
           onSettled: () => {
             setEditModalOpen(false)
@@ -380,7 +392,7 @@ export const VersionHistoryPanel = ({
     <div className="flex h-full w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
         <div className="flex-1 py-1 system-xl-semibold text-text-primary">
-          {t(($) => $['versionHistory.title'], { ns: 'workflow' })}
+          {t(($) => $['versionHistory.title'], { ns: 'workflowHistory' })}
         </div>
         <Filter
           filterValue={filterValue}

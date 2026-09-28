@@ -1,9 +1,10 @@
 'use client'
 
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { PublishedWorkflow } from '../shared/utils'
 import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -57,7 +58,7 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 }
 
 type WebAppAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   availability: AccessPointAvailability
   canDeploy: boolean
   canManageAccessPoint: boolean
@@ -79,7 +80,14 @@ export function WebAppAccessPointCard({
   showAccessControl,
   workflow,
 }: WebAppAccessPointCardProps) {
-  const { t } = useTranslation(['agentV2', 'app', 'appOverview', 'common', 'deployments'])
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
@@ -237,7 +245,7 @@ export function WebAppAccessPointCard({
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
+              {t(($) => $['settings.settings'], { ns: 'navigation' })}
             </Button>
           </>
         }

@@ -10,7 +10,6 @@ import { LOCALE_COOKIE_NAME } from '@/config'
 import { cookies, headers } from '@/next/headers'
 import { loadI18nResource } from './load-resource'
 import { canonicalizeLanguageTag, defaultLocale, supportedLocales } from './locale'
-import { namespaces } from './resources'
 import { getInitOptions } from './settings'
 
 const getOrCreateI18next = cache(async (lng: Locale) => {
@@ -31,10 +30,10 @@ const getOrCreateI18next = cache(async (lng: Locale) => {
 
 export async function getTranslation<
   const T extends Namespace | readonly [Namespace, ...Namespace[]],
->(lng: Locale, ns?: T) {
+>(lng: Locale, ns: T) {
   const i18nextInstance = await getOrCreateI18next(lng)
 
-  await i18nextInstance.loadNamespaces(typeof ns === 'string' ? [ns] : [...(ns ?? namespaces)])
+  await i18nextInstance.loadNamespaces(typeof ns === 'string' ? [ns] : [...ns])
 
   return {
     t: i18nextInstance.getFixedT<T>(lng, ns),

@@ -766,7 +766,7 @@ describe('workflow-panel index', () => {
     expect(root.className).toContain('absolute')
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
     )
 
     expect(mockHandleStop).toHaveBeenCalledTimes(1)

@@ -74,9 +74,9 @@ function getPublishState({
 function PublishShortcut() {
   return (
     <KbdGroup aria-hidden>
-      {PUBLISH_AGENT_HOTKEY.split('+').map((key) => (
+      {formatForDisplay(PUBLISH_AGENT_HOTKEY, { parts: true }).map((key) => (
         <Kbd key={key} color="white">
-          {formatForDisplay(key)}
+          {key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -200,11 +200,16 @@ export function AgentConfigurePublishBar({
   useHotkey(
     PUBLISH_AGENT_HOTKEY,
     (event) => {
+      if (event.defaultPrevented) return
       event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       requestPublish()
     },
     {
       enabled: canPublish && !selectedVersionSnapshot,
+      preventDefault: false,
+      stopPropagation: false,
       ignoreInputs: false,
     },
   )
@@ -459,7 +464,7 @@ function AgentVersionRestoreBar({
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const versionLabel =
     version.version_note ||
@@ -469,7 +474,7 @@ function AgentVersionRestoreBar({
       ? null
       : formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (

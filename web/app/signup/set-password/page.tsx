@@ -48,7 +48,7 @@ const parseUtmInfo = () => {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation(['common', 'login'])
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -130,7 +130,9 @@ const ChangePasswordForm = () => {
               }}
               className="mb-5"
             >
-              <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
+              <FieldLabel>
+                {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+              </FieldLabel>
               <Input
                 type="password"
                 required
@@ -169,11 +171,13 @@ const ChangePasswordForm = () => {
                 const confirmationValue = String(value)
                 return !confirmationValue || confirmationValue === formValues.password
                   ? null
-                  : t(($) => $['account.notEqual'], { ns: 'common' })
+                  : t(($) => $['account.notEqual'], { ns: 'accountSettings' })
               }}
               className="mb-5"
             >
-              <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
+              <FieldLabel>
+                {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+              </FieldLabel>
               <Input
                 type="password"
                 required
@@ -182,7 +186,7 @@ const ChangePasswordForm = () => {
                 ref={confirmPasswordRef}
                 placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
               />
-              <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
+              <FieldError>{t(($) => $['account.notEqual'], { ns: 'accountSettings' })}</FieldError>
             </Field>
             <Button type="submit" variant="primary" className="w-full" loading={isPending}>
               {t(($) => $.changePasswordBtn, { ns: 'login' })}

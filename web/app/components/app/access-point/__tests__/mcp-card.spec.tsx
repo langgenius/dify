@@ -1,4 +1,5 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -76,13 +77,13 @@ const appInfo = {
       },
     ],
   },
-} as AccessPointAppInfo
+} as App
 
 const workflowAppInfo = {
   ...appInfo,
   mode: AppModeEnum.WORKFLOW,
   model_config: null,
-} as unknown as AccessPointAppInfo
+} as unknown as App
 
 const publishedWorkflow = {
   graph: {
@@ -108,7 +109,7 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
-function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: PublishedWorkflow) {
+function renderCard(cardAppInfo: App = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
 
   return render(

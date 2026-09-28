@@ -270,7 +270,7 @@ describe('ModelSelector', () => {
 
       expect(
         screen.getByRole('button', {
-          name: 'missing-model common.modelProvider.selector.incompatible',
+          name: 'missing-model modelProvider.modelProvider.selector.incompatible',
         }),
       ).toBeEnabled()
       expect(screen.queryByText('plugin.detailPanel.configureModel')).not.toBeInTheDocument()

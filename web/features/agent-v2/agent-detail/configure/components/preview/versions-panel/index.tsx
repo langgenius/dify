@@ -42,7 +42,7 @@ export function AgentPreviewVersionsPanel({
 }: AgentPreviewVersionsPanelProps) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -100,7 +100,7 @@ export function AgentPreviewVersionsPanel({
     <aside className="flex h-full w-67 shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
         <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
-          {tWorkflow(($) => $['versionHistory.title'])}
+          {tWorkflow(($) => $['versionHistory.title'], { ns: 'workflowHistory' })}
         </h2>
         <VersionFilter filterValue={filterValue} onFilterChange={setFilterValue} />
         <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
