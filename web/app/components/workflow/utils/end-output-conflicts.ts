@@ -1,5 +1,6 @@
 import type { Edge, Node } from '../types'
 import { BlockEnum, VarType } from '../types'
+import { normalizeWorkflowOutputName } from './variable'
 
 /**
  * Detects Output (End) node output variables that clash.
@@ -244,7 +245,8 @@ export const getEndOutputConflicts = (nodes: Node[], edges: Edge[]) => {
       .forEach((node) => {
         const outputs = (node.data as { outputs?: EndOutput[] }).outputs || []
         outputs.forEach((output) => {
-          const variable = output.variable?.trim()
+          // Same normalization the workflow tool config uses to group outputs (#41517).
+          const variable = normalizeWorkflowOutputName(output.variable)
           if (!variable) return
 
           const entries = occurrences.get(variable) ?? []

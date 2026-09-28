@@ -72,7 +72,6 @@ import { getEndOutputConflicts } from '../utils/end-output-conflicts'
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
-import { normalizeWorkflowOutputName } from '../utils/variable'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
