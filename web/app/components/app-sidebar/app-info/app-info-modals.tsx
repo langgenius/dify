@@ -2,7 +2,7 @@ import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/consol
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App, AppSSO } from '@/types/app'
+import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -35,7 +35,7 @@ const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-ds
 })
 
 type AppInfoModalsProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: App
   activeModal: AppInfoModalType
   closeModal: () => void
   secretEnvList: EnvironmentVariableItemResponse[]

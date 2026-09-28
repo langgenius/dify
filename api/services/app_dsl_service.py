@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.app.app_config.features.suggested_questions_after_answer.manager import (
+    SuggestedQuestionsAfterAnswerConfigManager,
+)
+from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.rbac import RBACPermission, RBACResourceScope
@@ -83,6 +87,22 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+
+
+def missing_app_section_error(top_level_keys: list[str]) -> str:
+    """Explain a YAML that has no top-level ``app`` mapping.
+
+    The found keys are the caller's actual document, so a sketch of nodes is
+    not reported as a blank import failure.
+    """
+    found = ", ".join(key for key in top_level_keys if key != "app")
+    if len(found) > 80:
+        found = found[:80].rstrip(", ") + "…"
+    return (
+        "Missing app data in YAML content. "
+        "Not a valid Dify app DSL: the top-level 'app' section is required "
+        f"(found: {found or 'none'})."
+    )
 
 
 class PendingData(PendingImportOwner):
@@ -204,6 +224,8 @@ class AppDslService:
                     error="Invalid YAML format: content must be a mapping",
                 )
 
+            original_top_level_keys = [key for key in data if isinstance(key, str)]
+
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
@@ -222,7 +244,7 @@ class AppDslService:
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
-                    error="Missing app data in YAML content",
+                    error=missing_app_section_error(original_top_level_keys),
                 )
 
             if package is not None and package.has_resources:
@@ -465,6 +487,14 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
+    @staticmethod
+    def cache_import_dependencies(*, app_id: str, dependencies: list[PluginDependency]) -> None:
+        redis_client.setex(
+            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
+            IMPORT_INFO_REDIS_EXPIRY,
+            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
+        )
+
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
@@ -608,11 +638,7 @@ class AppDslService:
 
         # save dependencies
         if dependencies:
-            redis_client.setex(
-                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
-                IMPORT_INFO_REDIS_EXPIRY,
-                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
-            )
+            self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
 
         # Initialize app based on mode
         match app_mode:
@@ -694,6 +720,8 @@ class AppDslService:
                 model_config = data.get("model_config")
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
+                TextToSpeechConfigManager.validate_optional_fields(model_config)
                 # Initialize or update model config
                 app_model_config = (
                     self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None

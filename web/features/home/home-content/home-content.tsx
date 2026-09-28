@@ -440,21 +440,26 @@ export function HomeContent() {
         />
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-          <section
-            aria-labelledby="home-templates-title"
-            className={cn('shrink-0 content-start gap-2.5 px-8', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
-          >
-            {searchFilteredList.map((app) => (
-              <TemplateCard
-                key={app.app_id}
-                app={app}
-                canCreate={canCreateApp}
-                onCreate={() => handleCreateFromTemplate(app)}
-                onTry={handleTryApp}
-              />
-            ))}
-            {searchFilteredList.length === 0 && (
-              <div role="status" className="col-span-full rounded-lg bg-workflow-process-bg p-4">
+          <section aria-labelledby="home-templates-title" className="shrink-0 px-8">
+            {searchFilteredList.length > 0 ? (
+              <ul
+                // Safari drops list semantics from grid lists after preflight removes markers.
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Restore Safari list semantics.
+                role="list"
+                className={cn('content-start gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
+              >
+                {searchFilteredList.map((app) => (
+                  <TemplateCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={canCreateApp}
+                    onCreate={() => handleCreateFromTemplate(app)}
+                    onTry={handleTryApp}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div role="status" className="rounded-lg bg-workflow-process-bg p-4">
                 <p className="title-md-semi-bold text-text-primary">
                   {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}
                 </p>

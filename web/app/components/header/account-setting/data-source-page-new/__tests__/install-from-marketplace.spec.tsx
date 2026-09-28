@@ -116,6 +116,19 @@ describe('InstallFromMarketplace Component', () => {
   })
 
   describe('Rendering', () => {
+    it('announces the number of recommended integrations after a search finishes', () => {
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+
+      render(<InstallFromMarketplace providers={mockProviders} searchText="plugin" />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'modelProvider.modelProvider.installDataSource: plugin.marketplace.pluginsResult:{"num":1}',
+      )
+    })
+
     it('should render correctly when not loading and not collapsed', () => {
       // Arrange
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
@@ -134,7 +147,14 @@ describe('InstallFromMarketplace Component', () => {
         'https://marketplace.url/plugins/datasource?theme=light',
       )
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
+      expect(screen.getByTestId('mock-list')).toHaveClass(
+        'grid',
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'lg:grid-cols-3',
+        'xl:grid-cols-4',
+        'gap-2',
+      )
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-36.5')
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()

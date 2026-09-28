@@ -1,4 +1,4 @@
-import type { AccessPointAppInfo } from '../shared/utils'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -53,24 +53,21 @@ vi.mock('../shared/api-secret-key-button', () => ({
   },
 }))
 
-function createAppInfo(
-  mode: AppModeEnum,
-  overrides: Partial<AccessPointAppInfo> = {},
-): AccessPointAppInfo {
+function createAppInfo(mode: AppModeEnum, overrides: Partial<App> = {}): App {
   return {
     api_base_url: 'https://api.example.test/v1',
     enable_api: true,
     id: 'app-1',
     mode,
     ...overrides,
-  } as AccessPointAppInfo
+  } as App
 }
 
 function renderCard(
   mode: AppModeEnum,
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   canManage = true,
-  overrides: Partial<AccessPointAppInfo> = {},
+  overrides: Partial<App> = {},
 ) {
   useAppStore.setState({ appDetail: createAppInfo(mode, overrides) })
   const queryClient = createTestQueryClient()

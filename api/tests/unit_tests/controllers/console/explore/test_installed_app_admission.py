@@ -51,8 +51,13 @@ class _AdmissionState:
 
 
 @dataclass(frozen=True)
+class _InstalledAppServices:
+    access: InstalledAppAccessService
+
+
+@dataclass(frozen=True)
 class _ApplicationServices:
-    installed_app_access: InstalledAppAccessService
+    installed_apps: _InstalledAppServices
 
 
 @dataclass(frozen=True)
@@ -130,11 +135,13 @@ def harness(
         pytest.fail(f"Single-app admission should not query batch permissions: {user_id=}, {app_ids=}")
 
     services = _ApplicationServices(
-        installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppRepository(session_factory=repository_factory),
-            is_user_allowed=permission_check,
-            get_access_modes=unexpected_access_modes,
-            get_user_permissions=unexpected_user_permissions,
+        installed_apps=_InstalledAppServices(
+            access=InstalledAppAccessService(
+                installed_apps=SQLAlchemyInstalledAppRepository(session_factory=repository_factory),
+                is_user_allowed=permission_check,
+                get_access_modes=unexpected_access_modes,
+                get_user_permissions=unexpected_user_permissions,
+            )
         )
     )
 

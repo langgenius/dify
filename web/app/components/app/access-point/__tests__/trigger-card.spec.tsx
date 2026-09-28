@@ -1,5 +1,5 @@
-import type { AccessPointAppInfo } from '../shared/utils'
 import type { AppTrigger } from '@/service/use-tools'
+import type { App } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -72,7 +72,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 const appInfo = {
   id: 'app-1',
   mode: AppModeEnum.WORKFLOW,
-} as AccessPointAppInfo
+} as App
 
 function createTrigger(id: string, status: AppTrigger['status']): AppTrigger {
   return {

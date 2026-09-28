@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
@@ -87,7 +88,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 )
 class CompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(CompletionMessageExplorePayload)
@@ -98,7 +99,7 @@ class CompletionApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_completion(
+            response = application_services().installed_apps.generation.generate_completion(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),
@@ -141,7 +142,7 @@ class CompletionApi(Resource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def post(
@@ -158,7 +159,7 @@ class CompletionStopApi(Resource):
             app_mode=AppMode.value_of(app_mode),
         )
 
-        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route(
@@ -167,7 +168,7 @@ class CompletionStopApi(Resource):
 )
 class ChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(ChatMessagePayload)
@@ -178,7 +179,7 @@ class ChatApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_chat(
+            response = application_services().installed_apps.generation.generate_chat(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),
@@ -223,7 +224,7 @@ class ChatApi(Resource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def post(
@@ -240,4 +241,4 @@ class ChatStopApi(Resource):
             app_mode=app_mode,
         )
 
-        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

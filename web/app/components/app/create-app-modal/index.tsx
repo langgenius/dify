@@ -1,7 +1,7 @@
 'use client'
 
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppIconSelection } from '../../base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -53,7 +53,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const [creationMethod, setCreationMethod] = useState<'builder' | 'blank'>('builder')
   const [builderPrompt, setBuilderPrompt] = useState('')
   const setPendingBuilderCreation = useSetAtom(difyBuilderPendingCreationAtom)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>({
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [appIcon, setAppIcon] = useState<IconPickerValue>({
     type: 'emoji',
     icon: '🤖',
     background: '#FFEAD5',
@@ -165,19 +166,34 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+  const createDisabled =
+    isAppQuotaUnavailable ||
+    isAppsFull ||
+    !canCreateApp ||
+    !(isBuilder ? builderPrompt : name).trim()
   useHotkey(
     CREATE_APP_HOTKEY,
-    () => {
-      if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       handleCreateApp()
     },
     {
+      target: contentRef,
+      enabled: !createDisabled && !isCreating,
       ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
   return (
     <>
-      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
+      <div
+        ref={contentRef}
+        className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
+      >
         <div className="flex flex-1 shrink-0 justify-end">
           <form
             className="px-10"
@@ -265,15 +281,15 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                   <Button
                     type="submit"
-                    disabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull || !name}
+                    disabled={createDisabled}
                     loading={isCreating}
                     variant="primary"
                   >
                     <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                     <KbdGroup>
-                      {CREATE_APP_HOTKEY.split('+').map((key) => (
+                      {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
                         <Kbd key={key} color="white">
-                          {formatForDisplay(key)}
+                          {key}
                         </Kbd>
                       ))}
                     </KbdGroup>

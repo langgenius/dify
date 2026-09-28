@@ -17,7 +17,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
-from fields.app_fields import AppDetailWithSite
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -839,13 +838,11 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
                     assert read.scalar(select(App.id).where(App.name == "Created")) is not None
         else:
             result = read_result()
-            data = AppDetailWithSite.model_validate(result, from_attributes=True).model_dump(mode="json")
-            assert data["deleted_tools"] == [
+            assert result.deleted_tools == [
                 {"type": "api", "provider_id": missing_api, "tool_name": "tool"},
                 {"type": "api", "provider_id": providers[1].id, "tool_name": "tool"},
                 {"type": "builtin", "provider_id": "vendor/missing/tool", "tool_name": "tool"},
             ]
-            assert "tool_references" not in data
         assert remote_calls == [["vendor/missing/tool", "vendor/installed/tool"]]
         assert not checked_out
     finally:

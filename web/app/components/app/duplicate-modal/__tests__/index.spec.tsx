@@ -28,14 +28,17 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({
+vi.mock('@/app/components/base/icon-picker', () => ({
+  IconPickerDialog: ({
+    open,
     onOpenChange,
-    onSelect,
+    onConfirm,
   }: {
+    open: boolean
     onOpenChange: (open: boolean) => void
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
   }) => {
+    if (!open) return null
     let selectedBackground = '#FFEAD5'
     return (
       <div>
@@ -53,7 +56,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
         <button
           type="button"
           onClick={() => {
-            onSelect({ type: 'emoji', icon: '🤖', background: selectedBackground })
+            onConfirm({ type: 'emoji', icon: '🤖', background: selectedBackground })
             onOpenChange(false)
           }}
         >

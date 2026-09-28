@@ -13,9 +13,6 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { promptDefaultModel, promptModelProviders } from '../../__tests__/prompt-model-fixtures'
 import CreateAppModal from '../index'
 
-const ahooksMocks = vi.hoisted(() => ({
-  keyPressHandlers: [] as Array<() => void>,
-}))
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
@@ -32,12 +29,6 @@ vi.mock('ahooks', () => ({
   },
   useHover: () => false,
 }))
-vi.mock('@tanstack/react-hotkeys', () => ({
-  formatForDisplay: (key: string) => key,
-  useHotkey: (_hotkey: string, handler: () => void) => {
-    ahooksMocks.keyPressHandlers.push(handler)
-  },
-}))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),
@@ -53,6 +44,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: {
       ...actual.consoleQuery,
       features: actual.consoleQuery.features,
+      files: actual.consoleQuery.files,
       account: {
         profile: {
           get: {
@@ -150,7 +142,6 @@ function render(ui: ReactElement) {
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
     appBuilderEnabled = false
@@ -282,6 +273,26 @@ describe('CreateAppModal', () => {
     },
   )
 
+  it('creates an app from a Builder prompt with the keyboard shortcut', async () => {
+    appBuilderEnabled = true
+    mockCreateApp.mockResolvedValue({ id: 'shortcut-app', mode: AppModeEnum.ADVANCED_CHAT })
+    renderModal()
+
+    const promptInput = screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' })
+    await userEvent.setup().type(promptInput, 'Build a support assistant')
+    fireEvent.keyDown(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+
+    await waitFor(() =>
+      expect(mockCreateApp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'app.newApp.defaultName',
+          mode: AppModeEnum.ADVANCED_CHAT,
+        }),
+      ),
+    )
+  })
+
   it('retains the Builder prompt after creation fails and allows retry', async () => {
     appBuilderEnabled = true
     mockTrackCreateApp.mockReturnValue(undefined)
@@ -308,7 +319,9 @@ describe('CreateAppModal', () => {
     renderModal()
     await user.type(screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }), '   ')
     expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const promptInput = screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' })
+    fireEvent.keyDown(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
@@ -323,7 +336,9 @@ describe('CreateAppModal', () => {
     )
     expect(screen.getByText('apps-full')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const promptInput = screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' })
+    fireEvent.keyDown(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(promptInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
@@ -403,11 +418,11 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
@@ -419,7 +434,9 @@ describe('CreateAppModal', () => {
       target: { value: 'Created from shortcut' },
     })
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -433,12 +450,15 @@ describe('CreateAppModal', () => {
     })
   })
 
-  it('shows validation feedback when the keyboard shortcut runs without a name', () => {
+  it('keeps creation unavailable from both the button and shortcut without a name', () => {
     renderModal()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
-    expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
+    expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
+    expect(mockToastError).not.toHaveBeenCalled()
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
@@ -447,7 +467,7 @@ describe('CreateAppModal', () => {
 
     renderModal()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
@@ -458,7 +478,9 @@ describe('CreateAppModal', () => {
 
     expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })

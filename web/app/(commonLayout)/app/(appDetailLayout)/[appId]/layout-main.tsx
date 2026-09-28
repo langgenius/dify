@@ -197,8 +197,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     }
 
-    if (appDetailRes && appDetail?.id !== appDetailRes.id)
-      setAppDetail({ ...appDetailRes, enable_sso: false })
+    if (appDetailRes && appDetail?.id !== appDetailRes.id) setAppDetail(appDetailRes)
   }, [
     appDetail?.id,
     appDetailRes,

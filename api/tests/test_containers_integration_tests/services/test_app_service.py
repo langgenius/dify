@@ -151,55 +151,6 @@ class TestAppService:
             assert app.tenant_id == tenant.id
             assert app.created_by == account.id
 
-    def test_get_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test successful app retrieval.
-        """
-        fake = Faker()
-
-        # Create account and tenant first
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=generate_valid_password(fake),
-            session=db_session_with_containers,
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
-        tenant = account.current_tenant
-
-        # Create app first
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
-        app_params = CreateAppParams(
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            mode="chat",
-            icon_type="emoji",
-            icon="🎯",
-            icon_background="#45B7D1",
-        )
-
-        app_service = AppService()
-        created_app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
-
-        # Get app using the service - needs current_user mock
-        mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.id = account.id
-        mock_current_user.current_tenant_id = account.current_tenant_id
-
-        with patch("services.app_service.current_user", mock_current_user):
-            retrieved_app = app_service.get_app(created_app, session=db_session_with_containers)
-
-        # Verify retrieved app matches created app
-        assert retrieved_app.id == created_app.id
-        assert retrieved_app.name == created_app.name
-        assert retrieved_app.description == created_app.description
-        assert retrieved_app.mode == created_app.mode
-        assert retrieved_app.tenant_id == created_app.tenant_id
-        assert retrieved_app.created_by == created_app.created_by
-
     def test_get_paginate_apps_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful paginated app list retrieval.

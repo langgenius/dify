@@ -112,9 +112,14 @@ class _Tasks:
 
 
 @dataclass(frozen=True)
+class _TrialAppServices:
+    access: TrialAppAccessService
+    generation: TrialAppGenerationService
+
+
+@dataclass(frozen=True)
 class _ApplicationServices:
-    trial_app_access: TrialAppAccessService
-    trial_app_generation: TrialAppGenerationService
+    trial_apps: _TrialAppServices
     recommended_app_queries: _FeatureState
     app_tasks: _Tasks
 
@@ -178,8 +183,10 @@ def harness(
     runtime = _Runtime(sessions=sessions)
     repository = TrialAppRepository(session_factory=repository_factory)
     services = _ApplicationServices(
-        trial_app_access=TrialAppAccessService(apps=repository),
-        trial_app_generation=TrialAppGenerationService(runtime=runtime, usage=repository),
+        trial_apps=_TrialAppServices(
+            access=TrialAppAccessService(apps=repository),
+            generation=TrialAppGenerationService(runtime=runtime, usage=repository),
+        ),
         recommended_app_queries=state,
         app_tasks=_Tasks(),
     )

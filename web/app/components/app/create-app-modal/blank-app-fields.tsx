@@ -1,18 +1,18 @@
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 
 type BlankAppFieldsProps = {
   name: string
   onNameChange: (name: string) => void
   description: string
   onDescriptionChange: (description: string) => void
-  appIcon: AppIconSelection
-  onAppIconChange: (icon: AppIconSelection) => void
+  appIcon: IconPickerValue
+  onAppIconChange: (icon: IconPickerValue) => void
 }
 
 export function BlankAppFields({
@@ -46,7 +46,7 @@ export function BlankAppFields({
         </div>
         <button
           type="button"
-          aria-label={t(($) => $['newApp.captionName'], { ns: 'app' })}
+          aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
           className="shrink-0 cursor-pointer rounded-2xl border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={() => setShowAppIconPicker(true)}
         >
@@ -60,20 +60,12 @@ export function BlankAppFields({
             decorative
           />
         </button>
-        {showAppIconPicker && (
-          <AppIconPicker
-            open={showAppIconPicker}
-            initialEmoji={
-              appIcon.type === 'emoji'
-                ? { icon: appIcon.icon, background: appIcon.background }
-                : undefined
-            }
-            onOpenChange={setShowAppIconPicker}
-            onSelect={(payload) => {
-              onAppIconChange(payload)
-            }}
-          />
-        )}
+        <IconPickerDialog
+          open={showAppIconPicker}
+          defaultValue={appIcon}
+          onOpenChange={setShowAppIconPicker}
+          onConfirm={onAppIconChange}
+        />
       </div>
       <div>
         <div className="mb-1 flex h-6 items-center">

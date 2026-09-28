@@ -125,6 +125,8 @@ describe('CommentInput', () => {
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={onCancel} />)
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onCancel).not.toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByTestId('mention-input'), { key: 'Escape' })
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
