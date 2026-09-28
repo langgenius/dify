@@ -2,6 +2,8 @@ import type { SessionView } from '../../dify-builder/types'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import { screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
 import WorkflowHeader from '../index'
@@ -9,23 +11,11 @@ import WorkflowHeader from '../index'
 const mocks = vi.hoisted(() => ({
   header: vi.fn(),
   resetWorkflowVersionHistory: vi.fn(),
-  setCurrentLogItem: vi.fn(),
-  setShowMessageLogModal: vi.fn(),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(
-    selector: (state: {
-      appDetail: { id: string }
-      setCurrentLogItem: typeof mocks.setCurrentLogItem
-      setShowMessageLogModal: typeof mocks.setShowMessageLogModal
-    }) => T,
-  ) =>
-    selector({
-      appDetail: { id: 'app-1' },
-      setCurrentLogItem: mocks.setCurrentLogItem,
-      setShowMessageLogModal: mocks.setShowMessageLogModal,
-    }),
+  useStore: <T,>(selector: (state: { appDetail: { id: string } }) => T) =>
+    selector({ appDetail: { id: 'app-1' } }),
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
@@ -56,10 +46,13 @@ vi.mock('../features-trigger', () => ({
 const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | null = null) => {
   const store = createStore()
   store.set(difyBuilderSessionViewAtom, sessionView)
+  const workflowStore = createWorkflowStore({})
 
   return renderWithConsoleQuery(
     <Provider store={store}>
-      <WorkflowHeader />
+      <WorkflowContext value={workflowStore}>
+        <WorkflowHeader />
+      </WorkflowContext>
     </Provider>,
     { features: { dify_builder_enabled: difyBuilderEnabled } },
   )

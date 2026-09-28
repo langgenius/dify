@@ -4,6 +4,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
   builderModel,
   builderModelListQueryKey,
@@ -74,14 +75,17 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const appKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(appKey, {
-      id: 'app-1',
-      name: 'Initial name',
-      mode: 'workflow',
-      enable_api: false,
-      enable_site: false,
-      icon_url: null,
-    })
+    queryClient.setQueryData(
+      appKey,
+      createAppDetailFixture({
+        id: 'app-1',
+        name: 'Initial name',
+        mode: 'workflow',
+        enable_api: false,
+        enable_site: false,
+        icon_url: null,
+      }),
+    )
 
     await act(async () => {
       expect(

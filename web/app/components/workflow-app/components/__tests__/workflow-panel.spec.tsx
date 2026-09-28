@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { DifyBuilderRuntime } from '../dify-builder/store'
-import { render, screen } from '@testing-library/react'
+import type { Shape } from '@/app/components/workflow/store/workflow'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import * as React from 'react'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { AppModeEnum } from '@/types/app'
 import { difyBuilderSessionBusyAtom } from '../dify-builder/session/state'
 import { difyBuilderRuntimeAtom } from '../dify-builder/store'
@@ -17,23 +19,11 @@ type AppStoreState = {
       id?: string
     }
   }
-  currentLogItem?: { id: string }
-  setCurrentLogItem: (item?: { id: string }) => void
-  showMessageLogModal: boolean
-  setShowMessageLogModal: (show: boolean) => void
-  currentLogModalActiveTab?: string
 }
 
-type WorkflowStoreState = {
-  historyWorkflowData?: Record<string, unknown>
-  showDebugAndPreviewPanel: boolean
-  showChatVariablePanel: boolean
-  showGlobalVariablePanel: boolean
-}
+type WorkflowStoreState = Partial<Shape>
 
 const mockUseIsChatMode = vi.fn()
-const mockSetCurrentLogItem = vi.fn()
-const mockSetShowMessageLogModal = vi.fn()
 const mockSetShowPanel = vi.fn()
 const mockStartFix = vi.fn(async () => true)
 
@@ -42,10 +32,6 @@ let workflowStoreState: WorkflowStoreState
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: AppStoreState) => T) => selector(appStoreState),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
 }))
 
 vi.mock('@/app/components/workflow/panel', () => ({
@@ -94,26 +80,9 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/message-log-modal', () => ({
-  default: ({
-    currentLogItem,
-    defaultTab,
-    onCancel,
-  }: {
-    currentLogItem?: { id: string }
-    defaultTab?: string
-    onCancel: () => void
-  }) => (
-    <div
-      data-testid="message-log-modal"
-      data-current-log-id={currentLogItem?.id ?? ''}
-      data-default-tab={defaultTab ?? ''}
-    >
-      <button type="button" onClick={onCancel}>
-        close-message-log
-      </button>
-    </div>
-  ),
+vi.mock('@/service/log', () => ({
+  fetchRunDetail: vi.fn().mockResolvedValue(undefined),
+  fetchTracingList: vi.fn().mockResolvedValue({ data: [] }),
 }))
 
 vi.mock('@/app/components/workflow/panel/record', () => ({
@@ -199,10 +168,11 @@ const renderWorkflowPanel = ({
   store.set(difyBuilderRuntimeAtom, createDifyBuilderRuntime(enabled, canEdit))
   store.set(difyBuilderSessionBusyAtom, busy)
 
-  return render(
+  return renderWorkflowComponent(
     <Provider store={store}>
       <WorkflowPanel />
     </Provider>,
+    { initialStoreState: workflowStoreState },
   )
 }
 
@@ -217,11 +187,6 @@ describe('WorkflowPanel', () => {
           id: 'workflow-version-id',
         },
       },
-      currentLogItem: { id: 'log-1' },
-      setCurrentLogItem: mockSetCurrentLogItem,
-      showMessageLogModal: false,
-      setShowMessageLogModal: mockSetShowMessageLogModal,
-      currentLogModalActiveTab: 'detail',
     }
     workflowStoreState = {
       historyWorkflowData: undefined,
@@ -233,7 +198,7 @@ describe('WorkflowPanel', () => {
   })
 
   it('should configure workflow version history urls and latest version id for the panel shell', async () => {
-    render(<WorkflowPanel />)
+    renderWorkflowComponent(<WorkflowPanel />, { initialStoreState: workflowStoreState })
 
     const panel = await screen.findByTestId('panel')
     expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
@@ -247,37 +212,50 @@ describe('WorkflowPanel', () => {
     expect(panel).toHaveAttribute('data-app-mode', AppModeEnum.WORKFLOW)
   })
 
-  it('should render and close the message log modal from the left panel slot', async () => {
+  it('should close the selected log and reopen on the default detail tab', async () => {
+    await import('@/app/components/base/message-log-modal')
     const user = userEvent.setup()
-    appStoreState = {
-      ...appStoreState,
-      showMessageLogModal: true,
+    const messageLogItem = {
+      id: 'log-1',
+      content: 'Answer',
+      isAnswer: true,
+      workflow_run_id: 'run-1',
     }
-
-    render(<WorkflowPanel />)
-
-    expect(await screen.findByTestId('message-log-modal')).toHaveAttribute(
-      'data-current-log-id',
-      'log-1',
+    const { store } = renderWorkflowComponent(<WorkflowPanel />, {
+      initialStoreState: { messageLogItem },
+    })
+    expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
-    expect(screen.getByTestId('message-log-modal')).toHaveAttribute('data-default-tab', 'detail')
-
-    await user.click(screen.getByRole('button', { name: /close-message-log/i }))
-
-    expect(mockSetCurrentLogItem).toHaveBeenCalledWith()
-    expect(mockSetShowMessageLogModal).toHaveBeenCalledWith(false)
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+    expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('tab', { name: 'runLog.detail' })).not.toBeInTheDocument(),
+    )
+    act(() => store.getState().setMessageLogItem(messageLogItem))
+    expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('should switch right-side workflow panels based on chat mode and workflow state', async () => {
     workflowStoreState = {
-      historyWorkflowData: { id: 'history-1' },
+      historyWorkflowData: { id: 'history-1', status: 'succeeded' },
       showDebugAndPreviewPanel: true,
       showChatVariablePanel: true,
       showGlobalVariablePanel: true,
     }
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { unmount } = render(<WorkflowPanel />)
+    const { unmount } = renderWorkflowComponent(<WorkflowPanel />, {
+      initialStoreState: workflowStoreState,
+    })
 
     expect(await screen.findByTestId('chat-record-panel')).toBeInTheDocument()
     expect(screen.getByTestId('debug-and-preview-panel')).toBeInTheDocument()
@@ -288,7 +266,7 @@ describe('WorkflowPanel', () => {
 
     unmount()
     mockUseIsChatMode.mockReturnValue(false)
-    render(<WorkflowPanel />)
+    renderWorkflowComponent(<WorkflowPanel />, { initialStoreState: workflowStoreState })
 
     expect(await screen.findByTestId('record-panel')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-preview-panel')).toBeInTheDocument()
@@ -332,7 +310,7 @@ describe('WorkflowPanel', () => {
   })
 
   it('should hide run Fix while viewing history even when the live preview is open', async () => {
-    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    workflowStoreState.historyWorkflowData = { id: 'history-1', status: 'succeeded' }
     workflowStoreState.showDebugAndPreviewPanel = true
     renderWorkflowPanel({ enabled: true })
 

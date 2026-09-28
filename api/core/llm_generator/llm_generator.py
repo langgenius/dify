@@ -979,8 +979,9 @@ class LLMGenerator:
         instruction: str,
         model_config: ModelConfig,
         ideal_output: str | None,
+        session: Session,
     ):
-        last_run: Message | None = db.session.scalar(
+        last_run: Message | None = session.scalar(
             select(Message)
             .join(App, App.id == Message.app_id)
             .where(Message.app_id == flow_id, App.tenant_id == tenant_id)

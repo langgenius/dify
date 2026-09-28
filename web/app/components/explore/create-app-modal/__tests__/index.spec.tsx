@@ -44,13 +44,7 @@ const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
   return { onConfirm, onHide }
 }
 
-const getAppIconTrigger = (): HTMLElement => {
-  const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-  const iconRow = nameInput.parentElement
-  const iconTrigger = iconRow?.firstElementChild
-  if (!(iconTrigger instanceof HTMLElement)) throw new Error('Failed to locate app icon trigger')
-  return iconTrigger
-}
+const getAppIconTrigger = () => screen.getByRole('button', { name: 'app.iconPicker.title' })
 
 const openAppIconPicker = () => {
   fireEvent.click(getAppIconTrigger())
@@ -82,6 +76,33 @@ describe('CreateAppModal', () => {
     deploymentEdition = 'COMMUNITY'
     mockPlanType = 'team'
     mockAppCount = 1
+  })
+
+  it.each([
+    { appIconType: null, appIcon: null, appIconBackground: null },
+    {
+      appIconType: 'link' as const,
+      appIcon: 'https://example.com/icon.png',
+      appIconBackground: null,
+    },
+  ])('preserves the existing icon when editing other fields: %j', async (iconProps) => {
+    const user = userEvent.setup()
+    const { onConfirm } = await setup({ isEditModal: true, ...iconProps })
+
+    await user.clear(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Renamed app')
+    await user.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
+
+    await waitFor(() =>
+      expect(onConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Renamed app',
+          icon_type: iconProps.appIconType,
+          icon: iconProps.appIcon,
+          icon_background: iconProps.appIconBackground,
+        }),
+      ),
+    )
   })
 
   describe('Rendering', () => {
@@ -223,6 +244,21 @@ describe('CreateAppModal', () => {
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('submits instead of opening the icon picker when Mod+Enter starts on its trigger', async () => {
+      const { onConfirm } = await setup()
+      const iconTrigger = getAppIconTrigger()
+      iconTrigger.focus()
+
+      fireEvent.keyDown(iconTrigger, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(iconTrigger, { key: 'Enter', ctrlKey: true })
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
     })
 
     it('does not submit while the visible confirmation action is disabled', async () => {
@@ -456,7 +492,7 @@ describe('CreateAppModal', () => {
       expect(onConfirm.mock.calls[0]![0]).toMatchObject({ description: 'Updated description' })
     })
 
-    it('should omit icon_background when submitting with image icon', async () => {
+    it('preserves the existing null background when submitting an unchanged image icon', async () => {
       const { onConfirm } = await setup({
         appIconType: 'image',
         appIcon: 'file-123',
@@ -474,7 +510,7 @@ describe('CreateAppModal', () => {
         icon_type: 'image',
         icon: 'file-123',
       })
-      expect(payload.icon_background).toBeUndefined()
+      expect(payload.icon_background).toBeNull()
     })
 
     it('should include max_active_requests and updated answer icon when saving', async () => {

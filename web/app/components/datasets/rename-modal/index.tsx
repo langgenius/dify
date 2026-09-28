@@ -128,10 +128,11 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <button
                 type="button"
                 aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                className="shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleOpenAppIconPicker}
               >
                 <AppIcon
+                  decorative
                   size="medium"
                   iconType={appIcon.type}
                   icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
