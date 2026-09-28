@@ -1,5 +1,6 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentType } from 'react'
+import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -50,7 +51,7 @@ vi.mock('@/service/console', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+  fetchAppWorkflowDraft: (appId: string) => mockFetchWorkflowDraft(appId),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -68,12 +69,23 @@ it('imports DSL from the app sidebar without canvas providers', async () => {
   const onImport = vi.fn()
   mockImportDSL.mockResolvedValue({ id: 'import-1', status: 'completed', app_id: 'app-1' })
   mockFetchWorkflowDraft.mockResolvedValue({
+    id: 'draft-1',
     graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
     features: {},
     hash: 'imported-hash',
+    last_replacement_id: 'import-1',
     conversation_variables: [],
     environment_variables: [],
-  })
+    rag_pipeline_variables: [],
+    created_at: 0,
+    created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+    updated_at: 1,
+    updated_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+    tool_published: false,
+    version: '1',
+    marked_name: '',
+    marked_comment: '',
+  } satisfies FetchAppWorkflowDraftResponse)
   mockCheckDependencies.mockResolvedValue({ leaked_dependencies: [] })
 
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -111,6 +123,7 @@ it('imports DSL from the app sidebar without canvas providers', async () => {
   await waitFor(() =>
     expect(mockImportDSL).toHaveBeenCalledWith({ file: expect.any(File), app_id: 'app-1' }),
   )
+  expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1')
   await waitFor(() => expect(closeModal).toHaveBeenCalledOnce())
   expect(onImport).toHaveBeenCalledOnce()
 })
