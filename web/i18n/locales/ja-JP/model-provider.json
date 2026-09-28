@@ -113,8 +113,8 @@
   "modelProvider.selector.showIncompatibleModels": "互換性のないモデルを表示",
   "modelProvider.selector.suggestionTip": "エージェントタスクに推奨",
   "modelProvider.showModels": "モデルの表示",
-  "modelProvider.speechToTextModel.key": "音声-to-テキストモデル",
-  "modelProvider.speechToTextModel.tip": "会話での音声-to-テキスト入力に使用するデフォルトモデルを設定します。",
+  "modelProvider.speechToTextModel.key": "音声からテキストへの変換モデル",
+  "modelProvider.speechToTextModel.tip": "会話での音声からテキストへの変換に使用するデフォルトモデルを設定します。",
   "modelProvider.systemModelSettings": "システムモデル設定",
   "modelProvider.systemModelSettingsDesc": "特定のモデルが設定されていない場合に、ワークスペース全体で使用するデフォルトモデルを設定します。",
   "modelProvider.systemModelSettingsTitle": "デフォルトモデル設定",
@@ -136,8 +136,8 @@
   "modelProvider.tokenerUsageSetupFailed": "Tokener setup failed, so usage is temporarily unavailable.",
   "modelProvider.tokenerUsageTip": "Balance and monthly billing data update near real time.",
   "modelProvider.tokenerUsageUnavailable": "Tokener usage is temporarily unavailable.",
-  "modelProvider.ttsModel.key": "テキスト-to-音声モデル",
-  "modelProvider.ttsModel.tip": "会話でのテキスト-to-音声入力に使用するデフォルトモデルを設定します。",
+  "modelProvider.ttsModel.key": "テキストから音声への変換モデル",
+  "modelProvider.ttsModel.tip": "会話でのテキストから音声への変換に使用するデフォルトモデルを設定します。",
   "modelProvider.upgradeForLoadBalancing": "負荷分散を利用するには、プランのアップグレードが必要です。",
   "modelProvider.used": "使用済み"
 }

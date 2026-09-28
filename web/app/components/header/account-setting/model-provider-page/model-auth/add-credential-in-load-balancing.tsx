@@ -29,6 +29,7 @@ const AddCredentialInLoadBalancing = ({
   provider,
   model,
   configurationMethod,
+  currentCustomConfigurationModelFixedFields,
   modelCredential,
   onSelectCredential,
   onUpdate,
@@ -95,14 +96,7 @@ const AddCredentialInLoadBalancing = ({
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={
-        isCustomModel
-          ? {
-              __model_name: model.model,
-              __model_type: model.model_type,
-            }
-          : undefined
-      }
+      currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
       placement="bottom-start"

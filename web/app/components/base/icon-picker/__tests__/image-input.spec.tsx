@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ImageInput from '../ImageInput'
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ImageIconInput as ImageInput } from '../image-input'
 
 const createObjectURLMock = vi.fn(() => 'blob:mock-url')
 const revokeObjectURLMock = vi.fn()
@@ -67,9 +67,9 @@ describe('ImageInput', () => {
       expect(screen.queryByText(/browse/i)).not.toBeInTheDocument()
     })
 
-    it('should call onImageInput with cropped data when crop completes on static image', async () => {
-      const onImageInput = vi.fn()
-      render(<ImageInput onImageInput={onImageInput} />)
+    it('should call onChange with cropped data when crop completes on static image', async () => {
+      const onChange = vi.fn()
+      render(<ImageInput onChange={onChange} />)
 
       const file = new File(['image-data'], 'photo.png', { type: 'image/png' })
       const input = screen.getByTestId('image-input')
@@ -77,24 +77,27 @@ describe('ImageInput', () => {
 
       await loadCropperImage()
 
+      expect(screen.getByRole('group', { name: 'app.iconPicker.crop' })).toBeInTheDocument()
+      expect(screen.getByRole('slider', { name: 'app.iconPicker.zoom' })).toBeInTheDocument()
+
       await waitFor(() => {
-        expect(onImageInput).toHaveBeenCalledWith(
-          true,
-          'blob:mock-url',
-          expect.objectContaining({
+        expect(onChange).toHaveBeenCalledWith({
+          type: 'crop',
+          url: 'blob:mock-url',
+          area: expect.objectContaining({
             x: expect.any(Number),
             y: expect.any(Number),
             width: expect.any(Number),
             height: expect.any(Number),
           }),
-          'photo.png',
-        )
+          fileName: 'photo.png',
+        })
       })
     })
 
-    it('should show img tag and call onImageInput with isCropped=false for animated GIF', async () => {
-      const onImageInput = vi.fn()
-      render(<ImageInput onImageInput={onImageInput} />)
+    it('should show img tag and call onChange with isCropped=false for animated GIF', async () => {
+      const onChange = vi.fn()
+      render(<ImageInput onChange={onChange} />)
 
       const gifBytes = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])
       const file = new File([gifBytes], 'anim.gif', { type: 'image/gif' })
@@ -109,21 +112,82 @@ describe('ImageInput', () => {
 
       // Cropper should NOT be shown
       expect(screen.queryByTestId('container')).not.toBeInTheDocument()
-      expect(onImageInput).toHaveBeenCalledWith(false, file)
+      expect(onChange).toHaveBeenCalledWith({ type: 'file', file })
     })
 
-    it('should reset file input value on click', () => {
+    it('should reset file input value after selection', () => {
       render(<ImageInput />)
 
       const input = screen.getByTestId('image-input') as HTMLInputElement
       // Simulate previous value
       Object.defineProperty(input, 'value', { writable: true, value: 'old-file.png' })
-      fireEvent.click(input)
+      fireEvent.change(input, { target: { files: [] } })
       expect(input.value).toBe('')
     })
   })
 
   describe('Drag and Drop', () => {
+    it('accepts file drag gestures on nested content without consuming text drags', async () => {
+      const onDragEnter = vi.fn()
+      const onDragOver = vi.fn()
+      const onDragLeave = vi.fn()
+      render(
+        <div onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave}>
+          <ImageInput />
+        </div>,
+      )
+      const target = screen.getByRole('button', { name: /browse/i })
+      const fileTransfer = {
+        types: ['Files'],
+        files: [new File(['image'], 'photo.png', { type: 'image/png' })],
+        dropEffect: 'none',
+      }
+      for (const dataTransfer of [{ types: ['text/plain'], files: [] }, fileTransfer]) {
+        for (const createDragEvent of [
+          createEvent.dragEnter,
+          createEvent.dragOver,
+          createEvent.dragLeave,
+        ]) {
+          const event = createDragEvent(target, { dataTransfer })
+          fireEvent(target, event)
+          expect(event.defaultPrevented).toBe(dataTransfer === fileTransfer && event.cancelable)
+          if (event.type === 'dragover' && dataTransfer === fileTransfer)
+            expect((event as DragEvent).dataTransfer?.dropEffect).toBe('copy')
+        }
+      }
+      expect(onDragEnter).toHaveBeenCalledOnce()
+      expect(onDragOver).toHaveBeenCalledOnce()
+      expect(onDragLeave).toHaveBeenCalledOnce()
+      fireEvent.drop(target, { dataTransfer: fileTransfer })
+      await waitForCropperContainer()
+    })
+
+    it('consumes file drops inside the picker but leaves text drops to the parent', async () => {
+      const onDrop = vi.fn()
+      render(
+        <div onDrop={onDrop}>
+          <ImageInput />
+        </div>,
+      )
+      const target = screen.getByRole('button', { name: /browse/i })
+      const textDrop = createEvent.drop(target, {
+        dataTransfer: { types: ['text/plain'], files: [] },
+      })
+      fireEvent(target, textDrop)
+      expect(textDrop.defaultPrevented).toBe(false)
+      expect(onDrop).toHaveBeenCalledOnce()
+      const fileDrop = createEvent.drop(target, {
+        dataTransfer: {
+          types: ['Files'],
+          files: [new File(['image'], 'photo.png', { type: 'image/png' })],
+        },
+      })
+      fireEvent(target, fileDrop)
+      expect(fileDrop.defaultPrevented).toBe(true)
+      expect(onDrop).toHaveBeenCalledOnce()
+      await waitForCropperContainer()
+    })
+
     it('should show image after dropping a file', async () => {
       render(<ImageInput />)
 
@@ -133,7 +197,7 @@ describe('ImageInput', () => {
       const file = new File(['image-data'], 'dropped.png', { type: 'image/png' })
 
       fireEvent.drop(dropZone, {
-        dataTransfer: { files: [file] },
+        dataTransfer: { files: [file], types: ['Files'] },
       })
 
       await waitForCropperContainer()
@@ -163,6 +227,19 @@ describe('ImageInput', () => {
   })
 
   describe('Edge Cases', () => {
+    it('invalidates an unreadable image and makes a replacement available', async () => {
+      const onChange = vi.fn()
+      render(<ImageInput onChange={onChange} />)
+      fireEvent.change(screen.getByTestId('image-input'), {
+        target: { files: [new File(['broken'], 'photo.png', { type: 'image/png' })] },
+      })
+      await waitForCropperContainer()
+      fireEvent.error(screen.getByTestId('container').querySelector('img')!)
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      expect(screen.getByRole('alert').textContent).toMatch(/ReadError/)
+      expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument()
+    })
+
     it('should accept the correct file extensions', () => {
       render(<ImageInput />)
 

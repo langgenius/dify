@@ -4,7 +4,7 @@ import getCroppedImg, {
   getMimeType,
   getRadianAngle,
   rotateSize,
-} from '../utils'
+} from '../image-crop'
 
 type ImageLoadEventType = 'load' | 'error'
 

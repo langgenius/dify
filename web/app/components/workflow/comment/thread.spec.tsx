@@ -161,6 +161,8 @@ describe('CommentThread', () => {
     fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onResolve).toHaveBeenCalledTimes(1)
