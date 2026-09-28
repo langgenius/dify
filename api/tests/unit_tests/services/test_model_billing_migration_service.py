@@ -1,6 +1,7 @@
 import copy
 from datetime import datetime, timedelta
 from operator import itemgetter
+from typing import Literal, NoReturn, NotRequired, TypedDict, cast
 from uuid import uuid4
 
 import pytest
@@ -33,12 +34,68 @@ NOW = datetime(2026, 10, 1, 12)
 HASH = "sha256:" + "1" * 64
 
 
-def envelope(revision: int) -> dict:
+class WindowData(TypedDict):
+    ordinal: int
+    cycle_key: str
+    window_id: str
+    source_ref: str
+    starts_at: str
+    ends_at: str
+    amount_usd_micro: str
+    aliases: list[dict[str, str]]
+
+
+class ManifestData(TypedDict):
+    schema_version: int
+    tenant_id: str
+    migration_id: str
+    plan_revision: int
+    calendar_policy: str
+    contract_ref: str
+    subscription_id: str
+    paid_period_start: str
+    paid_period_end: str
+    funding_invoice_id: str
+    amount_policy_version: str
+    model_mapping_version: str
+    windows: list[WindowData]
+
+
+class CorrectionData(TypedDict):
+    command_id: str
+    window: WindowData
+    delta_usd_micro: str
+    target_amount_usd_micro: str
+    payload_hash: NotRequired[str]
+
+
+class MigrationState(TypedDict, total=False):
+    revision: int
+    phase: str
+    attention: str
+    route_epoch: int
+    claimed_at: str
+    replayed: bool
+    ever_activated: bool
+    lease_token: str
+    lease_expires_at: str
+    intent_revision: int
+    preparation_binding_hash: str
+    manifest_hash: str
+    funding_receipt_hash: str
+    manifest: ManifestData
+    commands: list[dict[str, str]]
+    cycle_decisions: list[dict[str, str]]
+    terminated_contract_refs: list[str]
+    pending_contract_event: dict[str, object]
+
+
+def envelope(revision: int) -> dict[str, object]:
     return {"api_version": 1, "operation_id": str(uuid4()), "expected_revision": revision}
 
 
 @pytest.fixture
-def preparation(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+def preparation(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[str, PrepareMigrationPayload]:
     tenant = Tenant(name="Migration test")
     sqlite_session.add(tenant)
     sqlite_session.commit()
@@ -51,21 +108,23 @@ def preparation(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(module, "naive_utc_now", lambda: NOW)
     monkeypatch.setattr(Service, "enqueue_prepare", lambda *_args: None)
     monkeypatch.setattr(Service, "validate_runtime_readiness", lambda *_args: None)
-    payload = PrepareMigrationPayload(
-        **envelope(0),
-        migration_id=str(uuid4()),
-        batch_id="batch-test",
-        eligibility_policy_version="paid-v1",
-        model_mapping_version="mapping-v1",
-        inventory_hash=HASH,
-        billing_preparation_ref="billing.prepare.fixture",
+    payload = PrepareMigrationPayload.model_validate(
+        {
+            **envelope(0),
+            "migration_id": str(uuid4()),
+            "batch_id": "batch-test",
+            "eligibility_policy_version": "paid-v1",
+            "model_mapping_version": "mapping-v1",
+            "inventory_hash": HASH,
+            "billing_preparation_ref": "billing.prepare.fixture",
+        }
     )
     Service.prepare(tenant.id, payload)
     return tenant.id, payload
 
 
 @pytest.fixture
-def prepared(preparation, sqlite_session: Session):
+def prepared(preparation: tuple[str, PrepareMigrationPayload], sqlite_session: Session) -> tuple[str, str]:
     tenant_id, payload = preparation
     credential = ProviderCredential(
         tenant_id=tenant_id,
@@ -95,7 +154,7 @@ def prepared(preparation, sqlite_session: Session):
     return tenant_id, payload.migration_id
 
 
-def manifest(tenant_id: str, migration_id: str) -> dict:
+def manifest(tenant_id: str, migration_id: str) -> ManifestData:
     return {
         "schema_version": 1,
         "tenant_id": tenant_id,
@@ -130,10 +189,12 @@ def manifest(tenant_id: str, migration_id: str) -> dict:
     }
 
 
-def correction_payloads(tenant_id: str, migration_id: str, count: int = 2, prefix: str = "refund") -> list[dict]:
-    result = []
+def correction_payloads(
+    tenant_id: str, migration_id: str, count: int = 2, prefix: str = "refund"
+) -> list[CorrectionData]:
+    result: list[CorrectionData] = []
     for index, window in enumerate(manifest(tenant_id, migration_id)["windows"][:count]):
-        command = {
+        command: CorrectionData = {
             "command_id": f"{prefix}-{index}",
             "window": window,
             "delta_usd_micro": "-5000000",
@@ -144,67 +205,89 @@ def correction_payloads(tenant_id: str, migration_id: str, count: int = 2, prefi
     return result
 
 
-def claim(tenant_id: str, migration_id: str):
+def claim(tenant_id: str, migration_id: str) -> tuple[MigrationState, DecideCyclePayload]:
     status = Service.status(tenant_id)
     data = manifest(tenant_id, migration_id)
-    request = DecideCyclePayload(
-        **envelope(status["revision"]),
-        cycle_key="cycle-0",
-        decision="tokener",
-        contract_ref="contract-fixture",
-        preparation_binding_hash=status["preparation_binding_hash"],
-        billing_receipt_refs=["receipt-fixture"],
-        manifest=data,
-        manifest_hash=canonical_hash(data),
-    )
-    return Service.decide_cycle(tenant_id, migration_id, request), request
-
-
-def acquire(tenant_id: str, migration_id: str):
-    return Service.lease(
-        tenant_id,
-        migration_id,
-        LeasePayload(
-            **envelope(Service.status(tenant_id)["revision"]),
-            action="acquire",
-        ),
-    )
-
-
-def receipts(tenant_id: str, migration_id: str, status: dict, *, state: str = "verified"):
-    return Service.funding_receipts(
-        tenant_id,
-        migration_id,
-        FundingReceiptsPayload(
+    request = DecideCyclePayload.model_validate(
+        {
             **envelope(status["revision"]),
-            lease_token=status["lease_token"],
-            intent_revision=status["intent_revision"],
-            manifest_hash=status["manifest_hash"],
-            commands=[
+            "cycle_key": "cycle-0",
+            "decision": "tokener",
+            "contract_ref": "contract-fixture",
+            "preparation_binding_hash": status["preparation_binding_hash"],
+            "billing_receipt_refs": ["receipt-fixture"],
+            "manifest": data,
+            "manifest_hash": canonical_hash(data),
+        }
+    )
+    return cast(MigrationState, Service.decide_cycle(tenant_id, migration_id, request)), request
+
+
+def acquire(tenant_id: str, migration_id: str) -> MigrationState:
+    return cast(
+        MigrationState,
+        Service.lease(
+            tenant_id,
+            migration_id,
+            LeasePayload.model_validate(
                 {
-                    "command_id": "grant:" + window["window_id"],
-                    "payload_hash": canonical_hash(window),
-                    "remote_id": window["window_id"],
-                    "state": state,
+                    **envelope(Service.status(tenant_id)["revision"]),
+                    "action": "acquire",
                 }
-                for window in status["manifest"]["windows"]
-            ],
+            ),
         ),
     )
 
 
-def activation(_tenant_id: str, _migration_id: str, status: dict):
-    return ActivateMigrationPayload(
-        **envelope(status["revision"]),
-        lease_token=status["lease_token"],
-        intent_revision=status["intent_revision"],
-        manifest_hash=status["manifest_hash"],
-        funding_receipt_hash=status["funding_receipt_hash"],
-        preparation_binding_hash=status["preparation_binding_hash"],
+def receipts(
+    tenant_id: str, migration_id: str, status: MigrationState | dict[str, object], *, state: str = "verified"
+) -> MigrationState:
+    status = cast(MigrationState, status)
+    return cast(
+        MigrationState,
+        Service.funding_receipts(
+            tenant_id,
+            migration_id,
+            FundingReceiptsPayload.model_validate(
+                {
+                    **envelope(status["revision"]),
+                    "lease_token": status["lease_token"],
+                    "intent_revision": status["intent_revision"],
+                    "manifest_hash": status["manifest_hash"],
+                    "commands": [
+                        {
+                            "command_id": "grant:" + window["window_id"],
+                            "payload_hash": canonical_hash(window),
+                            "remote_id": window["window_id"],
+                            "state": state,
+                        }
+                        for window in status["manifest"]["windows"]
+                    ],
+                }
+            ),
+        ),
     )
 
 
-def test_prepare_replay_precedes_cas_and_never_creates_profile(preparation, sqlite_session: Session):
+def activation(
+    _tenant_id: str, _migration_id: str, status: MigrationState | dict[str, object]
+) -> ActivateMigrationPayload:
+    status = cast(MigrationState, status)
+    return ActivateMigrationPayload.model_validate(
+        {
+            **envelope(status["revision"]),
+            "lease_token": status["lease_token"],
+            "intent_revision": status["intent_revision"],
+            "manifest_hash": status["manifest_hash"],
+            "funding_receipt_hash": status["funding_receipt_hash"],
+            "preparation_binding_hash": status["preparation_binding_hash"],
+        }
+    )
+
+
+def test_prepare_replay_precedes_cas_and_never_creates_profile(
+    preparation: tuple[str, PrepareMigrationPayload], sqlite_session: Session
+) -> None:
     tenant_id, payload = preparation
     result = Service.prepare(tenant_id, payload)
     assert result["replayed"] is True
@@ -213,19 +296,19 @@ def test_prepare_replay_precedes_cas_and_never_creates_profile(preparation, sqli
     assert sqlite_session.scalar(select(Provider).where(Provider.tenant_id == tenant_id)) is None
 
 
-def test_operation_id_different_payload_rejected(preparation):
+def test_operation_id_different_payload_rejected(preparation: tuple[str, PrepareMigrationPayload]) -> None:
     tenant_id, payload = preparation
     with pytest.raises(MigrationError, match="idempotency_conflict"):
         Service.prepare(tenant_id, payload.model_copy(update={"batch_id": "different"}))
 
 
-def test_new_operation_stale_revision_rejected(prepared):
+def test_new_operation_stale_revision_rejected(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     with pytest.raises(MigrationError, match="revision_conflict"):
-        Service.lease(tenant_id, migration_id, LeasePayload(**envelope(0), action="acquire"))
+        Service.lease(tenant_id, migration_id, LeasePayload.model_validate({**envelope(0), "action": "acquire"}))
 
 
-def test_claim_freezes_all_future_cycle_decisions_and_age(prepared):
+def test_claim_freezes_all_future_cycle_decisions_and_age(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     result, request = claim(tenant_id, migration_id)
     assert result["phase"] == "claimed"
@@ -235,33 +318,37 @@ def test_claim_freezes_all_future_cycle_decisions_and_age(prepared):
     assert result["route_epoch"] == 1
 
 
-def test_legacy_decision_cannot_flip_to_tokener(prepared):
+def test_legacy_decision_cannot_flip_to_tokener(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     status = Service.status(tenant_id)
     Service.decide_cycle(
         tenant_id,
         migration_id,
-        DecideCyclePayload(
-            **envelope(status["revision"]),
-            cycle_key="cycle-0",
-            decision="legacy_deferred",
-            contract_ref="contract-fixture",
-            preparation_binding_hash=status["preparation_binding_hash"],
-            billing_receipt_refs=["legacy-receipt"],
+        DecideCyclePayload.model_validate(
+            {
+                **envelope(status["revision"]),
+                "cycle_key": "cycle-0",
+                "decision": "legacy_deferred",
+                "contract_ref": "contract-fixture",
+                "preparation_binding_hash": status["preparation_binding_hash"],
+                "billing_receipt_refs": ["legacy-receipt"],
+            }
         ),
     )
     with pytest.raises(MigrationError, match="cycle_decision_conflict"):
         claim(tenant_id, migration_id)
 
 
-def test_prepare_not_in_claim_attention_clock(prepared, monkeypatch: pytest.MonkeyPatch):
+def test_prepare_not_in_claim_attention_clock(prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
     tenant_id, _ = prepared
     monkeypatch.setattr(module, "naive_utc_now", lambda: NOW + timedelta(days=100))
     assert Service.status(tenant_id)["attention"] == "normal"
 
 
 @pytest.mark.parametrize(("seconds", "attention"), [(300, "normal"), (301, "alerted"), (1801, "manual_required")])
-def test_attention_never_restarts_with_lease(prepared, monkeypatch: pytest.MonkeyPatch, seconds: int, attention: str):
+def test_attention_never_restarts_with_lease(
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch, seconds: int, attention: str
+) -> None:
     tenant_id, migration_id = prepared
     initial, _ = claim(tenant_id, migration_id)
     monkeypatch.setattr(module, "naive_utc_now", lambda: NOW + timedelta(seconds=seconds))
@@ -271,7 +358,7 @@ def test_attention_never_restarts_with_lease(prepared, monkeypatch: pytest.Monke
     assert current["route_epoch"] == initial["route_epoch"]
 
 
-def test_old_lease_cannot_publish_after_takeover(prepared, monkeypatch: pytest.MonkeyPatch):
+def test_old_lease_cannot_publish_after_takeover(prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     first = acquire(tenant_id, migration_id)
@@ -282,7 +369,9 @@ def test_old_lease_cannot_publish_after_takeover(prepared, monkeypatch: pytest.M
         receipts(tenant_id, migration_id, first)
 
 
-def test_verified_receipts_activate_profile_atomically_and_publish_managed_provider(prepared, sqlite_session: Session):
+def test_verified_receipts_activate_profile_atomically_and_publish_managed_provider(
+    prepared: tuple[str, str], sqlite_session: Session
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
@@ -293,16 +382,23 @@ def test_verified_receipts_activate_profile_atomically_and_publish_managed_provi
     assert active["route_epoch"] == 2
     assert Service.activate(tenant_id, migration_id, request)["replayed"] is True
     sqlite_session.expire_all()
-    assert sqlite_session.get(TenantModelBillingProfile, tenant_id).model_billing_source == "tokener"
+    profile = sqlite_session.get(TenantModelBillingProfile, tenant_id)
+    assert profile is not None
+    assert profile.model_billing_source == "tokener"
     provider = sqlite_session.scalar(select(Provider).where(Provider.tenant_id == tenant_id))
+    assert provider is not None
     assert provider.is_valid is True
-    assert provider.credential_id == Service.get_routing_state(tenant_id)["preparation"]["provider_credential_id"]
+    routing_state = Service.get_routing_state(tenant_id)
+    assert routing_state is not None
+    assert provider.credential_id == routing_state["preparation"]["provider_credential_id"]
 
 
 @pytest.mark.parametrize(
     "field", ["intent_revision", "manifest_hash", "funding_receipt_hash", "preparation_binding_hash"]
 )
-def test_activation_checks_every_explicit_binding(prepared, sqlite_session: Session, field: str):
+def test_activation_checks_every_explicit_binding(
+    prepared: tuple[str, str], sqlite_session: Session, field: str
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
@@ -317,7 +413,7 @@ def test_activation_checks_every_explicit_binding(prepared, sqlite_session: Sess
 @pytest.mark.parametrize(
     "remote_state", ["registered", "dispatched", "accepted", "outcome_unknown", "failed_definitive"]
 )
-def test_nonverified_funding_cannot_activate(prepared, remote_state: str):
+def test_nonverified_funding_cannot_activate(prepared: tuple[str, str], remote_state: str) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     status = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id), state=remote_state)
@@ -326,28 +422,31 @@ def test_nonverified_funding_cannot_activate(prepared, remote_state: str):
         Service.activate(tenant_id, migration_id, activation(tenant_id, migration_id, status))
 
 
-def test_key_change_between_prepare_and_claim_is_rejected(prepared, sqlite_session: Session):
+def test_key_change_between_prepare_and_claim_is_rejected(prepared: tuple[str, str], sqlite_session: Session) -> None:
     tenant_id, migration_id = prepared
     credential = sqlite_session.scalar(select(ProviderCredential).where(ProviderCredential.tenant_id == tenant_id))
+    assert credential is not None
     credential.encrypted_config = '{"api_key":"changed"}'
     sqlite_session.commit()
     with pytest.raises(MigrationError, match="readiness_changed"):
         claim(tenant_id, migration_id)
 
 
-def test_contract_event_fences_old_intent_and_requires_new_correction(prepared):
+def test_contract_event_fences_old_intent_and_requires_new_correction(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
-    event = ContractEventPayload(
-        **envelope(ready["revision"]),
-        business_event_ref="re_fixture",
-        contract_ref="contract-fixture",
-        billing_receipt_ref="refund-receipt",
-        affected_window_ids=["window-0", "window-1"],
-        event_type="refund",
-        terminal=True,
-        command_payloads=correction_payloads(tenant_id, migration_id),
+    event = ContractEventPayload.model_validate(
+        {
+            **envelope(ready["revision"]),
+            "business_event_ref": "re_fixture",
+            "contract_ref": "contract-fixture",
+            "billing_receipt_ref": "refund-receipt",
+            "affected_window_ids": ["window-0", "window-1"],
+            "event_type": "refund",
+            "terminal": True,
+            "command_payloads": correction_payloads(tenant_id, migration_id),
+        }
     )
     fenced = Service.contract_event(tenant_id, migration_id, event)
     assert fenced["phase"] == "blocked"
@@ -362,38 +461,40 @@ def test_contract_event_fences_old_intent_and_requires_new_correction(prepared):
     cancelled = Service.funding_receipts(
         tenant_id,
         migration_id,
-        FundingReceiptsPayload(
-            **envelope(same_grants["revision"]),
-            lease_token=same_grants["lease_token"],
-            intent_revision=2,
-            manifest_hash=same_grants["manifest_hash"],
-            commands=[
-                {
-                    "command_id": f"refund-{index}",
-                    "payload_hash": correction_payloads(tenant_id, migration_id)[index]["payload_hash"],
-                    "remote_id": f"window-{index}",
-                    "state": "verified",
-                }
-                for index in range(2)
-            ],
+        FundingReceiptsPayload.model_validate(
+            {
+                **envelope(same_grants["revision"]),
+                "lease_token": same_grants["lease_token"],
+                "intent_revision": 2,
+                "manifest_hash": same_grants["manifest_hash"],
+                "commands": [
+                    {
+                        "command_id": f"refund-{index}",
+                        "payload_hash": correction_payloads(tenant_id, migration_id)[index]["payload_hash"],
+                        "remote_id": f"window-{index}",
+                        "state": "verified",
+                    }
+                    for index in range(2)
+                ],
+            }
         ),
     )
     assert cancelled["phase"] == "cancelled"
 
 
-def test_cross_tenant_migration_identity_rejected(prepared):
+def test_cross_tenant_migration_identity_rejected(prepared: tuple[str, str]) -> None:
     tenant_id, _ = prepared
     with pytest.raises(MigrationError, match="migration_not_found"):
-        Service.lease(tenant_id, str(uuid4()), LeasePayload(**envelope(2), action="acquire"))
+        Service.lease(tenant_id, str(uuid4()), LeasePayload.model_validate({**envelope(2), "action": "acquire"}))
 
 
-def test_unknown_operation_does_not_mean_failed(prepared):
+def test_unknown_operation_does_not_mean_failed(prepared: tuple[str, str]) -> None:
     tenant_id, _ = prepared
     with pytest.raises(MigrationError, match="operation_not_found"):
         Service.status(tenant_id, str(uuid4()))
 
 
-def test_expired_batch_pauses_new_claim(prepared, sqlite_session: Session):
+def test_expired_batch_pauses_new_claim(prepared: tuple[str, str], sqlite_session: Session) -> None:
     tenant_id, migration_id = prepared
     other = Tenant(name="Stalled migration")
     sqlite_session.add(other)
@@ -413,7 +514,7 @@ def test_expired_batch_pauses_new_claim(prepared, sqlite_session: Session):
 
 
 @pytest.mark.parametrize("field", ["tenant_id", "migration_id"])
-def test_manifest_scope_is_checked(prepared, field: str):
+def test_manifest_scope_is_checked(prepared: tuple[str, str], field: Literal["tenant_id", "migration_id"]) -> None:
     tenant_id, migration_id = prepared
     status = Service.status(tenant_id)
     data = manifest(tenant_id, migration_id)
@@ -422,21 +523,23 @@ def test_manifest_scope_is_checked(prepared, field: str):
         Service.decide_cycle(
             tenant_id,
             migration_id,
-            DecideCyclePayload(
-                **envelope(status["revision"]),
-                decision="tokener",
-                cycle_key="cycle-0",
-                contract_ref="contract-fixture",
-                preparation_binding_hash=status["preparation_binding_hash"],
-                billing_receipt_refs=[],
-                manifest=data,
-                manifest_hash=canonical_hash(data),
+            DecideCyclePayload.model_validate(
+                {
+                    **envelope(status["revision"]),
+                    "decision": "tokener",
+                    "cycle_key": "cycle-0",
+                    "contract_ref": "contract-fixture",
+                    "preparation_binding_hash": status["preparation_binding_hash"],
+                    "billing_receipt_refs": [],
+                    "manifest": data,
+                    "manifest_hash": canonical_hash(data),
+                }
             ),
         )
 
 
 @pytest.mark.parametrize("change", ["overlap", "bad_date", "beyond_paid", "duplicate"])
-def test_manifest_validation_rejects_invalid_intervals(change: str):
+def test_manifest_validation_rejects_invalid_intervals(change: str) -> None:
     data = manifest(str(uuid4()), str(uuid4()))
     if change == "overlap":
         data["windows"][1]["starts_at"] = "2026-10-10T00:00:00Z"
@@ -451,23 +554,26 @@ def test_manifest_validation_rejects_invalid_intervals(change: str):
 
 
 @pytest.mark.parametrize("field", ["window_id", "ordinal", "cycle_key"])
-def test_manifest_rejects_each_duplicate_identity(field: str):
+def test_manifest_rejects_each_duplicate_identity(field: str) -> None:
     data = manifest(str(uuid4()), str(uuid4()))
-    data["windows"][1][field] = data["windows"][0][field]
+    original = cast(dict[str, object], data["windows"][0])
+    duplicate = cast(dict[str, object], data["windows"][1])
+    duplicate[field] = original[field]
     with pytest.raises(ValidationError, match="duplicate window identity"):
         WindowManifest.model_validate(data)
 
 
-def test_canonical_hash_forbids_float_and_null():
-    for value in ({"amount": 1.2}, {"key": None}):
+def test_canonical_hash_forbids_float_and_null() -> None:
+    invalid_payloads: tuple[dict[str, object], ...] = ({"amount": 1.2}, {"key": None})
+    for value in invalid_payloads:
         with pytest.raises(ValueError):
             canonical_hash(value)
 
 
 def test_late_refund_of_expired_migration_contract_terminates_contract_but_preserves_tokener_routing(
-    prepared,
+    prepared: tuple[str, str],
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
@@ -476,45 +582,51 @@ def test_late_refund_of_expired_migration_contract_terminates_contract_but_prese
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(active["revision"]),
-            business_event_ref="refund-original-annual-invoice",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="historical-refund-receipt",
-            affected_window_ids=["window-0", "window-1"],
-            event_type="refund",
-            terminal=True,
-            command_payloads=correction_payloads(tenant_id, migration_id, prefix="historical-refund"),
+        ContractEventPayload.model_validate(
+            {
+                **envelope(active["revision"]),
+                "business_event_ref": "refund-original-annual-invoice",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "historical-refund-receipt",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": "refund",
+                "terminal": True,
+                "command_payloads": correction_payloads(tenant_id, migration_id, prefix="historical-refund"),
+            }
         ),
     )
     leased = acquire(tenant_id, migration_id)
     resolved = Service.funding_receipts(
         tenant_id,
         migration_id,
-        FundingReceiptsPayload(
-            **envelope(leased["revision"]),
-            lease_token=leased["lease_token"],
-            intent_revision=fenced["intent_revision"],
-            manifest_hash=fenced["manifest_hash"],
-            commands=[
-                {
-                    "command_id": f"historical-refund-{index}",
-                    "payload_hash": correction_payloads(tenant_id, migration_id, prefix="historical-refund")[index][
-                        "payload_hash"
-                    ],
-                    "remote_id": f"window-{index}",
-                    "state": "verified",
-                }
-                for index in range(2)
-            ],
+        FundingReceiptsPayload.model_validate(
+            {
+                **envelope(leased["revision"]),
+                "lease_token": leased["lease_token"],
+                "intent_revision": fenced["intent_revision"],
+                "manifest_hash": fenced["manifest_hash"],
+                "commands": [
+                    {
+                        "command_id": f"historical-refund-{index}",
+                        "payload_hash": correction_payloads(tenant_id, migration_id, prefix="historical-refund")[index][
+                            "payload_hash"
+                        ],
+                        "remote_id": f"window-{index}",
+                        "state": "verified",
+                    }
+                    for index in range(2)
+                ],
+            }
         ),
     )
     assert resolved["phase"] == "cancelled"
     assert resolved["terminated_contract_refs"] == ["contract-fixture"]
-    assert Service.get_routing_state(tenant_id)["ever_activated"] is True
+    routing_state = Service.get_routing_state(tenant_id)
+    assert routing_state is not None
+    assert routing_state["ever_activated"] is True
 
 
-def test_reanchor_cannot_shorten_current_active_window(prepared):
+def test_reanchor_cannot_shorten_current_active_window(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     claimed, _ = claim(tenant_id, migration_id)
     replacement = manifest(tenant_id, migration_id)
@@ -525,22 +637,24 @@ def test_reanchor_cannot_shorten_current_active_window(prepared):
         Service.contract_event(
             tenant_id,
             migration_id,
-            ContractEventPayload(
-                **envelope(claimed["revision"]),
-                business_event_ref="reanchor-fixture",
-                contract_ref="contract-fixture",
-                billing_receipt_ref="reanchor-receipt",
-                affected_window_ids=["window-0"],
-                event_type="reanchor",
-                command_payloads=correction_payloads(tenant_id, migration_id, count=1),
-                replacement_manifest=replacement,
-                replacement_manifest_hash=canonical_hash(replacement),
+            ContractEventPayload.model_validate(
+                {
+                    **envelope(claimed["revision"]),
+                    "business_event_ref": "reanchor-fixture",
+                    "contract_ref": "contract-fixture",
+                    "billing_receipt_ref": "reanchor-receipt",
+                    "affected_window_ids": ["window-0"],
+                    "event_type": "reanchor",
+                    "command_payloads": correction_payloads(tenant_id, migration_id, count=1),
+                    "replacement_manifest": replacement,
+                    "replacement_manifest_hash": canonical_hash(replacement),
+                }
             ),
         )
     assert Service.status(tenant_id)["phase"] == "claimed"
 
 
-def test_dispatched_command_cannot_regress_to_registered(prepared):
+def test_dispatched_command_cannot_regress_to_registered(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     dispatched = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id), state="dispatched")
@@ -548,7 +662,9 @@ def test_dispatched_command_cannot_regress_to_registered(prepared):
         receipts(tenant_id, migration_id, dispatched, state="registered")
 
 
-def test_prepare_replay_after_claim_returns_original_operation_without_regrant(preparation, prepared):
+def test_prepare_replay_after_claim_returns_original_operation_without_regrant(
+    preparation: tuple[str, PrepareMigrationPayload], prepared: tuple[str, str]
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     original = Service.prepare(tenant_id, preparation[1])
@@ -559,7 +675,7 @@ def test_prepare_replay_after_claim_returns_original_operation_without_regrant(p
     assert Service.status(tenant_id)["phase"] == "claimed"
 
 
-def test_activation_preserves_existing_tokener_byok(prepared, sqlite_session: Session):
+def test_activation_preserves_existing_tokener_byok(prepared: tuple[str, str], sqlite_session: Session) -> None:
     tenant_id, migration_id = prepared
     byok = Provider(
         tenant_id=tenant_id,
@@ -574,11 +690,14 @@ def test_activation_preserves_existing_tokener_byok(prepared, sqlite_session: Se
     Service.activate(tenant_id, migration_id, activation(tenant_id, migration_id, ready))
     sqlite_session.expire_all()
     persisted = sqlite_session.get(Provider, byok.id)
+    assert persisted is not None
     assert persisted.credential_id == "original-byok-id"
     assert persisted.is_valid is False
 
 
-def test_contract_event_persists_full_frozen_correction_and_rejects_unplanned_receipt(prepared):
+def test_contract_event_persists_full_frozen_correction_and_rejects_unplanned_receipt(
+    prepared: tuple[str, str],
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
@@ -592,15 +711,17 @@ def test_contract_event_persists_full_frozen_correction_and_rejects_unplanned_re
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(ready["revision"]),
-            business_event_ref="refund-frozen-fixture",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="receipt-fixture",
-            affected_window_ids=["window-0"],
-            event_type="refund",
-            terminal=True,
-            command_payloads=[command],
+        ContractEventPayload.model_validate(
+            {
+                **envelope(ready["revision"]),
+                "business_event_ref": "refund-frozen-fixture",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "receipt-fixture",
+                "affected_window_ids": ["window-0"],
+                "event_type": "refund",
+                "terminal": True,
+                "command_payloads": [command],
+            }
         ),
     )
     assert fenced["pending_contract_event"]["command_payloads"] == [command]
@@ -610,47 +731,58 @@ def test_contract_event_persists_full_frozen_correction_and_rejects_unplanned_re
         Service.funding_receipts(
             tenant_id,
             migration_id,
-            FundingReceiptsPayload(
-                **envelope(fenced["revision"]),
-                lease_token=fenced["lease_token"],
-                intent_revision=fenced["intent_revision"],
-                manifest_hash=fenced["manifest_hash"],
-                commands=[
-                    {
-                        "command_id": "not-the-frozen-correction",
-                        "remote_id": "window-0",
-                        "payload_hash": HASH,
-                        "state": "verified",
-                    }
-                ],
+            FundingReceiptsPayload.model_validate(
+                {
+                    **envelope(fenced["revision"]),
+                    "lease_token": fenced["lease_token"],
+                    "intent_revision": fenced["intent_revision"],
+                    "manifest_hash": fenced["manifest_hash"],
+                    "commands": [
+                        {
+                            "command_id": "not-the-frozen-correction",
+                            "remote_id": "window-0",
+                            "payload_hash": HASH,
+                            "state": "verified",
+                        }
+                    ],
+                }
             ),
         )
 
 
-def test_preparation_stores_only_narrow_source_ownership_snapshot(prepared):
+def test_preparation_stores_only_narrow_source_ownership_snapshot(prepared: tuple[str, str]) -> None:
     tenant_id, _ = prepared
     state = Service.get_routing_state(tenant_id)
+    assert state is not None
     assert state["source_ownership"] == {
         "langgenius/openai/openai": {"current_quota_type": "paid", "quotas": {"paid": {"unmetered": False}}},
     }
     assert state["preparation"]["source_ownership_hash"] == canonical_hash(state["source_ownership"])
 
 
-def submit_command(tenant_id: str, migration_id: str, status: dict, command: dict):
-    return Service.funding_receipts(
-        tenant_id,
-        migration_id,
-        FundingReceiptsPayload(
-            **envelope(status["revision"]),
-            lease_token=status["lease_token"],
-            intent_revision=status["intent_revision"],
-            manifest_hash=status["manifest_hash"],
-            commands=[command],
+def submit_command(
+    tenant_id: str, migration_id: str, status: MigrationState | dict[str, object], command: dict[str, str]
+) -> MigrationState:
+    status = cast(MigrationState, status)
+    return cast(
+        MigrationState,
+        Service.funding_receipts(
+            tenant_id,
+            migration_id,
+            FundingReceiptsPayload.model_validate(
+                {
+                    **envelope(status["revision"]),
+                    "lease_token": status["lease_token"],
+                    "intent_revision": status["intent_revision"],
+                    "manifest_hash": status["manifest_hash"],
+                    "commands": [command],
+                }
+            ),
         ),
     )
 
 
-def prepare_reanchor(tenant_id: str, migration_id: str):
+def prepare_reanchor(tenant_id: str, migration_id: str) -> tuple[MigrationState, CorrectionData, WindowData]:
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
     active = Service.activate(tenant_id, migration_id, activation(tenant_id, migration_id, ready))
@@ -669,22 +801,26 @@ def prepare_reanchor(tenant_id: str, migration_id: str):
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(active["revision"]),
-            business_event_ref="in-reanchor-fixture",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="approved-reanchor-receipt",
-            affected_window_ids=["window-1"],
-            event_type="reanchor",
-            replacement_manifest=replacement,
-            replacement_manifest_hash=canonical_hash(replacement),
-            command_payloads=[correction],
+        ContractEventPayload.model_validate(
+            {
+                **envelope(active["revision"]),
+                "business_event_ref": "in-reanchor-fixture",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "approved-reanchor-receipt",
+                "affected_window_ids": ["window-1"],
+                "event_type": "reanchor",
+                "replacement_manifest": replacement,
+                "replacement_manifest_hash": canonical_hash(replacement),
+                "command_payloads": [correction],
+            }
         ),
     )
-    return fenced, correction, future
+    return cast(MigrationState, fenced), correction, future
 
 
-def test_real_core_accepts_saas_reanchor_grants_after_correction_without_counting_them_as_corrections(prepared):
+def test_real_core_accepts_saas_reanchor_grants_after_correction_without_counting_them_as_corrections(
+    prepared: tuple[str, str],
+) -> None:
     tenant_id, migration_id = prepared
     fenced, correction, future = prepare_reanchor(tenant_id, migration_id)
     grant = {
@@ -715,7 +851,9 @@ def test_real_core_accepts_saas_reanchor_grants_after_correction_without_countin
     assert activated["phase"] == "active"
 
 
-def test_real_core_reanchor_correction_first_clears_event_then_accepts_exact_saas_new_grant(prepared):
+def test_real_core_reanchor_correction_first_clears_event_then_accepts_exact_saas_new_grant(
+    prepared: tuple[str, str],
+) -> None:
     tenant_id, migration_id = prepared
     fenced, correction, future = prepare_reanchor(tenant_id, migration_id)
     corrected = submit_command(
@@ -748,7 +886,9 @@ def test_real_core_reanchor_correction_first_clears_event_then_accepts_exact_saa
 
 @pytest.mark.parametrize("replacement", [False, True])
 @pytest.mark.parametrize("tamper", ["command_id", "payload_hash", "remote_id", "unknown_window", "changed_amount"])
-def test_core_rejects_unbound_initial_and_replacement_grant_receipts(prepared, replacement: bool, tamper: str):
+def test_core_rejects_unbound_initial_and_replacement_grant_receipts(
+    prepared: tuple[str, str], replacement: bool, tamper: str
+) -> None:
     tenant_id, migration_id = prepared
     if replacement:
         status, _, window = prepare_reanchor(tenant_id, migration_id)
@@ -774,7 +914,7 @@ def test_core_rejects_unbound_initial_and_replacement_grant_receipts(prepared, r
     assert Service.status(tenant_id)["revision"] == status["revision"]
 
 
-def test_grant_payload_hash_matches_billing_shared_manifest_window_vector():
+def test_grant_payload_hash_matches_billing_shared_manifest_window_vector() -> None:
     # Same first window as SaaS testdata/tokener_migration_manifest_v1.json.
     # The receipt hashes the full original window, not just its identity/amount.
     window = MigrationWindow.model_validate(
@@ -795,7 +935,7 @@ def test_grant_payload_hash_matches_billing_shared_manifest_window_vector():
     )
 
 
-def test_verified_corrections_cannot_substitute_for_verified_initial_grants(prepared):
+def test_verified_corrections_cannot_substitute_for_verified_initial_grants(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     leased = acquire(tenant_id, migration_id)
@@ -808,33 +948,37 @@ def test_verified_corrections_cannot_substitute_for_verified_initial_grants(prep
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(leased["revision"]),
-            business_event_ref="in-plan-change",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="approved-plan-change",
-            affected_window_ids=["window-0", "window-1"],
-            event_type="plan_change",
-            command_payloads=planned,
+        ContractEventPayload.model_validate(
+            {
+                **envelope(leased["revision"]),
+                "business_event_ref": "in-plan-change",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "approved-plan-change",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": "plan_change",
+                "command_payloads": planned,
+            }
         ),
     )
     corrected = Service.funding_receipts(
         tenant_id,
         migration_id,
-        FundingReceiptsPayload(
-            **envelope(fenced["revision"]),
-            lease_token=fenced["lease_token"],
-            intent_revision=fenced["intent_revision"],
-            manifest_hash=fenced["manifest_hash"],
-            commands=[
-                {
-                    "command_id": command["command_id"],
-                    "payload_hash": command["payload_hash"],
-                    "remote_id": command["window"]["window_id"],
-                    "state": "verified",
-                }
-                for command in planned
-            ],
+        FundingReceiptsPayload.model_validate(
+            {
+                **envelope(fenced["revision"]),
+                "lease_token": fenced["lease_token"],
+                "intent_revision": fenced["intent_revision"],
+                "manifest_hash": fenced["manifest_hash"],
+                "commands": [
+                    {
+                        "command_id": command["command_id"],
+                        "payload_hash": command["payload_hash"],
+                        "remote_id": command["window"]["window_id"],
+                        "state": "verified",
+                    }
+                    for command in planned
+                ],
+            }
         ),
     )
     assert corrected["phase"] == "granting"
@@ -846,46 +990,52 @@ def test_verified_corrections_cannot_substitute_for_verified_initial_grants(prep
 
 @pytest.mark.parametrize("event_type", ["refund", "cancel", "paid_to_free"])
 def test_terminal_event_blocks_late_plan_update_and_preserves_tokener_profile(
-    prepared, sqlite_session: Session, event_type: str
-):
+    prepared: tuple[str, str], sqlite_session: Session, event_type: str
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
     active = Service.activate(tenant_id, migration_id, activation(tenant_id, migration_id, ready))
-    original_binding = Service.get_routing_state(tenant_id)["preparation"]
+    routing_state = Service.get_routing_state(tenant_id)
+    assert routing_state is not None
+    original_binding = routing_state["preparation"]
     frozen = correction_payloads(tenant_id, migration_id)
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(active["revision"]),
-            business_event_ref="terminal-fixture",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="terminal-receipt",
-            affected_window_ids=["window-0", "window-1"],
-            event_type=event_type,
-            terminal=True,
-            command_payloads=frozen,
+        ContractEventPayload.model_validate(
+            {
+                **envelope(active["revision"]),
+                "business_event_ref": "terminal-fixture",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "terminal-receipt",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": event_type,
+                "terminal": True,
+                "command_payloads": frozen,
+            }
         ),
     )
     assert fenced["terminated_contract_refs"] == ["contract-fixture"]
     complete = Service.funding_receipts(
         tenant_id,
         migration_id,
-        FundingReceiptsPayload(
-            **envelope(fenced["revision"]),
-            lease_token=fenced["lease_token"],
-            intent_revision=fenced["intent_revision"],
-            manifest_hash=fenced["manifest_hash"],
-            commands=[
-                {
-                    "command_id": command["command_id"],
-                    "payload_hash": command["payload_hash"],
-                    "remote_id": command["window"]["window_id"],
-                    "state": "verified",
-                }
-                for command in frozen
-            ],
+        FundingReceiptsPayload.model_validate(
+            {
+                **envelope(fenced["revision"]),
+                "lease_token": fenced["lease_token"],
+                "intent_revision": fenced["intent_revision"],
+                "manifest_hash": fenced["manifest_hash"],
+                "commands": [
+                    {
+                        "command_id": command["command_id"],
+                        "payload_hash": command["payload_hash"],
+                        "remote_id": command["window"]["window_id"],
+                        "state": "verified",
+                    }
+                    for command in frozen
+                ],
+            }
         ),
     )
     assert complete["phase"] == "cancelled"
@@ -901,23 +1051,31 @@ def test_terminal_event_blocks_late_plan_update_and_preserves_tokener_profile(
         Service.contract_event(
             tenant_id,
             migration_id,
-            ContractEventPayload(
-                **envelope(complete["revision"]),
-                business_event_ref="stale-plan-update",
-                contract_ref="contract-fixture",
-                billing_receipt_ref="late-receipt",
-                affected_window_ids=["window-0", "window-1"],
-                event_type="plan_change",
-                command_payloads=frozen,
+            ContractEventPayload.model_validate(
+                {
+                    **envelope(complete["revision"]),
+                    "business_event_ref": "stale-plan-update",
+                    "contract_ref": "contract-fixture",
+                    "billing_receipt_ref": "late-receipt",
+                    "affected_window_ids": ["window-0", "window-1"],
+                    "event_type": "plan_change",
+                    "command_payloads": frozen,
+                }
             ),
         )
     sqlite_session.expire_all()
-    assert sqlite_session.get(TenantModelBillingProfile, tenant_id).model_billing_source == "tokener"
-    assert Service.get_routing_state(tenant_id)["preparation"] == original_binding
+    profile = sqlite_session.get(TenantModelBillingProfile, tenant_id)
+    assert profile is not None
+    assert profile.model_billing_source == "tokener"
+    updated_routing_state = Service.get_routing_state(tenant_id)
+    assert updated_routing_state is not None
+    assert updated_routing_state["preparation"] == original_binding
     assert Service.status(tenant_id)["revision"] == complete["revision"]
 
 
-def test_late_initial_invoice_keeps_original_cycle_alias_after_expired_slot_is_skipped(prepared):
+def test_late_initial_invoice_keeps_original_cycle_alias_after_expired_slot_is_skipped(
+    prepared: tuple[str, str],
+) -> None:
     tenant_id, migration_id = prepared
     status = Service.status(tenant_id)
     data = manifest(tenant_id, migration_id)
@@ -936,21 +1094,23 @@ def test_late_initial_invoice_keeps_original_cycle_alias_after_expired_slot_is_s
     claimed = Service.decide_cycle(
         tenant_id,
         migration_id,
-        DecideCyclePayload(
-            **envelope(status["revision"]),
-            decision="tokener",
-            cycle_key=original_cycle,
-            contract_ref=data["contract_ref"],
-            preparation_binding_hash=status["preparation_binding_hash"],
-            billing_receipt_refs=["initial-invoice-receipt"],
-            manifest=data,
-            manifest_hash=canonical_hash(data),
+        DecideCyclePayload.model_validate(
+            {
+                **envelope(status["revision"]),
+                "decision": "tokener",
+                "cycle_key": original_cycle,
+                "contract_ref": data["contract_ref"],
+                "preparation_binding_hash": status["preparation_binding_hash"],
+                "billing_receipt_refs": ["initial-invoice-receipt"],
+                "manifest": data,
+                "manifest_hash": canonical_hash(data),
+            }
         ),
     )
     assert {decision["cycle_key"] for decision in claimed["cycle_decisions"]} == {original_cycle, "cycle-0", "cycle-1"}
 
 
-def test_unbound_cycle_cannot_use_late_invoice_alias_exception(prepared):
+def test_unbound_cycle_cannot_use_late_invoice_alias_exception(prepared: tuple[str, str]) -> None:
     tenant_id, migration_id = prepared
     status = Service.status(tenant_id)
     data = manifest(tenant_id, migration_id)
@@ -958,20 +1118,24 @@ def test_unbound_cycle_cannot_use_late_invoice_alias_exception(prepared):
         Service.decide_cycle(
             tenant_id,
             migration_id,
-            DecideCyclePayload(
-                **envelope(status["revision"]),
-                decision="tokener",
-                cycle_key="arbitrary-unbound-cycle",
-                contract_ref=data["contract_ref"],
-                preparation_binding_hash=status["preparation_binding_hash"],
-                billing_receipt_refs=[],
-                manifest=data,
-                manifest_hash=canonical_hash(data),
+            DecideCyclePayload.model_validate(
+                {
+                    **envelope(status["revision"]),
+                    "decision": "tokener",
+                    "cycle_key": "arbitrary-unbound-cycle",
+                    "contract_ref": data["contract_ref"],
+                    "preparation_binding_hash": status["preparation_binding_hash"],
+                    "billing_receipt_refs": [],
+                    "manifest": data,
+                    "manifest_hash": canonical_hash(data),
+                }
             ),
         )
 
 
-def test_terminal_refund_of_prior_manifest_cannot_cancel_current_contract(prepared, monkeypatch: pytest.MonkeyPatch):
+def test_terminal_refund_of_prior_manifest_cannot_cancel_current_contract(
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     ready = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
@@ -998,16 +1162,18 @@ def test_terminal_refund_of_prior_manifest_cannot_cancel_current_contract(prepar
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(leased["revision"]),
-            business_event_ref="new-contract-reanchor",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="new-contract-receipt",
-            affected_window_ids=["window-0", "window-1"],
-            event_type="reanchor",
-            replacement_manifest=replacement,
-            replacement_manifest_hash=canonical_hash(replacement),
-            command_payloads=old_commands,
+        ContractEventPayload.model_validate(
+            {
+                **envelope(leased["revision"]),
+                "business_event_ref": "new-contract-reanchor",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "new-contract-receipt",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": "reanchor",
+                "replacement_manifest": replacement,
+                "replacement_manifest_hash": canonical_hash(replacement),
+                "command_payloads": old_commands,
+            }
         ),
     )
     for command in old_commands:
@@ -1028,15 +1194,17 @@ def test_terminal_refund_of_prior_manifest_cannot_cancel_current_contract(prepar
     refunded = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(current["revision"]),
-            business_event_ref="old-contract-refund",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="old-invoice-receipt",
-            affected_window_ids=["window-0", "window-1"],
-            event_type="refund",
-            terminal=True,
-            command_payloads=historical,
+        ContractEventPayload.model_validate(
+            {
+                **envelope(current["revision"]),
+                "business_event_ref": "old-contract-refund",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "old-invoice-receipt",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": "refund",
+                "terminal": True,
+                "command_payloads": historical,
+            }
         ),
     )
     for command in historical:
@@ -1058,11 +1226,11 @@ def test_terminal_refund_of_prior_manifest_cannot_cancel_current_contract(prepar
 
 
 def test_replayed_lease_preserves_original_receipt_without_adopting_successor(
-    prepared, monkeypatch: pytest.MonkeyPatch
-):
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     tenant_id, migration_id = prepared
     claimed, _ = claim(tenant_id, migration_id)
-    acquire_payload = LeasePayload(**envelope(claimed["revision"]), action="acquire")
+    acquire_payload = LeasePayload.model_validate({**envelope(claimed["revision"]), "action": "acquire"})
     first = Service.lease(tenant_id, migration_id, acquire_payload)
     monkeypatch.setattr(module, "naive_utc_now", lambda: NOW + timedelta(seconds=61))
     successor = acquire(tenant_id, migration_id)
@@ -1073,11 +1241,14 @@ def test_replayed_lease_preserves_original_receipt_without_adopting_successor(
     assert replayed["replayed_operation"]["result_revision"] == first["revision"]
 
 
-def test_operation_journal_stores_compact_receipts_not_status_copies(prepared, sqlite_session: Session):
+def test_operation_journal_stores_compact_receipts_not_status_copies(
+    prepared: tuple[str, str], sqlite_session: Session
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     receipts(tenant_id, migration_id, acquire(tenant_id, migration_id))
     row = sqlite_session.get(TenantModelBillingMigration, tenant_id)
+    assert row is not None
     for operation in row.state["operations"].values():
         assert "response" not in operation
         assert set(operation) <= {
@@ -1095,19 +1266,21 @@ def test_operation_journal_stores_compact_receipts_not_status_copies(prepared, s
 
 
 def test_routing_projection_does_not_materialize_control_status(
-    prepared, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     tenant_id, _ = prepared
     row = sqlite_session.get(TenantModelBillingMigration, tenant_id)
+    assert row is not None
     row.state = {**row.state, "large_control_journal": "not-runtime-state" * 100000}
     row.claimed_at = datetime(2026, 10, 1, 12, 34, 56, 123456)
     sqlite_session.commit()
 
-    def forbidden_status(*_args, **_kwargs):
+    def forbidden_status(*_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("model admission must not build full control status")
 
     monkeypatch.setattr(Service, "_status", forbidden_status)
     state = Service.get_routing_state(tenant_id)
+    assert state is not None
     from core.repositories.model_billing_migration_repository import get_routing_state
 
     assert state == get_routing_state(tenant_id)
@@ -1129,15 +1302,15 @@ def test_routing_projection_does_not_materialize_control_status(
     assert state["phase"] == "prepared"
 
 
-def test_migration_control_state_uses_postgresql_jsonb_and_sqlite_json():
+def test_migration_control_state_uses_postgresql_jsonb_and_sqlite_json() -> None:
     from sqlalchemy.dialects import postgresql, sqlite
 
     state_type = TenantModelBillingMigration.__table__.c.state.type
-    assert str(state_type.compile(dialect=postgresql.dialect())) == "JSONB"
-    assert str(state_type.compile(dialect=sqlite.dialect())) == "JSON"
+    assert state_type.compile(dialect=postgresql.dialect()) == "JSONB"
+    assert state_type.compile(dialect=sqlite.dialect()) == "JSON"
 
 
-def manual_replan_payload(status: dict) -> ContractEventPayload:
+def manual_replan_payload(status: MigrationState) -> ContractEventPayload:
     replacement = copy.deepcopy(status["manifest"])
     replacement["plan_revision"] += 1
     window = replacement["windows"][0]
@@ -1152,24 +1325,26 @@ def manual_replan_payload(status: dict) -> ContractEventPayload:
         "target_amount_usd_micro": "0",
     }
     command["payload_hash"] = canonical_hash(command)
-    return ContractEventPayload(
-        **envelope(status["revision"]),
-        business_event_ref="manual-replan-fixture",
-        contract_ref=status["manifest"]["contract_ref"],
-        billing_receipt_ref="approved-manual-command",
-        event_type="plan_change",
-        manual_replan=True,
-        affected_window_ids=[old["window_id"]],
-        command_payloads=[command],
-        replacement_manifest=replacement,
-        replacement_manifest_hash=canonical_hash(replacement),
+    return ContractEventPayload.model_validate(
+        {
+            **envelope(status["revision"]),
+            "business_event_ref": "manual-replan-fixture",
+            "contract_ref": status["manifest"]["contract_ref"],
+            "billing_receipt_ref": "approved-manual-command",
+            "event_type": "plan_change",
+            "manual_replan": True,
+            "affected_window_ids": [old["window_id"]],
+            "command_payloads": [command],
+            "replacement_manifest": replacement,
+            "replacement_manifest_hash": canonical_hash(replacement),
+        }
     )
 
 
 @pytest.mark.parametrize("old_state", [None, "registered"])
 def test_manual_replan_only_moves_never_dispatched_current_window(
-    prepared, monkeypatch: pytest.MonkeyPatch, old_state: str | None
-):
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch, old_state: str | None
+) -> None:
     tenant_id, migration_id = prepared
     status, _ = claim(tenant_id, migration_id)
     if old_state is not None:
@@ -1185,8 +1360,8 @@ def test_manual_replan_only_moves_never_dispatched_current_window(
 
 @pytest.mark.parametrize("old_state", ["dispatched", "accepted", "outcome_unknown", "verified"])
 def test_manual_replan_rejects_any_dispatch_or_unknown_outcome(
-    prepared, monkeypatch: pytest.MonkeyPatch, old_state: str
-):
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch, old_state: str
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     status = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id), state=old_state)
@@ -1196,7 +1371,9 @@ def test_manual_replan_rejects_any_dispatch_or_unknown_outcome(
     assert Service.status(tenant_id)["revision"] == status["revision"]
 
 
-def test_manual_replan_loses_cas_if_worker_dispatched_first(prepared, monkeypatch: pytest.MonkeyPatch):
+def test_manual_replan_loses_cas_if_worker_dispatched_first(
+    prepared: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     tenant_id, migration_id = prepared
     claim(tenant_id, migration_id)
     registered = receipts(tenant_id, migration_id, acquire(tenant_id, migration_id), state="registered")
@@ -1208,22 +1385,24 @@ def test_manual_replan_loses_cas_if_worker_dispatched_first(prepared, monkeypatc
     assert Service.status(tenant_id)["revision"] == dispatched["revision"]
 
 
-def cancel_before_first_publication(tenant_id: str, migration_id: str):
+def cancel_before_first_publication(tenant_id: str, migration_id: str) -> MigrationState:
     claim(tenant_id, migration_id)
     leased = acquire(tenant_id, migration_id)
     planned = correction_payloads(tenant_id, migration_id)
     fenced = Service.contract_event(
         tenant_id,
         migration_id,
-        ContractEventPayload(
-            **envelope(leased["revision"]),
-            business_event_ref="refund-before-publication",
-            contract_ref="contract-fixture",
-            billing_receipt_ref="refund-before-publication-receipt",
-            affected_window_ids=["window-0", "window-1"],
-            event_type="refund",
-            terminal=True,
-            command_payloads=planned,
+        ContractEventPayload.model_validate(
+            {
+                **envelope(leased["revision"]),
+                "business_event_ref": "refund-before-publication",
+                "contract_ref": "contract-fixture",
+                "billing_receipt_ref": "refund-before-publication-receipt",
+                "affected_window_ids": ["window-0", "window-1"],
+                "event_type": "refund",
+                "terminal": True,
+                "command_payloads": planned,
+            }
         ),
     )
     for command in planned:
@@ -1240,20 +1419,20 @@ def cancel_before_first_publication(tenant_id: str, migration_id: str):
         )
     assert fenced["phase"] == "cancelled"
     assert fenced["ever_activated"] is False
-    return fenced
+    return cast(MigrationState, fenced)
 
 
 def test_cancelled_before_initial_activation_publishes_zero_money_routing_after_readiness(
-    prepared,
+    prepared: tuple[str, str],
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     tenant_id, migration_id = prepared
     cancelled = cancel_before_first_publication(tenant_id, migration_id)
     assert sqlite_session.get(TenantModelBillingProfile, tenant_id) is None
     calls = []
 
-    def assert_readiness_before_publish(*args):
+    def assert_readiness_before_publish(*args: object) -> None:
         assert sqlite_session.get(TenantModelBillingProfile, tenant_id) is None
         calls.append(args)
 
@@ -1271,7 +1450,9 @@ def test_cancelled_before_initial_activation_publishes_zero_money_routing_after_
     assert published["commands"] == cancelled["commands"]
     assert not any(command["command_id"].startswith("grant:") for command in published["commands"])
     sqlite_session.expire_all()
-    assert sqlite_session.get(TenantModelBillingProfile, tenant_id).model_billing_source == "tokener"
+    profile = sqlite_session.get(TenantModelBillingProfile, tenant_id)
+    assert profile is not None
+    assert profile.model_billing_source == "tokener"
     assert Service.activate(tenant_id, migration_id, request)["replayed"] is True
     assert len(calls) == 1
     # This is the precise native-handoff contract: published routing is true;
@@ -1280,12 +1461,12 @@ def test_cancelled_before_initial_activation_publishes_zero_money_routing_after_
 
 
 def test_cancelled_publication_does_not_bypass_runtime_readiness(
-    prepared, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-):
+    prepared: tuple[str, str], sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     tenant_id, migration_id = prepared
     cancelled = cancel_before_first_publication(tenant_id, migration_id)
 
-    def reject_readiness(*_args):
+    def reject_readiness(*_args: object) -> NoReturn:
         raise MigrationError("readiness_changed")
 
     monkeypatch.setattr(Service, "validate_runtime_readiness", reject_readiness)
@@ -1295,10 +1476,13 @@ def test_cancelled_publication_does_not_bypass_runtime_readiness(
     assert sqlite_session.get(TenantModelBillingProfile, tenant_id) is None
 
 
-def test_cancelled_publication_rejects_changed_managed_credential_binding(prepared, sqlite_session: Session):
+def test_cancelled_publication_rejects_changed_managed_credential_binding(
+    prepared: tuple[str, str], sqlite_session: Session
+) -> None:
     tenant_id, migration_id = prepared
     cancelled = cancel_before_first_publication(tenant_id, migration_id)
     credential = sqlite_session.scalar(select(ProviderCredential).where(ProviderCredential.tenant_id == tenant_id))
+    assert credential is not None
     credential.encrypted_config = '{"api_key":"changed-after-terminal"}'
     sqlite_session.commit()
     with pytest.raises(MigrationError, match="readiness_changed"):
@@ -1320,16 +1504,18 @@ def test_cancelled_publication_rejects_changed_managed_credential_binding(prepar
     ],
 )
 def test_cancelled_publication_requires_fully_converged_terminal_proof(
-    prepared, sqlite_session: Session, unfinished: str
-):
+    prepared: tuple[str, str], sqlite_session: Session, unfinished: str
+) -> None:
     tenant_id, migration_id = prepared
     cancel_before_first_publication(tenant_id, migration_id)
     row = sqlite_session.get(TenantModelBillingMigration, tenant_id)
+    assert row is not None
     state = copy.deepcopy(row.state)
     if unfinished == "pending_event":
         state["pending_contract_event"] = state["contract_events"]["refund-before-publication"]
     elif unfinished == "missing_termination":
-        state["terminated_contract_refs"] = []
+        empty_contract_refs: list[str] = []
+        state["terminated_contract_refs"] = empty_contract_refs
     else:
         command = next(iter(state["commands"].values()))
         command["state"] = "failed_definitive" if unfinished == "failed_correction" else unfinished
@@ -1345,10 +1531,10 @@ def test_cancelled_publication_requires_fully_converged_terminal_proof(
 
 @pytest.mark.parametrize("edit_timing", ["before_readiness", "after_readiness"])
 def test_complete_preparation_rejects_key_edit_against_same_transaction_provisioned_pin(
-    preparation,
+    preparation: tuple[str, PrepareMigrationPayload],
     sqlite_session: Session,
     edit_timing: str,
-):
+) -> None:
     tenant_id, prepare_request = preparation
     credential = ProviderCredential(
         tenant_id=tenant_id,
@@ -1361,10 +1547,12 @@ def test_complete_preparation_rejects_key_edit_against_same_transaction_provisio
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant_id)
     )
+    assert integration is not None
     integration.provider_credential_id = credential.id
     integration.status = TenantTokenerIntegrationStatus.READY
     original_fingerprint = canonical_hash({"encrypted_config": credential.encrypted_config})
     row = sqlite_session.get(TenantModelBillingMigration, tenant_id)
+    assert row is not None
     row.state = {
         **row.state,
         "provisioned_binding": {
@@ -1397,7 +1585,6 @@ def test_complete_preparation_rejects_key_edit_against_same_transaction_provisio
             expected_credential_fingerprint=readiness_fingerprint,
         )
     assert Service.status(tenant_id)["phase"] == "preparing"
-    assert (
-        "preparation" not in Service.get_routing_state(tenant_id)
-        or Service.get_routing_state(tenant_id)["preparation"] == {}
-    )
+    routing_state = Service.get_routing_state(tenant_id)
+    assert routing_state is not None
+    assert "preparation" not in routing_state or routing_state["preparation"] == {}
