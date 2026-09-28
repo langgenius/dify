@@ -126,9 +126,10 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
             type="button"
             aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
             onClick={handleOpenAppIconPicker}
-            className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="group/edit-icon shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <AppIcon
+              decorative
               size="xxl"
               iconType={appIcon.type}
               icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}

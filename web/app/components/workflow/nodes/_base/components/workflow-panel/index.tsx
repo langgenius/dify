@@ -12,7 +12,6 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
@@ -104,11 +103,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   })
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
-  const { showMessageLogModal } = useAppStore(
-    useShallow((state) => ({
-      showMessageLogModal: state.showMessageLogModal,
-    })),
-  )
+  const messageLogItem = useStore((state) => state.messageLogItem)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
   const currentUserPresence = useMemo(() => {
@@ -519,7 +514,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const singleRunActionLabel = isSingleRunning
     ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
     : runThisStepLabel
-  const nodePanelRightOffset = !showMessageLogModal ? '4px' : `${otherPanelWidth + 8}px`
+  const nodePanelRightOffset = !messageLogItem ? '4px' : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
   const panelChildren = cloneElement(children as any, {
     id,
@@ -549,12 +544,12 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     <div
       className={cn(
         'relative mr-1 h-full',
-        showMessageLogModal &&
+        messageLogItem &&
           'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {
-          right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+          right: !messageLogItem ? '0' : `${otherPanelWidth}px`,
           '--workflow-node-panel-right': nodePanelRightOffset,
         } as CSSProperties
       }

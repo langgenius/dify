@@ -6,7 +6,6 @@ import type { Collection } from '@/app/components/tools/types'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
@@ -134,6 +133,7 @@ const mockDebugConfigContext = {
   readonly: false,
   canTestAndRun: true,
   appId: 'test-app-id',
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -550,6 +550,8 @@ vi.mock('@/app/components/base/chat/chat', () => ({
 // Tests
 // ============================================================================
 
+const logProps = { onOpenLog: vi.fn(), chatContainerRef: createRef<HTMLDivElement>() }
+
 describe('DebugWithSingleModel', () => {
   let ref: RefObject<DebugWithSingleModelRefType | null>
 
@@ -581,6 +583,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -597,6 +600,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -629,6 +633,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -648,11 +653,13 @@ describe('DebugWithSingleModel', () => {
   // User Interactions
   describe('User Interactions', () => {
     it('should open feature configuration when feature bar is clicked', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('feature-bar-button'))
 
-      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
+      expect(mockDebugConfigContext.onOpenFeatures).toHaveBeenCalledTimes(1)
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', async () => {
@@ -662,7 +669,9 @@ describe('DebugWithSingleModel', () => {
         canTestAndRun: true,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-input')).not.toHaveAttribute('readonly')
       expect(screen.getByTestId('feature-bar-button')).toBeDisabled()
@@ -684,7 +693,9 @@ describe('DebugWithSingleModel', () => {
         canTestAndRun: false,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-input')).toHaveAttribute('readonly')
       expect(screen.getByTestId('chat-input')).toBeDisabled()
@@ -704,7 +715,9 @@ describe('DebugWithSingleModel', () => {
         opening: { enabled: true, opening_statement: 'Hello!', suggested_questions: ['Q1'] },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-button'))
 
@@ -727,7 +740,9 @@ describe('DebugWithSingleModel', () => {
         },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-button'))
 
@@ -741,13 +756,17 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle model without vision support', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing model in provider list', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -770,7 +789,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       // Component should render successfully with filtered variables
       // Component should render successfully with filtered variables
@@ -788,7 +809,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -797,7 +820,9 @@ describe('DebugWithSingleModel', () => {
   // Tool Icons Tests
   describe('Tool Icons', () => {
     it('should map tool icons from collection list', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -815,7 +840,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -844,7 +871,9 @@ describe('DebugWithSingleModel', () => {
         collectionList: [],
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -858,7 +887,9 @@ describe('DebugWithSingleModel', () => {
         inputs: {} as any,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -874,7 +905,9 @@ describe('DebugWithSingleModel', () => {
         },
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -885,7 +918,9 @@ describe('DebugWithSingleModel', () => {
         completionParams: {} as any,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -894,7 +929,9 @@ describe('DebugWithSingleModel', () => {
   // Imperative Handle Tests
   describe('Imperative Handle', () => {
     it('should expose handleRestart method via ref', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(ref.current).not.toBeNull()
       expect(ref.current?.handleRestart).toBeDefined()
@@ -902,7 +939,9 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should call handleRestart when invoked via ref', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       act(() => {
         ref.current?.handleRestart()
@@ -925,7 +964,9 @@ describe('DebugWithSingleModel', () => {
         file: { enabled: true },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-with-document'))
 
@@ -957,7 +998,9 @@ describe('DebugWithSingleModel', () => {
         file: { enabled: true },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-with-files'))
 

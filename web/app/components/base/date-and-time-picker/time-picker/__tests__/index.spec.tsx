@@ -222,6 +222,32 @@ describe('TimePicker', () => {
       expect(screen.getByTestId('state-trigger')).toHaveAttribute('data-popup-open')
     })
 
+    it('supports one named native button without an inner text field for a custom trigger', async () => {
+      const user = userEvent.setup()
+      render(
+        <TimePicker
+          {...baseProps}
+          value="10:45 AM"
+          timezone="UTC"
+          triggerNativeButton
+          renderTrigger={(props, _state, { displayText }) => (
+            <button {...props} type="button">
+              <span className="sr-only">Update Time</span>
+              <span>{displayText}</span>
+              <span>UTC</span>
+            </button>
+          )}
+        />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'Update Time 10:45 AM UTC' })
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+      trigger.focus()
+      await user.keyboard('{Enter}')
+      expect(trigger).toHaveAttribute('data-popup-open')
+    })
+
     it('should render with notClearable prop without errors', () => {
       render(<TimePicker {...baseProps} notClearable={true} value="10:00 AM" timezone="UTC" />)
 

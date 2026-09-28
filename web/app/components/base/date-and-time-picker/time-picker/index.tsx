@@ -25,6 +25,7 @@ const TimePicker = ({
   onChange,
   onClear,
   renderTrigger,
+  triggerNativeButton = false,
   title,
   minuteFilter,
   notClearable = false,
@@ -193,11 +194,14 @@ const TimePicker = ({
   )
 
   const displayValue = formatTimeValue(value)
+  const placeholderText = placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+  const getDisplayText = (open: boolean) =>
+    open && isDayjsObject(selectedTime)
+      ? selectedTime.format(timeFormat)
+      : displayValue || placeholderText
   const renderInput = (open: boolean) => {
     const placeholderDate =
-      open && isDayjsObject(selectedTime)
-        ? selectedTime.format(timeFormat)
-        : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+      open && isDayjsObject(selectedTime) ? selectedTime.format(timeFormat) : placeholderText
 
     return (
       <input
@@ -212,12 +216,16 @@ const TimePicker = ({
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        nativeButton={false}
+        nativeButton={triggerNativeButton}
         className={triggerFullWidth ? 'flex! w-full' : undefined}
         render={(props, state) => {
           const inputElem = renderInput(state.open)
           if (renderTrigger)
-            return renderTrigger(props, state, { inputElem, onClick: handleClickTrigger })
+            return renderTrigger(props, state, {
+              inputElem,
+              displayText: getDisplayText(state.open),
+              onClick: handleClickTrigger,
+            })
 
           return (
             <div
