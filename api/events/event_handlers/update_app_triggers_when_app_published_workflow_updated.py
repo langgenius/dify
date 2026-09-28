@@ -28,9 +28,7 @@ def handle(sender, *, published_workflow: Workflow, session: Session, **kwargs):
 
     # Get existing app triggers
     existing_triggers = (
-        session.execute(
-            select(AppTrigger).where(AppTrigger.tenant_id == app.tenant_id, AppTrigger.app_id == app.id)
-        )
+        session.execute(select(AppTrigger).where(AppTrigger.tenant_id == app.tenant_id, AppTrigger.app_id == app.id))
         .scalars()
         .all()
     )
