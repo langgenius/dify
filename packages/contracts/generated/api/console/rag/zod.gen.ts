@@ -891,6 +891,7 @@ export const zDatasourceParameter = z.object({
   placeholder: zI18nObject.nullish(),
   precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
+  reset_on_change: z.array(z.string()).optional(),
   scope: z.string().nullish(),
   template: zPluginParameterTemplate.nullish(),
   type: zDatasourceParameterType,
