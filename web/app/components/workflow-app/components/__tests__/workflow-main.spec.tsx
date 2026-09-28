@@ -23,8 +23,7 @@ const withWorkflowProviders = (ui: ReactNode) => (
   </EventEmitterContext.Provider>
 )
 let queryClient = createConsoleQueryClient()
-const render = (ui: ReactNode) =>
-  renderWithConsoleQuery(withWorkflowProviders(ui), { queryClient })
+const render = (ui: ReactNode) => renderWithConsoleQuery(withWorkflowProviders(ui), { queryClient })
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()

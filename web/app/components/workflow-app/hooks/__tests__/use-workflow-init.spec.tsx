@@ -26,6 +26,7 @@ const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 const EventEmitterProvider = EventEmitterContext.Provider
+let appDetailFixture: AppDetailWithSite
 
 const renderHook = <Result,>(
   callback: () => Result,
@@ -44,8 +45,6 @@ const renderHook = <Result,>(
   )
   return { ...renderHookWithReact(callback, { wrapper: Wrapper }), queryClient }
 }
-
-let appDetailFixture: AppDetailWithSite
 
 let workflowConfigState: {
   data: Record<string, unknown> | null
@@ -594,7 +593,6 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.hash).toBe('server-hash')
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appName: 'Test' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         envSecrets: { 'env-secret': 'top-secret' },

@@ -1,7 +1,13 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import { skipToken, useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
@@ -99,7 +105,7 @@ export function useAppInfoActions() {
       queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() }),
       queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() }),
     ]).catch((error: unknown) => {
-        console.error('Failed to refresh app detail after DSL import:', error)
+      console.error('Failed to refresh app detail after DSL import:', error)
     })
   }, [appDetail, queryClient])
 

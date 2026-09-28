@@ -3,7 +3,11 @@ import type { ReactElement, ReactNode, RefObject } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/app/components/workflow/store'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
@@ -29,6 +33,7 @@ let mockCanvasReadyRef: RefObject<boolean> | undefined
 let mockCanvasListenerMounted = true
 
 let appDetailFixture: AppDetailWithSite
+let queryClient = createConsoleQueryClient()
 
 let workflowInitState: {
   data: {
@@ -70,6 +75,7 @@ let searchParamsValue: string | null = null
 
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, {
+    queryClient,
     accountProfile: consoleState.userProfile,
     appDetail: appDetailFixture,
   })
@@ -263,6 +269,9 @@ describe('WorkflowApp', () => {
       mode: 'workflow',
       permission_keys: [AppACLPermission.TestAndRun],
     })
+    queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'route-app-a', mode: 'workflow' })
+    seedAppDetail(queryClient, { id: 'route-app-b', mode: 'workflow' })
     workflowInitState = {
       data: {
         hash: 'initial-hash',
