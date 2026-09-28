@@ -323,6 +323,19 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   credential_id: z.string(),
   credentials: z.record(z.string(), z.unknown()),
   parameter: z.string(),
+  parameter_values: z.record(z.string(), z.unknown()).nullish(),
+  plugin_id: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * ParserDynamicTreeOptions
+ */
+export const zParserDynamicTreeOptions = z.object({
+  action: z.string(),
+  credential_id: z.string().nullish(),
+  parameter: z.string(),
+  parameter_values: z.string().nullish(),
   plugin_id: z.string(),
   provider: z.string(),
 })
@@ -1825,6 +1838,7 @@ export const zI18nObject = z.object({
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
+  children: z.array(z.lazy((): any => zPluginParameterOption)).optional(),
   icon: z.string().nullish(),
   label: zI18nObject,
   value: z.string(),
@@ -3047,6 +3061,7 @@ export const zToolParameterType = z.enum([
   'date',
   'date-range',
   'dynamic-select',
+  'dynamic-tree-select',
   'file',
   'files',
   'model-selector',
@@ -3663,6 +3678,7 @@ export const zToolParameter = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .nullish(),
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   form: zToolParameterForm,
   human_description: zI18nObject.nullish(),
   input_schema: z.record(z.string(), z.unknown()).nullish(),
@@ -3881,10 +3897,12 @@ export const zAgentStrategyParameter = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .nullish(),
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   help: zI18nObject.nullish(),
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),
+  multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
   placeholder: zI18nObject.nullish(),
@@ -4806,6 +4824,7 @@ export const zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery = z.object
   action: z.string(),
   credential_id: z.string().optional(),
   parameter: z.string(),
+  parameter_values: z.string().optional(),
   plugin_id: z.string(),
   provider: z.string(),
   provider_type: z.enum(['tool', 'trigger']),
@@ -4825,6 +4844,16 @@ export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentials
  */
 export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse =
   zPluginDynamicOptionsResponse
+
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsBody = zParserDynamicTreeOptions
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissionChange
 
