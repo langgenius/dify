@@ -12,12 +12,11 @@ import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { basePath } from '@/utils/var'
 
 export default function AppSelector() {
-  const router = useRouter()
   const { t } = useTranslation(['common'])
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
@@ -44,7 +43,8 @@ export default function AppSelector() {
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 
-    router.push('/signin')
+    // Start a new document so account-scoped stores and query observers cannot survive logout.
+    window.location.replace(`${basePath}/signin`)
   }
 
   return (

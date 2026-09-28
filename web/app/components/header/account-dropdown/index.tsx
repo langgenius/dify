@@ -9,8 +9,8 @@ import {
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
+import { basePath } from '@/utils/var'
 import { MainNavMenuContent } from './main-nav-menu-content'
 
 type AccountDropdownProps = {
@@ -25,7 +25,6 @@ const getHydrationSnapshot = () => false
 const getServerHydrationSnapshot = () => true
 
 export default function AccountDropdown({ trigger }: AccountDropdownProps) {
-  const router = useRouter()
   const isHydrating = useSyncExternalStore(
     subscribeHydrationState,
     getHydrationSnapshot,
@@ -40,7 +39,8 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 
-    router.push('/signin')
+    // Start a new document so account-scoped stores and query observers cannot survive logout.
+    window.location.replace(`${basePath}/signin`)
   }
 
   return (
