@@ -440,35 +440,39 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
                     </Field>
-                    <AppIcon
-                      size="xxl"
-                      onClick={() => {
-                        setShowIconPicker(true)
-                      }}
-                      className="mt-2 cursor-pointer"
-                      iconType={
-                        appIcon
-                          ? appIcon.type === 'link'
-                            ? 'image'
-                            : appIcon.type
-                          : appInfo.site.icon_type
-                      }
-                      icon={
-                        appIcon
-                          ? appIcon.type === 'image'
-                            ? appIcon.fileId
-                            : appIcon.icon
-                          : (appInfo.site.icon ?? undefined)
-                      }
-                      background={
-                        appIcon?.type === 'emoji'
-                          ? appIcon.background
-                          : appInfo.site.icon_background
-                      }
-                      imageUrl={
-                        appIcon && appIcon.type !== 'emoji' ? appIcon.url : appInfo.site.icon_url
-                      }
-                    />
+                    <button
+                      type="button"
+                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                      className="mt-2 shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => setShowIconPicker(true)}
+                    >
+                      <AppIcon
+                        decorative
+                        size="xxl"
+                        iconType={
+                          appIcon
+                            ? appIcon.type === 'link'
+                              ? 'image'
+                              : appIcon.type
+                            : appInfo.site.icon_type
+                        }
+                        icon={
+                          appIcon
+                            ? appIcon.type === 'image'
+                              ? appIcon.fileId
+                              : appIcon.icon
+                            : (appInfo.site.icon ?? undefined)
+                        }
+                        background={
+                          appIcon?.type === 'emoji'
+                            ? appIcon.background
+                            : appInfo.site.icon_background
+                        }
+                        imageUrl={
+                          appIcon && appIcon.type !== 'emoji' ? appIcon.url : appInfo.site.icon_url
+                        }
+                      />
+                    </button>
                   </div>
                   {/* description */}
                   <Field name="description">

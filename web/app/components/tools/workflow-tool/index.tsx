@@ -340,16 +340,20 @@ export function WorkflowToolDrawer({
                 </span>
               </FieldLabel>
               <div className="flex items-center justify-between gap-3">
-                <AppIcon
-                  size="large"
-                  onClick={() => {
-                    setShowEmojiPicker(true)
-                  }}
-                  className="cursor-pointer"
-                  iconType="emoji"
-                  icon={emoji.content}
-                  background={emoji.background}
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowEmojiPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    size="large"
+                    iconType="emoji"
+                    icon={emoji.content}
+                    background={emoji.background}
+                  />
+                </button>
                 <Input
                   className="h-10 min-w-0 flex-1"
                   placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}

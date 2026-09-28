@@ -44,13 +44,7 @@ const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
   return { onConfirm, onHide }
 }
 
-const getAppIconTrigger = (): HTMLElement => {
-  const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-  const iconRow = nameInput.parentElement
-  const iconTrigger = iconRow?.firstElementChild
-  if (!(iconTrigger instanceof HTMLElement)) throw new Error('Failed to locate app icon trigger')
-  return iconTrigger
-}
+const getAppIconTrigger = () => screen.getByRole('button', { name: 'app.iconPicker.title' })
 
 const openAppIconPicker = () => {
   fireEvent.click(getAppIconTrigger())
@@ -250,6 +244,21 @@ describe('CreateAppModal', () => {
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('submits instead of opening the icon picker when Mod+Enter starts on its trigger', async () => {
+      const { onConfirm } = await setup()
+      const iconTrigger = getAppIconTrigger()
+      iconTrigger.focus()
+
+      fireEvent.keyDown(iconTrigger, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(iconTrigger, { key: 'Enter', ctrlKey: true })
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
     })
 
     it('does not submit while the visible confirmation action is disabled', async () => {
