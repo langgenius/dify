@@ -35,7 +35,6 @@
   "sidebar.action.unpin": "Détacher",
   "sidebar.webApps": "Applications web",
   "tryApp.agentConfiguration": "Configuration de l'agent",
-  "tryApp.agentSetupHint": "Vous pourrez les configurer après avoir créé l’application.",
   "tryApp.category": "Catégorie",
   "tryApp.createFromSampleApp": "Créer à partir de cette application exemple",
   "tryApp.included": "Inclus",
