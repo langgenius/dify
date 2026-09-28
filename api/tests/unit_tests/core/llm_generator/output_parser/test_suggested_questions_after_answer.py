@@ -4,7 +4,7 @@ from core.llm_generator.output_parser.suggested_questions_after_answer import (
 
 
 class TestSuggestedQuestionsAfterAnswerOutputParser:
-    def test_parse_clean_json_array(self):
+    def test_parse_clean_json_array(self) -> None:
         parser = SuggestedQuestionsAfterAnswerOutputParser()
         text = 'questions:\n["What is Dify?", "How to build an app?", "Why use RAG?"]'
 
@@ -12,7 +12,7 @@ class TestSuggestedQuestionsAfterAnswerOutputParser:
 
         assert list(result) == ["What is Dify?", "How to build an app?", "Why use RAG?"]
 
-    def test_parse_strips_closed_think_block_with_inner_brackets(self):
+    def test_parse_strips_closed_think_block_with_inner_brackets(self) -> None:
         parser = SuggestedQuestionsAfterAnswerOutputParser()
         text = (
             "<think>\n"
@@ -26,7 +26,7 @@ class TestSuggestedQuestionsAfterAnswerOutputParser:
 
         assert list(result) == ["What is Dify?", "How to build an app?", "Why use RAG?"]
 
-    def test_parse_strips_unclosed_think_block(self):
+    def test_parse_strips_unclosed_think_block(self) -> None:
         parser = SuggestedQuestionsAfterAnswerOutputParser()
         text = '<think>Analyzing the answer: score vector [0.1, 0.9] and ["bad question from reasoning"]'
 
