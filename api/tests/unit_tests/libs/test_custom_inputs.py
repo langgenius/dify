@@ -66,3 +66,22 @@ class TestTimeDuration:
         """Test None value."""
         with pytest.raises(ValueError, match="Time duration cannot be empty"):
             time_duration(None)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param("1000000000d", id="timedelta-days-overflow"),
+            pytest.param("86400000000000s", id="timedelta-seconds-overflow"),
+            pytest.param("1000000d", id="datetime-underflow"),
+            pytest.param("9" * 4301 + "s", id="integer-digit-limit"),
+        ],
+    )
+    def test_rejects_unrepresentable_time_range(self, value: str):
+        """A syntactically valid duration must also produce a valid threshold."""
+        with pytest.raises(ValueError, match="Time duration is out of supported range"):
+            time_duration(value)
+
+    @pytest.mark.parametrize("value", ["0s", "365000d", "8760000H"])
+    def test_accepts_representable_time_range(self, value: str):
+        """Zero and large valid durations retain the normalised string format."""
+        assert time_duration(value) == value.lower()
