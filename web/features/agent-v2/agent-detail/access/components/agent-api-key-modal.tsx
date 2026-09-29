@@ -129,7 +129,7 @@ export function AgentApiKeyModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex w-full max-w-200! flex-col overflow-hidden px-8">
+        <DialogContent className="flex w-full max-w-200! flex-col px-8">
           <DialogClose
             render={
               <IconButton
@@ -148,14 +148,14 @@ export function AgentApiKeyModal({
             {t(($) => $['apiKeyModal.apiSecretKeyTips'])}
           </DialogDescription>
 
-          <div className="mt-4 min-h-20 overflow-hidden">
-            <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
+          <div className="mt-4 min-h-20 overflow-x-auto overflow-y-hidden">
+            <div className="flex h-9 min-w-184 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
               <div className="w-64 shrink-0 px-3">{t(($) => $['apiKeyModal.secretKey'])}</div>
               <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.created'])}</div>
               <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.lastUsed'])}</div>
               <div className="grow px-3" />
             </div>
-            <div className="max-h-70 overflow-auto">
+            <div className="max-h-70 min-w-184 overflow-x-hidden overflow-y-auto">
               {apiKeysQuery.isPending && (
                 <div
                   role="status"
