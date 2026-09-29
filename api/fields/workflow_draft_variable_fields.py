@@ -68,7 +68,7 @@ class WorkflowDraftVariableFullContentResponse(ResponseModel):
 
 
 def _serialize_full_content(
-    variable: WorkflowDraftVariable | WorkflowDraftVariableResponseSource,
+    variable: WorkflowDraftVariable,
 ) -> WorkflowDraftVariableFullContentResponse | None:
     """Serialize metadata for a variable whose complete value was offloaded."""
     if not variable.is_truncated():
@@ -85,7 +85,7 @@ def _serialize_full_content(
     )
 
 
-def _serialize_without_value(variable: WorkflowDraftVariable | WorkflowDraftVariableResponseSource) -> dict[str, Any]:
+def _serialize_without_value(variable: WorkflowDraftVariable) -> dict[str, Any]:
     return {
         "id": variable.id,
         "type": str(variable.get_variable_type()),
@@ -128,9 +128,9 @@ class WorkflowDraftVariableResponse(WorkflowDraftVariableWithoutValueResponse):
     def _from_workflow_draft_variable(cls, value: Any) -> Any:
         if isinstance(value, WorkflowDraftVariableResponseSource):
             return {
-                **_serialize_without_value(value),
+                **_serialize_without_value(value._source),
                 "value": _serialize_var_value(value),
-                "full_content": _serialize_full_content(value),
+                "full_content": _serialize_full_content(value._source),
             }
         if isinstance(value, WorkflowDraftVariable):
             # Decoding the value needs a database session; a bare model would fall through to

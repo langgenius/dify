@@ -324,6 +324,34 @@ class TestWorkflowDraftVariableList:
             )
 
 
+def test_value_response_rejects_bare_model():
+    """A bare model would expose the raw serialized JSON string as the value, so it must fail loudly."""
+    conv_var = WorkflowDraftVariable.new_conversation_variable(
+        app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
+    )
+    with pytest.raises(TypeError, match="draft_variable_response_source"):
+        dump_response(WorkflowDraftVariableResponse, conv_var)
+
+
+def test_value_response_accepts_plain_mapping():
+    resp = WorkflowDraftVariableResponse.model_validate(
+        {
+            "id": "variable-id",
+            "type": "conversation",
+            "name": "conv_var",
+            "description": "",
+            "selector": ["conversation", "conv_var"],
+            "value_type": "number",
+            "edited": False,
+            "visible": True,
+            "is_truncated": False,
+            "value": 1,
+            "full_content": None,
+        }
+    )
+    assert resp.value == 1
+
+
 def test_workflow_node_variables_fields(sqlite_session: Session):
     conv_var = WorkflowDraftVariable.new_conversation_variable(
         app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)

@@ -15,11 +15,13 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
 from models.account import Account
+from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
     WorkflowNodeExecutionModel,
+    _resolve_workflow_app_tenant_id,
     is_system_variable_editable,
 )
 
@@ -460,3 +462,59 @@ class TestWorkflowDraftVariableGetValue:
         draft_var.set_value(int_var)
         value = draft_var.get_value(session=sqlite_session)
         assert value == int_var
+
+    def test_array_file_variable_rebuilds_each_stored_payload_with_app_tenant(self, sqlite_session: Session):
+        files = [
+            File(
+                file_id=f"test_file_id_{index}",
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=build_file_reference(record_id=f"upload-{index}", storage_key="legacy-storage-key"),
+                filename=f"test_{index}.txt",
+                extension=".txt",
+                mime_type="text/plain",
+                size=12,
+            )
+            for index in range(2)
+        ]
+        rebuilt_files = [file.model_copy(update={"storage_key": "canonical-storage-key"}, deep=True) for file in files]
+        encoded = WorkflowDraftVariable(
+            app_id="app-1",
+        )
+        encoded.set_value(build_segment(files))
+        # A fresh instance holding only the persisted columns, so get_value decodes from scratch.
+        draft_var = WorkflowDraftVariable(
+            app_id="app-1",
+        )
+        draft_var.value = encoded.value
+        draft_var.value_type = encoded.value_type
+
+        with (
+            mock.patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1") as resolve,
+            mock.patch("models.workflow.build_file_from_stored_mapping", side_effect=rebuilt_files) as rebuild_file,
+        ):
+            retrieved_segment = draft_var.get_value(session=sqlite_session)
+
+        assert retrieved_segment.value == rebuilt_files
+        resolve.assert_called_once_with(sqlite_session, "app-1")
+        assert rebuild_file.call_count == 2
+        assert all(call.kwargs["tenant_id"] == "tenant-1" for call in rebuild_file.call_args_list)
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_resolve_workflow_app_tenant_id_reads_through_caller_session(sqlite_session: Session):
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+    )
+    sqlite_session.add(app)
+    sqlite_session.flush()
+
+    assert _resolve_workflow_app_tenant_id(sqlite_session, "app-1") == "tenant-1"
+
+    with pytest.raises(ValueError, match="Unable to resolve tenant_id"):
+        _resolve_workflow_app_tenant_id(sqlite_session, "missing-app")
