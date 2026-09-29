@@ -1,5 +1,6 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import type { AppAccessScope } from '@/features/app-access-error/state'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
 import {
@@ -13,6 +14,13 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import {
+  captureAppAccessRequest,
+  hasAppAccessError,
+  isAppAccessErrorResponse,
+  isAppAccessScopeCurrent,
+  throwIfAppAccessBlocked,
+} from '@/features/app-access-error/state'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
@@ -50,6 +58,7 @@ export type ResponseError = {
   error?: string
   reason?: string
   status: number
+  client_ip?: string
 }
 
 const createResponseFromHTTPError = (error: HTTPError): Response => {
@@ -69,7 +78,11 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
   })
 }
 
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
+const afterResponseErrorCode = (
+  otherOptions: IOtherOptions,
+  appAccessScope: AppAccessScope | null,
+  appIdentity: boolean,
+): AfterResponseHook => {
   return async ({ request, response }) => {
     if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
@@ -81,6 +94,15 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
         response.status !== 401 &&
         errorData &&
         !otherOptions.silent &&
+        !(
+          appAccessScope &&
+          (!isAppAccessScopeCurrent(appAccessScope) || hasAppAccessError(appAccessScope))
+        ) &&
+        !(
+          appAccessScope &&
+          (response.status !== 404 || !appAccessScope.key.startsWith('form:')) &&
+          isAppAccessErrorResponse(response.status, errorData, appIdentity)
+        ) &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = errorData?.message || errorData?.error
@@ -158,6 +180,12 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
+  const { scope: appAccessScope, appIdentity } = captureAppAccessRequest(
+    url,
+    isPublicAPI,
+    request?.method || init.method,
+  )
+  throwIfAppAccessBlocked(appAccessScope)
 
   const headers = new Headers(headersFromProps || {})
 
@@ -189,7 +217,10 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(otherOptions, appAccessScope, appIdentity),
+      ],
     },
   })
 

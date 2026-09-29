@@ -88,7 +88,9 @@ def _extract_hitl_upload_token() -> str:
     if authorization is None:
         raise InvalidUploadTokenUnauthorizedError()
 
-    parts = authorization.split()
+    # Keep capability identity parsing identical to the Gateway's HTTP OWS
+    # boundary; Unicode/control separators must not bypass IP enforcement.
+    parts = [part for part in authorization.replace("\t", " ").split(" ") if part]
     if len(parts) != 2:
         raise InvalidUploadTokenUnauthorizedError()
 

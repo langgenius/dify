@@ -68,6 +68,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -192,6 +193,11 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_device_adapters import (
@@ -376,6 +382,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
+    network_access_groups: NetworkAccessGroupService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
@@ -873,6 +880,16 @@ def build_application_services(
         ),
         notifications=NotificationService(
             notifications=BillingNotificationGateway(),
+        ),
+        network_access_groups=NetworkAccessGroupService(
+            control_plane=NetworkAccessGroupGateway(
+                base_url=dify_config.NETWORK_ACCESS_API_URL,
+                fallback_base_url=BillingService.base_url,
+                secret_key=BillingService.secret_key,
+            ),
+            apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
+            memberships=workspace_query_repository,
+            entitlement=BillingNetworkAccessGroupEntitlementGateway(),
         ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,

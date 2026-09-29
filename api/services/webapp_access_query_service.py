@@ -11,6 +11,8 @@ _PERMISSION_CHECK_MODES = frozenset({WebAppAccessMode.PRIVATE, WebAppAccessMode.
 class WebAppAccessQuery(Protocol):
     def find_app_id_by_code(self, app_code: str) -> str | None: ...
 
+    def is_app_available(self, app_id: str) -> bool: ...
+
 
 class WebAppAccessModesQuery(Protocol):
     def __call__(self, *, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]: ...
@@ -56,16 +58,26 @@ class WebAppAccessQueryService:
             raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
         return app_id
 
-    def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
-        if not self._webapp_auth_enabled:
-            return WebAppAccessMode.PUBLIC
-
+    def resolve_app_id(self, *, app_id: str | None = None, app_code: str | None = None) -> str:
+        """Resolve a published public App identity without tokens or user writes."""
         if app_code:
-            app_id = self.get_app_id_by_code(app_code)
-
+            app_id = self._access.find_app_id_by_code(app_code)
+            if app_id is None:
+                raise WebAppAccessAppNotFoundError
+        elif app_id and not self._access.is_app_available(app_id):
+            raise WebAppAccessAppNotFoundError
         if not app_id:
             raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
+        return app_id
 
+    def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
+        # Preserve the auth-disabled, reference-free bootstrap shortcut. Supplied
+        # references must still resolve to a live App regardless of auth settings.
+        if not self._webapp_auth_enabled and not app_id and not app_code:
+            return WebAppAccessMode.PUBLIC
+        app_id = self.resolve_app_id(app_id=app_id, app_code=app_code)
+        if not self._webapp_auth_enabled:
+            return WebAppAccessMode.PUBLIC
         return self._access_mode_for_app(app_id)
 
     def requires_permission_check(self, app_id: str) -> bool:

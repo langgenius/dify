@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Neem contact op met de appbeheerder als u hulp nodig hebt.",
+  "appNotAccessible.documentTitle": "App niet toegankelijk · Dify",
+  "appNotAccessible.ipAddress": "Uw IP-adres is <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Deze app bestaat niet of is niet toegankelijk vanuit uw netwerk.",
   "chat.chatFormTip": "Chat settings cannot be modified after the chat has started.",
   "chat.chatSettingsTitle": "New chat setup",
   "chat.collapse": "Collapse",

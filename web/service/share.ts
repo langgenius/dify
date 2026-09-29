@@ -5,6 +5,12 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import { consoleClient } from '@/service/console'
 import {
   del as consoleDel,
@@ -538,7 +544,21 @@ const uploadHumanInputFormFile = async (
   formData: FormData,
   onProgress?: (e: ProgressEvent) => void,
 ) => {
-  const uploadToken = await getHumanInputFormUploadToken(formToken)
+  const scope = captureAppAccessScope()
+  const ensureCanUpload = () => {
+    if (!isAppAccessScopeCurrent(scope) || hasAppAccessError(scope))
+      throw new DOMException('The form upload is no longer active.', 'AbortError')
+  }
+  ensureCanUpload()
+
+  let uploadToken: string
+  try {
+    uploadToken = await getHumanInputFormUploadToken(formToken)
+  } catch (error) {
+    if (!isAppAccessError(error)) ensureCanUpload()
+    throw error
+  }
+  ensureCanUpload()
 
   return upload(
     {

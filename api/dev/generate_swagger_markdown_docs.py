@@ -223,6 +223,13 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             text=True,
         )
         if result.returncode != 0:
+            logger.error(
+                "swagger-markdown failed for %s (exit code %s)\nstdout:\n%s\nstderr:\n%s",
+                spec_path,
+                result.returncode,
+                result.stdout,
+                result.stderr,
+            )
             raise subprocess.CalledProcessError(
                 result.returncode,
                 result.args,

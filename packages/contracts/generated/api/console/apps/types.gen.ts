@@ -566,6 +566,36 @@ export type AppNamePayload = {
   name: string
 }
 
+export type AppNetworkAccessGroupResponse = {
+  app_id: string
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse | null
+  effective_enabled: boolean
+  entitled: boolean
+  tenant_id: string
+}
+
+export type AppNetworkAccessGroupUpdatePayload = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  enabled: boolean
+  expected_version: number
+  group_id: string | null
+}
+
+export type AppNetworkAccessGroupMutationResponse = {
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse
+  effective_enabled: boolean
+}
+
+export type AppNetworkAccessGroupStatusResponse = {
+  available_count: number
+  configured: boolean
+  covered_count: number
+  enabled: boolean
+  entitled: boolean
+}
+
 export type RedirectUrlResponse = {
   redirect_url: string
 }
@@ -1807,6 +1837,19 @@ export type AppUserInputFormPayload =
   | AppNumberInputPayload
   | AppCheckboxInputPayload
   | AppExternalDataInputPayload
+
+export type AppNetworkAccessGroupBindingResponse = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  app_id: string
+  created_at: string
+  enabled: boolean
+  group_id?: string | null
+  id: string
+  tenant_id: string
+  updated_at: string
+  updated_by_account_id?: string | null
+  version: number
+}
 
 export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
 
@@ -5650,6 +5693,54 @@ export type PostAppsByAppIdNameResponses = {
 
 export type PostAppsByAppIdNameResponse =
   PostAppsByAppIdNameResponses[keyof PostAppsByAppIdNameResponses]
+
+export type GetAppsByAppIdNetworkAccessGroupData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupResponse =
+  GetAppsByAppIdNetworkAccessGroupResponses[keyof GetAppsByAppIdNetworkAccessGroupResponses]
+
+export type PutAppsByAppIdNetworkAccessGroupData = {
+  body: AppNetworkAccessGroupUpdatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type PutAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupMutationResponse
+}
+
+export type PutAppsByAppIdNetworkAccessGroupResponse =
+  PutAppsByAppIdNetworkAccessGroupResponses[keyof PutAppsByAppIdNetworkAccessGroupResponses]
+
+export type GetAppsByAppIdNetworkAccessGroupStatusData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group/status'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponses = {
+  200: AppNetworkAccessGroupStatusResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponse =
+  GetAppsByAppIdNetworkAccessGroupStatusResponses[keyof GetAppsByAppIdNetworkAccessGroupStatusResponses]
 
 export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   body?: never

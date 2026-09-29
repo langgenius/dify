@@ -403,6 +403,34 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path: Path)
     assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion\n"
 
 
+def test_convert_spec_to_markdown_logs_converter_failure_without_overwriting_docs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    output_path = tmp_path / "console-openapi.md"
+    spec_path.write_text("{}", encoding="utf-8")
+    output_path.write_text("Existing documentation\n", encoding="utf-8")
+
+    def run_converter(args, **_kwargs):
+        return module.subprocess.CompletedProcess(
+            args=args, returncode=1, stdout="Loading converter", stderr="Unable to resolve npm runtime"
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", run_converter)
+
+    with pytest.raises(module.subprocess.CalledProcessError) as exc_info:
+        module._convert_spec_to_markdown(spec_path, output_path)
+
+    assert exc_info.value.returncode == 1
+    assert exc_info.value.stdout == "Loading converter"
+    assert exc_info.value.stderr == "Unable to resolve npm runtime"
+    assert str(spec_path) in caplog.text
+    assert "Loading converter" in caplog.text
+    assert "Unable to resolve npm runtime" in caplog.text
+    assert output_path.read_text(encoding="utf-8") == "Existing documentation\n"
+
+
 def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"

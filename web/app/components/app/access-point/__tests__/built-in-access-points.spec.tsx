@@ -169,6 +169,66 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
+  it('keeps an unpublished Chatflow unavailable without showing a Trigger card', () => {
+    mocks.appInfo = {
+      ...mocks.appInfo,
+      mode: 'advanced-chat',
+      enable_site: true,
+      enable_api: true,
+    }
+    render(
+      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+    )
+
+    expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
+    expect(mocks.webCard).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: 'unavailable' }),
+    )
+    expect(mocks.apiCard).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: 'unavailable' }),
+    )
+    expect(mocks.mcpCard).toHaveBeenCalledWith(
+      expect.objectContaining({ triggerModeDisabled: false }),
+    )
+    expect(mocks.triggerCard).not.toHaveBeenCalled()
+    expect(mocks.useAppWorkflow).toHaveBeenCalledWith('app-1', expect.any(Object))
+  })
+
+  it.each([
+    ['loading', { data: null, isError: false, isPending: true }, 'loading'],
+    ['failed', { data: null, isError: true, isPending: false }, 'unavailable'],
+    [
+      'published',
+      {
+        data: { graph: { nodes: [{ data: { type: 'start' } }] } },
+        isError: false,
+        isPending: false,
+      },
+      'available',
+    ],
+  ] as const)(
+    'shows Chatflow access points as %s while published workflow is %s',
+    (_state, workflow, availability) => {
+      mocks.appInfo = {
+        ...mocks.appInfo,
+        mode: 'advanced-chat',
+        enable_site: true,
+        enable_api: true,
+      }
+      mocks.workflow = workflow
+      render(
+        <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+      )
+
+      expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ availability }))
+      expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ availability }))
+      expect(mocks.triggerCard).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
+      ).not.toBeInTheDocument()
+    },
+  )
+
   it('uses Access Point management for every requested built-in operation', () => {
     render(
       <BuiltInAccessPoints
