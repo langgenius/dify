@@ -110,8 +110,8 @@ export function AccessControlPolicyField({
       {canCreatePolicy && (
         <>
           <SelectSeparator />
-          <SelectItem value={CREATE_POLICY_VALUE}>
-            <SelectItemText>
+          <SelectItem value={CREATE_POLICY_VALUE} className="h-7.5 rounded-md text-text-accent">
+            <SelectItemText className="px-0">
               {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
             </SelectItemText>
           </SelectItem>
@@ -172,8 +172,8 @@ export function AccessControlPolicyField({
               <div className="my-1 h-px bg-divider-subtle" />
               <Button
                 type="button"
-                variant="ghost"
-                className="w-full justify-start"
+                variant="ghost-accent"
+                className="h-7.5 w-full justify-start rounded-md px-2 system-sm-medium text-text-accent"
                 onClick={onCreatePolicy}
               >
                 {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}

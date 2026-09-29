@@ -142,9 +142,9 @@ describe('AccessControlConfigPanel', () => {
 
       if (selectedPolicyId) {
         await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-        await user.click(await screen.findByRole('option', { name: 'Add IP Policy' }))
+        await user.click(await screen.findByRole('option', { name: 'Add an IP policy' }))
       } else {
-        await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
+        await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
       }
 
       expect(onCreatePolicy).toHaveBeenCalledOnce()
@@ -160,7 +160,7 @@ describe('AccessControlConfigPanel', () => {
     ({ manageLabel, ...permissions }) => {
       render(<PanelHarness {...permissions} />)
 
-      expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: manageLabel })).toBeEnabled()
     },
   )
