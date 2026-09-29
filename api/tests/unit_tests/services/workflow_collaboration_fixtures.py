@@ -1,8 +1,16 @@
 """Stateful Redis command transport for collaboration service tests."""
 
+import json
 from collections.abc import Sequence
+from hashlib import sha1
 
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from redis.lock import Lock
+
+from repositories.workflow_collaboration_repository import (
+    _UPDATE_SESSION_GRAPH_ACTIVE_LUA,
+    WorkflowCollaborationRepository,
+    WorkflowSessionInfo,
+)
 
 
 class RedisState:
@@ -18,6 +26,30 @@ class RedisState:
         return value if isinstance(value, bytes) else str(value).encode()
 
     def execute(self, command: str, *args: object, **_kwargs: object) -> object:
+        if command == "EVAL":
+            script, numkeys, workflow_key, sid, active, sequence = args
+            assert script == _UPDATE_SESSION_GRAPH_ACTIVE_LUA
+            assert numkeys == 1
+            fields = self.hashes.get(self._bytes(workflow_key), {})
+            raw = fields.get(self._bytes(sid))
+            if raw is None:
+                return 0
+            data = json.loads(raw)
+            incoming = int(str(sequence))
+            if incoming <= data.get("graph_active_sequence", -1):
+                return 0
+            data.update(graph_active=active == "1", graph_active_sequence=incoming)
+            fields[self._bytes(sid)] = json.dumps(data).encode()
+            return 1
+        if command == "EVALSHA":
+            script_hash, numkeys, lock_key, token = args
+            assert script_hash == sha1(Lock.LUA_RELEASE_SCRIPT.encode()).hexdigest()
+            assert numkeys == 1
+            key = self._bytes(lock_key)
+            if self.values.get(key) != self._bytes(token):
+                return 0
+            del self.values[key]
+            return 1
         key = self._bytes(args[0])
         match command:
             case "GET":
