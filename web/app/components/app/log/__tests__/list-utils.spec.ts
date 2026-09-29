@@ -192,7 +192,7 @@ describe('log list utils', () => {
     )
     expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
   })
-  
+
   it('should map a thread index to allChatItems when the conversation has regenerated branches', () => {
     const allChatItems = [
       ...createChatItems(),
