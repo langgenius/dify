@@ -49,9 +49,13 @@ describe('ShareQRCode', () => {
       const trigger = screen.getByRole('button', {
         name: 'appOverview.overview.appInfo.qrcode.title',
       })
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).not.toHaveAttribute('aria-controls')
       await user.click(trigger)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      expect(trigger).toHaveAttribute('aria-controls', screen.getByRole('img').parentElement?.id)
       expect(
         screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' }),
       ).toBeInTheDocument()
@@ -59,6 +63,8 @@ describe('ShareQRCode', () => {
 
       await user.click(trigger)
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).not.toHaveAttribute('aria-controls')
     })
 
     it('closes panel when clicking outside', async () => {

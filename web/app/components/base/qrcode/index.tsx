@@ -20,6 +20,7 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
   const { t } = useTranslation(['appOverview'])
   const [isShow, setIsShow] = useState<boolean>(false)
   const qrCodeRef = useRef<HTMLDivElement>(null)
+  const qrCodeId = React.useId()
 
   const toggleQRCode = (event: React.MouseEvent) => {
     event.stopPropagation()
@@ -56,13 +57,19 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
       <div className="relative size-6">
         <TooltipTrigger
           render={
-            <IconButton aria-label={safeTooltipText} onClick={toggleQRCode}>
+            <IconButton
+              aria-label={safeTooltipText}
+              aria-expanded={isShow}
+              aria-controls={isShow ? qrCodeId : undefined}
+              onClick={toggleQRCode}
+            >
               <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
             </IconButton>
           }
         />
         {isShow && (
           <div
+            id={qrCodeId}
             ref={qrCodeRef}
             className="absolute top-8 -right-8 z-10 flex w-58 flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
           >
