@@ -152,6 +152,39 @@ class TestDocumentCache:
         ]
         assert len(sqlite_embedding_session.scalars(select(Embedding)).all()) == 25
 
+    def test_embed_documents_pauses_between_batches_when_delay_configured(
+        self, sqlite_embedding_session: Session, model_instance: Mock, config_overrides
+    ) -> None:
+        config_overrides(EMBEDDING_BATCH_DELAY=0.25)
+        model_instance.model_type_instance.get_model_schema.return_value = Mock(
+            model_properties={ModelPropertyKey.MAX_CHUNKS: 1}
+        )
+        model_instance.invoke_text_embedding.side_effect = [_result(_vector()), _result(_vector(offset=10))]
+
+        with patch.object(cached_embedding.time, "sleep") as mock_sleep:
+            result = CacheEmbedding(model_instance).embed_documents(["first", "second"])
+
+        assert len(result) == 2
+        assert model_instance.invoke_text_embedding.call_count == 2
+        mock_sleep.assert_called_once_with(0.25)
+        assert len(sqlite_embedding_session.scalars(select(Embedding)).all()) == 2
+
+    def test_embed_documents_skips_pause_when_delay_disabled(
+        self, sqlite_embedding_session: Session, model_instance: Mock, config_overrides
+    ) -> None:
+        config_overrides(EMBEDDING_BATCH_DELAY=0)
+        model_instance.model_type_instance.get_model_schema.return_value = Mock(
+            model_properties={ModelPropertyKey.MAX_CHUNKS: 1}
+        )
+        model_instance.invoke_text_embedding.side_effect = [_result(_vector()), _result(_vector(offset=10))]
+
+        with patch.object(cached_embedding.time, "sleep") as mock_sleep:
+            result = CacheEmbedding(model_instance).embed_documents(["first", "second"])
+
+        assert len(result) == 2
+        mock_sleep.assert_not_called()
+        assert len(sqlite_embedding_session.scalars(select(Embedding)).all()) == 2
+
     @pytest.mark.parametrize(
         "provider_error",
         [InvokeConnectionError("offline"), InvokeRateLimitError("limited"), InvokeAuthorizationError("denied")],

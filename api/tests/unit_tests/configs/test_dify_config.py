@@ -8,8 +8,25 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
-from configs.feature import OpsTraceConfig
+from configs.feature import IndexingConfig, OpsTraceConfig
 from enums import DeploymentEdition
+
+
+def test_indexing_config_defaults_preserve_current_embedding_throughput() -> None:
+    config = IndexingConfig()
+
+    assert config.INDEXING_MAX_WORKERS_NUMBER == 10
+    assert config.EMBEDDING_BATCH_DELAY == 0
+
+
+def test_indexing_config_rejects_non_positive_workers() -> None:
+    with pytest.raises(ValidationError):
+        IndexingConfig(INDEXING_MAX_WORKERS_NUMBER=0)
+
+
+def test_indexing_config_rejects_negative_embedding_delay() -> None:
+    with pytest.raises(ValidationError):
+        IndexingConfig(EMBEDDING_BATCH_DELAY=-0.1)
 
 
 def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
