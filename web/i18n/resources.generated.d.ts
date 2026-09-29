@@ -3606,6 +3606,7 @@ export default interface Resources {
     'accessRule.selected': 'Selected'
     'accessRule.summary': '{{count}} permission set' | '{{count}} permission sets'
     'accessRule.updated': 'Access rule updated successfully'
+    'accessRule.workspaceAdmin': 'Workspace Admin'
     'accessRule.workspaceOwner': 'Workspace Owner'
     'common.duplicateAction': 'Duplicate'
     'group.agent': 'Agents'
