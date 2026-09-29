@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -82,13 +83,22 @@ def test_malformed_app_id_is_not_a_database_error() -> None:
     factory.assert_not_called()
 
 
-def test_app_id_database_failure_remains_unavailable() -> None:
+def test_app_id_database_failure_remains_unavailable(
+    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine
+) -> None:
     database_error = OperationalError("select", {}, RuntimeError("connection failed"))
-    session = MagicMock()
-    session.__enter__.return_value.scalar.side_effect = database_error
-    repository = WebAppAccessQueryRepository(session_factory=MagicMock(return_value=session))
-    with pytest.raises(WebAppAccessUnavailableError):
-        repository.is_app_available(_APP_ID)
+
+    def fail_query(*_args: object) -> None:
+        raise database_error
+
+    event.listen(sqlite_engine, "before_cursor_execute", fail_query)
+    try:
+        repository = WebAppAccessQueryRepository(session_factory=sqlite_session_factory)
+        with pytest.raises(WebAppAccessUnavailableError) as raised:
+            repository.is_app_available(_APP_ID)
+        assert raised.value.__cause__ is database_error
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", fail_query)
 
 
 def test_find_app_id_by_code_returns_none_for_missing_code(

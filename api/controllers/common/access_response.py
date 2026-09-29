@@ -120,7 +120,7 @@ def _mcp_request_id() -> str:
     try:
         if request.content_length is not None and request.content_length > MCP_ERROR_BODY_LIMIT:
             return "null"
-        cached = getattr(request, "_cached_data", None)
+        cached = vars(request).get("_cached_data")
         if cached is not None:
             return _parse_mcp_error_request_id(cached) if isinstance(cached, bytes) else "null"
         body = request.stream.read(MCP_ERROR_BODY_LIMIT + 1)

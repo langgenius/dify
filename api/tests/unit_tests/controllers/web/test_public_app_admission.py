@@ -101,6 +101,8 @@ def _harness(
             webapp_auth_enabled=False,
             access_mode_for_app=mode_lookup,
             is_user_allowed_for_app=MagicMock(),
+            get_access_modes=MagicMock(),
+            get_user_permissions=MagicMock(),
         ),
         web_passport=WebPassportService(
             passports=passport_repo,
@@ -120,13 +122,16 @@ def _harness(
             )
         ),
     )
-    for module in (app_controller, login, passport, site):
+    for module in (app_controller, login, passport, site, wraps):
         monkeypatch.setattr(module, "application_services", lambda: services)
     monkeypatch.setattr(wraps, "PassportService", lambda: tokens)
     monkeypatch.setattr(wraps, "extract_webapp_passport", lambda *_: "old-passport")
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16",
+    )
     flask = Flask(__name__)
     flask.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     flask.register_blueprint(bp)
@@ -263,7 +268,9 @@ def test_real_database_failure_is_not_reclassified_as_unpublished(
     failing_factory = MagicMock(return_value=failing_session)
     h.access_repo._session_factory = failing_factory
     h.passport_repo._session_factory = failing_factory
-    monkeypatch.setattr(wraps.session_factory, "create_session", failing_factory)
+    from repositories import web_passport_repository
+
+    monkeypatch.setattr(web_passport_repository.global_session_factory, "create_session", failing_factory)
     response = h.client.get("/api" + route, headers={"X-App-Code": "fixture-code"})
     assert response.status_code == (503 if route.startswith(("/webapp", "/login")) else 500)
     assert response.get_json()["code"] != "app_not_found"

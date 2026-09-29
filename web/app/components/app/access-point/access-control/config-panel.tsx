@@ -61,7 +61,7 @@ export function AccessControlConfigPanel({
   onDraftChange,
   onSave,
 }: AccessControlConfigPanelProps) {
-  const { t } = useTranslation(['common', 'deployments'])
+  const { t } = useTranslation(['deployments', 'common'])
   const policyErrorId = useId()
   const accessPointErrorId = useId()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })

@@ -13,7 +13,7 @@ import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -39,7 +39,8 @@ def app() -> Iterator[Flask]:
             Workflow.__table__,
         ):
             table.create(db.engine)
-        yield app
+        with patch.object(module.session_factory, "get_session_maker", return_value=sessionmaker(db.engine)):
+            yield app
 
 
 @pytest.fixture(autouse=True)
@@ -602,7 +603,7 @@ def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() 
     server.tenant_id = str(uuid4())
     db.session.add_all([app_model, server])
     db.session.commit()
-    with module.sessionmaker(db.engine).begin() as session:
+    with sessionmaker(db.engine).begin() as session:
         with pytest.raises(module.MCPServerNotFoundError):
             module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
 

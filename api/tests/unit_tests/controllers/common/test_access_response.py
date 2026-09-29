@@ -13,6 +13,7 @@ import pytest
 from flask import Blueprint, Flask, Response, jsonify, request
 from flask.testing import FlaskClient
 from flask_restx import Namespace, Resource
+from sqlalchemy import Table
 from werkzeug.exceptions import NotFound, Unauthorized
 
 import controllers.service_api.wraps as token_wraps
@@ -29,7 +30,8 @@ from controllers.trigger import webhook
 from extensions import ext_request_logging
 from libs.external_api import ExternalApi
 from models.engine import db
-from models.enums import AppMCPServerStatus
+from models.model import ApiToken
+from services.app.mcp_server_service import AppMCPServerStatus
 from tests.unit_tests.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
@@ -121,18 +123,14 @@ def test_invalid_token_final_response_and_no_usage(token_client: TokenClient) ->
 
 
 def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = None
-    maker = MagicMock()
-    maker.return_value.__enter__.return_value = session
     usage = MagicMock()
-    monkeypatch.setattr(token_service, "Session", maker)
     monkeypatch.setattr(token_service.ApiTokenCache, "set", MagicMock())
     monkeypatch.setattr(token_service, "record_token_usage", usage)
-    with http_app.app_context(), pytest.raises(Unauthorized, match="Access token is invalid"):
-        token_service.query_token_from_db("missing-token", "app")
+    with http_app.app_context():
+        cast(Table, ApiToken.__table__).create(db.engine)
+        with pytest.raises(Unauthorized, match="Access token is invalid"):
+            token_service.query_token_from_db("missing-token", "app")
     usage.assert_not_called()
-    session.add.assert_not_called()
 
 
 def test_success_token_and_other_surface_are_not_rewritten(token_client: TokenClient) -> None:
@@ -158,10 +156,10 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
     api.add_namespace(namespace)
     http_app.register_blueprint(bp)
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
-    session = MagicMock()
+    session = MagicMock()  # guard-ignore: no-new-session-mock -- controls HTTP query results
     maker = MagicMock()
-    maker.return_value.begin.return_value.__enter__.return_value = session
-    monkeypatch.setattr(mcp, "sessionmaker", maker)
+    maker.begin.return_value.__enter__.return_value = session
+    monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     execute = MagicMock()
     end_user = MagicMock()
     monkeypatch.setattr(mcp, "handle_mcp_request", execute)
@@ -371,7 +369,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         finally:
             active_sessions.pop()
 
-    monkeypatch.setattr(mcp, "sessionmaker", lambda *_args, **_kwargs: SimpleNamespace(begin=begin))
+    monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: SimpleNamespace(begin=begin))
     form = MagicMock(return_value=[])
     process = MagicMock(return_value=Response("ok", status=200))
     monkeypatch.setattr(mcp.MCPAppApi, "_get_user_input_form", form)

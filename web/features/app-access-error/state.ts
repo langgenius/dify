@@ -95,10 +95,7 @@ export function hasAppAccessError(scope: AppAccessScope | null) {
   return scope !== null && appAccessStore.get(errorAtomFor(scope))?.scope === scope
 }
 
-export function isIpAccessDeniedResponse(
-  status: number,
-  data: unknown,
-): data is IpAccessDeniedResponse {
+function isIpAccessDeniedResponse(status: number, data: unknown): data is IpAccessDeniedResponse {
   return (
     status === 403 &&
     typeof data === 'object' &&

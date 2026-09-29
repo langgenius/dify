@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 
 export function AccessControlRestrictedPreview() {
-  const { t } = useTranslation(['common', 'deployments'])
+  const { t } = useTranslation(['deployments'])
 
   return (
     <div

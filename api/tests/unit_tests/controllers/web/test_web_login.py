@@ -266,9 +266,12 @@ class TestLoginStatusApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from controllers.web import bp
+        from controllers.web import bp, wraps
 
-        mock_app_id.return_value.webapp_access.resolve_app_id.side_effect = WebAppAccessAppNotFoundError("private code")
+        monkeypatch.setattr(wraps, "application_services", lambda: mock_app_id.return_value)
+        mock_app_id.return_value.webapp_access.get_app_id_by_code.side_effect = WebAppAccessAppNotFoundError(
+            "private code"
+        )
         apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
         app.register_blueprint(bp)
         response = app.test_client().get(
@@ -292,19 +295,22 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token")
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=False)
     @patch("controllers.web.login.application_services")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_public_app_user_logged_in(
         self,
         mock_extract: MagicMock,
         mock_app_id: MagicMock,
-        mock_perm: MagicMock,
         mock_passport: MagicMock,
         mock_decode: MagicMock,
         app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        mock_app_id.return_value.webapp_access.resolve_app_id.return_value = "app-1"
+        from controllers.web import wraps
+
+        monkeypatch.setattr(wraps, "application_services", lambda: mock_app_id.return_value)
+        mock_app_id.return_value.webapp_access.get_app_id_by_code.return_value = "app-1"
+        mock_app_id.return_value.webapp_access.requires_permission_check.return_value = False
         mock_decode.return_value = (MagicMock(), MagicMock())
 
         with app.test_request_context("/web/login/status?app_code=code1"):
@@ -315,19 +321,22 @@ class TestLoginStatusApi:
 
     @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
     @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=True)
     @patch("controllers.web.login.application_services")
     @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
     def test_private_app_passport_fails(
         self,
         mock_extract: MagicMock,
         mock_app_id: MagicMock,
-        mock_perm: MagicMock,
         mock_passport_cls: MagicMock,
         mock_decode: MagicMock,
         app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        mock_app_id.return_value.webapp_access.resolve_app_id.return_value = "app-1"
+        from controllers.web import wraps
+
+        monkeypatch.setattr(wraps, "application_services", lambda: mock_app_id.return_value)
+        mock_app_id.return_value.webapp_access.get_app_id_by_code.return_value = "app-1"
+        mock_app_id.return_value.webapp_access.requires_permission_check.return_value = True
         mock_passport_cls.return_value.verify.side_effect = Exception("bad")
 
         with app.test_request_context("/web/login/status?app_code=code1"):
@@ -342,7 +351,7 @@ class TestLoginStatusApi:
     def test_unavailable_public_identity_is_final_404_before_authentication(
         self, condition: str, app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from controllers.web import bp
+        from controllers.web import bp, wraps
         from controllers.web import login as login_module
 
         app_id = "11111111-1111-1111-1111-111111111111"
@@ -380,8 +389,11 @@ class TestLoginStatusApi:
             webapp_auth_enabled=False,
             access_mode_for_app=modes,
             is_user_allowed_for_app=MagicMock(),
+            get_access_modes=MagicMock(),
+            get_user_permissions=MagicMock(),
         )
         monkeypatch.setattr(login_module, "application_services", lambda: SimpleNamespace(webapp_access=service))
+        monkeypatch.setattr(wraps, "application_services", lambda: SimpleNamespace(webapp_access=service))
         decode = MagicMock()
         monkeypatch.setattr(login_module, "decode_jwt_token", decode)
         apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
@@ -404,11 +416,12 @@ class TestLoginStatusApi:
     )
     @patch("controllers.web.login.application_services")
     def test_identity_dependency_or_bug_is_not_hidden_as_app_404(
-        self, services: MagicMock, failure: Exception, status: int, app: Flask
+        self, services: MagicMock, failure: Exception, status: int, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from controllers.web import bp
+        from controllers.web import bp, wraps
 
-        services.return_value.webapp_access.resolve_app_id.side_effect = failure
+        monkeypatch.setattr(wraps, "application_services", lambda: services.return_value)
+        services.return_value.webapp_access.get_app_id_by_code.side_effect = failure
         app.register_blueprint(bp)
         response = app.test_client().get("/api/login/status?app_code=fixture")
         assert response.status_code == status
