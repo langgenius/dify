@@ -1289,6 +1289,26 @@ services:
     volumes:
       - ./volumes/unstructured:/app/data
 
+  # Diffy Agents backend: maps a website hostname to its Diffy chat iframe URL.
+  # A separate Node service (not part of Dify's own api/web images), built from
+  # ../diffy-backend inside this repo. Powers the "Diffy Agents" page in Dify's
+  # console (web/features/diffy-agents) and the embeddable widget script it serves.
+  diffy_backend:
+    build:
+      context: ../diffy-backend
+    restart: always
+    ports:
+      - ${DIFFY_BACKEND_PORT:-3001}:3000
+    environment:
+      PORT: 3000
+      ADMIN_PASSWORD: ${DIFFY_BACKEND_ADMIN_PASSWORD:-}
+      DIFY_BASE_URL: ${DIFFY_BACKEND_DIFY_BASE_URL:-}
+      OPENAI_API_KEY: ${DIFFY_BACKEND_OPENAI_API_KEY:-}
+      THREAD_RETENTION_DAYS: ${DIFFY_BACKEND_THREAD_RETENTION_DAYS:-30}
+    volumes:
+      # Persists config/agents.json and config/diffy-agents.json across restarts/rebuilds.
+      - ./volumes/diffy_backend/config:/app/config
+
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:

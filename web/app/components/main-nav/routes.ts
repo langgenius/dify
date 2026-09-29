@@ -20,6 +20,7 @@ export type MainNavRouteVisibilityOptions = {
   canManageAgents: boolean
   canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
+  isCurrentWorkspaceOwner: boolean
   marketplaceEnabled: boolean
   skillEnabled: boolean
 }
@@ -33,6 +34,7 @@ const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
   options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
+const WORKSPACE_OWNER_ONLY: MainNavRouteVisibility = (options) => options.isCurrentWorkspaceOwner
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -110,6 +112,15 @@ export const MAIN_NAV_ROUTES = [
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
+  },
+  {
+    key: 'diffy-agents',
+    href: '/diffy-agents',
+    label: 'Diffy Agents',
+    active: (path: string) => isPathUnderRoute(path, '/diffy-agents'),
+    icon: 'i-ri-links-line',
+    activeIcon: 'i-ri-links-fill',
+    visibility: WORKSPACE_OWNER_ONLY,
   },
 ] as const satisfies readonly MainNavRouteConfig[]
 

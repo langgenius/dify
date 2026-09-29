@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #chatkit-fullpage { width: 100%; height: 100vh; display: none; }
+    #dify-fullpage { width: 100%; height: 100vh; display: none; }
+    #chatkit-error {
+      display: none;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #666;
+      padding: 24px;
+    }
+    #chatkit-error h2 { color: #333; margin-bottom: 8px; font-size: 18px; }
+    #chatkit-error p { font-size: 14px; }
+  </style>
+  <!-- Provider scripts are injected on demand once /check reports which
+       backend this page uses, so a Dify page never loads the ChatKit SDK. -->
+</head>
+<body>
+  <openai-chatkit id="chatkit-fullpage"></openai-chatkit>
+  <div id="dify-fullpage"></div>
+  <div id="chatkit-error">
+    <div>
+      <h2>Chat not available</h2>
+      <p>No agent is configured for this page.</p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Set this to your backend URL (e.g. "https://chatkit-backend-production-65cf.up.railway.app")
+      // Leave empty if the backend is on the same origin as this page.
+      const BACKEND_URL = "https://chatkit.learncs.eu";
+
+      const STORAGE_PREFIX = "chatkit_";
+      const pageKey = window.location.hostname + window.location.pathname.replace(/\/$/, "");
+
+      const storageKey = `${STORAGE_PREFIX}${pageKey}`;
+
+      const getStoredUid = () => localStorage.getItem(`${storageKey}_uid`);
+
+      const setStoredUid = (uid) => {
+        localStorage.setItem(`${storageKey}_uid`, uid);
+      };
+
+      // Dify has no session handshake, so the client mints its own stable id.
+      const getOrCreateUid = () => {
+        let uid = getStoredUid();
+        if (!uid) {
+          uid =
+            (crypto.randomUUID && crypto.randomUUID()) ||
+            `u-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          setStoredUid(uid);
+        }
+        return uid;
+      };
+
+      const loadScript = (src) =>
+        new Promise((resolve, reject) => {
+          const el = document.createElement("script");
+          el.src = src;
+          el.async = true;
+          el.onload = resolve;
+          el.onerror = () => reject(new Error(`Failed to load ${src}`));
+          document.head.appendChild(el);
+        });
+
+      const getStoredSession = () => {
+        try {
+          const raw = localStorage.getItem(`${storageKey}_session`);
+          if (!raw) return null;
+          const session = JSON.parse(raw);
+          if (session.expires_at * 1000 - Date.now() < 60000) return null;
+          return session;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const setStoredSession = (session) => {
+        localStorage.setItem(`${storageKey}_session`, JSON.stringify(session));
+      };
+
+      const fetchNewSession = async () => {
+        const uid = getStoredUid();
+        const res = await fetch(`${BACKEND_URL}/session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: uid, page_url: window.location.href }),
+        });
+        if (!res.ok) throw new Error(`Session request failed: ${res.status}`);
+        const data = await res.json();
+
+        setStoredUid(data.user_id);
+        setStoredSession({
+          client_secret: data.client_secret,
+          expires_at: data.expires_at,
+        });
+
+        if (data.last_thread_id) {
+          const el = document.getElementById("chatkit-fullpage");
+          if (el && el.setThreadId) el.setThreadId(data.last_thread_id);
+        }
+
+        return data.client_secret;
+      };
+
+      // Returns the matched agent ({ ok, provider, name }) or null.
+      const checkAgent = async () => {
+        try {
+          const res = await fetch(`${BACKEND_URL}/check`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ page_url: window.location.href }),
+          });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const initDify = async () => {
+        document.getElementById("dify-fullpage").style.display = "block";
+        await loadScript(`${BACKEND_URL}/dify-chat.js`);
+        window.mountDifyChat(document.getElementById("dify-fullpage"), {
+          backendUrl: BACKEND_URL,
+          storageKey,
+          userId: getOrCreateUid(),
+        });
+      };
+
+      const initChatKit = async () => {
+        document.getElementById("chatkit-fullpage").style.display = "block";
+        await loadScript(
+          "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"
+        );
+
+        customElements.whenDefined("openai-chatkit").then(() => {
+          const chatkit = document.getElementById("chatkit-fullpage");
+
+          // Auto-resume last thread
+          const uid = getStoredUid();
+          if (uid && chatkit.setThreadId) {
+            fetch(`${BACKEND_URL}/last-thread`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: uid, page_url: window.location.href }),
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data.thread_id) chatkit.setThreadId(data.thread_id);
+              })
+              .catch(() => {});
+          }
+
+          chatkit.setOptions({
+            api: {
+              async getClientSecret() {
+                const cached = getStoredSession();
+                if (cached) return cached.client_secret;
+                return fetchNewSession();
+              },
+            },
+            composer: {
+              attachments: { enabled: true },
+            },
+          });
+        });
+      };
+
+      const init = async () => {
+        const info = await checkAgent();
+        if (!info) {
+          document.getElementById("chatkit-error").style.display = "flex";
+          return;
+        }
+
+        try {
+          if (info.provider === "dify") {
+            await initDify();
+          } else {
+            await initChatKit();
+          }
+        } catch (err) {
+          console.error("[chat] Failed to start chat:", err);
+          document.getElementById("chatkit-fullpage").style.display = "none";
+          document.getElementById("dify-fullpage").style.display = "none";
+          document.getElementById("chatkit-error").style.display = "flex";
+        }
+      };
+
+      init();
+    })();
+  </script>
+</body>
+</html>

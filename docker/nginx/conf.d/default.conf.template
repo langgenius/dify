@@ -58,6 +58,17 @@ server {
       include proxy.conf;
     }
 
+    # Diffy Agents backend (diffy-backend/): a separate Node service, not part
+    # of Dify itself. Proxied on the same domain/cert so the "Diffy Agents"
+    # console page and the widget script it serves avoid mixed-content/CORS
+    # issues. Trailing slashes on both the location and proxy_pass strip the
+    # /diffy-backend prefix — the backend's own routes have no such prefix.
+    location /diffy-backend/ {
+      set $diffy_backend_upstream diffy_backend:3000;
+      proxy_pass http://$diffy_backend_upstream/;
+      include proxy.conf;
+    }
+
     location / {
       set $web_upstream web:3000;
       proxy_pass http://$web_upstream;

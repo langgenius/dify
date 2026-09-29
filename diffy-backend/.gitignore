@@ -1,0 +1,9 @@
+node_modules/
+.env
+src/config/agents.json
+src/config/diffy-agents.json
+
+# The repo root's .gitignore has a bare `lib/` rule (Python venv boilerplate)
+# that would otherwise swallow this Node project's src/lib/ at any depth.
+!src/lib/
+!src/lib/**

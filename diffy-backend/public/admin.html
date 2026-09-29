@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diffy Agent Manager</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 24px; margin-bottom: 24px; }
+
+    /* Login */
+    #login-screen, #main-screen { display: none; }
+    #login-screen.active, #main-screen.active { display: block; }
+    .login-box { max-width: 360px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .login-box h2 { margin-bottom: 16px; }
+
+    /* Form */
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555; }
+    input, select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 12px; background: #fff; }
+    input:focus, select:focus { outline: none; border-color: #000; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .btn-primary { background: #000; color: #fff; }
+    .btn-primary:hover { background: #333; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #fafafa; font-weight: 600; font-size: 12px; text-transform: uppercase; color: #888; }
+    td code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+    /* Add form */
+    .add-form { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    .add-form h2 { margin-bottom: 16px; font-size: 18px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row > div { flex: 1; }
+
+    .error { color: #dc3545; font-size: 13px; margin-bottom: 12px; }
+    .success { color: #28a745; font-size: 13px; margin-bottom: 12px; }
+    .empty { text-align: center; padding: 32px; color: #999; }
+
+    /* Snippet */
+    .snippet-box { background: #1e1e1e; color: #d4d4d4; padding: 10px 12px; border-radius: 6px; font-family: monospace; font-size: 11px; word-break: break-all; position: relative; line-height: 1.5; }
+    .snippet-box code { display: block; padding-right: 50px; }
+    .snippet-box .copy-btn { position: absolute; top: 8px; right: 8px; background: #444; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .snippet-box .copy-btn:hover { background: #666; }
+
+    /* Search */
+    .search-box { margin-bottom: 16px; }
+    .search-box input { margin-bottom: 0; }
+
+    /* Pagination */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; font-size: 14px; }
+    .pagination button { padding: 6px 12px; }
+    .pagination button:disabled { opacity: 0.4; cursor: default; }
+    .pagination .page-info { color: #666; }
+  </style>
+</head>
+<body>
+  <div id="login-screen" class="active">
+    <div class="login-box">
+      <h2>Admin Login</h2>
+      <div id="login-error" class="error" style="display:none"></div>
+      <label>Password</label>
+      <input type="password" id="password-input" placeholder="Enter admin password" />
+      <button class="btn-primary" onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <div id="main-screen">
+    <div class="container">
+      <h1>Diffy Agent Manager</h1>
+
+      <div style="margin-bottom: 24px;">
+        <h2 style="font-size: 16px; margin-bottom: 8px;">Pages</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 12px;">Preview the chat experience. The full-page version is meant to be hosted on your server and embedded in platforms like Moodle via an iframe.</p>
+        <div style="display: flex; gap: 16px; font-size: 14px;">
+          <a href="/chat.html" download="chat.html" style="color: #000; font-weight: 600;">Download Full-page Chat</a>
+          <a href="/example.html" download="example.html" style="color: #000; font-weight: 600;">Download Iframe Example</a>
+        </div>
+      </div>
+
+      <div id="embed-snippet" style="margin-bottom: 24px;">
+        <h2 style="font-size: 16px; margin-bottom: 8px;">Embed Code</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 8px;">Add this script to any website to enable the chat widget. The backend automatically detects which Diffy agent to use based on the site's hostname and shows its iframe.</p>
+        <div class="snippet-box" id="snippet-display"></div>
+      </div>
+
+      <div class="add-form">
+        <h2>Add Agent</h2>
+        <div id="add-error" class="error" style="display:none"></div>
+        <div id="add-success" class="success" style="display:none"></div>
+        <div class="form-row">
+          <div>
+            <label>Name</label>
+            <input type="text" id="add-name" placeholder="Support Bot" />
+          </div>
+          <div>
+            <label>Hostname / URL</label>
+            <input type="text" id="add-hostname" placeholder="chat.example.com or https://chat.example.com/page" />
+          </div>
+        </div>
+
+        <label>Diffy Iframe URL <span style="font-weight:400;color:#999;">(the embed link for this site's Diffy app)</span></label>
+        <input type="text" id="add-iframe-url" placeholder="https://udify.app/chatbot/..." />
+
+        <button class="btn-primary" onclick="addAgent()">Add Agent</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search by name or hostname..." oninput="onSearch()" />
+      </div>
+
+      <div id="agents-message"></div>
+      <table id="agents-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Hostname</th>
+            <th>Iframe URL</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="agents-body"></tbody>
+      </table>
+
+      <div class="pagination" id="pagination" style="display:none;">
+        <button class="btn-primary" id="prev-btn" onclick="changePage(-1)">Previous</button>
+        <span class="page-info" id="page-info"></span>
+        <button class="btn-primary" id="next-btn" onclick="changePage(1)">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = "";
+    const API = window.location.origin;
+    const PAGE_SIZE = 100;
+
+    let allAgents = [];
+    let currentPage = 1;
+    let searchQuery = "";
+
+    function authHeaders() {
+      return { Authorization: "Bearer " + token };
+    }
+
+    function jsonHeaders() {
+      return {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      };
+    }
+
+    async function login() {
+      token = document.getElementById("password-input").value;
+      try {
+        const res = await fetch(API + "/admin/diffy-agents", { headers: authHeaders() });
+        if (!res.ok) {
+          document.getElementById("login-error").textContent = "Invalid password";
+          document.getElementById("login-error").style.display = "block";
+          token = "";
+          return;
+        }
+        document.getElementById("login-screen").classList.remove("active");
+        document.getElementById("main-screen").classList.add("active");
+
+        var snippet = '<script src="' + API + '/widget.min.js" data-backend="' + API + '"></' + "script>";
+        document.getElementById("snippet-display").innerHTML =
+          "<code>" + esc(snippet) + '</code><button class="copy-btn" onclick="copySnippet(this, \'' + snippet.replace(/'/g, "\\'") + '\')">Copy</button>';
+
+        loadAgents();
+      } catch (err) {
+        document.getElementById("login-error").textContent = "Connection failed";
+        document.getElementById("login-error").style.display = "block";
+      }
+    }
+
+    document.getElementById("password-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") login();
+    });
+
+    function getFilteredAgents() {
+      if (!searchQuery) return allAgents;
+      var q = searchQuery.toLowerCase();
+      return allAgents.filter(function (a) {
+        return a.name.toLowerCase().indexOf(q) !== -1 ||
+               a.hostname.toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    function renderAgents() {
+      var filtered = getFilteredAgents();
+      var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      var start = (currentPage - 1) * PAGE_SIZE;
+      var pageAgents = filtered.slice(start, start + PAGE_SIZE);
+      var tbody = document.getElementById("agents-body");
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">' +
+          (searchQuery ? "No matching agents" : "No agents configured") + '</td></tr>';
+        document.getElementById("pagination").style.display = "none";
+        return;
+      }
+
+      tbody.innerHTML = pageAgents
+        .map(function (a) {
+          return (
+            "<tr>" +
+            "<td>" + esc(a.name) + "</td>" +
+            "<td><code>" + esc(a.hostname) + "</code></td>" +
+            "<td><code>" + esc(a.iframe_url || "") + "</code></td>" +
+            '<td><button class="btn-sm btn-danger" onclick="deleteAgent(\'' + a.id + '\')">Delete</button></td>' +
+            "</tr>"
+          );
+        })
+        .join("");
+
+      if (totalPages > 1) {
+        document.getElementById("pagination").style.display = "flex";
+        document.getElementById("page-info").textContent =
+          "Page " + currentPage + " of " + totalPages + " (" + filtered.length + " agents)";
+        document.getElementById("prev-btn").disabled = currentPage <= 1;
+        document.getElementById("next-btn").disabled = currentPage >= totalPages;
+      } else {
+        document.getElementById("pagination").style.display = "none";
+      }
+    }
+
+    async function loadAgents() {
+      const res = await fetch(API + "/admin/diffy-agents", { headers: authHeaders() });
+      const data = await res.json();
+      allAgents = data.agents || [];
+      renderAgents();
+    }
+
+    function onSearch() {
+      searchQuery = document.getElementById("search-input").value.trim();
+      currentPage = 1;
+      renderAgents();
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderAgents();
+    }
+
+    async function addAgent() {
+      const name = document.getElementById("add-name").value.trim();
+      const hostname = document.getElementById("add-hostname").value.trim();
+      const iframe_url = document.getElementById("add-iframe-url").value.trim();
+
+      document.getElementById("add-error").style.display = "none";
+      document.getElementById("add-success").style.display = "none";
+
+      function fail(msg) {
+        document.getElementById("add-error").textContent = msg;
+        document.getElementById("add-error").style.display = "block";
+      }
+
+      if (!name || !hostname) return fail("Name and hostname are required");
+      if (!iframe_url) return fail("Diffy Iframe URL is required");
+
+      const res = await fetch(API + "/admin/diffy-agents", {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ name, hostname, iframe_url }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        document.getElementById("add-error").textContent = err.error;
+        document.getElementById("add-error").style.display = "block";
+        return;
+      }
+
+      ["add-name", "add-hostname", "add-iframe-url"]
+        .forEach(function (id) { document.getElementById(id).value = ""; });
+      document.getElementById("add-success").textContent = "Agent added";
+      document.getElementById("add-success").style.display = "block";
+      loadAgents();
+    }
+
+    async function deleteAgent(id) {
+      if (!confirm("Delete this agent?")) return;
+      await fetch(API + "/admin/diffy-agents/" + id, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      loadAgents();
+    }
+
+    function copySnippet(btn, text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+    }
+
+    function esc(s) {
+      const el = document.createElement("span");
+      el.textContent = s;
+      return el.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #diffy-frame { width: 100%; height: 100vh; border: none; display: none; }
+    #diffy-error {
+      display: none;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #666;
+      padding: 24px;
+    }
+    #diffy-error h2 { color: #333; margin-bottom: 8px; font-size: 18px; }
+    #diffy-error p { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <iframe id="diffy-frame" allow="microphone"></iframe>
+  <div id="diffy-error">
+    <div>
+      <h2>Chat not available</h2>
+      <p>No agent is configured for this page.</p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Set this to your backend URL (e.g. "https://chatkit.learncs.eu").
+      // Leave empty if the backend is on the same origin as this page.
+      const BACKEND_URL = "";
+
+      // This file is meant to be downloaded and hosted on YOUR server, then
+      // embedded via <iframe src="diffy-iframe.html">. window.location.href
+      // is your page's URL, which the backend matches against its
+      // hostname -> Diffy agent mapping.
+      //
+      // Once matched, this page points its inner iframe straight at Diffy's
+      // own hosted chat UI. From that moment on the browser talks directly
+      // to Diffy — no messages pass through this backend.
+
+      const init = async () => {
+        try {
+          const res = await fetch(`${BACKEND_URL}/diffy-iframe/check`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ page_url: window.location.href }),
+          });
+
+          if (!res.ok) throw new Error(`check failed: ${res.status}`);
+          const data = await res.json();
+
+          const frame = document.getElementById("diffy-frame");
+          frame.src = data.iframe_url;
+          frame.style.display = "block";
+        } catch (err) {
+          console.error("[diffy-iframe] Failed to resolve agent:", err);
+          document.getElementById("diffy-error").style.display = "flex";
+        }
+      };
+
+      init();
+    })();
+  </script>
+</body>
+</html>
