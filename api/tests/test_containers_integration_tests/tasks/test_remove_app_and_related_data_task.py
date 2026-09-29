@@ -176,7 +176,7 @@ class TestDeleteDraftVariablesBatch:
 class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
 
-    @patch("extensions.ext_storage.storage")
+    @patch("tasks.remove_app_and_related_data_task.storage")
     def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers: Session):
         """Test successful deletion of offload data."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
@@ -202,7 +202,7 @@ class TestDeleteDraftVariableOffloadData:
         assert remaining_var_files_count == 0
         assert remaining_upload_files_count == 0
 
-    @patch("extensions.ext_storage.storage")
+    @patch("tasks.remove_app_and_related_data_task.storage")
     def test_delete_draft_variable_offload_data_storage_failure(
         self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
     ):

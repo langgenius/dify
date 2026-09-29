@@ -278,16 +278,23 @@ def test_queued_save_cannot_restore_offloaded_payload(
     blobs: dict[str, bytes] = {}
     monkeypatch.setattr("extensions.ext_storage.storage.save", lambda key, value: blobs.__setitem__(key, value))
     monkeypatch.setattr("extensions.ext_storage.storage.load", lambda key: blobs[key])
-    execution = node().model_copy(update={"status": status, field: {"large": "x" * 1024}})
+    payload = {"large": "x" * 1024}
+    execution = node().model_copy(update={"status": status, field: payload})
     writer = transports.node_writer()
     writer.save(execution)
     writer.save_execution_data(execution)
     transports.settle()
     actual = transports.nodes().get_execution_by_id(execution.id, "tenant-1")
     assert actual is not None
-    assert getattr(actual, f"{field}_dict") != getattr(execution, field)
+    stored_payload = {
+        "inputs": actual.inputs_dict,
+        "process_data": actual.process_data_dict,
+        "outputs": actual.outputs_dict,
+    }
+    assert stored_payload[field] != payload
     restored = transports.node_writer().get_by_workflow_execution("run-1")[0]
-    assert getattr(restored, field) == getattr(execution, field)
+    restored_payload = {"inputs": restored.inputs, "process_data": restored.process_data, "outputs": restored.outputs}
+    assert restored_payload[field] == payload
 
 
 def test_unfinished_node_is_readable(storage: StorageContract) -> None:

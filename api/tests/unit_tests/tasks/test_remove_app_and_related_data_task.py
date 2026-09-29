@@ -209,7 +209,7 @@ class TestDeleteDraftVariableOffloadData:
         """An empty file_ids list must not open a session or touch object storage."""
         with (
             patch("tasks.remove_app_and_related_data_task.session_factory") as mock_session_factory,
-            patch("extensions.ext_storage.storage") as mock_storage,
+            patch("tasks.remove_app_and_related_data_task.storage") as mock_storage,
         ):
             result = _delete_draft_variable_offload_data([])
 
@@ -238,7 +238,7 @@ class TestDeleteDraftVariableOffloadData:
         mock_storage.delete.side_effect = lambda _key: factory.open_count_at_storage_delete.append(factory.open_count)
 
         monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+        monkeypatch.setattr("tasks.remove_app_and_related_data_task.storage", mock_storage)
 
         result = _delete_draft_variable_offload_data(["vf-1", "vf-2"])
 
@@ -256,7 +256,7 @@ class TestDeleteDraftVariableOffloadData:
         mock_storage.delete.side_effect = [Exception("Storage error"), None]
 
         monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+        monkeypatch.setattr("tasks.remove_app_and_related_data_task.storage", mock_storage)
 
         with caplog.at_level(logging.ERROR):
             result = _delete_draft_variable_offload_data(["vf-1", "vf-2"])
@@ -271,7 +271,7 @@ class TestDeleteDraftVariableOffloadData:
         mock_storage = MagicMock()
 
         monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+        monkeypatch.setattr("tasks.remove_app_and_related_data_task.storage", mock_storage)
 
         result = _delete_draft_variable_offload_data(["vf-gone"])
 
