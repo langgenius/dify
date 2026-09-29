@@ -25,6 +25,11 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 class TestDealDatasetVectorIndexTask:
     """Integration tests for deal_dataset_vector_index_task using testcontainers."""
 
+    @pytest.fixture(autouse=True)
+    def mock_summary_dispatch(self):
+        with patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay") as dispatch:
+            yield dispatch
+
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
