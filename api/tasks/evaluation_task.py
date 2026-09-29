@@ -1443,7 +1443,7 @@ def _metric_column_name(metric: EvaluationMetric) -> str:
     if metric.node_info is None:
         return metric.name
     node_label = metric.node_info.title or metric.node_info.node_id
-    return f"{node_label} ({metric.node_info.node_id}) : {metric.name}"
+    return f"{node_label} : {metric.name}"
 
 
 def _get_expected_output_cell_value(item: EvaluationDatasetInput, header: str) -> str:
