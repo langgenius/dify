@@ -104,7 +104,7 @@ export const NonDestructive: Story = {
   ),
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [open, setOpen] = React.useState(false)
   const [count, setCount] = React.useState(0)
 
@@ -149,7 +149,7 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
-const LoadingConfirmDemo = () => {
+function LoadingConfirmDemo() {
   const [pending, setPending] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const confirmLabelId = React.useId()

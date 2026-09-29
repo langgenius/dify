@@ -265,7 +265,7 @@ function Session() {
           isDateUnavailable={isDateUnavailable}
           labels={text}
           footer={
-            <>
+            <React.Fragment>
               <Button
                 size="small"
                 variant="secondary-accent"
@@ -285,14 +285,14 @@ function Session() {
                 </Button>
                 {apply}
               </div>
-            </>
+            </React.Fragment>
           }
         />
       ) : (
         <PickerPanel
           header={<PickerPanelHeader>{text.pickTime}</PickerPanelHeader>}
           footer={
-            <>
+            <React.Fragment>
               <Button
                 size="small"
                 variant="secondary-accent"
@@ -311,7 +311,7 @@ function Session() {
                 </Button>
                 {apply}
               </div>
-            </>
+            </React.Fragment>
           }
         >
           <TimePanel
