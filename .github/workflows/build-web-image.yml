@@ -1,0 +1,79 @@
+# Builds the custom Dify web image on a native x86 runner and pushes it to Docker Hub.
+#
+# Triggers:
+#   - push a Git tag like v1.0.1   -> image tags 1.0.1 and latest
+#   - push to main (web changes)   -> image tag sha-<short commit>
+#   - "Run workflow" button        -> image tag sha-<short commit>
+#
+# Required repository settings (Settings -> Secrets and variables -> Actions):
+#   Variables: DOCKERHUB_USERNAME  your Docker Hub username
+#   Secrets:   DOCKERHUB_TOKEN     Docker Hub access token with Read & Write access
+
+name: Build custom web image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/build-web-image.yml"
+  workflow_dispatch:
+
+# Only one build per branch/tag at a time; a newer push cancels the older build.
+concurrency:
+  group: build-web-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Work out image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.DOCKERHUB_USERNAME }}/dify-web-custom
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+          flavor: |
+            latest=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
+          # Reuse layers (e.g. pnpm install) between runs to speed up builds.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Show pushed tags
+        run: echo "${{ steps.meta.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
