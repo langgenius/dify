@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, override
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -50,6 +50,7 @@ class EnterpriseMail(BaseMail):
     )
     @inner_api_only
     @setup_required
+    @override
     def post(self):
         """Send internal email for enterprise features.
 
@@ -72,6 +73,7 @@ class BillingMail(BaseMail):
     )
     @inner_api_only
     @setup_required
+    @override
     def post(self):
         """Send internal email for billing notifications.
 
