@@ -1,14 +1,15 @@
 import datetime
 import json
 from collections.abc import Generator, Iterable, Mapping, Sequence
-from contextlib import nullcontext
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -20,7 +21,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     WorkflowSnapshot,
 )
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     DIFY_RUN_CONTEXT_KEY,
@@ -36,8 +37,6 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.repositories.human_input_repository import (
-    HumanInputFormEntity,
-    HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
@@ -82,9 +81,10 @@ from graphon.variables.segments import StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
 from models.account import Account
-from models.enums import MessageStatus
+from models.enums import ConversationFromSource, MessageStatus
 from models.human_input import HumanInputForm
-from models.model import AppMode, Message
+from models.model import AppMode
+from tests.unit_tests.model_factories import make_message
 
 
 def _persist_form(
@@ -380,23 +380,51 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
     ]
 
 
-def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
-    published: list[AppQueueEvent] = []
-    queue_manager = MagicMock(spec=AppQueueManager)
-    queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
-    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
-    workflow_entry = MagicMock(spec=WorkflowEntry)
+class _EventQueue(AppQueueManager):
+    """Record events and replay a finite stream without starting a watchdog."""
 
+    def __init__(self, invoke_from: InvokeFrom, runtime_state: GraphRuntimeState) -> None:
+        self.invoke_from = invoke_from
+        self.graph_runtime_state = runtime_state
+        self.events: list[AppQueueEvent] = []
+
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        assert pub_from in {PublishFrom.APPLICATION_MANAGER, PublishFrom.TASK_PIPELINE}
+        self.events.append(event)
+
+    def listen(self) -> Generator[WorkflowQueueMessage]:
+        for event in self.events:
+            yield WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event)
+
+
+def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
+    node = _build_node()
+    runtime_state = node.graph_runtime_state
+    queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
+    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
+    workflow_entry = WorkflowEntry(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        graph_config={},
+        graph=Graph(root_node=node),
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        variable_pool=runtime_state.variable_pool,
+        graph_runtime_state=runtime_state,
+    )
     for event in events:
         runner._handle_event(workflow_entry, event)
-
-    return published
+    return queue_manager.events
 
 
 def _sse_payloads(
     events: Sequence[AppQueueEvent],
     invoke_from: InvokeFrom,
     app: Flask,
+    sessions: sessionmaker[Session],
     runtime_state: GraphRuntimeState | None = None,
 ) -> list[dict[str, Any]]:
     generate_entity = AdvancedChatAppGenerateEntity(
@@ -422,12 +450,36 @@ def _sse_payloads(
             ),
             start_at=0,
         )
-    queue_manager = MagicMock(spec=AppQueueManager)
-    queue_manager.invoke_from = invoke_from
-    queue_manager.graph_runtime_state = runtime_state
-    queue_manager.listen.return_value = iter(
-        WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event) for event in events
-    )
+    queue_manager = _EventQueue(invoke_from, runtime_state)
+    queue_manager.events.extend(events)
+    with sessions.begin() as session:
+        session.add(
+            make_message(
+                app_id="app",
+                inputs={},
+                query="hello",
+                message={},
+                answer="",
+                status=MessageStatus.PAUSED,
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                total_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
+        has_form = session.scalar(select(HumanInputForm.id).where(HumanInputForm.workflow_run_id == "run-1"))
+    if has_form is None:
+        for event in events:
+            if isinstance(event, QueueHumanInputFormFilledEvent):
+                _persist_form(
+                    sessions,
+                    form_id=event.node_execution_id,
+                    app_id="app",
+                    node_id=event.node_id,
+                    expiration_time=naive_utc_now() + datetime.timedelta(days=1),
+                    status=HumanInputFormStatus.SUBMITTED,
+                )
     pipeline = AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=generate_entity,
         workflow=WorkflowSnapshot(id="workflow", tenant_id="tenant", features_dict={}),
@@ -441,22 +493,7 @@ def _sse_payloads(
         dialogue_count=1,
         draft_var_saver_factory=MagicMock(),
     )
-    session = MagicMock(spec=Session)
-    session.scalar.return_value = None
-    form = MagicMock(spec=HumanInputFormEntity)
-    form.id = "form-1"
-    form_repository = MagicMock(spec=HumanInputFormRepository)
-    form_repository.get_form.return_value = form
-
-    with (
-        app.test_request_context(),
-        patch.object(pipeline, "_database_session", return_value=nullcontext(session)),
-        patch.object(pipeline, "_get_message", return_value=Message(id="message-1", status=MessageStatus.PAUSED)),
-        patch(
-            "core.app.apps.advanced_chat.generate_task_pipeline.HumanInputFormRepositoryImpl",
-            return_value=form_repository,
-        ),
-    ):
+    with app.test_request_context():
         if not any(isinstance(event, QueueWorkflowStartedEvent) for event in events):
             list(
                 pipeline._handle_workflow_started_event(
@@ -477,10 +514,12 @@ def _sse_payloads(
 
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP], ids=["full", "simple"])
-def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, app: Flask):
+def test_submitted_human_input_reaches_response_stream(
+    invoke_from: InvokeFrom, app: Flask, sqlite_session_factory: sessionmaker[Session]
+):
     events = _publish_node_events(_build_node())
 
-    payloads = _sse_payloads(events, invoke_from, app)
+    payloads = _sse_payloads(events, invoke_from, app, sqlite_session_factory)
 
     # Dify's original HumanInputNode (9c339239850) emitted the form event
     # before node completion; its runner and task pipeline preserved that order.
@@ -508,10 +547,10 @@ def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, 
     assert submitted_data["attachments"][0]["type"] == "image"
 
 
-def test_button_only_human_input_reaches_response_stream(app: Flask):
+def test_button_only_human_input_reaches_response_stream(app: Flask, sqlite_session_factory: sessionmaker[Session]):
     events = _publish_node_events(_build_node("Approve deployment?", with_inputs=False))
 
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app)
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
 
     assert [payload["event"] for payload in payloads] == [
         "node_started",
@@ -543,7 +582,7 @@ def test_timed_out_human_input_reaches_response_stream(
 
     events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
 
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app)
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
     assert [payload["event"] for payload in payloads] == [
         "node_started",
         "human_input_form_timeout",
@@ -620,7 +659,7 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
     mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
 
     events = _publish_graph_events(iter_dify_graph_engine_events(engine))
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, runtime_state)
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory, runtime_state)
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
     lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
