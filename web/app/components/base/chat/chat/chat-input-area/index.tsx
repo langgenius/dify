@@ -314,7 +314,13 @@ const ChatInputArea = ({
           <FileListInChatInput fileConfig={visionConfig!} />
         </div>
         <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
-          <div ref={wrapperRef} className="flex items-center justify-between">
+          <div
+            ref={wrapperRef}
+            className={cn(
+              'flex items-center justify-between',
+              inputLabel && 'max-sm:flex-col max-sm:items-stretch',
+            )}
+          >
             <div
               className={cn(
                 'relative flex w-full grow items-center',
@@ -370,7 +376,12 @@ const ChatInputArea = ({
                 readOnly={readonly}
               />
             </div>
-            {!isMultipleLine && operation}
+            {!isMultipleLine &&
+              (inputLabel ? (
+                <div className="max-sm:flex max-sm:justify-end">{operation}</div>
+              ) : (
+                operation
+              ))}
           </div>
         </div>
         {showVoiceInput && speechToTextTarget && (
