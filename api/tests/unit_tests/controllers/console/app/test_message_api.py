@@ -224,7 +224,7 @@ def test_list_chat_messages_returns_messages_sharing_created_at(
         first_id = page.data[0]
 
     assert collected == sorted(message_ids)
-    
+
 
 def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_session: Session) -> None:
     session = sqlite_session
