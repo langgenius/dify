@@ -1110,7 +1110,21 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
+      const keyTable = within(dialog).getByRole('table', {
+        name: 'appApi.apiKeyModal.apiSecretKey',
+      })
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.secretKey' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.created' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
+      ).toBeInTheDocument()
+      expect(
+        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+      ).toBeInTheDocument()
 
       await user.click(
         within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
