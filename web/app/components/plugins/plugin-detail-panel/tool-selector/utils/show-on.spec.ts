@@ -60,14 +60,24 @@ describe('plugin tool param show_on helpers', () => {
         a: { type: VarKindType.constant, value: '1' },
         b: { type: VarKindType.constant, value: '2' },
       }
-      expect(isToolSettingShowOnSatisfied(
-        [{ variable: 'a', value: '1' }, { variable: 'b', value: '2' }],
-        values,
-      )).toBe(true)
-      expect(isToolSettingShowOnSatisfied(
-        [{ variable: 'a', value: '1' }, { variable: 'b', value: 'x' }],
-        values,
-      )).toBe(false)
+      expect(
+        isToolSettingShowOnSatisfied(
+          [
+            { variable: 'a', value: '1' },
+            { variable: 'b', value: '2' },
+          ],
+          values,
+        ),
+      ).toBe(true)
+      expect(
+        isToolSettingShowOnSatisfied(
+          [
+            { variable: 'a', value: '1' },
+            { variable: 'b', value: 'x' },
+          ],
+          values,
+        ),
+      ).toBe(false)
     })
   })
 
@@ -104,10 +114,15 @@ describe('plugin tool param show_on helpers', () => {
         x: { auto: 0, value: { type: VarKindType.constant, value: 'a' } },
         y: { auto: 0, value: { type: VarKindType.constant, value: 'b' } },
       }
-      expect(isReasoningConfigShowOnSatisfied([
-        { variable: 'x', value: 'a' },
-        { variable: 'y', value: 'b' },
-      ], values)).toBe(true)
+      expect(
+        isReasoningConfigShowOnSatisfied(
+          [
+            { variable: 'x', value: 'a' },
+            { variable: 'y', value: 'b' },
+          ],
+          values,
+        ),
+      ).toBe(true)
     })
   })
 })

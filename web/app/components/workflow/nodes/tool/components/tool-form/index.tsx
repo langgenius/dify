@@ -17,7 +17,6 @@ type Props = Readonly<{
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
   onOpen?: (index: number) => void
-  inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   showManageInputField?: boolean
@@ -32,7 +31,6 @@ const ToolForm: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentTool,
   currentProvider,
   showManageInputField,
@@ -40,11 +38,11 @@ const ToolForm: FC<Props> = ({
   extraParams,
 }) => {
   const visibleSchemas = useMemo(
-    () => schema.filter(s => isToolSettingShowOnSatisfied(s.show_on, value)),
+    () => schema.filter((s) => isToolSettingShowOnSatisfied(s.show_on, value)),
     [schema, value],
   )
 
-  const schemaVarsKey = useMemo(() => schema.map(s => s.variable).join('\0'), [schema])
+  const schemaVarsKey = useMemo(() => schema.map((s) => s.variable).join('\0'), [schema])
   const prevVisibleVarsRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
@@ -52,28 +50,27 @@ const ToolForm: FC<Props> = ({
   }, [schemaVarsKey])
 
   useEffect(() => {
-    const currentVisible = new Set(visibleSchemas.map(s => s.variable))
+    const currentVisible = new Set(visibleSchemas.map((s) => s.variable))
     if (prevVisibleVarsRef.current === null) {
       prevVisibleVarsRef.current = currentVisible
       return
     }
     const prevVisible = prevVisibleVarsRef.current
-    const patch: Partial<ResourceVarInputs> = {}
+    const patch: ResourceVarInputs = {}
     for (const s of schema) {
       const variable = s.variable
       const wasVisible = prevVisible.has(variable)
       const nowVisible = currentVisible.has(variable)
       if (wasVisible && !nowVisible)
-        patch[variable] = resetToolSettingFieldValue(s as { type: string, default?: string })
+        patch[variable] = resetToolSettingFieldValue(s as { type: string; default?: string })
     }
     prevVisibleVarsRef.current = currentVisible
-    if (Object.keys(patch).length > 0)
-      onChange({ ...value, ...patch })
+    if (Object.keys(patch).length > 0) onChange({ ...value, ...patch })
   }, [visibleSchemas, schema, schemaVarsKey, value, onChange])
 
   return (
     <div className="space-y-1">
-      {visibleSchemas.map(formSchema => (
+      {visibleSchemas.map((formSchema) => (
         <ToolFormItem
           key={formSchema.variable}
           readOnly={readOnly}
@@ -82,7 +79,6 @@ const ToolForm: FC<Props> = ({
           schema={formSchema}
           value={value}
           onChange={onChange}
-          inPanel={inPanel}
           currentTool={currentTool}
           currentProvider={currentProvider}
           showManageInputField={showManageInputField}

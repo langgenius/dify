@@ -7,9 +7,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
 
@@ -28,20 +26,16 @@ export default function FeedBack(props: DeleteAccountProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
-  const router = useRouter()
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutateAsync: logout } = useLogout({ redirectTo: '/signin?account_deleted=true' })
   const handleSuccess = useCallback(async () => {
     try {
       await logout()
-      // Tokens are now stored in cookies and cleared by backend
-      router.push('/signin')
-      toast.info(t(($) => $['account.deleteSuccessTip'], { ns: 'accountSettings' }))
     } catch (error) {
       console.error(error)
     }
-  }, [logout, router, t])
+  }, [logout])
 
   const handleSubmit = useCallback(
     async (feedback: string) => {

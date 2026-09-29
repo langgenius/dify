@@ -18,12 +18,9 @@ export type ReasoningConfigValue = Record<string, ReasoningConfigEntry>
 
 /** Loose equality between persisted sibling values and YAML string literals on show_on. */
 export function valuesEqualForShowOn(stored: unknown, expected: string): boolean {
-  if (stored === expected)
-    return true
-  if (typeof stored === 'boolean')
-    return expected === String(stored)
-  if (typeof stored === 'number' && !Number.isNaN(stored))
-    return expected === String(stored)
+  if (stored === expected) return true
+  if (typeof stored === 'boolean') return expected === String(stored)
+  if (typeof stored === 'number' && !Number.isNaN(stored)) return expected === String(stored)
   return false
 }
 
@@ -33,13 +30,9 @@ export function valuesEqualForShowOn(stored: unknown, expected: string): boolean
  */
 function toolSettingComparableValue(entry: ResourceVarInputs[string]): unknown {
   let v = entry.value
-  if (
-    v !== null && typeof v === 'object' && !Array.isArray(v)
-    && 'type' in v && 'value' in v
-  ) {
-    const inner = v as { type: string, value: unknown }
-    if (inner.type === VarKindType.variable)
-      return undefined
+  if (v !== null && typeof v === 'object' && !Array.isArray(v) && 'type' in v && 'value' in v) {
+    const inner = v as { type: string; value: unknown }
+    if (inner.type === VarKindType.variable) return undefined
     v = inner.value
   }
   return v
@@ -50,10 +43,8 @@ export function toolSettingShowOnConditionMet(
   condition: ToolParameterShowOnCondition,
 ): boolean {
   const sibling = values[condition.variable]
-  if (!sibling)
-    return false
-  if (sibling.type === VarKindType.variable)
-    return false
+  if (!sibling) return false
+  if (sibling.type === VarKindType.variable) return false
   const comparable = toolSettingComparableValue(sibling)
   return valuesEqualForShowOn(comparable, condition.value)
 }
@@ -63,9 +54,8 @@ export function isToolSettingShowOnSatisfied(
   conditions: ToolParameterShowOnCondition[] | undefined,
   values: ResourceVarInputs,
 ): boolean {
-  if (!conditions?.length)
-    return true
-  return conditions.every(cond => toolSettingShowOnConditionMet(values, cond))
+  if (!conditions?.length) return true
+  return conditions.every((cond) => toolSettingShowOnConditionMet(values, cond))
 }
 
 export function reasoningShowOnConditionMet(
@@ -73,25 +63,22 @@ export function reasoningShowOnConditionMet(
   condition: ToolParameterShowOnCondition,
 ): boolean {
   const entry = values[condition.variable]
-  if (!entry)
-    return false
-  if (entry.auto === 1)
-    return false
+  if (!entry) return false
+  if (entry.auto === 1) return false
   const inner = entry.value
-  if (inner === null || inner === undefined)
-    return false
-  if (typeof inner !== 'object')
-    return false
-  if (inner.type === VarKindType.variable)
-    return false
+  if (inner === null || inner === undefined) return false
+  if (typeof inner !== 'object') return false
+  if (inner.type === VarKindType.variable) return false
   let comparable = inner.value
   if (
-    comparable !== null && typeof comparable === 'object' && !Array.isArray(comparable)
-    && 'type' in comparable && 'value' in comparable
+    comparable !== null &&
+    typeof comparable === 'object' &&
+    !Array.isArray(comparable) &&
+    'type' in comparable &&
+    'value' in comparable
   ) {
-    const nested = comparable as { type: string, value: unknown }
-    if (nested.type === VarKindType.variable)
-      return false
+    const nested = comparable as { type: string; value: unknown }
+    if (nested.type === VarKindType.variable) return false
     comparable = nested.value
   }
   return valuesEqualForShowOn(comparable, condition.value)
@@ -102,7 +89,6 @@ export function isReasoningConfigShowOnSatisfied(
   conditions: ToolParameterShowOnCondition[] | undefined,
   values: ReasoningConfigValue,
 ): boolean {
-  if (!conditions?.length)
-    return true
-  return conditions.every(cond => reasoningShowOnConditionMet(values, cond))
+  if (!conditions?.length) return true
+  return conditions.every((cond) => reasoningShowOnConditionMet(values, cond))
 }

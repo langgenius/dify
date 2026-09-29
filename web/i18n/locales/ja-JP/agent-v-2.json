@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "ワークスペースのスキルを更新できませんでした。",
   "agentDetail.configure.skills.workspaceSelector.search": "スキルを検索...",
   "agentDetail.configure.switchToPreviewConfirm.title": "プレビューモードに切り替えますか？",
+  "agentDetail.configure.templatePreview.agentUI": "エージェント UI",
   "agentDetail.configure.title": "設定",
   "agentDetail.configure.tools.add": "ツールを追加",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "開発者向け",

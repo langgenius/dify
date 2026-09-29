@@ -94,21 +94,17 @@ export const coerceReasoningScalarDefault = (schema: ToolFormSchema): unknown =>
   const raw = schema.default
   const formType = schema.type
   if (
-    schema._type === 'boolean'
-    || formType === FormTypeEnum.checkbox
-    || formType === FormTypeEnum.boolean
+    schema._type === 'boolean' ||
+    formType === FormTypeEnum.checkbox ||
+    formType === FormTypeEnum.boolean
   ) {
-    if (typeof raw === 'string')
-      return raw === 'true' || raw === '1'
-    if (typeof raw === 'boolean')
-      return raw
+    if (typeof raw === 'string') return raw === 'true' || raw === '1'
+    if (typeof raw === 'boolean') return raw
     return false
   }
   if (formType === FormTypeEnum.textNumber) {
-    if (typeof raw === 'string' && raw !== '')
-      return Number.parseFloat(raw)
-    if (typeof raw === 'number')
-      return raw
+    if (typeof raw === 'string' && raw !== '') return Number.parseFloat(raw)
+    if (typeof raw === 'number') return raw
     return ''
   }
   return raw ?? null
@@ -122,7 +118,7 @@ export const getVisibleSelectOptions = (
   return options
     .filter((option) => {
       if (option.show_on?.length)
-        return option.show_on.every(showOnItem => reasoningShowOnConditionMet(value, showOnItem))
+        return option.show_on.every((showOnItem) => reasoningShowOnConditionMet(value, showOnItem))
 
       return true
     })

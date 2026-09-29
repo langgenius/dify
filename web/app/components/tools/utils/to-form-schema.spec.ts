@@ -1,7 +1,11 @@
 import type { ToolParameter } from '../types'
 import { describe, expect, it } from 'vitest'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { flattenToolSettingStoredEntry, getPlainValue, toolParametersToFormSchemas } from './to-form-schema'
+import {
+  flattenToolSettingStoredEntry,
+  getPlainValue,
+  toolParametersToFormSchemas,
+} from './to-form-schema'
 
 describe('toolParametersToFormSchemas', () => {
   it('should passthrough parameter-level and option-level show_on from plugin definitions', () => {
@@ -77,10 +81,12 @@ describe('flattenToolSettingStoredEntry / getPlainValue', () => {
   })
 
   it('should pass through flat ResourceVarInputs rows', () => {
-    expect(flattenToolSettingStoredEntry({
-      type: VarKindType.constant,
-      value: 'free',
-    })).toEqual({
+    expect(
+      flattenToolSettingStoredEntry({
+        type: VarKindType.constant,
+        value: 'free',
+      }),
+    ).toEqual({
       type: VarKindType.constant,
       value: 'free',
     })

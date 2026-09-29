@@ -882,7 +882,7 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant2, account, db_session_with_containers, role="admin")
 
         # Set initial current tenant
-        account.current_tenant = tenant1
+        account.set_current_tenant_with_session(tenant1, session=db_session_with_containers)
 
         db_session_with_containers.commit()
 
@@ -1535,7 +1535,7 @@ class TestTenantService:
         )
         existing_tenant = TenantService.create_tenant(name=existing_tenant_name, session=db_session_with_containers)
         TenantService.create_tenant_member(existing_tenant, account, db_session_with_containers, role="owner")
-        account.current_tenant = existing_tenant
+        account.set_current_tenant_with_session(existing_tenant, session=db_session_with_containers)
 
         db_session_with_containers.commit()
 

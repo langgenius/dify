@@ -261,9 +261,14 @@ describe('CreateAppModal', () => {
       expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
     })
 
-    it('does not submit while the visible confirmation action is disabled', async () => {
-      const { onConfirm, onHide } = await setup({ confirmDisabled: true })
-      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
+    it.each([
+      { state: 'disabled', props: { confirmDisabled: true } },
+      { state: 'loading', props: { confirmLoading: true } },
+    ])('does not submit while the visible confirmation action is $state', async ({ props }) => {
+      const { onConfirm, onHide } = await setup(props)
+      const action = screen.getByRole('button', { name: /common\.operation\.create/ })
+      if (props.confirmLoading) expect(action).toHaveAttribute('aria-disabled', 'true')
+      else expect(action).toBeDisabled()
       submitWithKeyboard()
       await act(async () => {
         vi.advanceTimersByTime(300)

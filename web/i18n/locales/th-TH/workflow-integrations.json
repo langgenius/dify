@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "เวลาการประมวลผล 5 ครั้งถัดไป",
   "nodes.triggerSchedule.onMinute": "ในนาที",
   "nodes.triggerSchedule.selectFrequency": "เลือกความถี่",
-  "nodes.triggerSchedule.selectTime": "เลือกเวลา",
   "nodes.triggerSchedule.title": "ตารางเวลา",
   "nodes.triggerSchedule.useCronExpression": "ใช้สำนวน cron",
   "nodes.triggerSchedule.useVisualPicker": "ใช้ตัวเลือกแบบภาพ",

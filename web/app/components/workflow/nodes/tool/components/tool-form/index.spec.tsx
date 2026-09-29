@@ -12,15 +12,16 @@ vi.mock('./item', () => ({
   ),
 }))
 
-const textSchema = (overrides: Partial<CredentialFormSchema>): CredentialFormSchema => ({
-  name: 'x',
-  variable: 'x',
-  label: { en_US: 'L', zh_Hans: 'L' },
-  type: FormTypeEnum.textInput,
-  required: false,
-  show_on: [],
-  ...overrides,
-} as CredentialFormSchema)
+const textSchema = (overrides: Partial<CredentialFormSchema>): CredentialFormSchema =>
+  ({
+    name: 'x',
+    variable: 'x',
+    label: { en_US: 'L', zh_Hans: 'L' },
+    type: FormTypeEnum.textInput,
+    required: false,
+    show_on: [],
+    ...overrides,
+  }) as CredentialFormSchema
 
 describe('ToolForm show_on visibility', () => {
   it('should hide dependent fields when sibling conditions are not met', () => {
@@ -39,13 +40,7 @@ describe('ToolForm show_on visibility', () => {
     }
 
     render(
-      <ToolForm
-        readOnly={false}
-        nodeId="n1"
-        schema={schema}
-        value={value}
-        onChange={vi.fn()}
-      />,
+      <ToolForm readOnly={false} nodeId="n1" schema={schema} value={value} onChange={vi.fn()} />,
     )
 
     expect(document.querySelector('[data-testid="tool-field-extra"]')).toBeNull()
@@ -67,13 +62,7 @@ describe('ToolForm show_on visibility', () => {
     }
 
     render(
-      <ToolForm
-        readOnly={false}
-        nodeId="n1"
-        schema={schema}
-        value={value}
-        onChange={vi.fn()}
-      />,
+      <ToolForm readOnly={false} nodeId="n1" schema={schema} value={value} onChange={vi.fn()} />,
     )
 
     expect(document.querySelector('[data-testid="tool-field-extra"]')).not.toBeNull()

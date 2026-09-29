@@ -209,14 +209,11 @@ export function resetToolSettingFieldValue(schema: {
   const defaultSource = schema.default
   const initialValue: FormValueInput = {
     type: 'constant',
-    value:
-      typeof defaultSource === 'string'
-        ? defaultSource.replace(/\n/g, '\\n')
-        : defaultSource,
+    value: typeof defaultSource === 'string' ? defaultSource.replace(/\n/g, '\\n') : defaultSource,
   }
   const corrected = correctInitialData(schema.type, initialValue, defaultSource)
-  const outerType
-    = corrected.type === VarKindType.variable
+  const outerType =
+    corrected.type === VarKindType.variable
       ? VarKindType.variable
       : corrected.type === VarKindType.mixed
         ? VarKindType.mixed
@@ -262,23 +259,23 @@ export const generateFormValue = (
  * - Flat `{ type, value }` from workflow `getConfiguredValue` / node storage
  * - Legacy primitives (string / number / boolean) as constant inputs
  */
-export function flattenToolSettingStoredEntry(stored: unknown): ResourceVarInputs[string] | undefined {
-  if (stored === null || stored === undefined)
-    return undefined
+export function flattenToolSettingStoredEntry(
+  stored: unknown,
+): ResourceVarInputs[string] | undefined {
+  if (stored === null || stored === undefined) return undefined
   if (typeof stored === 'string' || typeof stored === 'number' || typeof stored === 'boolean')
     return { type: VarKindType.constant, value: stored }
-  if (typeof stored !== 'object')
-    return undefined
+  if (typeof stored !== 'object') return undefined
   const row = stored as Record<string, unknown>
   if (
-    'value' in row
-    && row.value !== null
-    && typeof row.value === 'object'
-    && 'type' in (row.value as object)
+    'value' in row &&
+    row.value !== null &&
+    typeof row.value === 'object' &&
+    'type' in (row.value as object)
   ) {
-    const inner = row.value as { type: string, value?: unknown }
-    const outerType
-      = inner.type === VarKindType.variable
+    const inner = row.value as { type: string; value?: unknown }
+    const outerType =
+      inner.type === VarKindType.variable
         ? VarKindType.variable
         : inner.type === VarKindType.mixed
           ? VarKindType.mixed
@@ -303,8 +300,7 @@ export const getPlainValue = (value: Record<string, { value: unknown }>) => {
   const plainValue: Record<string, unknown> = {}
   Object.keys(value).forEach((key) => {
     const normalized = flattenToolSettingStoredEntry(value[key])
-    if (normalized)
-      plainValue[key] = normalized
+    if (normalized) plainValue[key] = normalized
   })
   return plainValue as ResourceVarInputs
 }

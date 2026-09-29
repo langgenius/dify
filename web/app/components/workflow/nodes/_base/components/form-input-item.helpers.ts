@@ -73,10 +73,8 @@ type FormInputState = {
   variable: string
 }
 
-const optionMatchesValue = (
-  values: ResourceVarInputs,
-  showOnItem: ShowOnCondition,
-) => toolSettingShowOnConditionMet(values, showOnItem)
+const optionMatchesValue = (values: ResourceVarInputs, showOnItem: ShowOnCondition) =>
+  toolSettingShowOnConditionMet(values, showOnItem)
 
 const getOptionLabel = (option: SelectableOption, language: string) => {
   if (typeof option.label === 'string') return option.label
@@ -208,23 +206,19 @@ export const getVarKindType = (state: FormInputState) => {
   return undefined
 }
 
-export const filterVisibleOptions = (
-  options: SelectableOption[],
-  values: ResourceVarInputs,
-) => options.filter((option) => {
-  if (option.show_on?.length)
-    return option.show_on.every(showOnItem => optionMatchesValue(values, showOnItem))
-  return true
-})
+export const filterVisibleOptions = (options: SelectableOption[], values: ResourceVarInputs) =>
+  options.filter((option) => {
+    if (option.show_on?.length)
+      return option.show_on.every((showOnItem) => optionMatchesValue(values, showOnItem))
+    return true
+  })
 
-export const mapSelectItems = (
-  options: SelectableOption[],
-  language: string,
-): SelectItem[] => options.map(option => ({
-  icon: option.icon,
-  name: getOptionLabel(option, language),
-  value: option.value,
-}))
+export const mapSelectItems = (options: SelectableOption[], language: string): SelectItem[] =>
+  options.map((option) => ({
+    icon: option.icon,
+    name: getOptionLabel(option, language),
+    value: option.value,
+  }))
 
 export const getSelectedLabels = (
   selectedValues: string[] | undefined,
