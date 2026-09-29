@@ -926,6 +926,6 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
         "query",
         "llm-1 : expected_output",
         "actual_output",
-        "Answer (llm-1) : faithfulness",
+        "Answer : faithfulness",
         "error",
     ]
