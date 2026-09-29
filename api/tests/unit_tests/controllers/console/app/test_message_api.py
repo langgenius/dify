@@ -191,8 +191,9 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
     response_source_factory.assert_called_once_with(message, session=session)
 
 
+@pytest.mark.parametrize("limit", [1, 2])
 def test_list_chat_messages_returns_messages_sharing_created_at(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, limit: int
 ) -> None:
     # Messages sent within the same second share created_at.
     message_ids = [f"550e8400-e29b-41d4-a716-44665544000{index}" for index in range(5)]
@@ -213,12 +214,14 @@ def test_list_chat_messages_returns_messages_sharing_created_at(
     for _ in range(len(message_ids) + 1):
         page = message_module._list_chat_messages(
             args=message_module.ChatMessagesQuery.model_construct(
-                conversation_id=first.conversation_id, first_id=first_id, limit=2
+                conversation_id=first.conversation_id, first_id=first_id, limit=limit
             ),
             session=sqlite_session,
             app_model=_app(),
         )
+        assert page.data
         collected = page.data + collected
+        assert page.has_more is (len(collected) < len(message_ids))
         if not page.has_more:
             break
         first_id = page.data[0]
