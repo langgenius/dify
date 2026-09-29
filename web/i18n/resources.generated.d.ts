@@ -154,7 +154,6 @@ export default interface Resources {
     'agentDetail.access.workflow.nodeCount': '{{count}} node' | '{{count}} nodes'
     'agentDetail.access.workflow.notAvailable': 'N/A'
     'agentDetail.access.workflow.openInStudio': 'Open in Studio'
-    'agentDetail.access.workflow.openInStudioFor': 'Open {{name}} in Studio'
     'agentDetail.access.workflow.table.actions': 'Actions'
     'agentDetail.access.workflow.table.lastUpdated': 'Last updated'
     'agentDetail.access.workflow.table.name': 'Name'
