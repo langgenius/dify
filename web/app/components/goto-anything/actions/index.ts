@@ -53,11 +53,12 @@ export function getActionSearchTerm(query: string, action: ActionItem) {
 export function matchAction(query: string, actions: Record<string, ActionItem>) {
   return Object.values(actions).find((action) => {
     if (action.key === '/') {
-      return slashCommandRegistry.getAllCommands().some((command) => {
+      return slashCommandRegistry.getAvailableCommands().some((command) => {
         if (command.mode === 'direct') return false
 
-        const commandPattern = `/${command.name}`
-        return query.startsWith(`${commandPattern} `)
+        return [command.name, ...(command.aliases ?? [])].some((name) =>
+          query.startsWith(`/${name} `),
+        )
       })
     }
 

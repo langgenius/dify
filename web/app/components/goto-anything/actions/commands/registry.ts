@@ -7,6 +7,22 @@ import type { SlashCommand, SlashCommandHandler } from './types'
  */
 export class SlashCommandRegistry {
   private commands = new Map<string, SlashCommand>()
+  private snapshot: SlashCommand[] = []
+  private listeners = new Set<() => void>()
+
+  getSnapshot = () => this.snapshot
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  private notify() {
+    this.snapshot = this.getAllCommands()
+    this.listeners.forEach((listener) => listener())
+  }
   private commandDeps = new Map<string, unknown>()
 
   /**
@@ -28,6 +44,7 @@ export class SlashCommandRegistry {
       this.commandDeps.set(handler.name, deps)
       handler.register?.(deps)
     }
+    this.notify()
   }
 
   /**
@@ -51,6 +68,7 @@ export class SlashCommandRegistry {
           this.commands.delete(alias)
         })
       }
+      this.notify()
     }
   }
 

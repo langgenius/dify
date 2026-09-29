@@ -130,7 +130,7 @@ describe('matchAction', () => {
   const actions = createActions(false, false, { agents: true, skills: true })
 
   beforeEach(() => {
-    vi.mocked(slashCommandRegistry.getAllCommands).mockReturnValue([])
+    vi.mocked(slashCommandRegistry.getAvailableCommands).mockReturnValue([])
   })
 
   it.each([
@@ -149,14 +149,21 @@ describe('matchAction', () => {
   })
 
   it('requires a delimiter for submenu commands and leaves direct commands in the picker', () => {
-    vi.mocked(slashCommandRegistry.getAllCommands).mockReturnValue([
-      { name: 'theme', mode: 'submenu', description: '', search: vi.fn(() => []) },
+    vi.mocked(slashCommandRegistry.getAvailableCommands).mockReturnValue([
+      {
+        name: 'theme',
+        aliases: ['appearance'],
+        mode: 'submenu',
+        description: '',
+        search: vi.fn(() => []),
+      },
       { name: 'docs', mode: 'direct', description: '', search: vi.fn(() => []) },
     ])
 
     expect(matchAction('/theme', actions)).toBeUndefined()
     expect(matchAction('/theme ', actions)?.key).toBe('/')
     expect(matchAction('/theme dark', actions)?.key).toBe('/')
+    expect(matchAction('/appearance dark', actions)?.key).toBe('/')
     expect(matchAction('/docs', actions)).toBeUndefined()
     expect(matchAction('/the', actions)).toBeUndefined()
   })
