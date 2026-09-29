@@ -7,7 +7,9 @@ These helpers keep that translation centralized so models registered through
 """
 
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from enum import StrEnum
+from functools import lru_cache
 from typing import Any, Literal, NotRequired, Protocol, TypedDict
 
 from flask import request
@@ -72,11 +74,22 @@ def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None
 JsonSchemaMode = Literal["validation", "serialization"]
 
 
+@lru_cache(maxsize=256)
+def _model_json_schema(model: type[BaseModel], mode: JsonSchemaMode, _validator: object) -> dict[str, Any]:
+    """Reuse schema generation across namespaces, invalidating on model rebuild.
+
+    Pydantic replaces its validator when rebuilding a model. Including that
+    object in the cache key keeps registrations after a rebuild up to date.
+    Callers must copy the result before exposing it to mutable RESTX models.
+    """
+    return model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0, mode=mode)
+
+
 def _register_schema_model(namespace: Namespace, model: type[BaseModel], *, mode: JsonSchemaMode) -> None:
     _register_json_schema(
         namespace,
         model.__name__,
-        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0, mode=mode),
+        deepcopy(_model_json_schema(model, mode, model.__pydantic_validator__)),
     )
 
 

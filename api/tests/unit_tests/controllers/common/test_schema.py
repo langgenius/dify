@@ -132,6 +132,52 @@ def test_register_schema_model_promotes_nested_pydantic_definitions():
     assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
 
 
+def test_schema_generation_is_reused_across_namespaces_but_separates_modes():
+    from controllers.common.schema import register_response_schema_model, register_schema_model
+
+    class SharedModel(BaseModel):
+        public_name: str = Field(validation_alias="internal_name")
+
+    with patch.object(SharedModel, "model_json_schema", wraps=SharedModel.model_json_schema) as generate:
+        request_namespace = Namespace("request")
+        response_namespace = Namespace("response")
+        register_schema_model(request_namespace, SharedModel)
+        register_schema_model(Namespace("other-request"), SharedModel)
+        register_response_schema_model(response_namespace, SharedModel)
+
+    assert generate.call_count == 2
+    assert "internal_name" in request_namespace.models["SharedModel"].__schema__["properties"]
+    assert "public_name" in response_namespace.models["SharedModel"].__schema__["properties"]
+
+
+def test_cached_schema_does_not_share_mutable_nested_definitions():
+    from controllers.common.schema import register_schema_model
+
+    first = Namespace("first")
+    register_schema_model(first, ParentModel)
+    first.models["ChildModel"].__schema__["properties"]["value"]["description"] = "changed"
+    first.models["ParentModel"].__schema__["properties"]["child"]["$ref"] = "changed"
+
+    second = Namespace("second")
+    register_schema_model(second, ParentModel)
+    assert "description" not in second.models["ChildModel"].__schema__["properties"]["value"]
+    assert second.models["ParentModel"].__schema__["properties"]["child"]["$ref"] == "#/components/schemas/ChildModel"
+
+
+def test_schema_cache_refreshes_after_model_rebuild():
+    from controllers.common.schema import register_schema_model
+
+    class RebuiltModel(BaseModel):
+        value: str = Field(description="before")
+
+    namespace = Namespace("rebuilt")
+    register_schema_model(namespace, RebuiltModel)
+    RebuiltModel.model_fields["value"].description = "after"
+    RebuiltModel.model_rebuild(force=True)
+    register_schema_model(namespace, RebuiltModel)
+    assert namespace.models["RebuiltModel"].__schema__["properties"]["value"]["description"] == "after"
+
+
 def test_register_schema_models_registers_multiple_models():
     from controllers.common.schema import register_schema_models
 
