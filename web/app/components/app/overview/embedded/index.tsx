@@ -264,7 +264,7 @@ const EmbeddedContent = ({
       >
         <TabsList
           aria-label={t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
-          className="flex flex-wrap items-center justify-between gap-y-2"
+          className="flex items-center justify-between gap-0"
         >
           {OPTION_KEYS.map((v) => (
             <TabsTab
