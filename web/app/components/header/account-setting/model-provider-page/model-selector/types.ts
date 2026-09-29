@@ -12,7 +12,6 @@ export type ModelSelectorValue = {
 export type ModelSelectorModel = Pick<
   ProviderModelWithStatusEntity,
   | 'deprecated'
-  | 'fetch_from'
   | 'has_invalid_load_balancing_configs'
   | 'label'
   | 'load_balancing_enabled'

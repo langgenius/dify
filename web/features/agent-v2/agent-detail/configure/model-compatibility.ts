@@ -5,6 +5,11 @@ import type {
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { supportFunctionCall } from '@/utils/tool-call'
 
+/** Local to Agent V2: runtime entities carry web `ConfigurationMethodEnum`, not API `FetchFrom`. */
+type AgentCompatibilityModel = ModelSelectorModel & {
+  fetch_from?: ConfigurationMethodEnum
+}
+
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
   /^chatgpt-/i,
@@ -103,7 +108,7 @@ function isPredefinedModelBlacklisted(modelItem: ModelSelectorModel) {
 
 export function isAgentCompatibleModel(
   _provider: ModelSelectorProvider,
-  modelItem: ModelSelectorModel,
+  modelItem: AgentCompatibilityModel,
 ) {
   if (modelItem.fetch_from === ConfigurationMethodEnum.customizableModel)
     return supportFunctionCall(modelItem.features)
@@ -113,7 +118,7 @@ export function isAgentCompatibleModel(
 
 export function isAgentSuggestedModel(
   _provider: ModelSelectorProvider,
-  modelItem: ModelSelectorModel,
+  modelItem: AgentCompatibilityModel,
 ) {
   if (modelItem.fetch_from === ConfigurationMethodEnum.customizableModel) return false
 
