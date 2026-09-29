@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n/client'
 import { useRouter } from '@/next/navigation'
@@ -40,6 +41,10 @@ export function useCommandContext(
       setLocale: setLocaleOnClient,
       getDocsHomeUrl,
       navigate: push,
+      onError: (error) => {
+        console.error('Goto Anything command failed:', error)
+        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      },
       openExternal,
       openGenerator,
     }),

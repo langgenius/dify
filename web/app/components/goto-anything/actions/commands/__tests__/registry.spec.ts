@@ -60,6 +60,29 @@ describe('command lookup and execution', () => {
     expect(execute).toHaveBeenCalledWith({}, studio)
   })
 
+  it.each(['throw', 'reject'] as const)(
+    'reports an execution %s and keeps other commands usable',
+    async (failure) => {
+      const error = new Error('Command failed')
+      const context = createCommandContext()
+      const succeeding = vi.fn()
+      const registry = new SlashCommandRegistry([
+        command({
+          execute: () => {
+            if (failure === 'throw') throw error
+            return Promise.reject(error)
+          },
+        }),
+        command({ name: 'other', execute: succeeding }),
+      ])
+      await expect(registry.execute('test', {}, context)).resolves.toBeUndefined()
+      expect(context.onError).toHaveBeenCalledExactlyOnceWith(error)
+      await registry.execute('other', {}, context)
+      expect(succeeding).toHaveBeenCalledExactlyOnceWith({}, context)
+      expect(context.onError).toHaveBeenCalledTimes(1)
+    },
+  )
+
   it('contains command search failures and leaves other commands usable', () => {
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const registry = new SlashCommandRegistry([

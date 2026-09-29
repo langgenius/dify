@@ -23,10 +23,14 @@ export class SlashCommandRegistry {
     return this.commands.filter((command) => command.isAvailable?.(context) ?? true)
   }
 
-  execute(name: string, args: Record<string, unknown>, context: CommandContext) {
+  async execute(name: string, args: Record<string, unknown>, context: CommandContext) {
     const command = this.findCommand(name)
     if (!command || command.isAvailable?.(context) === false) return
-    return command.execute(args, context)
+    try {
+      await command.execute(args, context)
+    } catch (error) {
+      context.onError(error)
+    }
   }
 
   search(query: string, context: CommandContext): CommandSearchResult[] {

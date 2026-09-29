@@ -6,6 +6,7 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { toast } from '@/app/notifications'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { goCommand } from '../actions/commands/go'
 import { gotoAnythingDialogHandle } from '../dialog-handle'
@@ -630,6 +631,33 @@ describe('GotoAnything', () => {
       expect(execute).toHaveBeenCalledTimes(1)
       expect(routerPush).not.toHaveBeenCalled()
     })
+  })
+
+  it('shows feedback when an activated command rejects and allows reopening', async () => {
+    const user = userEvent.setup()
+    const failure = new Error('Execution failed')
+    const toastError = vi.spyOn(toast, 'error').mockReturnValue('command-error')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockAvailableCommands = [
+      {
+        name: 'models',
+        description: 'Models',
+        mode: 'direct',
+        search: () => [],
+        execute: () => Promise.reject(failure),
+      },
+    ]
+    renderGotoAnything(<GotoAnything />)
+    triggerSearchShortcut()
+    await user.click(await screen.findByRole('gridcell', { name: /\/models/ }))
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    triggerSearchShortcut()
+    expect(await screen.findByRole('combobox')).toHaveValue('')
+    toastError.mockRestore()
+    consoleError.mockRestore()
   })
 
   it('updates an open command submenu when workspace access changes', async () => {

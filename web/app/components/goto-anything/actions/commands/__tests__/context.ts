@@ -11,6 +11,7 @@ export function createCommandContext(overrides: Partial<CommandContext> = {}): C
     setTheme: vi.fn(),
     setLocale: vi.fn().mockResolvedValue(undefined),
     getDocsHomeUrl: () => 'https://docs.dify.ai/en',
+    onError: vi.fn(),
     navigate: vi.fn(),
     openExternal: vi.fn(),
     openGenerator: vi.fn(),

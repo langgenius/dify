@@ -11,6 +11,7 @@ export type CommandContext = {
   setTheme: (theme: string) => void
   setLocale: (locale: string) => Promise<void>
   getDocsHomeUrl: () => string
+  onError: (error: unknown) => void
   navigate: (path: string) => void
   openExternal: (url: string) => void
   openGenerator: ReturnType<typeof useWorkflowGeneratorStore.getState>['openGenerator']
