@@ -304,10 +304,17 @@ class MessageService:
                     context=TelemetryContext(tenant_id=app_model.tenant_id),
                     payload={
                         "message_id": message.id,
+<<<<<<< HEAD
                         "app_id": app_model.id,
                         "conversation_id": message.conversation_id,
                         "from_end_user_id": user.id if isinstance(user, EndUser) else None,
                         "from_account_id": user.id if isinstance(user, Account) else None,
+=======
+                        "app_id": app_model.id if app_model.id is not None else None,
+                        "conversation_id": (message.conversation_id if message.conversation_id is not None else None),
+                        "from_end_user_id": str(user.id) if isinstance(user, EndUser) and user.id is not None else None,
+                        "from_account_id": str(user.id) if isinstance(user, Account) and user.id is not None else None,
+>>>>>>> chore/services-str-conversions
                         "rating": rating.value if rating else None,
                         "from_source": (
                             FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN

@@ -72,7 +72,21 @@ def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
     Must run before the dataset row is deleted (so the bindings still exist).
     Returns the deleted api_token ids; the caller controls the transaction.
     """
+<<<<<<< HEAD:api/repositories/knowledge/dataset_api_key_bindings.py
     orphan_ids = list(session.scalars(token_ids_scoped_only_to(dataset_id)).all())
+=======
+    orphan_ids = list(
+        session.scalars(
+            select(DatasetApiTokenBinding.api_token_id)
+            .where(DatasetApiTokenBinding.dataset_id == dataset_id)
+            .where(
+                DatasetApiTokenBinding.api_token_id.notin_(
+                    select(DatasetApiTokenBinding.api_token_id).where(DatasetApiTokenBinding.dataset_id != dataset_id)
+                )
+            )
+        ).all()
+    )
+>>>>>>> chore/services-str-conversions:api/services/dataset_api_key_service.py
     if orphan_ids:
         session.execute(delete(ApiToken).where(ApiToken.id.in_(orphan_ids)))
     return orphan_ids

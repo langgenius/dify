@@ -277,7 +277,7 @@ class AppMessageExportService:
 
         result: dict[str, list[AppMessageExportFeedback]] = defaultdict(list)
         for feedback in feedbacks:
-            result[str(feedback.message_id)].append(AppMessageExportFeedback.model_validate(feedback.to_dict()))
+            result[feedback.message_id].append(AppMessageExportFeedback.model_validate(feedback.to_dict()))
         return result
 
     @staticmethod

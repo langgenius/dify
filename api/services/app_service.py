@@ -978,6 +978,7 @@ class AppService:
         return AppCreationSettings(dict(app_template["app"]), default_model_config)
 
     @staticmethod
+<<<<<<< HEAD
     def notify_created_app(*, event: AppEvent, account_id: str, backing_agent_id: str | None) -> None:
         app_was_created.send(event, created_records_initialized=True)
         initialize_access = _CREATED_APP_ACCESS_INITIALIZERS.get(AppMode(event.mode), _initialize_created_app_access)
@@ -1019,3 +1020,15 @@ class AppService:
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
+=======
+    def get_app_id_by_code(app_code: str, *, session: Session) -> str:
+        """
+        Get app id by app code
+        :param app_code: app code
+        :return: app id
+        """
+        site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
+        if not site:
+            raise ValueError(f"App with code {app_code} not found")
+        return site.app_id
+>>>>>>> chore/services-str-conversions
