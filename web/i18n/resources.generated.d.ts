@@ -2992,7 +2992,7 @@ export default interface Resources {
     'studio.accessControl.chipOn': 'On'
     'studio.accessControl.chipPartial': '{{n}} of {{m}}'
     'studio.accessControl.chipPaused': 'Paused'
-    'studio.accessControl.createIpPolicy': 'Add IP Policy'
+    'studio.accessControl.createIpPolicy': 'Add an IP policy'
     'studio.accessControl.description': 'Control access to this app by applying an IP policy.'
     'studio.accessControl.downgradeDescription': 'Access control is available on Professional and Team plans.'
     'studio.accessControl.downgradeTitle': 'This app is no longer protected'
