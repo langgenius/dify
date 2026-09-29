@@ -1305,6 +1305,9 @@ services:
       DIFY_BASE_URL: ${DIFFY_BACKEND_DIFY_BASE_URL:-}
       OPENAI_API_KEY: ${DIFFY_BACKEND_OPENAI_API_KEY:-}
       THREAD_RETENTION_DAYS: ${DIFFY_BACKEND_THREAD_RETENTION_DAYS:-30}
+      # Must live under the mounted volume; the defaults resolve to /app/src/config, which is not persisted.
+      AGENTS_CONFIG_PATH: /app/config/agents.json
+      DIFFY_AGENTS_CONFIG_PATH: /app/config/diffy-agents.json
     volumes:
       # Persists config/agents.json and config/diffy-agents.json across restarts/rebuilds.
       - ./volumes/diffy_backend/config:/app/config
