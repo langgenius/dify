@@ -1,4 +1,4 @@
-"""SQLite-backed tests for dataset-level operations in :mod:`services.dataset_service`.
+"""SQLite-backed tests for dataset-level operations in :mod:`services.knowledge.dataset_service`.
 
 Mapped objects in this module are real SQLAlchemy models. Provider runtimes,
 RBAC clients, Celery tasks, and model-manager results remain mocked at their
@@ -28,13 +28,13 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
-from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
+from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
@@ -177,7 +177,7 @@ class TestDatasetServiceValidation:
     def test_check_dataset_model_setting_skips_non_high_quality_datasets(self) -> None:
         dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
 
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             DatasetService.check_dataset_model_setting(dataset)
 
         model_manager_cls.assert_not_called()
@@ -185,7 +185,7 @@ class TestDatasetServiceValidation:
     def test_check_dataset_model_setting_validates_high_quality_embedding(self) -> None:
         dataset = _dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             DatasetService.check_dataset_model_setting(dataset)
 
         model_manager_cls.for_tenant.return_value.get_model_instance.assert_called_once_with(
@@ -205,7 +205,7 @@ class TestDatasetServiceValidation:
     def test_check_dataset_model_setting_wraps_provider_errors(self, error: Exception, message: str) -> None:
         dataset = _dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
             with pytest.raises(ValueError, match=message):
                 DatasetService.check_dataset_model_setting(dataset)
@@ -220,7 +220,7 @@ class TestDatasetServiceValidation:
             credentials={"api_key": "secret"},
         )
 
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = model_instance
             result = DatasetService.check_is_multimodal_model("tenant-1", "provider", "embedding-model")
 
@@ -235,7 +235,7 @@ class TestDatasetServiceValidation:
             credentials={},
         )
 
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = model_instance
             with pytest.raises(ValueError, match="Model schema not found"):
                 DatasetService.check_is_multimodal_model("tenant-1", "provider", "embedding-model")
@@ -254,7 +254,7 @@ class TestDatasetServiceValidation:
     def test_direct_model_setting_checks_wrap_runtime_errors(
         self, method: Callable[[str, str, str], None], error: Exception, message: str
     ) -> None:
-        with patch("services.dataset_service.ModelManager") as model_manager_cls:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
             with pytest.raises(ValueError, match=message):
                 method("tenant-1", "provider", "model")
@@ -285,7 +285,7 @@ class TestDatasetServiceRetrieval:
 
         with (
             patch(
-                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                "services.knowledge.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
             ),
         ):
@@ -371,7 +371,7 @@ class TestDatasetServiceRetrieval:
         config_overrides(RBAC_ENABLED=True)
         with (
             patch(
-                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                "services.knowledge.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(
                     workspace=SimpleNamespace(permission_keys=["dataset.create_and_management"])
                 ),
@@ -414,8 +414,10 @@ class TestDatasetServiceCreationAndUpdate:
         embedding_model = SimpleNamespace(provider="provider", model_name="default-embedding")
 
         with (
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
-            patch("services.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
+            patch(
+                "services.knowledge.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ),
         ):
             model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = embedding_model
             dataset = DatasetService.create_empty_dataset(
@@ -438,7 +440,9 @@ class TestDatasetServiceCreationAndUpdate:
         sqlite_session.add_all([_external_api(), _external_api(api_id="api-foreign", tenant_id="tenant-2")])
         sqlite_session.commit()
 
-        with patch("services.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"):
+        with patch(
+            "services.knowledge.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+        ):
             dataset = DatasetService.create_empty_dataset(
                 "tenant-1",
                 "External",
@@ -465,7 +469,9 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             pytest.raises(ValueError, match="api template not found"),
-            patch("services.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch(
+                "services.knowledge.dataset_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ),
         ):
             DatasetService.create_empty_dataset(
                 "tenant-1",
@@ -489,7 +495,7 @@ class TestDatasetServiceCreationAndUpdate:
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
 
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             dataset = DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
 
         assert dataset.name == "Untitled 2"
@@ -508,7 +514,7 @@ class TestDatasetServiceCreationAndUpdate:
         )
 
         with (
-            patch("services.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.current_user", _account()),
             pytest.raises(DatasetNameDuplicateError, match="already exists"),
         ):
             DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
@@ -524,7 +530,7 @@ class TestDatasetServiceCreationAndUpdate:
         )
 
         with (
-            patch("services.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.current_user", account),
             pytest.raises(ValueError, match="Current user or current user id not found"),
         ):
             DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
@@ -640,8 +646,8 @@ class TestDatasetServiceCreationAndUpdate:
         with (
             patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
             patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
-            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
-            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.knowledge.dataset_service.regenerate_summary_index_task.delay") as summary_task,
         ):
             updated = DatasetService._update_internal_dataset(
                 dataset,
@@ -685,7 +691,7 @@ class TestDatasetServiceCreationAndUpdate:
             lambda _session, _previous_transaction: transaction_events.append("rollback"),
         )
 
-        with patch("services.dataset_service.RagPipelineService") as service_cls:
+        with patch("services.knowledge.dataset_service.RagPipelineService") as service_cls:
             service_cls.return_value.get_published_workflow.side_effect = RuntimeError("boom")
             with pytest.raises(RuntimeError, match="boom"):
                 DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", sqlite_session)
@@ -765,8 +771,8 @@ class TestDatasetServiceEmbeddingSettings:
     def test_configure_high_quality_wraps_provider_error(self, unbound_session: Session) -> None:
         account = _account()
         with (
-            patch("services.dataset_service.current_user", account),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = LLMBadRequestError()
             with pytest.raises(ValueError, match="No Embedding Model available"):
@@ -814,8 +820,8 @@ class TestDatasetServiceEmbeddingSettings:
         collection_binding.id = "collection-binding-1"
 
         with (
-            patch("services.dataset_service.current_user", account),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch.object(
                 DatasetCollectionBindingService,
                 "get_dataset_collection_binding",
@@ -841,8 +847,8 @@ class TestDatasetServiceEmbeddingSettings:
         filtered_data: dict[str, object] = {}
 
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = ProviderTokenNotInitError(
                 "missing"
@@ -886,7 +892,7 @@ class TestDatasetServiceRagPipelineSettings:
         account._current_tenant = None
 
         with (
-            patch("services.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.current_user", account),
             pytest.raises(ValueError, match="Current user or current tenant not found"),
         ):
             DatasetService.update_rag_pipeline_dataset_settings(
@@ -910,8 +916,8 @@ class TestDatasetServiceRagPipelineSettings:
         collection_binding.id = "collection-binding-2"
 
         with (
-            patch("services.dataset_service.current_user", account),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_is_multimodal_model", return_value=True),
             patch.object(
                 DatasetCollectionBindingService,
@@ -942,7 +948,7 @@ class TestDatasetServiceRagPipelineSettings:
         sqlite_session.add(dataset)
         sqlite_session.commit()
 
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             DatasetService.update_rag_pipeline_dataset_settings(
                 dataset,
                 _make_knowledge_configuration(
@@ -966,8 +972,8 @@ class TestDatasetServiceRagPipelineSettings:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.deal_dataset_index_update_task.delay") as update_task,
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.deal_dataset_index_update_task.delay") as update_task,
         ):
             DatasetService.update_rag_pipeline_dataset_settings(
                 dataset,
@@ -1012,7 +1018,7 @@ class TestDatasetServiceRagPipelineSettings:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.current_user", _account()),
             pytest.raises(ValueError, match=message),
         ):
             DatasetService.update_rag_pipeline_dataset_settings(

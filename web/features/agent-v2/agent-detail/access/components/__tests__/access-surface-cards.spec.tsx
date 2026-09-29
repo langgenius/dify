@@ -694,7 +694,7 @@ describe('Agent access surface cards', () => {
       })
 
       await user.click(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('tab', {
           name: 'appOverview.overview.appInfo.embedded.scripts',
         }),
       )

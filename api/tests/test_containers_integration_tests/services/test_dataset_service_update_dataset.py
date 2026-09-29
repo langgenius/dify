@@ -17,8 +17,8 @@ from models.account import (
 )
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
-from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetUpdateTestDataFactory:
@@ -370,7 +370,7 @@ class TestDatasetServiceUpdateDataset:
             "retrieval_model": "new_model",
         }
 
-        with patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task:
+        with patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task:
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
@@ -408,12 +408,12 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
-            patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
@@ -503,13 +503,13 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
-            patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
-            patch("services.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
+            patch("services.knowledge.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
@@ -589,8 +589,8 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
