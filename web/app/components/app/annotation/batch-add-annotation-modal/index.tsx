@@ -16,12 +16,14 @@ import { consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
-export enum ProcessStatus {
-  WAITING = 'waiting',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-}
+export const ProcessStatus = {
+  WAITING: 'waiting',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  ERROR: 'error',
+} as const
+
+export type ProcessStatus = (typeof ProcessStatus)[keyof typeof ProcessStatus]
 
 export type IBatchModalProps = {
   appId: string
@@ -31,7 +33,7 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

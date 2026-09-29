@@ -20,3 +20,20 @@ export function parseLimit(raw: string, source: string): number {
   }
   return n
 }
+
+const MAX_PAGES = 100
+
+export type Page<T> = { readonly data: readonly T[]; readonly has_more: boolean }
+
+/** Walks pages from 1 until has_more is false; MAX_PAGES caps a server that never says so. */
+export async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<Page<T>>,
+): Promise<T[]> {
+  const out: T[] = []
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const env = await fetchPage(page)
+    out.push(...env.data)
+    if (!env.has_more) break
+  }
+  return out
+}

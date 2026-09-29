@@ -27,7 +27,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   messageID,
   log,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog'])
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore((s) => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)

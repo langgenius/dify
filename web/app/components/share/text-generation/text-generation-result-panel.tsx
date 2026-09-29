@@ -76,7 +76,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   textToSpeechEnabled,
   visionConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   const renderResult = (task?: Task) => (
     <Res

@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import os
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -42,6 +46,10 @@ from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from tests.unit_tests.config_override import apply_config_overrides
+
+if TYPE_CHECKING:
+    from extensions.application_services.app import AppServices
+    from services.tag_application_service import TagApplicationService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -118,18 +126,22 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
 
 
 @pytest.fixture
-def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
-    """Create an engine over a pristine per-test copy of the SQLite schema."""
+def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
+    """Copy the schema into an isolated directory without pytest's numbered scan.
 
-    database_path = tmp_path / "unit-tests.sqlite3"
-    shutil.copyfile(_sqlite_database_template, database_path)
-    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+    ``tmp_path`` searches all preceding test directories for a free number. This
+    autouse dependency needs only a unique, disposable directory, including any
+    SQLite journal files, so keep it separate from test-owned ``tmp_path`` data.
+    """
+    with TemporaryDirectory(prefix="case-", dir=_sqlite_database_template.parent) as directory:
+        database_path = Path(directory) / "unit-tests.sqlite3"
+        shutil.copyfile(_sqlite_database_template, database_path)
+        engine = create_engine(URL.create("sqlite", database=str(database_path)))
 
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-        database_path.unlink(missing_ok=True)
+        try:
+            yield engine
+        finally:
+            engine.dispose()
 
 
 @pytest.fixture(scope="session")
@@ -239,3 +251,27 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
+
+
+@pytest.fixture
+def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+    from unittest.mock import Mock
+
+    from extensions.application_services.app import build_app_services
+    from extensions.ext_application_services import _build_oauth_server_service
+    from extensions.ext_redis import redis_client
+    from services.recommended_app_package_service import RecommendedAppPackageService
+
+    return build_app_services(
+        database_client=sqlite_session_factory,
+        oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+
+
+@pytest.fixture
+def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplicationService:
+    from repositories.tag_repository import TagRepository
+    from services.tag_application_service import TagApplicationService
+
+    return TagApplicationService(tags=TagRepository(sqlite_session_factory))

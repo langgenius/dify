@@ -20,7 +20,7 @@ const createChecklistItem = (overrides: Partial<ChecklistItem> = {}): ChecklistI
 describe('ChecklistPluginGroup', () => {
   const getInstallButton = () => {
     return screen
-      .getByText('workflow.nodes.agent.pluginInstaller.install')
+      .getByText('workflowAgent.nodes.agent.pluginInstaller.install')
       .closest('button') as HTMLButtonElement
   }
 

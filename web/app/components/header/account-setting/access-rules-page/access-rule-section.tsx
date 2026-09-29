@@ -46,7 +46,7 @@ const AccessRuleSection = ({
   onRetry,
   className,
 }: AccessRuleSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [expanded, setExpanded] = useState(defaultExpanded)
   const listRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)

@@ -51,7 +51,7 @@ def _upload_context() -> HumanInputUploadContext:
         form_id="form-1",
         recipient_id="recipient-1",
         upload_token_id="token-1",
-        owner=MagicMock(spec=Account),
+        owner=Account(name="Upload owner", email="owner@example.com"),
     )
 
 
@@ -136,7 +136,7 @@ def test_validate_upload_token_resolves_delivery_test_owner() -> None:
     uploads = MagicMock(spec=HumanInputFileUploadRepository)
     form = _active_form(workflow_run_id=None, form_kind=HumanInputFormKind.DELIVERY_TEST)
     uploads.get_upload_grant.return_value = HumanInputUploadGrantRecord(upload_token_id="token-1", form=form)
-    owner = MagicMock(spec=Account)
+    owner = Account(name="Delivery test owner", email="owner@example.com")
     uploads.get_delivery_test_upload_owner.return_value = owner
     workflow_runs = MagicMock()
 

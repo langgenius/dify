@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -46,7 +45,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
 
   const providerNameParts = providerName.split('/')
   const author = providerNameParts[0]
-  const name = providerNameParts[1]
+  const name = providerNameParts[1] ?? providerName
   const icon = useMemo(() => {
     if (!isDataReady) return ''
     if (currentProvider) return currentProvider.icon
@@ -62,17 +61,22 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const indicator =
     status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const tooltip = useMemo(() => {
     if (!notSuccess) return undefined
     if (status === 'not-installed')
       return t(($) => $['nodes.agent.toolNotInstallTooltip'], { ns: 'workflow', tool: name })
     if (status === 'not-authorized')
-      return t(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { ns: 'workflow', tool: name })
+      return t(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+        ns: 'workflow',
+        tool: name,
+      })
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)
-  let iconContent: ReactNode = <Group className="size-3 opacity-35" />
+  let iconContent: ReactNode = (
+    <span aria-hidden className="i-custom-vender-other-group size-3 opacity-35" />
+  )
 
   if (!iconFetchError && icon) {
     if (typeof icon === 'string') {

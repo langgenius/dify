@@ -139,12 +139,13 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
         ):
             result = processor.transform(
                 [parent_document],
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=False,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -176,12 +177,13 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
-            patch.object(processor, "_split_child_nodes", return_value=[]),
+            patch.object(processor, "split_child_nodes", return_value=[]),
         ):
             result = processor.transform(
                 documents,
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -202,7 +204,7 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
@@ -213,6 +215,7 @@ class TestParentChildIndexProcessor:
                 docs,
                 process_rule={"mode": "hierarchical", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -247,9 +250,7 @@ class TestParentChildIndexProcessor:
         assert len(formatted_docs) == 2
         assert all(isinstance(doc, Document) for doc in formatted_docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
-            formatted_docs, session, update_segment_keywords=False
-        )
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(formatted_docs, session)
 
     def test_load_skips_keyword_index_when_disabled(
         self, processor: ParentChildIndexProcessor, dataset: Dataset
@@ -301,9 +302,7 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.assert_not_called()
         keyword_documents = mock_keyword_cls.return_value.add_texts.call_args.args[0]
         assert [document.page_content for document in keyword_documents] == ["child"]
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
-            keyword_documents, self.session, update_segment_keywords=False
-        )
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(keyword_documents, self.session)
 
     def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
@@ -441,7 +440,7 @@ class TestParentChildIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
             patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
@@ -455,7 +454,7 @@ class TestParentChildIndexProcessor:
     ) -> None:
         with (
             patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
             patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
@@ -469,7 +468,7 @@ class TestParentChildIndexProcessor:
         rules = Rule(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
-            processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
+            processor.split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
@@ -486,7 +485,7 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
         ):
-            child_docs = processor._split_child_nodes(
+            child_docs = processor.split_child_nodes(
                 Document(page_content="parent", metadata={}), rules, "custom", None
             )
 
@@ -552,9 +551,7 @@ class TestParentChildIndexProcessor:
         assert all(type(document) is Document for document in indexed_child_documents)
         mock_vector_cls.return_value.create.assert_called_once_with(indexed_child_documents)
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
-            indexed_child_documents, session, update_segment_keywords=False
-        )
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(indexed_child_documents, session)
 
     def test_index_uses_content_files_when_files_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument

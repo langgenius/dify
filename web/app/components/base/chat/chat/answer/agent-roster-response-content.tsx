@@ -4,6 +4,7 @@ import type { Locale } from '@/i18n'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
@@ -178,7 +179,7 @@ function ResponseMessage({ content }: { content: string }) {
 }
 
 function ToolActivityItem({ tool }: { tool: ToolActivity }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'tools'])
   const hasDetails = !!tool.input || !!tool.output
   const label =
     tool.name === 'shell_run' && tool.label === tool.name
@@ -260,8 +261,8 @@ function AgentActivityItem({
   thought: ThoughtItem
   responding?: boolean
 }) {
-  const { i18n } = useTranslation()
-  const tools = getToolActivities(thought, i18n.language, responding)
+  const locale = useLocale()
+  const tools = getToolActivities(thought, locale, responding)
 
   return (
     <div className="flex w-full max-w-full min-w-0 flex-col py-0.5">
@@ -292,7 +293,7 @@ function AgentActivityDisclosure({
   responding?: boolean
   defaultOpen?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding

@@ -7,8 +7,10 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodeCatalogType } from '@/app/components/workflow/utils/node'
 import { useGetLanguage } from '@/context/i18n'
+import { renderI18nObject } from '@/i18n/metadata'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import { matchesProviderReference } from '@/utils/provider-reference'
+import { matchDataSource } from '../utils/plugin-install-check'
 
 export const useNodesMetaData = () => {
   const availableNodesMetaData = useHooksStore((s) => s.availableNodesMetaData)
@@ -32,7 +34,7 @@ export const useNodeMetaData = (node: Node) => {
   const nodeMetaData = availableNodesMetaData.nodesMap?.[getNodeCatalogType(data)]
   const author = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find((dataSource) => dataSource.plugin_id === data.plugin_id)?.author
+      return matchDataSource(dataSourceList ?? [], data)?.declaration.identity.author
 
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
@@ -52,8 +54,10 @@ export const useNodeMetaData = (node: Node) => {
 
   const description = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find((dataSource) => dataSource.plugin_id === data.plugin_id)
-        ?.description[language]
+      return renderI18nObject(
+        matchDataSource(dataSourceList ?? [], data)?.declaration.identity.description,
+        language,
+      )
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
         return buildInTools?.find((toolWithProvider) =>

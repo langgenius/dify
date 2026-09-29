@@ -375,7 +375,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
-            patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
+            patch.object(module, "get_pipeline_dataset", return_value=dataset),
             patch.object(module.DatasetService, "check_dataset_permission") as legacy_acl,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
@@ -408,7 +408,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
-            patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
+            patch.object(module, "get_pipeline_dataset", return_value=dataset),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
             response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
@@ -424,7 +424,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
-            patch.object(Pipeline, "retrieve_dataset", return_value=object()),
+            patch.object(module, "get_pipeline_dataset", return_value=object()),
             patch.object(
                 module.RagPipelineService,
                 "publish_customized_pipeline_template",
@@ -445,7 +445,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
+            patch.object(module, "get_pipeline_dataset", return_value=dataset),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
@@ -463,7 +463,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(Pipeline, "retrieve_dataset", return_value=object()),
+            patch.object(module, "get_pipeline_dataset", return_value=object()),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(Forbidden),
@@ -481,7 +481,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(Pipeline, "retrieve_dataset", return_value=object()),
+            patch.object(module, "get_pipeline_dataset", return_value=object()),
             patch.object(
                 module.DatasetService,
                 "check_dataset_permission",
@@ -502,7 +502,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(Pipeline, "retrieve_dataset", return_value=None),
+            patch.object(module, "get_pipeline_dataset", return_value=None),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(NotFound, match="Dataset not found"),

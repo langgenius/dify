@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} nabor dovoljenj",
   "accessRule.summary_other": "{{count}} naborov dovoljenj",
   "accessRule.updated": "Pravilo za dostop uspešno posodobljeno",
+  "accessRule.workspaceAdmin": "Skrbnik delovnega prostora",
   "accessRule.workspaceOwner": "Lastnik delovnega prostora",
   "common.duplicateAction": "Podvoji",
   "group.agent": "Agenti",

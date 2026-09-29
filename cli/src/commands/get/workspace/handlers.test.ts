@@ -4,7 +4,11 @@ import { WorkspaceListOutput, WorkspaceRow } from './handlers'
 
 function env(): WorkspaceListResponse {
   return {
-    workspaces: [
+    page: 1,
+    limit: 20,
+    total: 2,
+    has_more: false,
+    data: [
       { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
       {
         id: '00000000-0000-0000-0000-000000000002',
@@ -43,6 +47,6 @@ describe('get/workspace handlers', () => {
     ])
     expect(output.tableRows()).toEqual([['ws-1', 'Default', 'owner', 'normal', '*']])
     expect(output.name()).toBe('ws-1')
-    expect(output.json().workspaces).toHaveLength(2)
+    expect(output.json().data).toHaveLength(2)
   })
 })

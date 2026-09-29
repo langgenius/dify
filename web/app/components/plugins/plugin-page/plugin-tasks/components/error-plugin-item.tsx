@@ -19,7 +19,7 @@ type ErrorPluginItemProps = {
 }
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{

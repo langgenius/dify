@@ -1,10 +1,12 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { PublishedWorkflow } from '../shared/utils'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
@@ -60,11 +62,11 @@ vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   },
 }))
 
-const appInfo = {
+const appInfo = createAppDetailFixture({
   api_base_url: 'https://api.example.test/v1',
   id: 'app-1',
   mode: AppModeEnum.CHAT,
-  model_config: {
+  model_config: createAppModelConfigFixture({
     updated_at: 1_710_000_000,
     user_input_form: [
       {
@@ -75,14 +77,14 @@ const appInfo = {
         },
       },
     ],
-  },
-} as AccessPointAppInfo
+  }),
+})
 
-const workflowAppInfo = {
+const workflowAppInfo = createAppDetailFixture({
   ...appInfo,
   mode: AppModeEnum.WORKFLOW,
   model_config: null,
-} as unknown as AccessPointAppInfo
+})
 
 const publishedWorkflow = {
   graph: {
@@ -108,7 +110,7 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
-function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: PublishedWorkflow) {
+function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
 
   return render(

@@ -17,7 +17,7 @@ const toastErrorSpy = vi.spyOn(toast, 'error')
 const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
     selector: (state: { dataset: { indexing_technique: string } }) => unknown,

@@ -1,23 +1,30 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi._models import SessionListQuery
 from controllers.openapi.account import (
     AccountSessionByIdApi,
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from extensions.ext_redis import redis_client
-from libs.oauth_bearer import TokenType
 from models import Account
-from services.oauth_device_flow import MintResult, mint_oauth_token
+from models.oauth import OAuthAccessToken
 from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
+
+
+@dataclass(frozen=True, slots=True)
+class _MintResult:
+    token_id: UUID
 
 
 def _mint_account_token(
@@ -26,19 +33,21 @@ def _mint_account_token(
     *,
     client_id: str = "integration-cli",
     device_label: str = "Test Device",
-) -> MintResult:
+) -> _MintResult:
     """Mint a real, persisted ``dfoa_`` access token for ``account``."""
-    return mint_oauth_token(
-        redis_client,
+    record = OAuthAccessToken(
         subject_email=account.email,
-        subject_issuer=None,
+        subject_issuer="dify:account",
         account_id=str(account.id),
         client_id=client_id,
         device_label=device_label,
-        token_type=TokenType.OAUTH_ACCOUNT,
-        ttl_days=14,
-        session=db_session,
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
+        token_hash=f"integration-{uuid4().hex}",
+        expires_at=datetime.now(UTC) + timedelta(days=14),
     )
+    db_session.add(record)
+    db_session.commit()
+    return _MintResult(token_id=UUID(str(record.id)))
 
 
 class TestSessionList:

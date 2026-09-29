@@ -154,7 +154,7 @@ describe('RunPanel', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByText('SUCCESS').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('appLog.status.succeeded').length).toBeGreaterThan(0)
     })
 
     expect(screen.getByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
@@ -191,7 +191,7 @@ describe('RunPanel', () => {
 
     const detailPanel = await screen.findByRole('tabpanel', { name: 'runLog.detail' })
     await waitFor(() =>
-      expect(within(detailPanel).getAllByText('SUCCESS').length).toBeGreaterThan(0),
+      expect(within(detailPanel).getAllByText('appLog.status.succeeded').length).toBeGreaterThan(0),
     )
     expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
 

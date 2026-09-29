@@ -18,7 +18,7 @@ const Bucket = ({
   handleClickBucketName,
   current,
 }: BucketProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const allBucketsLabel = t(($) => $['onlineDrive.breadcrumbs.allBuckets'], {
     ns: 'datasetPipeline',
   })

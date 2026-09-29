@@ -15,8 +15,10 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
@@ -123,7 +125,7 @@ function SourceTypeSelector({
   value: SourceType
   onChange: (value: SourceType) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const options = [
     { icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
     { icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
@@ -170,7 +172,7 @@ function ProviderSelector({
   provider: NewKnowledgeWebsiteProvider
   onChange: (provider: NewKnowledgeWebsiteProvider) => void
 }) {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <fieldset>
@@ -214,7 +216,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const generatedId = useId()
   const inputId = `${generatedId}-input`
   const descriptionId = field.description ? `${generatedId}-description` : undefined
@@ -282,7 +284,7 @@ function ConnectionForm({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
@@ -411,7 +413,7 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'])}
+          {t(($) => $['newKnowledge.connectionFailed'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </p>
       )}
       <Button
@@ -424,7 +426,7 @@ function ConnectionForm({
         <span id={connectButtonLabelId}>
           {pending
             ? t(($) => $['newKnowledge.connectingProvider'])
-            : t(($) => $['newKnowledge.connectProvider'])}
+            : t(($) => $['newKnowledge.connectProvider'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </span>
       </Button>
     </form>
@@ -444,7 +446,7 @@ function UnconfiguredProvider({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [configuring, setConfiguring] = useState(false)
 
   if (configuring)
@@ -493,8 +495,8 @@ function ConnectionProblem({
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
@@ -528,7 +530,9 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'])}
+        {t(($) => $['newKnowledge.connectionNeedsAttention'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
@@ -559,7 +563,7 @@ function ProvisioningConnection({
 }: {
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -580,7 +584,9 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'])}
+        {t(($) => $['newKnowledge.connectionProvisioning'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
@@ -605,11 +611,12 @@ export function AddSourcePage({
   knowledgeSpaceId: string
   sourceDraftKey?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
-  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
-    initialSourceDraft ??
+  const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
@@ -879,13 +886,11 @@ export function AddSourcePage({
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    globalThis.addEventListener('beforeunload', handleBeforeUnload)
-    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
+    return registerPageLeaveGuard({
+      message: t(($) => $['newKnowledge.discardSourceDraftDescription']),
+      shouldBlock: () => true,
+    })
+  }, [hasUnsavedChanges, t])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return

@@ -31,7 +31,7 @@ const getWidthStyle = (imgNum: number) => {
 }
 
 const ImageGallery: FC<Props> = ({ srcs, onPreviewOpenChange }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const isPreviewOpen = Boolean(imagePreviewUrl)
 

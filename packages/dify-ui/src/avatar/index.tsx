@@ -3,6 +3,7 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const avatarSizeClasses = {
   xxs: { root: 'size-4', text: 'text-[7px]' },
@@ -25,47 +26,49 @@ type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-type AvatarRootProps = Omit<BaseAvatar.Root.Props, 'className'> & {
+type AvatarRootProps = BaseAvatar.Root.Props & {
   size?: AvatarSize
-  className?: string
 }
 function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
   return (
     <BaseAvatar.Root
-      className={cn(
-        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
-        avatarSizeClasses[size].root,
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
+          avatarSizeClasses[size].root,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type AvatarFallbackProps = Omit<BaseAvatar.Fallback.Props, 'className'> & {
+type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
   size?: AvatarSize
-  className?: string
 }
 function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
   return (
     <BaseAvatar.Fallback
-      className={cn(
-        'flex size-full items-center justify-center font-medium text-white',
-        avatarSizeClasses[size].text,
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'flex size-full items-center justify-center font-medium text-white',
+          avatarSizeClasses[size].text,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type AvatarImageProps = Omit<BaseAvatar.Image.Props, 'className'> & {
-  className?: string
-}
+type AvatarImageProps = BaseAvatar.Image.Props
 function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
-      className={cn('absolute inset-0 size-full object-cover', className)}
+      className={(state) =>
+        cn('absolute inset-0 size-full object-cover', resolveClassName(className, state))
+      }
       {...props}
     />
   )

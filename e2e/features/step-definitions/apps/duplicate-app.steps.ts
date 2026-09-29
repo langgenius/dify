@@ -1,10 +1,10 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, When } from '@cucumber/cucumber'
 import { zPostAppsByAppIdCopyResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { waitForAppsConsole } from '../../../support/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { waitForAppsConsole } from '../../../support/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {
   const name = createE2EResourceName('App', 'Test')

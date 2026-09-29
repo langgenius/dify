@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import type { TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -73,11 +72,7 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
-  const { t } = useTranslation()
-  const translateResultKey = useCallback<TextGenerationTranslate>(
-    (selector, options) => t(selector, options),
-    [t],
-  )
+  const { t } = useTranslation(['share', 'appDebug', 'common'])
   const notify = useCallback(
     ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
       toast(message, { type })
@@ -108,7 +103,7 @@ const Result: FC<IResultProps> = ({
     onShowRes,
     promptConfig,
     runState,
-    t: translateResultKey,
+    t,
     taskId,
     visionConfig,
   })

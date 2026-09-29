@@ -73,6 +73,7 @@
   "studio.noCredentialsYetDescription": "İnteqrasiyalarda və ya düyün parametrlərində giriş məlumatlarını əlavə edin",
   "studio.precheck.description": "Burada hələ dəstəklənməyən düyün növləri var:",
   "studio.precheck.from": "Mənbə",
+  "studio.precheck.nodeCount_one": "{{count}} düyün",
   "studio.precheck.nodeCount_other": "{{count}} düyün",
   "studio.precheck.supportMessage": "Bu düyün növləri gələcək buraxılışda dəstəklənəcək.",
   "studio.precheck.title": "Bu versiyanı bu mühitə yerləşdirmək mümkün deyil",

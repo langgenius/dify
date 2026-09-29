@@ -1,9 +1,12 @@
 import type { PromptItem } from '../../../../types'
+import type { LLMNodeType } from '../../types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { PromptRole } from '../../../../types'
+import { BlockEnum, EditionType, PromptRole } from '../../../../types'
+import useLLMInputManager from '../../hooks/use-llm-input-manager'
+import useLLMPromptConfig from '../../hooks/use-llm-prompt-config'
 import ConfigPrompt from '../config-prompt'
 
 vi.mock('../../../_base/hooks/use-available-var-list', () => ({
@@ -62,6 +65,83 @@ function Fixture({
   )
 }
 
+function RemoteModelChangeFixture({ onChange }: { onChange: (inputs: LLMNodeType) => void }) {
+  const [inputs, setInputs] = useState<LLMNodeType>({
+    type: BlockEnum.LLM,
+    title: 'LLM',
+    desc: '',
+    model: {
+      provider: 'openai',
+      name: 'completion-model',
+      mode: 'completion',
+      completion_params: {},
+    },
+    prompt_template: { text: 'Completion instruction', edition_type: EditionType.basic },
+    context: { enabled: false, variable_selector: [] },
+    vision: { enabled: false },
+  })
+  const isChatModel = inputs.model.mode === 'chat'
+  const inputManager = useLLMInputManager({
+    inputs,
+    isChatModel,
+    doSetInputs: (nextInputs) => {
+      onChange(nextInputs)
+      setInputs(nextInputs)
+    },
+  })
+  const promptConfig = useLLMPromptConfig({
+    inputs,
+    inputRef: inputManager.inputRef,
+    setInputs: inputManager.setInputs,
+    isChatModel,
+    isChatMode: true,
+  })
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          setInputs({
+            ...inputs,
+            model: { ...inputs.model, name: 'chat-model', mode: 'chat' },
+            prompt_template: initialPrompts.map(({ role, text }) => ({ role, text })),
+          })
+        }
+      >
+        Receive remote Chat model
+      </button>
+      <output aria-label="Model mode">{inputs.model.mode}</output>
+      <ConfigPrompt
+        readOnly={false}
+        nodeId="llm"
+        filterVar={promptConfig.filterVar}
+        isChatModel={isChatModel}
+        isChatApp
+        payload={inputs.prompt_template}
+        onChange={promptConfig.handlePromptChange}
+        isShowContext={false}
+        hasSetBlockStatus={promptConfig.hasSetBlockStatus}
+        handleAddVariable={promptConfig.handleAddVariable}
+        modelConfig={inputs.model}
+      />
+    </>
+  )
+}
+
+it('retains a remote model change without writing back its default prompts', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn<(inputs: LLMNodeType) => void>()
+  renderWorkflowComponent(<RemoteModelChangeFixture onChange={onChange} />)
+
+  await user.click(screen.getByRole('button', { name: 'Receive remote Chat model' }))
+
+  expect(screen.getByRole('status', { name: 'Model mode' })).toHaveTextContent('chat')
+  expect(onChange).not.toHaveBeenCalled()
+  expect(
+    screen.getAllByRole('textbox').map((editor) => (editor as HTMLTextAreaElement).value),
+  ).toEqual(initialPrompts.map((prompt) => prompt.text))
+})
+
 it('reorders messages without moving past the leading system prompt', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
@@ -89,22 +169,28 @@ it('reorders messages without moving past the leading system prompt', async () =
   expect(screen.getAllByRole('button', { pressed: false })[1]).toHaveFocus()
 })
 
-it('persists unique IDs for default prompts once and retains them when sorting', async () => {
+it('only writes default prompts without IDs after completing a reorder', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn<(items: PromptItem | PromptItem[]) => void>()
   const initial = initialPrompts.map((item) => ({ role: item.role, text: item.text }))
   renderWorkflowComponent(<Fixture onChange={onChange} initial={initial} />)
-  expect(onChange).toHaveBeenCalledTimes(1)
-  const initialized = onChange.mock.calls[0]![0] as PromptItem[]
-  expect(initialized).toEqual(initial.map((item) => ({ ...item, id: expect.any(String) })))
-  expect(new Set(initialized.map((item) => item.id)).size).toBe(initial.length)
+  expect(onChange).not.toHaveBeenCalled()
 
   const handle = screen.getAllByRole('button', { pressed: false })[0]!
   for (let index = 0; index < 10 && document.activeElement !== handle; index++) await user.tab()
   expect(handle).toHaveFocus()
   await user.keyboard('{Enter}{ArrowDown}{Escape}')
-  expect(onChange).toHaveBeenCalledTimes(1)
+  expect(onChange).not.toHaveBeenCalled()
   await user.keyboard('{Enter}{ArrowDown}{Enter}')
+  expect(onChange).toHaveBeenCalledExactlyOnceWith(
+    [initial[0], initial[2], initial[1]].map((prompt) => ({ ...prompt, id: expect.any(String) })),
+  )
+  const reordered = onChange.mock.lastCall![0] as PromptItem[]
+  expect(new Set(reordered.map((prompt) => prompt.id)).size).toBe(initial.length)
+  expect(
+    screen.getAllByRole('textbox').map((editor) => (editor as HTMLTextAreaElement).value),
+  ).toEqual(['System instruction', 'Assistant answer', 'User question'])
+  await user.keyboard('{Enter}{ArrowUp}{Enter}')
   expect(onChange).toHaveBeenCalledTimes(2)
-  expect(onChange).toHaveBeenLastCalledWith([initialized[0], initialized[2], initialized[1]])
+  expect(onChange).toHaveBeenLastCalledWith([reordered[0], reordered[2], reordered[1]])
 })

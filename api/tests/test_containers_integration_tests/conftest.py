@@ -102,6 +102,9 @@ class DifyTestContainers:
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
+            # This per-worker database is discarded after the session. Keep its
+            # data in bounded tmpfs to reduce I/O from full-schema TRUNCATE cleanup.
+            tmpfs={"/var/lib/postgresql/data": "rw,size=2g"},
         ).with_network(self.network)
         self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
         self.postgres.start()

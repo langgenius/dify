@@ -104,7 +104,7 @@ import {
   zWebAppAuthSearchForWhilteListCandidatesResponse,
   zWebAppAuthUpdateWebAppWhitelistSubjectsBody,
   zWebAppAuthUpdateWebAppWhitelistSubjectsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const listAppInstanceSummaries = oc
   .route({

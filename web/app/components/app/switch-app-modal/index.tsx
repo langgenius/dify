@@ -21,6 +21,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,7 +29,6 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -43,7 +43,7 @@ type SwitchAppModalProps = {
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -63,11 +63,11 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const appIconType = zIconType.safeParse(appDetail.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon ?? '' }
+      ? { type: 'image' as const, url: appDetail.icon_url ?? '', fileId: appDetail.icon ?? '' }
       : {
           type: 'emoji' as const,
           icon: appDetail.icon ?? '',
@@ -169,17 +169,21 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => {
-                  setShowAppIconPicker(true)
-                }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
+              <button
+                type="button"
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={() => setShowIconPicker(true)}
+              >
+                <AppIcon
+                  decorative
+                  size="large"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                />
+              </button>
               <Input
                 id={nameInputId}
                 value={name}
@@ -188,20 +192,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
                 className="h-10 grow"
               />
             </div>
-            {showAppIconPicker && (
-              <AppIconPicker
-                open={showAppIconPicker}
-                initialEmoji={
-                  appIcon.type === 'emoji'
-                    ? { icon: appIcon.icon, background: appIcon.background }
-                    : undefined
-                }
-                onOpenChange={setShowAppIconPicker}
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                }}
-              />
-            )}
+            <IconPickerDialog
+              open={showIconPicker}
+              defaultValue={appIcon}
+              onOpenChange={setShowIconPicker}
+              onConfirm={(payload) => {
+                setAppIcon(payload)
+              }}
+            />
           </div>
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">

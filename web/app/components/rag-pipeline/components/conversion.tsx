@@ -25,7 +25,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { datasetId } = useParams()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const { data: currentUserId } = useSuspenseQuery({

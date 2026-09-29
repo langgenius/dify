@@ -37,7 +37,7 @@ type RowMenuProps = {
 }
 
 const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)

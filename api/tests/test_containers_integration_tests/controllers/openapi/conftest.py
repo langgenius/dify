@@ -9,11 +9,12 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password

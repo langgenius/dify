@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from http import HTTPStatus
+from uuid import UUID
+
 from flask_restx import Resource
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
-from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._models import (
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
+    AppDslImportResponse,
+    Hint,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
@@ -18,13 +27,27 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope
+from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.app_dsl_service import AppDslService, Import
-from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.app_dsl_service import AppDslService
+from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+
+
+def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
+    hints: list[Hint] = []
+    if result.status == ImportStatus.PENDING:
+        hints.append(
+            Hint(
+                summary="Confirm the pending import",
+                op=op_of(AppDslImportConfirmApi.post),
+                input={"workspace_id": workspace_id, "import_id": result.id},
+            )
+        )
+    return AppDslImportResponse(**result.model_dump(), hints=hints)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -42,6 +65,24 @@ class AppDslImportApi(Resource):
     """
 
     @endpoint(
+        account_context=True,
+        op="console_app.dsl.import",
+        kind=Kind.OBJECT,
+        summary="Import an app from DSL text or URL",
+        examples=(
+            Example(
+                title="Import an app from inline YAML",
+                input={"mode": "yaml-content", "yaml_content": "<yaml text of the app DSL>"},
+            ),
+            Example(
+                title="Import an app from a URL",
+                input={"mode": "yaml-url", "yaml_url": "https://example.com/apps/release-summary.yml"},
+            ),
+            Example(
+                title="Overwrite an existing workflow app from YAML",
+                input={"mode": "yaml-content", "yaml_content": "<yaml text of the app DSL>", "app_id": "<app_id>"},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -51,43 +92,27 @@ class AppDslImportApi(Resource):
         ),
         body=AppDslImportPayload,
         returns=(
-            (200, Import, "Import completed"),
-            (202, Import, "Import pending confirmation"),
-            (400, Import, "Import failed"),
+            (HTTPStatus.OK, AppDslImportResponse, "Import completed"),
+            (HTTPStatus.ACCEPTED, AppDslImportResponse, "Import pending confirmation"),
+            (HTTPStatus.BAD_REQUEST, AppDslImportResponse, "Import failed"),
         ),
     )
-    def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
-        account = ctx.account
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
+        try:
+            result = application_services().apps.imports.import_app(
+                ctx, AppImportParams.model_validate(body.model_dump())
+            )
+        except NoPermissionError as exc:
+            raise Forbidden(str(exc)) from exc
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            service = AppDslService(session)
-            try:
-                result = service.import_app(
-                    account=account,
-                    import_mode=body.mode,
-                    yaml_content=body.yaml_content,
-                    yaml_url=body.yaml_url,
-                    name=body.name,
-                    description=body.description,
-                    icon_type=body.icon_type,
-                    icon=body.icon,
-                    icon_background=body.icon_background,
-                    app_id=body.app_id,
-                )
-            except NoPermissionError as exc:
-                raise Forbidden(str(exc)) from exc
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
-
+        response = _import_response(result, workspace_id=workspace_id)
         match result.status:
             case ImportStatus.FAILED:
-                return result, 400
+                return response, HTTPStatus.BAD_REQUEST
             case ImportStatus.PENDING:
-                return result, 202
+                return response, HTTPStatus.ACCEPTED
             case _:
-                return result, 200
+                return response, HTTPStatus.OK
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>:confirm")
@@ -103,6 +128,11 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
+        account_context=True,
+        op="console_app.dsl.import_confirm",
+        kind=Kind.OBJECT,
+        summary="Confirm a pending DSL import",
+        examples=(Example(title="Confirm an import that is pending confirmation", input={"import_id": "<import_id>"}),),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -110,25 +140,17 @@ class AppDslImportConfirmApi(Resource):
             CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
-        returns=((200, Import, "Import confirmed"), (400, Import, "Import failed")),
+        returns=((HTTPStatus.OK, Import, "Import confirmed"), (HTTPStatus.BAD_REQUEST, Import, "Import failed")),
     )
-    def post(self, ctx: Context, workspace_id: str, import_id: str):
-        account = ctx.account
-
-        with Session(db.engine, expire_on_commit=False) as session:
-            service = AppDslService(session)
-            try:
-                result = service.confirm_import(import_id=import_id, account=account)
-            except NoPermissionError as exc:
-                raise Forbidden(str(exc)) from exc
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
+    def post(self, ctx: RequestContext, workspace_id: str, import_id: str):
+        try:
+            result = application_services().apps.imports.confirm_import(ctx, import_id)
+        except NoPermissionError as exc:
+            raise Forbidden(str(exc)) from exc
 
         if result.status == ImportStatus.FAILED:
-            return result, 400
-        return result, 200
+            return result, HTTPStatus.BAD_REQUEST
+        return result, HTTPStatus.OK
 
 
 @openapi_ns.route("/apps/<string:app_id>/dsl")
@@ -145,6 +167,16 @@ class AppDslExportApi(Resource):
     """
 
     @endpoint(
+        op="console_app.dsl.export",
+        kind=Kind.OBJECT,
+        summary="Export app DSL as YAML text inside a JSON object",
+        examples=(
+            Example(title="Export the current draft as YAML", input={"app_id": "<app_id>"}),
+            Example(
+                title="Export a published version including secrets",
+                input={"app_id": "<app_id>", "workflow_id": "<workflow_id>", "include_secret": True},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
@@ -180,6 +212,11 @@ class AppDslCheckDependenciesApi(Resource):
     """
 
     @endpoint(
+        account_context=True,
+        op="console_app.dependencies.check",
+        kind=Kind.OBJECT,
+        summary="Check plugin dependencies of an app",
+        examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
@@ -188,11 +225,9 @@ class AppDslCheckDependenciesApi(Resource):
             CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
-        returns=(200, CheckDependenciesResult, "Dependencies checked"),
+        returns=(HTTPStatus.OK, CheckDependenciesResult, "Dependencies checked"),
     )
-    def get(self, ctx: Context, app_id: str):
-        with Session(db.engine, expire_on_commit=False) as session:
-            service = AppDslService(session)
-            result = service.check_dependencies(app_model=ctx.app)
+    def get(self, ctx: RequestContext, app_id: str):
+        result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
 
-        return result, 200
+        return result, HTTPStatus.OK

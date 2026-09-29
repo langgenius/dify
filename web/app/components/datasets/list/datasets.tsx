@@ -38,7 +38,7 @@ const Datasets = ({
   stepByStepTourActionMenuOpen,
   stepByStepTourCardTarget,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)

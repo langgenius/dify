@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightSFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
@@ -11,7 +12,6 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
@@ -75,18 +75,17 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
 }
 
 const varTypeToInputVarType = (type: VarType) => {
+  const structuredVariableTypes: readonly VarType[] = [
+    VarType.object,
+    VarType.array,
+    VarType.arrayNumber,
+    VarType.arrayString,
+    VarType.arrayObject,
+  ]
+
   if (type === VarType.number) return InputVarType.number
   if (type === VarType.boolean) return InputVarType.checkbox
-  if (
-    [
-      VarType.object,
-      VarType.array,
-      VarType.arrayNumber,
-      VarType.arrayString,
-      VarType.arrayObject,
-    ].includes(type)
-  )
-    return InputVarType.json
+  if (structuredVariableTypes.includes(type)) return InputVarType.json
   if (type === VarType.file) return InputVarType.singleFile
   if (type === VarType.arrayFile) return InputVarType.multiFiles
 
@@ -130,7 +129,7 @@ const EmailSenderContent = ({
   nodesOutputVars = [],
   availableNodes = [],
 }: EmailSenderContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -262,13 +261,15 @@ const EmailSenderContent = ({
       <>
         <div className="space-y-2">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.done`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.done`], {
+              ns: 'workflowHumanInput',
+            })}
           </DialogTitle>
           {debugEnabled && (
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugDone`]}
-                ns="workflow"
+                ns="workflowHumanInput"
                 components={{
                   email: <span className="system-md-semibold text-text-secondary"></span>,
                 }}
@@ -280,7 +281,7 @@ const EmailSenderContent = ({
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone2`]}
-                ns="workflow"
+                ns="workflowHumanInput"
                 components={{
                   team: <span className="system-md-medium text-text-secondary"></span>,
                 }}
@@ -291,7 +292,7 @@ const EmailSenderContent = ({
           {!debugEnabled && onlySpecificUsers && (
             <div className="system-md-regular text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           )}
@@ -299,7 +300,7 @@ const EmailSenderContent = ({
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone1`]}
-                ns="workflow"
+                ns="workflowHumanInput"
                 components={{
                   team: <span className="system-md-medium text-text-secondary"></span>,
                 }}
@@ -345,19 +346,21 @@ const EmailSenderContent = ({
       />
       <div className="space-y-1 pr-8">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], {
+            ns: 'workflowHumanInput',
+          })}
         </DialogTitle>
         {debugEnabled && (
           <>
             <div className="system-sm-regular text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
             <div className="system-sm-regular text-text-secondary">
               <Trans
                 i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`]}
-                ns="workflow"
+                ns="workflowHumanInput"
                 components={{
                   email: <span className="system-sm-semibold text-text-primary"></span>,
                 }}
@@ -370,7 +373,7 @@ const EmailSenderContent = ({
           <div className="system-sm-regular text-text-secondary">
             <Trans
               i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`]}
-              ns="workflow"
+              ns="workflowHumanInput"
               components={{
                 team: <span className="system-sm-semibold text-text-primary"></span>,
               }}
@@ -381,7 +384,7 @@ const EmailSenderContent = ({
         {!debugEnabled && onlySpecificUsers && (
           <div className="system-sm-regular text-text-secondary">
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`], {
-              ns: 'workflow',
+              ns: 'workflowHumanInput',
             })}
           </div>
         )}
@@ -389,7 +392,7 @@ const EmailSenderContent = ({
           <div className="system-sm-regular text-text-secondary">
             <Trans
               i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`]}
-              ns="workflow"
+              ns="workflowHumanInput"
               components={{
                 team: <span className="system-sm-semibold text-text-primary"></span>,
               }}
@@ -414,7 +417,7 @@ const EmailSenderContent = ({
           <div className="mt-1 system-xs-regular text-text-tertiary">
             <Trans
               i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.tip`]}
-              ns="workflow"
+              ns="workflowHumanInput"
               components={{
                 strong: (
                   <button
@@ -432,7 +435,7 @@ const EmailSenderContent = ({
       {generatedInputs.length > 0 && (
         <>
           <div>
-            <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
+            <Separator className="mt-4 mb-2 w-12" />
           </div>
           <div className="py-2">
             <button
@@ -442,7 +445,9 @@ const EmailSenderContent = ({
               onClick={() => setCollapsed(!collapsed)}
             >
               <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">
-                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.vars`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.vars`], {
+                  ns: 'workflowHumanInput',
+                })}
               </div>
               <RiArrowRightSFill
                 className={cn(
@@ -454,7 +459,7 @@ const EmailSenderContent = ({
             </button>
             <div className="system-xs-regular text-text-tertiary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.varsTip`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
             {!collapsed && (
@@ -481,7 +486,9 @@ const EmailSenderContent = ({
           variant="primary"
           onClick={handleConfirm}
         >
-          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], {
+            ns: 'workflowHumanInput',
+          })}
         </Button>
         <Button className="w-18" onClick={() => onOpenChange(false)}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

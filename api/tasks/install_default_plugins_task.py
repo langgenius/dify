@@ -8,7 +8,7 @@ from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 

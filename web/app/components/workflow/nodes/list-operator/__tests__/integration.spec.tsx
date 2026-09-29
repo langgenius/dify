@@ -255,7 +255,7 @@ describe('list-operator path', () => {
 
       await user.click(screen.getByText('pick-var'))
       await user.click(screen.getByText('filter-condition'))
-      await user.click(screen.getByText('workflow.nodes.listFilter.asc'))
+      await user.click(screen.getByText('workflowLogic.nodes.listFilter.asc'))
 
       expect(screen.getByText('result:Array[number]')).toBeInTheDocument()
       expect(screen.getByText('first_record:number')).toBeInTheDocument()
@@ -279,7 +279,7 @@ describe('list-operator path', () => {
 
       expect(screen.queryByText('filter-condition')).not.toBeInTheDocument()
       expect(screen.queryByDisplayValue('1')).not.toBeInTheDocument()
-      expect(screen.queryByText('workflow.nodes.listFilter.asc')).not.toBeInTheDocument()
+      expect(screen.queryByText('workflowLogic.nodes.listFilter.asc')).not.toBeInTheDocument()
 
       mockUseConfig.mockReturnValueOnce(
         createConfigResult({
@@ -292,7 +292,7 @@ describe('list-operator path', () => {
 
       rerender(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
 
-      expect(screen.getByText('workflow.nodes.listFilter.asc')).toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.listFilter.asc')).toBeInTheDocument()
       expect(screen.queryByText('common.placeholder.select')).not.toBeInTheDocument()
     })
   })

@@ -45,6 +45,8 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from factories import variable_factory
 from fields.base import ResponseModel
@@ -57,7 +59,6 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import login_required
@@ -66,10 +67,10 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_service import DatasetService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
@@ -151,6 +152,14 @@ class RagPipelineOpaqueResponse(RootModel[Any]):
     root: Any
 
 
+class RagPipelineDatasourceProviderResponse(PluginDatasourceProviderEntity, ResponseModel):
+    pass
+
+
+class RagPipelineDatasourceListResponse(RootModel[list[RagPipelineDatasourceProviderResponse]]):
+    pass
+
+
 class RagPipelineStepParametersResponse(ResponseModel):
     variables: Any
 
@@ -175,6 +184,8 @@ register_response_schema_models(
     console_ns,
     DefaultBlockConfigResponse,
     DefaultBlockConfigsResponse,
+    RagPipelineDatasourceListResponse,
+    RagPipelineDatasourceProviderResponse,
     RagPipelineOpaqueResponse,
     RagPipelineStepParametersResponse,
     RagPipelineWorkflowPublishResponse,
@@ -293,7 +304,13 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -328,7 +345,13 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_loop(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -364,6 +387,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -399,6 +423,7 @@ class PublishedRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -440,6 +465,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
                     datasource_type=req_data.datasource_type,
                     is_published=False,
                     credential_id=req_data.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -473,6 +499,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
                     datasource_type=req_data.datasource_type,
                     is_published=False,
                     credential_id=req_data.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -1000,13 +1027,16 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
 
 @console_ns.route("/rag/pipelines/datasource-plugins")
 class DatasourceListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineDatasourceListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
-        return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id))
+        providers = RagPipelineManageService.list_rag_pipeline_datasources(
+            current_tenant_id, datasource_providers=application_services().data_sources.providers
+        )
+        return RagPipelineDatasourceListResponse.model_validate(providers, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run")

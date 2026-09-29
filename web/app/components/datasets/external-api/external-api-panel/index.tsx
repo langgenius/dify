@@ -20,7 +20,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   canManageExternalKnowledgeApi,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const queryClient = useQueryClient()

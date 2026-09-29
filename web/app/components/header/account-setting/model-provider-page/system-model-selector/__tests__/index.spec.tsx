@@ -25,6 +25,7 @@ vi.mock('react-i18next', async () => {
     'modelProvider.ttsModel.tip': 'TTS model tip',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
+    'operation.reset': 'Reset',
     loading: 'Loading',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',
   })
@@ -64,37 +65,64 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks', () => ({
-  useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
-    defaultModel || {
-      model: '',
-      provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } },
-    },
-    vi.fn(),
-  ],
-  useUpdateModelList: () => mockUpdateModelList,
-  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
-}))
+vi.mock('../../hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks')>()
+  return {
+    ...actual,
+    useUpdateModelList: () => mockUpdateModelList,
+    useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
+  }
+})
 
-vi.mock('@/service/common', () => ({
-  updateDefaultModel: mockUpdateDefaultModel,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleClient: {
+      workspaces: {
+        current: {
+          defaultModel: { post: mockUpdateDefaultModel },
+        },
+      },
+    },
+  }
+})
 
 vi.mock('../../model-selector', () => ({
   ModelSelector: (props: {
     hideProviderSettingsFooter?: boolean
     onConfigureEmptyState?: () => void
     showModelMeta?: boolean
+    value?: { model: string; provider: string }
+    onClear?: () => void
+    clearLabel?: string
+    disabled?: boolean
     onValueChange: (model: { model: string; provider: string }) => void
   }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}>
+        <output>{props.value?.model ?? 'No model selected'}</output>
+        {props.value && props.onClear && (
+          <button
+            type="button"
+            aria-label={props.clearLabel}
+            disabled={props.disabled}
+            onClick={props.onClear}
+          >
+            Clear
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}
+        >
           Mock Model Selector
         </button>
         {props.onConfigureEmptyState && (
-          <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>
+          <button type="button" onClick={props.onConfigureEmptyState}>
+            Mock Configure Empty State
+          </button>
         )}
       </div>
     )
@@ -319,6 +347,116 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['System Reasoning Model', ModelTypeEnum.textGeneration, 'textGenerationDefaultModel'],
+    ['Embedding Model', ModelTypeEnum.textEmbedding, 'embeddingsDefaultModel'],
+    ['Rerank Model', ModelTypeEnum.rerank, 'rerankDefaultModel'],
+    ['Speech to Text Model', ModelTypeEnum.speech2text, 'speech2textDefaultModel'],
+    ['TTS Model', ModelTypeEnum.tts, 'ttsDefaultModel'],
+  ] as const)(
+    'saves a reset %s as null without changing other defaults',
+    async (label, modelType, prop) => {
+      const user = userEvent.setup()
+      render(
+        <SystemModel {...defaultProps} {...{ [prop]: { ...mockModel, model_type: modelType } }} />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /system model settings/i }))
+      await user.click(screen.getByRole('button', { name: `Reset ${label}` }))
+
+      expect(screen.queryByRole('button', { name: `Reset ${label}` })).not.toBeInTheDocument()
+      expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(mockUpdateDefaultModel).toHaveBeenCalledWith({
+          body: {
+            model_settings: [
+              {
+                model_type: ModelTypeEnum.textGeneration,
+                provider: modelType === ModelTypeEnum.textGeneration ? null : 'openai',
+                model: modelType === ModelTypeEnum.textGeneration ? null : 'gpt-4',
+              },
+              { model_type: ModelTypeEnum.textEmbedding, provider: null, model: null },
+              { model_type: ModelTypeEnum.rerank, provider: null, model: null },
+              { model_type: ModelTypeEnum.speech2text, provider: null, model: null },
+              { model_type: ModelTypeEnum.tts, provider: null, model: null },
+            ],
+          },
+        })
+      })
+    },
+  )
+
+  it('saves a replacement selected after resetting a model', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+    await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await user.click(screen.getAllByRole('button', { name: 'Mock Model Selector' })[0]!)
+    expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(mockUpdateDefaultModel).toHaveBeenCalledWith({
+        body: {
+          model_settings: expect.arrayContaining([
+            { model_type: ModelTypeEnum.textGeneration, provider: 'test', model: 'test' },
+          ]),
+        },
+      })
+    })
+  })
+
+  it('restores the saved model when a reset is cancelled and the dialog is reopened', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+    await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(await screen.findByText('gpt-4')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeEnabled()
+    expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
+  })
+
+  it('keeps a saved reset when reopened before refreshed defaults arrive', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+    await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(
+      screen.queryByRole('button', { name: 'Reset System Reasoning Model' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.getAllByText('No model selected')).toHaveLength(5)
+  })
+
+  it('hides reset for unconfigured model types', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeEnabled()
+    for (const label of ['Embedding Model', 'Rerank Model', 'Speech to Text Model', 'TTS Model'])
+      expect(screen.queryByRole('button', { name: `Reset ${label}` })).not.toBeInTheDocument()
+  })
+
   it('should disable save without model config permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
@@ -326,6 +464,9 @@ describe('SystemModel', () => {
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: 'Reset System Reasoning Model' }),
+      ).not.toBeInTheDocument()
     })
   })
 

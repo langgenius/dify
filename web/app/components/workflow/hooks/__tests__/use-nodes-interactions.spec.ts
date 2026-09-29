@@ -1205,7 +1205,7 @@ describe('useNodesInteractions', () => {
     })
 
     const pasteNodeIntoContainer = async (
-      containerType: BlockEnum.Iteration | BlockEnum.Loop,
+      containerType: typeof BlockEnum.Iteration | typeof BlockEnum.Loop,
       nodeType: BlockEnum,
     ) => {
       runtimeNodesMetaDataMap.value = {

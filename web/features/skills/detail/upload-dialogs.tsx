@@ -100,7 +100,7 @@ function UploadReviewRow({
   item: SkillUploadReviewItem
   onDecision: (id: string, decision: SkillUploadDecision) => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const resolved = item.kind === 'ready' || (item.decision && item.decision !== 'skip')
   const actions =
     !item.decision && item.kind === 'conflict' ? (
@@ -149,8 +149,8 @@ export function SkillUploadReviewDialog({
   onUpload: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const skippedItems = items.filter(isUploadReviewItemSkipped)
   const candidateItems = items.filter((item) => !isUploadReviewItemSkipped(item))
   const unresolvedCount = candidateItems.filter((item) => !isUploadReviewResolved(item)).length
@@ -243,8 +243,8 @@ export function SkillUploadFailuresDialog({
   onRetryItem: (id: string) => void
   open: boolean
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const failedItems = items.filter((item) => item.status === 'failed')
   const retryableItems = failedItems.filter((item) => item.failureKind !== 'conflict')
   return (

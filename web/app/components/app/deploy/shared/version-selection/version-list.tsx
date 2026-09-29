@@ -54,8 +54,8 @@ const VersionChoice = memo(
     disabled?: boolean
     onSelect: (version: DeploymentVersion) => void
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['workflow'])
     const { formatTimeFromNow } = useFormatTimeFromNow()
 
     return (
@@ -140,8 +140,8 @@ export function VersionList({
   publishHref?: string
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t } = useTranslation(['deployments'])
   const versions = useAtomValue(appWorkflowVersionsAtom)
   const versionsError = useAtomValue(appWorkflowVersionsErrorAtom)
   const fetchNextPage = useAtomValue(appWorkflowVersionsFetchNextPageAtom)

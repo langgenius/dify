@@ -63,7 +63,7 @@ const getErrorMessage = async (error: unknown) => {
 }
 
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'dataset'])
   const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)

@@ -1,18 +1,16 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PreviewPanel } from '../preview-panel'
 
-vi.mock('@/app/components/base/float-right-container', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="float-container">{children}</div>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
-  default: ({ text }: { text: string }) => <span data-testid="badge">{text}</span>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="badge">{children}</span>
+  ),
 }))
 
 vi.mock('@/app/components/base/skeleton', () => ({
@@ -66,15 +64,6 @@ vi.mock('../../../../preview/container', () => ({
   ),
 }))
 
-vi.mock('../../../../preview/header', () => ({
-  PreviewHeader: ({ children, title }: { children: React.ReactNode; title: string }) => (
-    <div data-testid="preview-header">
-      {title}
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/config', () => ({
   FULL_DOC_PREVIEW_LENGTH: 3,
 }))
@@ -82,6 +71,8 @@ vi.mock('@/config', () => ({
 describe('PreviewPanel', () => {
   const defaultProps = {
     isMobile: false,
+    isOpen: false,
+    onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
     parentChildConfig: { chunkForContext: 'paragraph' } as ParentChildConfig,
@@ -98,9 +89,64 @@ describe('PreviewPanel', () => {
 
   it('should render preview header with title', () => {
     render(<PreviewPanel {...defaultProps} />)
-    expect(screen.getByTestId('preview-header')).toHaveTextContent(
-      'datasetCreation.stepTwo.preview',
+    expect(
+      screen.getByRole('heading', { name: 'datasetCreation.stepTwo.preview', level: 2 }),
+    ).toHaveTextContent('datasetCreation.stepTwo.preview')
+  })
+
+  it('announces preview loading and completed chunk count through a persistent status', () => {
+    const { rerender } = render(<PreviewPanel {...defaultProps} isPending />)
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    rerender(
+      <PreviewPanel
+        {...defaultProps}
+        estimate={{ total_segments: 3, preview: [] } as unknown as FileIndexingEstimateResponse}
+      />,
     )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'datasetCreation.stepTwo.previewChunkCount',
+    )
+  })
+
+  it('allows mobile preview to close, restore focus, and reopen', async () => {
+    const user = userEvent.setup()
+    const MobilePreview = () => {
+      const [isOpen, setIsOpen] = useState(false)
+      const triggerRef = useRef<HTMLButtonElement>(null)
+
+      return (
+        <>
+          <button ref={triggerRef} type="button" onClick={() => setIsOpen(true)}>
+            Preview chunks
+          </button>
+          <PreviewPanel
+            {...defaultProps}
+            isMobile
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            finalFocus={triggerRef}
+          />
+        </>
+      )
+    }
+
+    render(<MobilePreview />)
+    const trigger = screen.getByRole('button', { name: 'Preview chunks' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'datasetCreation.stepTwo.preview' })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'datasetCreation.stepTwo.preview' }),
+    ).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it('should render document picker', () => {

@@ -12,8 +12,8 @@ This file owns the package boundary. Read the matching contract guide below dire
 - Prefer `@base-ui/react` when it owns the required headless behavior. Style primitives with `cva`,
   `cn`, and Dify design tokens. Keep one primitive per `src/<name>/` folder with optional colocated
   stories and tests.
-- Prefer Base UI data attributes and CSS variables for visual states. Do not mirror primitive state
-  in React solely to add classes.
+- Prefer Base UI data attributes for state styling and CSS variables for exposed dynamic values.
+  Follow [Styling] for state callbacks; do not mirror primitive state in React solely to add classes.
 - When an upstream API or selector contract is unclear, read the current official Base UI
   documentation and installed `@base-ui/react` declarations before coding.
 
@@ -26,7 +26,7 @@ This file owns the package boundary. Read the matching contract guide below dire
 - Form structure, labels, and value ownership: [Forms]
 - Picker choice and typed values: [Selection]
 - Portals, presence, layering, and floating-surface semantics: [Overlays]
-- Tailwind integration and radius mapping: [Styling]
+- State styling, callbacks, composition, Tailwind integration, and border radius: [Styling]
 - Package test ownership and setup: [Testing and development]
 
 A component needs a local README only when it owns a substantial Dify-specific contract that its

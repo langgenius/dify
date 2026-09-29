@@ -58,7 +58,7 @@ function Tool({
   onSelectMultiple,
   selectedTools,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'workflow'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat

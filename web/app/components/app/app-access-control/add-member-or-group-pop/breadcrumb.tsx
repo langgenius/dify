@@ -15,7 +15,7 @@ type SelectedGroupsBreadcrumbProps = {
 }
 
 export function SelectedGroupsBreadcrumb({ groups, onChange }: SelectedGroupsBreadcrumbProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const handleBreadcrumbClick = (index: number) => {
     onChange(groups.slice(0, index + 1))

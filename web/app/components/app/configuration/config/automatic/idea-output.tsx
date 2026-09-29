@@ -4,7 +4,6 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 const i18nPrefix = 'generate'
 
@@ -14,27 +13,27 @@ type Props = Readonly<{
 }>
 
 const IdeaOutput: FC<Props> = ({ value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appGeneration'])
 
   return (
     <Collapsible className="mt-4 text-[0px]">
       <CollapsibleTrigger className="group mb-1.5 flex cursor-pointer flex-wrap items-center text-left text-sm/5 font-medium text-text-primary focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden">
         <span className="mr-1 system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
+          {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appGeneration' })}
         </span>
         <span className="system-xs-regular text-text-tertiary">
-          ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appDebug' })})
+          ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appGeneration' })})
         </span>
-        <ArrowDownRoundFill
+        <span
           aria-hidden
-          className="size relative top-px -rotate-90 text-text-quaternary group-data-panel-open:top-0 group-data-panel-open:rotate-0"
+          className="size relative top-px i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 -rotate-90 text-text-quaternary group-data-panel-open:top-0 group-data-panel-open:rotate-0"
         />
       </CollapsibleTrigger>
       <CollapsiblePanel>
         <Textarea
-          aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
+          aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appGeneration' })}
           className="h-20"
-          placeholder={t(($) => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appDebug' })}
+          placeholder={t(($) => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appGeneration' })}
           value={value}
           onValueChange={(value) => onChange(value)}
         />

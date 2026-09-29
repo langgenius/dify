@@ -8,8 +8,8 @@ import {
   resetFixtureCounters,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '../../../../tool/types'
 import VarReferencePicker from '../var-reference-picker'
 
 const { mockFetchDynamicOptions } = vi.hoisted(() => ({

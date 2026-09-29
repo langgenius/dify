@@ -10,7 +10,7 @@ import { useCreateSnippetMutation } from '@/service/use-snippets'
 import { canCreateAndModifySnippets } from '../utils/permission'
 
 export const useCreateSnippet = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const createSnippetMutation = useCreateSnippetMutation()

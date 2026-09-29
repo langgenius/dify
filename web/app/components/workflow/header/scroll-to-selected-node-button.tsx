@@ -6,7 +6,7 @@ import { useNodes } from 'reactflow'
 import { scrollToWorkflowNode } from '../utils/node-navigation'
 
 const ScrollToSelectedNodeButton: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find((node) => node.data.selected)
 
