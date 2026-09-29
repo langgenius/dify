@@ -1,3 +1,4 @@
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -157,6 +158,85 @@ describe('UpdateDSLModal', () => {
       </EventEmitterProvider>,
     )
   }
+
+  it.each(['import', 'confirmation'] as const)(
+    'does not block a new canvas when an old %s request completes after unmount',
+    async (phase) => {
+      const user = userEvent.setup()
+      let resolveRequest!: (response: Import) => void
+      const request = new Promise<Import>((resolve) => {
+        resolveRequest = resolve
+      })
+      if (phase === 'confirmation') {
+        mockImportDSL.mockResolvedValueOnce({ id: 'import-1', status: DSLImportStatus.PENDING })
+        mockImportDSLConfirm.mockReturnValueOnce(request)
+      } else {
+        mockImportDSL.mockReturnValueOnce(request)
+      }
+      const first = renderModal()
+      await user.upload(
+        screen.getByTestId('dsl-file-input'),
+        new File(['workflow'], 'workflow.ifpkg'),
+      )
+      await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+      if (phase === 'confirmation') {
+        await user.click(await screen.findByRole('button', { name: 'app.newApp.Confirm' }))
+        await waitFor(() => expect(mockImportDSLConfirm).toHaveBeenCalledOnce())
+      } else {
+        await waitFor(() => expect(mockImportDSL).toHaveBeenCalledOnce())
+      }
+      first.unmount()
+      renderModal()
+      mockBeginWorkflowReplacement.mockReturnValue(7)
+
+      await act(async () => {
+        resolveRequest({ id: 'import-1', status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+      })
+
+      expect(mockBeginWorkflowReplacement).not.toHaveBeenCalled()
+      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockEmit).not.toHaveBeenCalled()
+      expect(defaultProps.onImport).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['import', 'confirmation'] as const)(
+    'keeps %s submission disabled until its committed draft is ready',
+    async (phase) => {
+      const user = userEvent.setup()
+      let resolveDraft!: (draft: FetchAppWorkflowDraftResponse) => void
+      mockFetchWorkflowDraft.mockReturnValueOnce(
+        new Promise<FetchAppWorkflowDraftResponse>((resolve) => {
+          resolveDraft = resolve
+        }),
+      )
+      if (phase === 'confirmation')
+        mockImportDSL.mockResolvedValueOnce({ id: 'import-1', status: DSLImportStatus.PENDING })
+      renderModal()
+      await user.upload(
+        screen.getByTestId('dsl-file-input'),
+        new File(['workflow'], 'workflow.ifpkg'),
+      )
+      await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+      const button =
+        phase === 'confirmation'
+          ? await screen.findByRole('button', { name: 'app.newApp.Confirm' })
+          : screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })
+      if (phase === 'confirmation') await user.click(button)
+      await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1'))
+
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+      await user.click(button)
+      expect(mockImportDSL).toHaveBeenCalledOnce()
+      expect(mockImportDSLConfirm).toHaveBeenCalledTimes(phase === 'confirmation' ? 1 : 0)
+      expect(defaultProps.onImport).not.toHaveBeenCalled()
+
+      await act(async () => resolveDraft(baseDraftResponse))
+
+      await waitFor(() => expect(defaultProps.onImport).toHaveBeenCalledOnce())
+      expect(mockEmit).toHaveBeenCalledOnce()
+    },
+  )
 
   it('does not replace the active graph when an old import completes after its session unmounts', async () => {
     let resolveDraft!: (value: unknown) => void

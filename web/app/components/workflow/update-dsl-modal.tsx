@@ -62,32 +62,37 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     }),
   )
 
-  const prepareImport = async (response: Import): Promise<PreparedImport> => {
-    if (!isImportCompleted(response.status) || !response.app_id) return { response }
-
-    const workflowReplacementToken = collaborationManager.beginWorkflowReplacement(response.app_id)
-    try {
-      const draft = await fetchAppWorkflowDraft(response.app_id)
-      return {
-        response,
-        workflowReplacementToken,
-        preparedEvent: createWorkflowDraftReplacedEvent(
-          response.app_id,
-          draft,
-          getWorkflowDraftGraphForCanvas(draft.graph),
-          draft.last_replacement_id ?? undefined,
-          response.id,
-          workflowReplacementToken ?? undefined,
-        ),
+  const draftPreparationMutation = useMutation({
+    mutationFn: async ({
+      response,
+      workflowReplacementToken,
+    }: {
+      response: Import
+      workflowReplacementToken: number | null
+    }): Promise<PreparedImport> => {
+      try {
+        const draft = await fetchAppWorkflowDraft(appId)
+        return {
+          response,
+          workflowReplacementToken,
+          preparedEvent: createWorkflowDraftReplacedEvent(
+            appId,
+            draft,
+            getWorkflowDraftGraphForCanvas(draft.graph),
+            draft.last_replacement_id ?? undefined,
+            response.id,
+            workflowReplacementToken ?? undefined,
+          ),
+        }
+      } catch (error) {
+        return {
+          response,
+          workflowReplacementToken,
+          refreshError: await getAppTransferErrorMessage(error),
+        }
       }
-    } catch (error) {
-      return {
-        response,
-        workflowReplacementToken,
-        refreshError: await getAppTransferErrorMessage(error),
-      }
-    }
-  }
+    },
+  })
 
   const dependencyMutation = useMutation({
     mutationFn: async (appId: string): Promise<{ dependencies: Dependency[]; error?: string }> => {
@@ -184,25 +189,36 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     )
   }
 
+  const handleImportSuccess = (response: Import) => {
+    if (!isImportCompleted(response.status) || response.app_id !== appId) {
+      handleImportResponse({ response })
+      return
+    }
+
+    const workflowReplacementToken = collaborationManager.beginWorkflowReplacement(appId)
+    draftPreparationMutation.mutate(
+      { response, workflowReplacementToken },
+      { onSuccess: handleImportResponse },
+    )
+  }
+
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
       try {
         if (file.name.toLowerCase().endsWith('.ifpkg'))
-          return prepareImport(await requestImport({ body: { file, app_id: appId } }))
+          return await requestImport({ body: { file, app_id: appId } })
 
         const content = await file.text()
         if (!content || !validateDSLContent(content, appMode))
           throw new Error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
 
-        return prepareImport(
-          await requestImport({
-            body: {
-              mode: DSLImportMode.YAML_CONTENT,
-              yaml_content: content,
-              app_id: appId,
-            },
-          }),
-        )
+        return await requestImport({
+          body: {
+            mode: DSLImportMode.YAML_CONTENT,
+            yaml_content: content,
+            app_id: appId,
+          },
+        })
       } catch (error) {
         throw new Error(await getAppTransferErrorMessage(error))
       }
@@ -211,21 +227,23 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const confirmImportMutation = useMutation({
     mutationFn: async (importId: string) => {
       try {
-        return prepareImport(await requestConfirmation({ params: { import_id: importId } }))
+        return await requestConfirmation({ params: { import_id: importId } })
       } catch (error) {
         throw new Error(await getAppTransferErrorMessage(error))
       }
     },
   })
-  const pendingImport =
-    importMutation.data?.response.status === 'pending' ? importMutation.data.response : undefined
+  const pendingImport = importMutation.data?.status === 'pending' ? importMutation.data : undefined
   const isImporting =
-    importMutation.isPending || confirmImportMutation.isPending || dependencyMutation.isPending
+    importMutation.isPending ||
+    confirmImportMutation.isPending ||
+    draftPreparationMutation.isPending ||
+    dependencyMutation.isPending
 
   const handleImport: MouseEventHandler = () => {
     if (isImporting || !currentFile) return
     importMutation.mutate(currentFile, {
-      onSuccess: handleImportResponse,
+      onSuccess: handleImportSuccess,
       onError: notifyImportError,
     })
   }
@@ -233,7 +251,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const onUpdateDSLConfirm: MouseEventHandler = () => {
     if (!pendingImport || isImporting) return
     confirmImportMutation.mutate(pendingImport.id, {
-      onSuccess: handleImportResponse,
+      onSuccess: handleImportSuccess,
       onError: notifyImportError,
     })
   }
