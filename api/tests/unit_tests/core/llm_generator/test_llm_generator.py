@@ -736,6 +736,7 @@ class TestLLMGenerator:
             "Test {{#last_run#}} and {{#current#}} and {{#error_message#}}",
             model_config_entity,
             "ideal",
+            session=database,
         )
 
         assert result == {"modified": "prompt"}
@@ -774,7 +775,7 @@ class TestLLMGenerator:
         recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "prompt"}')
 
         result = LLMGenerator.instruction_modify_legacy(
-            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal", session=database
         )
 
         assert result == {"modified": "prompt"}
@@ -994,7 +995,7 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = response
 
         result = LLMGenerator.instruction_modify_legacy(
-            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal", session=database
         )
 
         assert error_fragment in result["error"]
@@ -1015,7 +1016,7 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = model_error
 
         result = LLMGenerator.instruction_modify_legacy(
-            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal", session=database
         )
 
         assert error_fragment.lower() in result["error"].lower()

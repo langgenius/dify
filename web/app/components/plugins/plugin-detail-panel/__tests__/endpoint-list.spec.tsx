@@ -83,6 +83,18 @@ describe('Endpoint management', () => {
     expect(requestedURL.searchParams.get('page_size')).toBe('100')
   })
 
+  it('lets keyboard users reach the URL copy action from the endpoint switch', async () => {
+    const user = userEvent.setup()
+    renderEndpoints()
+    const toggle = await screen.findByRole('switch', { name: 'Endpoint 1' })
+    const copy = screen.getByRole('button', {
+      name: 'common.operation.copy https://api.example.com/public',
+    })
+    toggle.focus()
+    await user.tab({ shift: true })
+    expect(copy).toHaveFocus()
+  })
+
   it('creates through the canonical route and refreshes the list', async () => {
     const user = userEvent.setup()
     endpoints = []
@@ -111,7 +123,9 @@ describe('Endpoint management', () => {
   it('updates through the canonical item route without dropping falsy settings', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
+    )
     await user.clear(screen.getByPlaceholderText('Endpoint Name'))
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -131,7 +145,7 @@ describe('Endpoint management', () => {
   it('keeps enabled state when disabling is cancelled, then follows refetched state after confirm', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('switch'))
+    await user.click(await screen.findByRole('switch', { name: 'Endpoint 1' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
     expect(mutations).toHaveLength(0)
@@ -149,7 +163,9 @@ describe('Endpoint management', () => {
   it('deletes through the canonical route and refreshes the empty state', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.delete Endpoint 1' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
     expect(mutations).toEqual([
@@ -161,7 +177,9 @@ describe('Endpoint management', () => {
     const user = userEvent.setup()
     rejectMutation = true
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
+    )
     await user.clear(screen.getByPlaceholderText('Endpoint Name'))
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -182,7 +200,9 @@ describe('Endpoint management', () => {
       renderEndpoints()
       if (action === 'disable') await user.click(await screen.findByRole('switch'))
       else
-        await user.click(await screen.findByRole('button', { name: `common.operation.${action}` }))
+        await user.click(
+          await screen.findByRole('button', { name: `common.operation.${action} Endpoint 1` }),
+        )
       const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
       const submit = screen.getByRole('button', { name: actionName })
       await user.click(submit)
@@ -219,7 +239,9 @@ describe('Endpoint management', () => {
     rejectMutation = true
     failAfterWrite = true
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
+    )
     await user.clear(screen.getByPlaceholderText('Endpoint Name'))
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Submitted name')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))

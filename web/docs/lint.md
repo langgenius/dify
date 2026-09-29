@@ -18,6 +18,17 @@ vp run -w check:fix
 
 CI and local development use the same root `vite.config.ts` configuration.
 
+The root `check` script delegates to the `check:cached` Vite Task. Formatting, linting,
+and type checking reuse successful results when their tracked inputs are unchanged.
+`CI`, `NODE_ENV`, and `TAILWIND_CANONICAL_CLASSES` are included in the cache key;
+check results never restore files into the working tree. Fix commands remain uncached.
+To force a fresh check, run `vp run -w --no-cache check`.
+
+The TS Common CI job restores the task cache after dependency installation and saves
+it after a successful check. This is separate from the package-manager cache in
+`setup-web`. When evaluating CI performance, compare cache transfer time with the
+time saved in the Vite Task summary.
+
 Reuse successful checks for the same final changes. Repeat or expand checks only when subsequent edits, failures, or unresolved concerns require it.
 
 To narrow formatting and linting, pass paths directly to Vite+. Type checking remains repository-wide:

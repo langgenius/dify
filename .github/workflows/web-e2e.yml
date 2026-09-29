@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
 
       - name: Test Web build synchronization
-        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs
+        run: node --test .github/actions/wait-e2e-web-build/*.test.cjs
 
       - name: Compute build source hash
         id: build-source
@@ -119,24 +119,12 @@ jobs:
         with:
           browser: chromium
 
-      # Install dependencies while core-build runs, then wait only for its artifact.
-      - name: Wait for Web build
-        id: web-build
-        timeout-minutes: 35
-        uses: ./.github/actions/wait-e2e-web-build
-
-      - name: Download Web build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
-          github-token: ${{ github.token }}
-
-      - name: Extract Web build
-        run: tar -xf e2e-web-build.tar -C web
-
+      # The runner prepares the backend while waiting for and downloading the build.
       - name: Run Chromium full shard
         working-directory: ./e2e
-        run: vp run e2e:full -- --shard ${{ matrix.shard }}/3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: vp run e2e:full --download-web-build -- --shard ${{ matrix.shard }}/3
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -183,24 +171,12 @@ jobs:
         with:
           browser: webkit
 
-      # Install dependencies while core-build runs, then wait only for its artifact.
-      - name: Wait for Web build
-        id: web-build
-        timeout-minutes: 35
-        uses: ./.github/actions/wait-e2e-web-build
-
-      - name: Download Web build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
-          github-token: ${{ github.token }}
-
-      - name: Extract Web build
-        run: tar -xf e2e-web-build.tar -C web
-
+      # Keep the same overlap and teardown ownership for the WebKit smoke lane.
       - name: Run WebKit browser smoke
         working-directory: ./e2e
-        run: vp run e2e:full -- --tags '@browser-smoke'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: vp run e2e:full --download-web-build -- --tags '@browser-smoke'
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}

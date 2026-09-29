@@ -101,7 +101,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   )
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
-  const appIconRef = useRef<HTMLDivElement>(null)
   const urlBlurGenerationRef = useRef(0)
   // Auth state
   const [authMethod, setAuthMethod] = useState<MCPAuthMethod>(MCPAuthMethod.authentication)
@@ -171,7 +170,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
     isCreate,
     originalServerUrl,
     originalServerID,
-    appIconRef,
     // State
     state: {
       url,

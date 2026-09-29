@@ -58,7 +58,7 @@ jobs:
         run: |
           set -o pipefail
           started=$SECONDS
-          pnpm exec vinext build 2>&1 | tee "$RUNNER_TEMP/vinext-build.log"
+          pnpm run build:vinext 2>&1 | tee "$RUNNER_TEMP/vinext-build.log"
           printf 'Full Vinext build: **%s seconds**.\n' "$((SECONDS - started))" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect sizes

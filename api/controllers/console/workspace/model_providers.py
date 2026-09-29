@@ -33,7 +33,7 @@ from services.entities.model_provider_entities import (
     ModelProviderSummaryResponse,
     ProviderResponse,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 from services.workspace_service import WorkspaceService
 
 
