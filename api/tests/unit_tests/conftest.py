@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import ModuleType
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -53,16 +55,20 @@ if TYPE_CHECKING:
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
-    """Ensure any module-level redis_client references point to the shared redis_mock."""
+    """Rebind concrete module globals without invoking module-level ``__getattr__``.
 
-    import sys
-
-    for module in list(sys.modules.values()):
-        if module is None:
+    Inspect each time so late imports, reloads, and newly added globals are still
+    covered. Attribute lookup on thousands of unrelated lazy modules is costly
+    and can itself trigger imports; only stored references need rebinding.
+    """
+    for module in sys.modules.copy().values():
+        if not isinstance(module, ModuleType):
             continue
-        for client_attribute in ("redis_client", "_pubsub_redis_client"):
-            if hasattr(module, client_attribute):
-                setattr(module, client_attribute, redis_mock)
+        namespace = module.__dict__
+        if "redis_client" in namespace:
+            namespace["redis_client"] = redis_mock
+        if "_pubsub_redis_client" in namespace:
+            namespace["_pubsub_redis_client"] = redis_mock
 
 
 @pytest.fixture
