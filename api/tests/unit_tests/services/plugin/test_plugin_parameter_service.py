@@ -15,6 +15,8 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.engine import db
 from models.tools import BuiltinToolProvider
@@ -32,6 +34,59 @@ def plugin_parameter_db() -> Iterator[Session]:
         BuiltinToolProvider.__table__.create(db.engine)
         with Session(db.engine, expire_on_commit=False) as session:
             yield session
+
+
+class _InMemoryRedis:
+    """Minimal Redis stand-in so the real credential caches can be exercised end to end."""
+
+    def __init__(self) -> None:
+        self.store: dict[str, bytes] = {}
+
+    def get(self, key: str) -> bytes | None:
+        return self.store.get(key)
+
+    def setex(self, key: str, ttl: int, value: str) -> None:
+        self.store[key] = value.encode("utf-8")
+
+    def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+
+def _base_url_provider_controller() -> MagicMock:
+    provider_ctrl = MagicMock()
+    provider_ctrl.need_credentials = True
+    schema = [ProviderConfig(name="base_url", type=ProviderConfigType.TEXT_INPUT)]
+    provider_ctrl.get_credentials_schema.return_value = schema
+    provider_ctrl.get_credentials_schema_by_type.return_value = schema
+    return provider_ctrl
+
+
+def _add_base_url_credential(session: Session, tenant_id: str, name: str, base_url: str) -> BuiltinToolProvider:
+    db_record = BuiltinToolProvider(
+        tenant_id=tenant_id,
+        user_id=str(uuid4()),
+        provider="google",
+        name=name,
+        encrypted_credentials=json.dumps({"base_url": base_url}),
+        credential_type=CredentialType.API_KEY,
+    )
+    session.add(db_record)
+    session.commit()
+    return db_record
+
+
+def _fetch_tool_options_credentials(mock_client_cls: MagicMock, tenant_id: str, credential_id: str) -> dict[str, str]:
+    PluginParameterService.get_dynamic_select_options(
+        tenant_id=tenant_id,
+        user_id="u1",
+        plugin_id="p1",
+        provider="google",
+        action="search",
+        parameter="engine",
+        credential_id=credential_id,
+        provider_type="tool",
+    )
+    return mock_client_cls.return_value.fetch_dynamic_select_options.call_args[0][5]
 
 
 class TestGetDynamicSelectOptionsTool:
@@ -59,7 +114,7 @@ class TestGetDynamicSelectOptionsTool:
         assert call_kwargs[0][5] == {}  # empty credentials
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService.create_tool_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_fetches_credentials_with_credential_id(
         self,
@@ -101,18 +156,15 @@ class TestGetDynamicSelectOptionsTool:
 
         assert result == ["opt1"]
 
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_raises_when_tool_provider_not_found(
         self,
         mock_tool_mgr: MagicMock,
-        mock_encrypter_fn: MagicMock,
         plugin_parameter_db: Session,
     ) -> None:
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True
         mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
-        mock_encrypter_fn.return_value = (MagicMock(), None)
 
         with pytest.raises(ValueError, match="not found"):
             PluginParameterService.get_dynamic_select_options(
@@ -125,6 +177,51 @@ class TestGetDynamicSelectOptionsTool:
                 credential_id=None,
                 provider_type="tool",
             )
+
+    @patch("core.helper.provider_cache.redis_client", new_callable=_InMemoryRedis)
+    @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
+    @patch("services.plugin.plugin_parameter_service.ToolManager")
+    def test_uses_selected_credential_when_provider_has_several(
+        self,
+        mock_tool_mgr: MagicMock,
+        mock_client_cls: MagicMock,
+        in_memory_redis: _InMemoryRedis,
+        plugin_parameter_db: Session,
+    ) -> None:
+        tenant_id = str(uuid4())
+        mock_tool_mgr.get_builtin_provider.return_value = _base_url_provider_controller()
+        first = _add_base_url_credential(plugin_parameter_db, tenant_id, "first", "https://a.example.com")
+        second = _add_base_url_credential(plugin_parameter_db, tenant_id, "second", "https://b.example.com")
+
+        first_credentials = _fetch_tool_options_credentials(mock_client_cls, tenant_id, first.id)
+        second_credentials = _fetch_tool_options_credentials(mock_client_cls, tenant_id, second.id)
+
+        assert first_credentials["base_url"] == "https://a.example.com"
+        assert second_credentials["base_url"] == "https://b.example.com"
+
+    @patch("core.helper.provider_cache.redis_client", new_callable=_InMemoryRedis)
+    @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
+    @patch("services.plugin.plugin_parameter_service.ToolManager")
+    def test_picks_up_updated_credential_after_cache_invalidation(
+        self,
+        mock_tool_mgr: MagicMock,
+        mock_client_cls: MagicMock,
+        in_memory_redis: _InMemoryRedis,
+        plugin_parameter_db: Session,
+    ) -> None:
+        tenant_id = str(uuid4())
+        mock_tool_mgr.get_builtin_provider.return_value = _base_url_provider_controller()
+        credential = _add_base_url_credential(plugin_parameter_db, tenant_id, "only", "https://a.example.com")
+        before = _fetch_tool_options_credentials(mock_client_cls, tenant_id, credential.id)
+
+        # Mirror BuiltinToolManageService.update_builtin_tool_provider: persist, then drop the credential's cache.
+        credential.encrypted_credentials = json.dumps({"base_url": "https://b.example.com"})
+        plugin_parameter_db.commit()
+        ToolProviderCredentialsCache(tenant_id=tenant_id, provider="google", credential_id=credential.id).delete()
+        after = _fetch_tool_options_credentials(mock_client_cls, tenant_id, credential.id)
+
+        assert before["base_url"] == "https://a.example.com"
+        assert after["base_url"] == "https://b.example.com"
 
 
 class TestGetDynamicSelectOptionsTrigger:
