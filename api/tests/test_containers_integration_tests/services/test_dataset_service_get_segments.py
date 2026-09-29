@@ -16,7 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
-from services.dataset_service import SegmentService
+from services.knowledge.dataset_service import SegmentService
 
 
 class SegmentServiceTestDataFactory:

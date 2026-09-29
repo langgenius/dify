@@ -17,9 +17,9 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App
-from services.dataset_ref_service import DatasetRefService
-from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
+from services.knowledge.dataset_service import DatasetService
+from services.knowledge.resource_scope import DatasetRef
 
 
 class DatasetUpdateDeleteTestDataFactory:
@@ -140,7 +140,7 @@ class TestDatasetServiceDeleteDataset:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
 
         # Act
-        with patch("services.dataset_service.dataset_was_deleted") as mock_dataset_was_deleted:
+        with patch("services.knowledge.dataset_service.dataset_was_deleted") as mock_dataset_was_deleted:
             result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
@@ -228,7 +228,7 @@ class TestDatasetServiceDatasetUseCheck:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
         app = DatasetUpdateDeleteTestDataFactory.create_app(db_session_with_containers, tenant.id, owner.id)
         DatasetUpdateDeleteTestDataFactory.create_app_dataset_join(db_session_with_containers, app.id, dataset.id)
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
         # Act
         result = DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers)
@@ -253,7 +253,7 @@ class TestDatasetServiceDatasetUseCheck:
             db_session_with_containers, role=TenantAccountRole.OWNER
         )
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
         # Act
         result = DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers)
@@ -290,7 +290,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
         # Act
-        with patch("services.dataset_service.naive_utc_now", return_value=current_time):
+        with patch("services.knowledge.dataset_service.naive_utc_now", return_value=current_time):
             DatasetService.update_dataset_api_status(dataset, True, owner, session=db_session_with_containers)
 
         # Assert
@@ -322,7 +322,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
         # Act
-        with patch("services.dataset_service.naive_utc_now", return_value=current_time):
+        with patch("services.knowledge.dataset_service.naive_utc_now", return_value=current_time):
             DatasetService.update_dataset_api_status(dataset, False, owner, session=db_session_with_containers)
 
         # Assert

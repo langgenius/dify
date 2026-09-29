@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} 個節點",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "在 Studio 中開啟",
-  "agentDetail.access.workflow.openInStudioFor": "在 Studio 中開啟 {{name}}",
   "agentDetail.access.workflow.table.actions": "操作",
   "agentDetail.access.workflow.table.lastUpdated": "最後更新",
   "agentDetail.access.workflow.table.name": "名稱",

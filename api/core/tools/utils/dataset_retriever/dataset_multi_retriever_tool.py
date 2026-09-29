@@ -18,6 +18,7 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.segment_read_adapter import sign_segment_content
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -105,9 +106,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             )
             for segment in sorted_segments:
                 if segment.answer:
-                    document_context_list.append(f"question:{segment.get_sign_content()} answer:{segment.answer}")
+                    document_context_list.append(
+                        f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                    )
                 else:
-                    document_context_list.append(segment.get_sign_content())
+                    document_context_list.append(sign_segment_content(segment, session=session))
             if self.return_resource:
                 context_list: list[RetrievalSourceMetadata] = []
                 resource_number = 1

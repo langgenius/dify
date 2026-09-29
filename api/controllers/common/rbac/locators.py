@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 __all__ = [
     "AgentBehindApp",
     "AgentId",
+    "DatasetByDocument",
     "DatasetByPipeline",
     "DatasetId",
     "PlainApp",
@@ -131,6 +132,18 @@ class DatasetId(_ParamLocator):
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
         return RBACResourceService.get_dataset_maintainer(db.session, tenant_id, identity.id)
+
+
+class DatasetByDocument(DatasetId):
+    default_param = "document_id"
+
+    @override
+    def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
+        document_id = _required(path_args, self.param)
+        dataset_id = RBACResourceService.get_dataset_id_by_document(db.session, tenant_id, document_id)
+        if dataset_id is None:
+            raise NotFound("Document not found")
+        return ResourceIdentity(self.scope, dataset_id)
 
 
 class DatasetByPipeline(DatasetId):

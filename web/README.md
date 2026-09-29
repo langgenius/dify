@@ -88,7 +88,7 @@ docker build -f web/Dockerfile -t dify-web .
 If you want to customize the host and port:
 
 ```bash
-pnpm -C web run start --port=3001 --host=0.0.0.0
+PORT=3001 HOSTNAME=0.0.0.0 pnpm -C web run start
 ```
 
 ### Vinext standalone Node server
@@ -117,7 +117,7 @@ Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+For VS Code, copy `.vscode/settings.example.json` to `.vscode/settings.json`, or merge it into your existing settings.
 
 Then follow the [Lint Documentation] to lint the code.
 

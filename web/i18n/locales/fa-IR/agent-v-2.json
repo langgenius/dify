@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} گره",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "باز کردن در Studio",
-  "agentDetail.access.workflow.openInStudioFor": "باز کردن {{name}} در Studio",
   "agentDetail.access.workflow.table.actions": "اقدامات",
   "agentDetail.access.workflow.table.lastUpdated": "آخرین به‌روزرسانی",
   "agentDetail.access.workflow.table.name": "نام",

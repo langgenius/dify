@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} โหนด",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "เปิดใน Studio",
-  "agentDetail.access.workflow.openInStudioFor": "เปิด {{name}} ใน Studio",
   "agentDetail.access.workflow.table.actions": "การกระทำ",
   "agentDetail.access.workflow.table.lastUpdated": "อัปเดตล่าสุด",
   "agentDetail.access.workflow.table.name": "ชื่อ",

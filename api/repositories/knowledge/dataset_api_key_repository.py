@@ -5,8 +5,8 @@ from typing import override
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Tenant, TenantAccountJoin
-from models.dataset import Dataset, DatasetPermission
+from models.account import Tenant
+from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken
 from repositories.knowledge import dataset_api_key_bindings
@@ -17,36 +17,11 @@ from services.auth.api_key_contracts import (
     ApiKeyResourceNotFoundError,
 )
 from services.knowledge.api_key_service import DatasetApiKeyStore, UnknownDatasetIdsError
-from services.knowledge.dataset_access import DatasetAccess
 
 
 class DatasetApiKeyRepository(DatasetApiKeyStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
-
-    @override
-    def get_dataset_access(self, workspace_id: str, dataset_id: str, account_id: str) -> DatasetAccess:
-        with self._session_factory() as session:
-            dataset = self._get_dataset(session, workspace_id, dataset_id)
-            role = session.scalar(
-                select(TenantAccountJoin.role).where(
-                    TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id
-                )
-            )
-            has_permission = (
-                session.scalar(
-                    select(DatasetPermission.id)
-                    .where(
-                        DatasetPermission.tenant_id == workspace_id,
-                        DatasetPermission.dataset_id == dataset_id,
-                        DatasetPermission.account_id == account_id,
-                        DatasetPermission.has_permission.is_(True),
-                    )
-                    .limit(1)
-                )
-                is not None
-            )
-            return DatasetAccess(dataset.permission, dataset.maintainer, role, has_permission)
 
     @override
     def list_keys(self, workspace_id: str, dataset_id: str) -> tuple[ApiKeyRecord, ...]:

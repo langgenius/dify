@@ -154,7 +154,6 @@ export default interface Resources {
     'agentDetail.access.workflow.nodeCount': '{{count}} node' | '{{count}} nodes'
     'agentDetail.access.workflow.notAvailable': 'N/A'
     'agentDetail.access.workflow.openInStudio': 'Open in Studio'
-    'agentDetail.access.workflow.openInStudioFor': 'Open {{name}} in Studio'
     'agentDetail.access.workflow.table.actions': 'Actions'
     'agentDetail.access.workflow.table.lastUpdated': 'Last updated'
     'agentDetail.access.workflow.table.name': 'Name'
@@ -3467,6 +3466,10 @@ export default interface Resources {
     'toolsPage.toolPlugin': 'Tool Plugin'
   }
   oauth: {
+    'callback.error': 'Authorization failed'
+    'callback.errorHint': 'Please return to the previous page and try again.'
+    'callback.success': 'Authorization complete'
+    'callback.successHint': 'You can now close this tab and return to the previous page.'
     connect: 'Connect to'
     continue: 'Continue'
     'error.authAppInfoFetchFailed': 'Failed to fetch app info for authorization'

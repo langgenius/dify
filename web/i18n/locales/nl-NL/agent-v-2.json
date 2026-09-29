@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} knooppunten",
   "agentDetail.access.workflow.notAvailable": "N/B",
   "agentDetail.access.workflow.openInStudio": "Openen in Studio",
-  "agentDetail.access.workflow.openInStudioFor": "{{name}} openen in Studio",
   "agentDetail.access.workflow.table.actions": "Acties",
   "agentDetail.access.workflow.table.lastUpdated": "Laatst bijgewerkt",
   "agentDetail.access.workflow.table.name": "Naam",
