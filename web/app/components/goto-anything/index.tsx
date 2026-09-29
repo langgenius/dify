@@ -44,8 +44,9 @@ import InstallFromMarketplace from '../plugins/install-plugin/install-from-marke
 import { createActions, getActionSearchTerm, matchAction } from './actions'
 import { agentSearchQueryOptions } from './actions/agent'
 import { appSearchQueryOptions } from './actions/app'
-import { slashCommandRegistry } from './actions/commands/registry'
-import { SlashCommandProvider } from './actions/commands/slash-provider'
+import { slashCommandRegistry } from './actions/commands/catalog'
+import { createSlashAction } from './actions/commands/slash'
+import { useCommandContext } from './actions/commands/use-command-context'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
 import { pluginSearchQueryOptions } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
@@ -161,15 +162,16 @@ export function GotoAnything() {
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchHintId = useId()
+  const commandContext = useCommandContext(agentsAvailable, skillsAvailable, isWorkflowPage)
   const actions = useMemo(
     () =>
-      createActions(isWorkflowPage, isRagPipelinePage, {
+      createActions(createSlashAction(commandContext), isWorkflowPage, isRagPipelinePage, {
         agents: agentsAvailable,
         skills: skillsAvailable,
       }),
-    [agentsAvailable, isWorkflowPage, isRagPipelinePage, skillsAvailable],
+    [agentsAvailable, commandContext, isWorkflowPage, isRagPipelinePage, skillsAvailable],
   )
-  const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery)
+  const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery, commandContext)
   const trimmedSearchQuery = searchQuery.trim()
   const normalizedSearchQuery = searchQuery.trimStart().toLowerCase()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
@@ -325,9 +327,9 @@ export function GotoAnything() {
   function handleCommandSelect(commandKey: string) {
     if (commandKey.startsWith('/')) {
       const handler = slashCommandRegistry.findCommand(commandKey.slice(1))
-      if (handler?.isAvailable?.() === false) return
-      if (handler?.mode === 'direct' && handler.execute) {
-        handler.execute()
+      if (handler?.isAvailable?.(commandContext) === false) return
+      if (handler?.mode === 'direct') {
+        void slashCommandRegistry.execute(handler.name, {}, commandContext)
         gotoAnythingDialogHandle.close()
         return
       }
@@ -431,7 +433,6 @@ export function GotoAnything() {
 
   return (
     <>
-      <SlashCommandProvider />
       <Dialog
         handle={gotoAnythingDialogHandle}
         onOpenChangeComplete={handleDialogOpenChangeComplete}

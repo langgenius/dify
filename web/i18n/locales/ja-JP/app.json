@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "ドキュメントを開く",
   "gotoAnything.actions.goDesc": "ページへ移動",
   "gotoAnything.actions.languageChangeDesc": "言語を変更",
-  "gotoAnything.actions.refineCategoryDesc": "現在のワークフローまたはチャットフローグラフを改良する",
   "gotoAnything.actions.refineDesc": "現在のドラフトに適用する変更について説明します",
   "gotoAnything.actions.refineTitle": "現在のグラフを絞り込む",
   "gotoAnything.actions.searchApplications": "アプリケーションを検索",

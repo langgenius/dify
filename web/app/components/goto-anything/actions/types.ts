@@ -73,6 +73,7 @@ type ActionItemBase = {
   shortcut: string
   title: string | TypeWithI18N
   description: string
+  matches?: (query: string) => boolean
   action?: (data: SearchResult) => void
 }
 

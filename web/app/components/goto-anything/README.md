@@ -20,4 +20,6 @@ Search actions adapt application, knowledge, plugin, workflow, and RAG owners in
 - Ordinary text searches localized command names, existing aliases, submenu choices, and resources. Commands stay usable while remote searches load or fail.
 - Grid navigation follows the displayed rows; ordinary results use a listbox. Pointer and keyboard use the same highlighted state, while DOM focus stays in the input.
 - Selecting a submenu or scope keeps the palette open and the input editable. Clearing the input returns to the home view. Escape dismisses the dialog.
-- The registry publishes command registration changes so the first open can show commands without requiring a keystroke. Command handlers retain execution and availability ownership.
+- A fixed command catalog is available on the first render. Its lookup registry only indexes definitions; it has no registration effects, subscriptions, or separate execution bus.
+- React owns the current language, workspace availability, and Studio app context. Search and execution receive this context explicitly; command definitions never retain user or request state. Execution rechecks availability.
+- Browser effects (navigation, external windows, theme/language changes, generator opening) run only when a result is activated. The palette remains lazily loaded on the client; importing/searching the catalog is safe during server rendering.
