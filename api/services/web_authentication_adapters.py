@@ -20,6 +20,8 @@ from services.web_authentication_service import (
     WebAuthenticationTokenGateway,
     WebEmailDeliveryRateLimitError,
 )
+from services.web_passport_gateways import resolve_web_app_auth_type
+from services.web_passport_service import WebAppAuthType
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
@@ -198,9 +200,10 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
             return False
 
     def _verify_webapp_auth_claims(self, decoded: dict[str, Any], app_id: str) -> bool:
-        authentication_required = self._app_access.requires_authentication(app_id)
+        access_mode = self._app_access.get_access_mode(app_id=app_id, app_code=None)
+        expected_auth_type = resolve_web_app_auth_type(access_mode)
         source = decoded.get("token_source")
-        if authentication_required:
+        if expected_auth_type != WebAppAuthType.PUBLIC:
             if source != "webapp":
                 return False
             user_id = decoded.get("user_id")
@@ -212,13 +215,15 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
             ):
                 return False
             auth_type = decoded.get("auth_type")
+            if auth_type != expected_auth_type:
+                return False
             granted_at = decoded.get("granted_at")
             if not isinstance(granted_at, (int, float)):
                 return False
             granted_time = datetime.fromtimestamp(granted_at, tz=UTC)
-            if auth_type == "external":
+            if auth_type == WebAppAuthType.EXTERNAL:
                 return granted_time >= EnterpriseService.get_app_sso_settings_last_update_time()
-            if auth_type == "internal":
+            if auth_type == WebAppAuthType.INTERNAL:
                 return granted_time >= EnterpriseService.get_workspace_sso_settings_last_update_time()
             return False
         return source != "webapp"

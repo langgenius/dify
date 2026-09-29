@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
+from enums import WebAppAccessMode
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import WebAppSessionRecord
 from services.web_authentication_adapters import (
@@ -251,14 +252,15 @@ class SessionQueryFake:
 
 @dataclass
 class AppAccessFake:
-    authentication_required: bool = False
+    access_mode: WebAppAccessMode = WebAppAccessMode.PUBLIC
     permission_required: bool = False
     user_allowed: bool = True
     checked_users: list[tuple[str, str]] = field(default_factory=list)
 
-    def requires_authentication(self, app_id: str) -> bool:
+    def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
         assert app_id == "app-1"
-        return self.authentication_required
+        assert app_code is None
+        return self.access_mode
 
     def requires_permission_check(self, app_id: str) -> bool:
         assert app_id == "app-1"
@@ -278,13 +280,13 @@ _DEFAULT_SESSION = WebAppSessionRecord(end_user_session_id="session-1")
 def passport_session_gateway(
     *,
     session: WebAppSessionRecord | None = _DEFAULT_SESSION,
-    authentication_required: bool = False,
+    access_mode: WebAppAccessMode = WebAppAccessMode.PUBLIC,
     permission_required: bool = False,
     user_allowed: bool = True,
 ) -> tuple[PassportWebAppSessionGateway, SessionQueryFake, AppAccessFake]:
     sessions = SessionQueryFake(session=session)
     access = AppAccessFake(
-        authentication_required=authentication_required,
+        access_mode=access_mode,
         permission_required=permission_required,
         user_allowed=user_allowed,
     )
@@ -393,10 +395,16 @@ def test_session_verification_treats_decoder_errors_as_invalid() -> None:
             id="permission-denied",
         ),
         pytest.param(
-            {"token_source": "webapp", "user_id": "user-1", "granted_at": "yesterday"},
+            {"token_source": "webapp", "user_id": "user-1", "granted_at": "yesterday", "auth_type": "internal"},
             False,
             True,
             id="invalid-granted-at",
+        ),
+        pytest.param(
+            {"token_source": "webapp", "user_id": "user-1", "granted_at": 100},
+            False,
+            True,
+            id="missing-auth-type",
         ),
         pytest.param(
             {"token_source": "webapp", "user_id": "user-1", "granted_at": 100, "auth_type": "unknown"},
@@ -412,7 +420,7 @@ def test_private_app_claims_reject_invalid_authorization(
     user_allowed: bool,
 ) -> None:
     gateway, _, access = passport_session_gateway(
-        authentication_required=True,
+        access_mode=WebAppAccessMode.PRIVATE,
         permission_required=permission_required,
         user_allowed=user_allowed,
     )
@@ -423,19 +431,28 @@ def test_private_app_claims_reject_invalid_authorization(
 
 
 @pytest.mark.parametrize(
-    ("auth_type", "settings_method"),
+    ("access_mode", "auth_type", "settings_method"),
     [
-        pytest.param("external", "get_app_sso_settings_last_update_time", id="external"),
-        pytest.param("internal", "get_workspace_sso_settings_last_update_time", id="internal"),
+        pytest.param(WebAppAccessMode.SSO_VERIFIED, "external", "get_app_sso_settings_last_update_time", id="external"),
+        pytest.param(
+            WebAppAccessMode.PRIVATE, "internal", "get_workspace_sso_settings_last_update_time", id="internal"
+        ),
+        pytest.param(
+            WebAppAccessMode.PRIVATE_ALL,
+            "internal",
+            "get_workspace_sso_settings_last_update_time",
+            id="internal-all",
+        ),
     ],
 )
 @pytest.mark.parametrize("granted_at", [99.0, 100.0], ids=["stale", "current"])
 def test_private_app_claims_compare_grant_with_sso_settings_update(
+    access_mode: WebAppAccessMode,
     auth_type: str,
     settings_method: str,
     granted_at: float,
 ) -> None:
-    gateway, _, _ = passport_session_gateway(authentication_required=True)
+    gateway, _, _ = passport_session_gateway(access_mode=access_mode)
     claims = {
         "token_source": "webapp",
         "user_id": "user-1",
@@ -453,6 +470,45 @@ def test_private_app_claims_compare_grant_with_sso_settings_update(
 
 
 @pytest.mark.parametrize(
+    ("access_mode", "auth_type", "expected"),
+    [
+        pytest.param(WebAppAccessMode.PRIVATE, "internal", True, id="private-internal"),
+        pytest.param(WebAppAccessMode.PRIVATE, "external", False, id="private-external"),
+        pytest.param(WebAppAccessMode.PRIVATE_ALL, "internal", True, id="private-all-internal"),
+        pytest.param(WebAppAccessMode.PRIVATE_ALL, "external", False, id="private-all-external"),
+        pytest.param(WebAppAccessMode.SSO_VERIFIED, "external", True, id="sso-external"),
+        pytest.param(WebAppAccessMode.SSO_VERIFIED, "internal", False, id="sso-internal"),
+    ],
+)
+def test_session_verification_requires_auth_type_for_current_access_mode(
+    access_mode: WebAppAccessMode,
+    auth_type: str,
+    expected: bool,
+) -> None:
+    gateway, _, _ = passport_session_gateway(
+        access_mode=access_mode,
+        permission_required=access_mode in {WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL},
+    )
+    claims = valid_session_claims(token_source="webapp", user_id="user-1", granted_at=100, auth_type=auth_type)
+    settings_updated_at = datetime.fromtimestamp(100, tz=UTC)
+
+    with (
+        patch("services.web_authentication_adapters.PassportService") as passport_service,
+        patch(
+            "services.web_authentication_adapters.EnterpriseService.get_app_sso_settings_last_update_time",
+            return_value=settings_updated_at,
+        ),
+        patch(
+            "services.web_authentication_adapters.EnterpriseService.get_workspace_sso_settings_last_update_time",
+            return_value=settings_updated_at,
+        ),
+    ):
+        passport_service.return_value.verify.return_value = claims
+
+        assert gateway.verify(token="passport", app_code="site-code", user_id="session-1") is expected
+
+
+@pytest.mark.parametrize(
     ("source", "expected"),
     [
         pytest.param("api", True, id="ordinary-session"),
@@ -460,7 +516,7 @@ def test_private_app_claims_compare_grant_with_sso_settings_update(
     ],
 )
 def test_public_app_claims_reject_private_webapp_session(source: str, expected: bool) -> None:
-    gateway, _, _ = passport_session_gateway(authentication_required=False)
+    gateway, _, _ = passport_session_gateway(access_mode=WebAppAccessMode.PUBLIC)
 
     assert gateway._verify_webapp_auth_claims({"token_source": source}, "app-1") is expected
 

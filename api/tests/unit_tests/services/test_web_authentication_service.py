@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pytest
 
+from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
 from services.entities.auth_audit_entities import LoginFailureReason
@@ -129,7 +130,6 @@ class SecurityGatewayFake:
 @dataclass
 class AppAccessGatewayFake:
     permission_required: bool = True
-    authentication_required: bool = True
 
     def find_app_id_by_code(self, app_code: str) -> str | None:
         return "app-1" if app_code == "site-code" else None
@@ -138,9 +138,8 @@ class AppAccessGatewayFake:
         del app_id
         return self.permission_required
 
-    def requires_authentication(self, app_id: str) -> bool:
-        del app_id
-        return self.authentication_required
+    def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
+        raise AssertionError(f"unused in authentication service: {app_id}, {app_code}")
 
     def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
         del user_id, app_id

@@ -2,6 +2,7 @@
 
 from typing import Never, Protocol
 
+from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
@@ -59,7 +60,7 @@ class WebAppAccessGateway(Protocol):
 
     def requires_permission_check(self, app_id: str) -> bool: ...
 
-    def requires_authentication(self, app_id: str) -> bool: ...
+    def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode: ...
 
     def is_user_allowed(self, *, user_id: str, app_id: str) -> bool: ...
 
