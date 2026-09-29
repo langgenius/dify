@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,12 +29,14 @@ from services.entities.account_entities import (
 )
 
 
-def test_invitation_token_store_reads_workspace_invitation_key() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.return_value = b"account-1"
+def test_invitation_token_store_reads_workspace_invitation_key(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = b"account-1"
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
 
-    result = RedisInvitationTokenStore(redis=cast(RedisClientWrapper, redis)).find(lookup)
+    result = RedisInvitationTokenStore(redis=redis).find(lookup)
 
     assert result == InvitationToken(
         account_id="account-1",
@@ -43,18 +44,24 @@ def test_invitation_token_store_reads_workspace_invitation_key() -> None:
         workspace_id="workspace-1",
     )
     email_hash = sha256(b"invitee@example.com").hexdigest()
-    redis.get.assert_called_once_with(f"member_invite_token:workspace-1, {email_hash}:token-1")
+    commands.assert_called_once_with(
+        "GET",
+        f"member_invite_token:workspace-1, {email_hash}:token-1",
+        keys=[f"member_invite_token:workspace-1, {email_hash}:token-1"],
+    )
 
 
-def test_invitation_token_store_reads_global_invitation_payload() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.return_value = (
+def test_invitation_token_store_reads_global_invitation_payload(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = (
         b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1",'
         b'"role":"editor","requires_setup":false}'
     )
     lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
 
-    result = RedisInvitationTokenStore(redis=cast(RedisClientWrapper, redis)).find(lookup)
+    result = RedisInvitationTokenStore(redis=redis).find(lookup)
 
     assert result == InvitationToken(
         account_id="account-1",
@@ -63,17 +70,18 @@ def test_invitation_token_store_reads_global_invitation_payload() -> None:
         role="editor",
         requires_setup=False,
     )
-    redis.get.assert_called_once_with("member_invite:token:token-1")
+    commands.assert_called_once_with("GET", "member_invite:token:token-1", keys=["member_invite:token:token-1"])
 
 
-def test_invitation_token_store_revokes_its_redis_key() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
+def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
 
-    RedisInvitationTokenStore(redis=cast(RedisClientWrapper, redis)).revoke(lookup)
+    RedisInvitationTokenStore(redis=redis).revoke(lookup)
 
     email_hash = sha256(b"invitee@example.com").hexdigest()
-    redis.delete.assert_called_once_with(f"member_invite_token:workspace-1, {email_hash}:token-1")
+    commands.assert_any_call("DEL", f"member_invite_token:workspace-1, {email_hash}:token-1")
+    assert commands.call_count == 1
 
 
 def test_billing_eligibility_skips_gateway_when_disabled() -> None:
@@ -239,9 +247,9 @@ def test_token_gateway_issues_account_bound_state() -> None:
     }
 
 
-def test_security_gateway_counts_normal_ip_request() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.side_effect = [None, None]
+def test_security_gateway_counts_normal_ip_request(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [None, None, True, True]
     gateway = RedisChangeEmailSecurityGateway(
         redis=redis,
         email_send_ip_limit_per_minute=60,
@@ -251,13 +259,16 @@ def test_security_gateway_counts_normal_ip_request() -> None:
 
     assert gateway.is_ip_limited("127.0.0.1") is False
 
-    redis.setex.assert_called_once_with("email_send_ip_limit_minute:127.0.0.1", 60, 1)
-    redis.expire.assert_called_once_with("email_send_ip_limit_minute:127.0.0.1", 60)
+    commands.assert_any_call("SETEX", "email_send_ip_limit_minute:127.0.0.1", 60, 1)
+    commands.assert_any_call("EXPIRE", "email_send_ip_limit_minute:127.0.0.1", 60)
+    assert commands.call_count == 4
 
 
-def test_security_gateway_freezes_second_over_limit_ip_strike() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.side_effect = [None, 2, 1]
+def test_security_gateway_freezes_second_over_limit_ip_strike(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [None, 2, 1, True]
     gateway = RedisChangeEmailSecurityGateway(
         redis=redis,
         email_send_ip_limit_per_minute=1,
@@ -267,7 +278,8 @@ def test_security_gateway_freezes_second_over_limit_ip_strike() -> None:
 
     assert gateway.is_ip_limited("127.0.0.1") is True
 
-    redis.setex.assert_called_once_with("email_send_ip_limit_freeze:127.0.0.1", 3600, 1)
+    commands.assert_any_call("SETEX", "email_send_ip_limit_freeze:127.0.0.1", 3600, 1)
+    assert commands.call_count == 4
 
 
 def test_verification_gateway_binds_token_to_the_target_account() -> None:
