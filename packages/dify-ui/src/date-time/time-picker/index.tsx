@@ -136,13 +136,13 @@ function TimePickerTrigger({ children, ...props }: TimePickerTriggerProps) {
   return (
     <PickerTrigger {...props}>
       {children ?? (
-        <>
+        <React.Fragment>
           <PickerValue />
           <span
             aria-hidden="true"
             className="i-ri-time-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
           />
-        </>
+        </React.Fragment>
       )}
     </PickerTrigger>
   )
@@ -196,7 +196,7 @@ function Session() {
         )
       }
       footer={
-        <>
+        <React.Fragment>
           <Button
             size="small"
             variant="ghost-accent"
@@ -224,7 +224,7 @@ function Session() {
           >
             {text.apply}
           </Button>
-        </>
+        </React.Fragment>
       }
     >
       <TimePanel
