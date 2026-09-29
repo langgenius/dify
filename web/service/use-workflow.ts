@@ -326,6 +326,14 @@ export const usePublishWorkflow = () => {
   })
 }
 
+export const usePublishEvaluationWorkflow = () => {
+  return useMutation(consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions())
+}
+
+export const useConvertWorkflowKind = () => {
+  return useMutation(consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions())
+}
+
 const useLastRunKey = [NAME_SPACE, 'last-run']
 export const useLastRun = (
   flowType: FlowType,

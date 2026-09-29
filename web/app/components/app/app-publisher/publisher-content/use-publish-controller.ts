@@ -23,7 +23,7 @@ import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
-  'onPublish' | 'onRestore' | 'publishDisabled' | 'publishedAt'
+  'onPublish' | 'onPublishEvaluation' | 'onRestore' | 'publishDisabled' | 'publishedAt'
 > & {
   appId?: string
   appMode?: AppModeEnum
@@ -57,6 +57,7 @@ export function usePublishController({
   appName,
   onClose,
   onPublish,
+  onPublishEvaluation,
   onRestore,
   publishDisabled = false,
   publishedAt,
@@ -86,10 +87,11 @@ export function usePublishController({
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
   async function publishApp(
+    publishHandler: AppPublisherProps['onPublish'],
     params?: AppPublisherPublishParams,
     options?: AppPublisherPublishOptions,
   ) {
-    await onPublish?.(params, options)
+    await publishHandler?.(params, options)
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
@@ -122,15 +124,24 @@ export function usePublishController({
 
   async function handlePublish(params?: AppPublisherPublishParams) {
     try {
-      await publishApp(params)
+      await publishApp(onPublish, params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
   }
 
+  async function handlePublishEvaluation(params?: AppPublisherPublishParams) {
+    try {
+      await publishApp(onPublishEvaluation, params)
+    } catch (error) {
+      console.warn('[app-publisher] evaluation publish failed', error)
+      setPublished(false)
+    }
+  }
+
   async function publishWorkflowTool(params?: AppPublisherPublishParams) {
-    await publishApp(params, { showSuccessToast: false })
+    await publishApp(onPublish, params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -173,6 +184,7 @@ export function usePublishController({
   return {
     currentPublishedAt,
     handlePublish,
+    handlePublishEvaluation,
     handleRestore,
     hasPublishedVersion,
     isChatApp,

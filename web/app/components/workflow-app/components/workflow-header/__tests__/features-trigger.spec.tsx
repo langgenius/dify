@@ -50,6 +50,8 @@ vi.mock('@/app/notifications', () => ({
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
+const mockPublishEvaluationWorkflow = vi.fn()
+const mockConvertWorkflowKind = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
@@ -172,6 +174,30 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button
           type="button"
           onClick={() => {
+            Promise.resolve(props.onPublishEvaluation?.()).catch(() => undefined)
+          }}
+        >
+          publisher-publish-evaluation
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(props.onConvertWorkflowKind?.('evaluation')).catch(() => undefined)
+          }}
+        >
+          publisher-convert-to-evaluation
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(props.onConvertWorkflowKind?.('standard')).catch(() => undefined)
+          }}
+        >
+          publisher-convert-to-standard
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             Promise.resolve(
               (
                 props.onPublish as
@@ -220,7 +246,12 @@ vi.mock('@/app/components/app/app-publisher', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
+  useConvertWorkflowKind: () => ({
+    isPending: false,
+    mutateAsync: mockConvertWorkflowKind,
+  }),
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
+  usePublishEvaluationWorkflow: () => ({ mutateAsync: mockPublishEvaluationWorkflow }),
   usePublishWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
@@ -281,6 +312,17 @@ describe('FeaturesTrigger', () => {
     mockFetchAppDetail.mockResolvedValue({ id: 'app-id', name: 'Updated App' })
     mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
+    mockPublishEvaluationWorkflow.mockResolvedValue({
+      result: 'success',
+      created_at: 1_710_000_000,
+    })
+    mockConvertWorkflowKind.mockResolvedValue({
+      result: 'success',
+      workflow_id: 'workflow-1',
+      type: 'workflow',
+      kind: 'evaluation',
+      updated_at: 1_710_000_000,
+    })
   })
 
   // Verifies the feature toggle button only appears in chatflow mode.
@@ -615,6 +657,54 @@ describe('FeaturesTrigger', () => {
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',
+          }),
+        )
+      })
+    })
+
+    it('should publish the synced draft as an evaluation workflow', async () => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-evaluation' }))
+
+      await waitFor(() => {
+        expect(mockPublishEvaluationWorkflow).toHaveBeenCalledWith({
+          body: {
+            marked_comment: '',
+            marked_name: '',
+          },
+          params: {
+            app_id: 'app-id',
+          },
+        })
+        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+        expect(mockSetPublishedAt).toHaveBeenCalledWith(1_710_000_000)
+      })
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ['evaluation', 'evaluation'],
+      ['standard', 'workflow'],
+    ] as const)('should convert the published workflow to %s', async (workflowKind, targetType) => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: `publisher-convert-to-${workflowKind}` }))
+
+      await waitFor(() => {
+        expect(mockConvertWorkflowKind).toHaveBeenCalledWith({
+          params: {
+            app_id: 'app-id',
+          },
+          query: {
+            target_type: targetType,
+          },
+        })
+        expect(useAppStore.getState().appDetail).toEqual(
+          expect.objectContaining({
+            workflow_kind: workflowKind,
           }),
         )
       })

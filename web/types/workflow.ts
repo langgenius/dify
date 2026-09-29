@@ -454,7 +454,7 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
-export type WorkflowKind = 'standard'
+export type WorkflowKind = 'standard' | 'evaluation'
 
 export type UpdateWorkflowParams = {
   appId?: string

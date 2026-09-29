@@ -22,6 +22,7 @@ const render = (
   })
 
 const mockOnPublish = vi.fn()
+const mockOnPublishEvaluation = vi.fn()
 const mockOnToggle = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
@@ -247,6 +248,11 @@ vi.mock('../built-in-publisher/actions-section', () => ({
         <button type="button" onClick={props.onConfigureWorkflowTool}>
           publisher-workflow-tool
         </button>
+        {props.onPublishEvaluation && (
+          <button type="button" onClick={() => void props.onPublishEvaluation()}>
+            publisher-publish-evaluation
+          </button>
+        )}
       </div>
     )
   },
@@ -340,6 +346,33 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     expect(sectionProps.summary?.published).toBe(false)
     expect(screen.getByText('publisher-summary-publish')).toBeEnabled()
+  })
+
+  it('should publish an evaluation workflow through the publisher controller', async () => {
+    const user = userEvent.setup()
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      workflow_kind: 'standard',
+    }
+    mockOnPublishEvaluation.mockResolvedValue(undefined)
+
+    render(
+      <AppPublisher
+        publishedAt={undefined}
+        onPublish={mockOnPublish}
+        onPublishEvaluation={mockOnPublishEvaluation}
+      />,
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText('publisher-publish-evaluation'))
+
+    await waitFor(() => {
+      expect(mockOnPublishEvaluation).toHaveBeenCalledTimes(1)
+      expect(sectionProps.actions?.published).toBe(true)
+    })
+    expect(mockOnPublish).not.toHaveBeenCalled()
   })
 
   it('should refresh deployment data after publishing when multi-environment deployment is available', async () => {

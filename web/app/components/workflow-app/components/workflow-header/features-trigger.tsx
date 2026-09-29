@@ -6,6 +6,7 @@ import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
+import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -34,7 +35,9 @@ import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
+  useConvertWorkflowKind,
   useInvalidateAppWorkflow,
+  usePublishEvaluationWorkflow,
   usePublishWorkflow,
   useResetWorkflowVersionHistory,
 } from '@/service/use-workflow'
@@ -172,12 +175,19 @@ const FeaturesTrigger = () => {
   }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishEvaluationWorkflow } = usePublishEvaluationWorkflow()
+  const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } =
+    useConvertWorkflowKind()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
-  const onPublish = useCallback(
-    async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
+  const publishByKind = useCallback(
+    async (
+      publishKind: 'default' | 'evaluation',
+      params?: AppPublisherPublishParams,
+      options?: AppPublisherPublishOptions,
+    ) => {
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -192,19 +202,38 @@ const FeaturesTrigger = () => {
       if (await handleCheckBeforePublish()) {
         const draftSyncResult = await handleSyncWorkflowDraft(true)
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
+        if (!appID) throw new Error('App ID is required to publish a workflow')
 
-        const res = await publishWorkflow({
-          url: publishParams?.url || `/apps/${appID}/workflows/publish`,
-          title: publishParams?.title || '',
-          releaseNotes: publishParams?.releaseNotes || '',
-        })
+        const title = publishParams?.title || ''
+        const releaseNotes = publishParams?.releaseNotes || ''
+        const res =
+          publishKind === 'evaluation'
+            ? await publishEvaluationWorkflow({
+                body: {
+                  marked_comment: releaseNotes,
+                  marked_name: title,
+                },
+                params: {
+                  app_id: appID,
+                },
+              })
+            : await publishWorkflow({
+                url: publishParams?.url || `/apps/${appID}/workflows/publish`,
+                title,
+                releaseNotes,
+              })
         if (res) {
           if (options?.showSuccessToast !== false) {
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           }
-          updatePublishedWorkflow(appID!)
-          updateAppDetail()
-          invalidateAppTriggers(appID!)
+          updatePublishedWorkflow(appID)
+          await updateAppDetail()
+          invalidateAppTriggers(appID)
+          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+            })
+          }
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -236,7 +265,9 @@ const FeaturesTrigger = () => {
       handleCheckBeforePublish,
       handleSyncWorkflowDraft,
       publishWorkflow,
+      publishEvaluationWorkflow,
       appID,
+      appDetail?.workflow_kind,
       t,
       updatePublishedWorkflow,
       updateAppDetail,
@@ -247,6 +278,47 @@ const FeaturesTrigger = () => {
       hasUserInputNode,
       resetWorkflowVersionHistory,
     ],
+  )
+
+  const onPublish = useCallback(
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) =>
+      publishByKind('default', params, options),
+    [publishByKind],
+  )
+
+  const onPublishEvaluation = useCallback(
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) =>
+      publishByKind('evaluation', params, options),
+    [publishByKind],
+  )
+
+  const onConvertWorkflowKind = useCallback(
+    async (targetKind: WorkflowKind) => {
+      if (!appID || !appDetail) return
+
+      try {
+        await convertWorkflowKind({
+          params: {
+            app_id: appID,
+          },
+          query: {
+            target_type: targetKind === 'standard' ? 'workflow' : 'evaluation',
+          },
+        })
+        setAppDetail({
+          ...appDetail,
+          workflow_kind: targetKind,
+        })
+        await Promise.all([
+          updatePublishedWorkflow(appID),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+          }),
+        ])
+        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      } catch {}
+    },
+    [appDetail, appID, convertWorkflowKind, queryClient, setAppDetail, t, updatePublishedWorkflow],
   )
 
   const onPublisherToggle = useCallback(
@@ -285,7 +357,10 @@ const FeaturesTrigger = () => {
           outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
+          onPublishEvaluation,
+          onConvertWorkflowKind,
           onToggle: onPublisherToggle,
+          workflowKindChangePending,
           workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
           missingStartNode: !startNode,

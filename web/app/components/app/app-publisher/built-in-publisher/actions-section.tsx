@@ -1,4 +1,5 @@
 import type { AppPublisherProps } from '../types'
+import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,14 @@ import WorkflowToolAction from '../workflow-tool-action'
 
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
-  'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
+  | 'hasHumanInputNode'
+  | 'hasTriggerNode'
+  | 'onConvertWorkflowKind'
+  | 'onPublishEvaluation'
+  | 'publishedAt'
+  | 'toolPublished'
+  | 'workflowKindChangePending'
+  | 'workflowToolAvailable'
 > & {
   appDetail:
     | {
@@ -19,6 +27,7 @@ type PublisherActionsSectionProps = Pick<
         description?: string
         mode?: AppModeEnum
         name?: string
+        workflow_kind?: WorkflowKind | null
       }
     | null
     | undefined
@@ -29,6 +38,7 @@ type PublisherActionsSectionProps = Pick<
   handleOpenRunConfig?: (url: string) => void
   marketplaceActionDisabled?: boolean
   publishingToMarketplace?: boolean
+  published?: boolean
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
@@ -49,7 +59,10 @@ export function PublisherActionsSection({
   hasHumanInputNode = false,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
+  onConvertWorkflowKind,
+  onPublishEvaluation,
   publishedAt,
+  published = false,
   publishingToMarketplace = false,
   showDeployAction = false,
   showMarketplaceAction = false,
@@ -59,6 +72,7 @@ export function PublisherActionsSection({
   workflowToolIsLoading,
   workflowToolMessage,
   workflowToolOutdated = false,
+  workflowKindChangePending = false,
   onConfigureWorkflowTool,
   onPublishToMarketplace,
 }: PublisherActionsSectionProps) {
@@ -73,9 +87,53 @@ export function PublisherActionsSection({
   const navigationDisabled = !hasPublishedVersion || !appId
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
+  const isEvaluationWorkflow = appDetail?.workflow_kind === 'evaluation'
+  const evaluationTargetKind: WorkflowKind = isEvaluationWorkflow ? 'standard' : 'evaluation'
+  const showEvaluationWorkflowAction =
+    appDetail?.mode === AppModeEnum.WORKFLOW &&
+    (hasPublishedVersion ? Boolean(onConvertWorkflowKind) : Boolean(onPublishEvaluation))
+  const evaluationWorkflowActionLabel = !hasPublishedVersion
+    ? t(($) => $['common.publishAsEvaluationWorkflow'], { ns: 'workflow' })
+    : isEvaluationWorkflow
+      ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
+      : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
+
+  const handleEvaluationWorkflowAction = () => {
+    if (workflowKindChangePending || published) return
+
+    const action = hasPublishedVersion
+      ? onConvertWorkflowKind?.(evaluationTargetKind)
+      : onPublishEvaluation?.()
+    void Promise.resolve(action).catch(() => undefined)
+  }
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
+      {showEvaluationWorkflowAction && (
+        <>
+          <SuggestedAction
+            disabled={workflowKindChangePending || published}
+            endIcon={
+              workflowKindChangePending ? (
+                <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
+              ) : (
+                <span aria-hidden className="i-ri-arrow-right-s-line size-3.5" />
+              )
+            }
+            icon={
+              <span
+                className={
+                  isEvaluationWorkflow ? 'i-ri-node-tree size-4' : 'i-ri-flask-line size-4'
+                }
+              />
+            }
+            onClick={handleEvaluationWorkflowAction}
+          >
+            {evaluationWorkflowActionLabel}
+          </SuggestedAction>
+          <div aria-hidden className="m-1 h-px bg-divider-subtle" />
+        </>
+      )}
       {showOpenWebApp && (
         <Tooltip disabled={!disabledFunctionTooltip}>
           <TooltipTrigger
