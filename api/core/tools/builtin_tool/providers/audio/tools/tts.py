@@ -12,7 +12,7 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 
 class TTSTool(BuiltinTool):

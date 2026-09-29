@@ -9,12 +9,13 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -84,7 +85,7 @@ def session_close_tracker():
 def patched_external_dependencies():
     """Patch non-DB collaborators while keeping database behavior real."""
     with (
-        patch("tasks.document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+        patch("tasks.document_indexing_task.build_document_indexing_service", autospec=True) as mock_indexing_runner,
         patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
         patch("tasks.document_indexing_task.generate_summary_index_task", autospec=True) as mock_summary_task,
     ):
@@ -213,7 +214,7 @@ class TestDatasetIndexingTaskIntegration:
         assert len(opened) >= 2
         assert opened_ids <= closed_ids
 
-    def _runner_documents_arg(self, patched_external_dependencies) -> Sequence[Document]:
+    def _runner_documents_arg(self, patched_external_dependencies) -> Sequence[DocumentRef]:
         """Return the document batch passed to the runner."""
         return patched_external_dependencies["indexing_runner_instance"].run.call_args.args[0]
 

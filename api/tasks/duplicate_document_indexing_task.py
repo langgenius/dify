@@ -9,7 +9,6 @@ from sqlalchemy import delete, select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
@@ -17,6 +16,9 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 
@@ -158,12 +160,11 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 document.indexing_status = IndexingStatus.PARSING
                 document.processing_started_at = naive_utc_now()
                 session.add(document)
+            indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+            document_refs = [DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id) for doc in documents]
             # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
-
-            indexing_runner = IndexingRunner()
-            indexing_runner.run(list(documents), session)
-            session.commit()
+            indexing_service.run(document_refs)
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:

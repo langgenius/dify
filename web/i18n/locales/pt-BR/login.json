@@ -31,6 +31,7 @@
   "error.passwordEmpty": "A senha é obrigatória",
   "error.passwordInvalid": "A senha deve conter letras e números e ter um comprimento maior que 8",
   "error.registrationNotAllowed": "Conta não encontrada. Entre em contato com o administrador do sistema para se registrar.",
+  "error.ssoFailed": "Falha no login via SSO. Tente novamente ou entre em contato com o administrador.",
   "explore": "Explorar o Dify",
   "forget": "Esqueceu sua senha?",
   "forgotPassword": "Esqueceu sua senha?",

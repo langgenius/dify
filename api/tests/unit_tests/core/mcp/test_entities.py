@@ -1,13 +1,22 @@
 """Unit tests for MCP entities module."""
 
-from unittest.mock import Mock
+from queue import Queue
 
 from core.mcp.entities import (
     SUPPORTED_PROTOCOL_VERSIONS,
     RequestContext,
 )
 from core.mcp.session.base_session import BaseSession
-from core.mcp.types import LATEST_PROTOCOL_VERSION, RequestParams
+from core.mcp.types import LATEST_PROTOCOL_VERSION, RequestParams, ServerNotification, ServerRequest
+
+
+def _session() -> BaseSession:
+    return BaseSession(
+        read_stream=Queue(),
+        write_stream=Queue(),
+        receive_request_type=ServerRequest,
+        receive_notification_type=ServerNotification,
+    )
 
 
 class TestProtocolVersions:
@@ -31,46 +40,46 @@ class TestRequestContext:
 
     def test_request_context_creation(self):
         """Test creating a RequestContext instance."""
-        mock_session = Mock(spec=BaseSession)
-        mock_lifespan = {"key": "value"}
-        mock_meta = RequestParams.Meta(progressToken="test-token")
+        session = _session()
+        lifespan = {"key": "value"}
+        meta = RequestParams.Meta(progressToken="test-token")
 
         context = RequestContext(
             request_id="test-request-123",
-            meta=mock_meta,
-            session=mock_session,
-            lifespan_context=mock_lifespan,
+            meta=meta,
+            session=session,
+            lifespan_context=lifespan,
         )
 
         assert context.request_id == "test-request-123"
-        assert context.meta == mock_meta
-        assert context.session == mock_session
-        assert context.lifespan_context == mock_lifespan
+        assert context.meta == meta
+        assert context.session == session
+        assert context.lifespan_context == lifespan
 
     def test_request_context_with_none_meta(self):
         """Test creating RequestContext with None meta."""
-        mock_session = Mock(spec=BaseSession)
+        session = _session()
 
         context = RequestContext(
             request_id=42,  # Can be int or string
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context=None,
         )
 
         assert context.request_id == 42
         assert context.meta is None
-        assert context.session == mock_session
+        assert context.session == session
         assert context.lifespan_context is None
 
     def test_request_context_attributes(self):
         """Test RequestContext attributes are accessible."""
-        mock_session = Mock(spec=BaseSession)
+        session = _session()
 
         context = RequestContext(
             request_id="test-123",
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context=None,
         )
 
@@ -83,19 +92,19 @@ class TestRequestContext:
         # Verify values
         assert context.request_id == "test-123"
         assert context.meta is None
-        assert context.session == mock_session
+        assert context.session == session
         assert context.lifespan_context is None
 
     def test_request_context_generic_typing(self):
         """Test RequestContext with different generic types."""
-        # Create a mock session with specific type
-        mock_session = Mock(spec=BaseSession)
+        # Create a real session without starting its receive loop.
+        session = _session()
 
         # Create context with string lifespan context
         context_str = RequestContext[BaseSession, str](
             request_id="test-1",
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context="string-context",
         )
         assert isinstance(context_str.lifespan_context, str)
@@ -104,7 +113,7 @@ class TestRequestContext:
         context_dict = RequestContext[BaseSession, dict](
             request_id="test-2",
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context={"key": "value"},
         )
         assert isinstance(context_dict.lifespan_context, dict)
@@ -118,7 +127,7 @@ class TestRequestContext:
         context_custom = RequestContext[BaseSession, CustomLifespan](
             request_id="test-3",
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context=custom_lifespan,
         )
         assert isinstance(context_custom.lifespan_context, CustomLifespan)
@@ -126,13 +135,13 @@ class TestRequestContext:
 
     def test_request_context_with_progress_meta(self):
         """Test RequestContext with progress metadata."""
-        mock_session = Mock(spec=BaseSession)
+        session = _session()
         progress_meta = RequestParams.Meta(progressToken="progress-123")
 
         context = RequestContext(
             request_id="req-456",
             meta=progress_meta,
-            session=mock_session,
+            session=session,
             lifespan_context=None,
         )
 
@@ -141,27 +150,27 @@ class TestRequestContext:
 
     def test_request_context_equality(self):
         """Test RequestContext equality comparison."""
-        mock_session1 = Mock(spec=BaseSession)
-        mock_session2 = Mock(spec=BaseSession)
+        session1 = _session()
+        session2 = _session()
 
         context1 = RequestContext(
             request_id="test-123",
             meta=None,
-            session=mock_session1,
+            session=session1,
             lifespan_context="context",
         )
 
         context2 = RequestContext(
             request_id="test-123",
             meta=None,
-            session=mock_session1,
+            session=session1,
             lifespan_context="context",
         )
 
         context3 = RequestContext(
             request_id="test-456",
             meta=None,
-            session=mock_session1,
+            session=session1,
             lifespan_context="context",
         )
 
@@ -175,24 +184,23 @@ class TestRequestContext:
         context4 = RequestContext(
             request_id="test-123",
             meta=None,
-            session=mock_session2,
+            session=session2,
             lifespan_context="context",
         )
         assert context1 != context4
 
     def test_request_context_repr(self):
         """Test RequestContext string representation."""
-        mock_session = Mock(spec=BaseSession)
-        mock_session.__repr__ = Mock(return_value="<MockSession>")
+        session = _session()
 
         context = RequestContext(
             request_id="test-123",
             meta=None,
-            session=mock_session,
+            session=session,
             lifespan_context={"data": "test"},
         )
 
         repr_str = repr(context)
         assert "RequestContext" in repr_str
         assert "test-123" in repr_str
-        assert "MockSession" in repr_str
+        assert repr(session) in repr_str

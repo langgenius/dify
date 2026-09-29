@@ -4,14 +4,16 @@ from collections.abc import Callable
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.auth.api_key_contracts import ApiKeyCache, ApiKeyRecord
+from services.auth.api_key_contracts import ApiKeyCache, ApiKeyRecord, ApiKeyResourceNotFoundError
 from services.errors.account import NoPermissionError
-from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.dataset_access import (
+    DatasetAccess,
+    DatasetAccessDeniedError,
+    DatasetNotFoundError,
+)
 
 
 class DatasetApiKeyStore(Protocol):
-    def get_dataset_access(self, workspace_id: str, dataset_id: str, account_id: str) -> DatasetAccess: ...
-
     def list_keys(self, workspace_id: str, dataset_id: str) -> tuple[ApiKeyRecord, ...]: ...
 
     def create_key(self, workspace_id: str, dataset_id: str, *, max_keys: int, prefix: str) -> ApiKeyRecord: ...
@@ -35,9 +37,17 @@ class UnknownDatasetIdsError(Exception):
 class DatasetApiKeyService:
     MAX_KEYS = 10
 
-    def __init__(self, *, keys: DatasetApiKeyStore, cache: ApiKeyCache, rbac_enabled: Callable[[], bool]) -> None:
+    def __init__(
+        self,
+        *,
+        keys: DatasetApiKeyStore,
+        cache: ApiKeyCache,
+        access: DatasetAccess,
+        rbac_enabled: Callable[[], bool],
+    ) -> None:
         self._keys = keys
         self._cache = cache
+        self._access = access
         self._rbac_enabled = rbac_enabled
 
     def list_keys(self, context: RequestContext, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
@@ -56,9 +66,12 @@ class DatasetApiKeyService:
     def _check_access(self, context: RequestContext, dataset_id: str) -> None:
         # Enterprise RBAC is enforced at admission; community deployments use the dataset ACL.
         if not self._rbac_enabled():
-            access = self._keys.get_dataset_access(context.active_workspace_id, dataset_id, context.account_id)
-            if not access.allows(context.account_id):
-                raise NoPermissionError("You do not have permission to access this dataset.")
+            try:
+                self._access.require_accessible(context, dataset_id)
+            except DatasetNotFoundError as error:
+                raise ApiKeyResourceNotFoundError("Dataset not found.") from error
+            except DatasetAccessDeniedError as error:
+                raise NoPermissionError("You do not have permission to access this dataset.") from error
 
     def list_workspace_keys(self, context: RequestContext) -> tuple[ApiKeyRecord, ...]:
         return self._keys.list_workspace_keys(context.active_workspace_id)

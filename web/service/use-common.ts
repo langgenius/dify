@@ -12,12 +12,14 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { authSessionRevisionAtom } from '@/context/auth-session-state'
+import { resetUser } from '@/app/components/base/amplitude/utils'
+import { clearPageLeaveGuards, confirmPageLeave } from '@/utils/page-leave-guard'
+import { basePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
+import { consoleQuery } from './console'
 
 const NAME_SPACE = 'common'
 
@@ -146,26 +148,34 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
-export const useLogout = () => {
-  const queryClient = useQueryClient()
-  const advanceAuthSession = useSetAtom(authSessionRevisionAtom)
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
-    onSuccess: () => {
-      discardRegistrationSessionState()
-      // Drop all cached queries so the post-logout /signin probe doesn't read
-      // the previous user's profile (the userProfile queryKey is shared with
-      // the (commonLayout) tree, which keeps observing it during React's
-      // concurrent transition — gcTime: 0 is not enough on its own).
-      // Nuclear over targeted: every new user-scoped query would otherwise
-      // need to be remembered here. systemFeatures (user-agnostic) just
-      // refetches once on the way to /signin, which is cheap.
-      queryClient.clear()
-      // Rebind account-scoped Jotai queries to the cleared cache.
-      advanceAuthSession((revision) => revision + 1)
-    },
-  })
+export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = {}) => {
+  return useMutation(
+    consoleQuery.logout.post.mutationOptions({
+      onMutate: () => {
+        // A cancelled native beforeunload prompt would otherwise leave this document
+        // alive after the server has logged out. Obtain consent before ending the session.
+        if (!confirmPageLeave()) throw new Error('Logout cancelled')
+      },
+      onSuccess: () => {
+        // Registration markers and Analytics identity can survive a page reload,
+        // so clear them explicitly after the server has ended the session.
+        discardRegistrationSessionState()
+        resetUser()
+        // Client-side navigation keeps root providers and account-scoped stores alive.
+        // QueryClient.clear() alone is insufficient: atomWithQuery caches observers
+        // that can remain attached to removed Query instances and expose old results
+        // when another account signs in with the same query keys (see #42809).
+        // Replace the document to recreate all stores and observers for the next
+        // session, without maintaining a reset dependency on every account-scoped atom.
+        // Native navigation needs the deployment base path added explicitly; redirectTo
+        // also preserves flow-specific sign-in parameters such as the OAuth return URL.
+        // Consent was obtained before the request. Keep guards on failure, but remove
+        // them on success so the browser cannot cancel the required document reset.
+        clearPageLeaveGuards()
+        window.location.replace(`${basePath}${redirectTo}`)
+      },
+    }),
+  )
 }
 
 type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }

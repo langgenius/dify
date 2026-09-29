@@ -22,7 +22,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
+from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
@@ -49,7 +49,7 @@ from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFro
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
-from services.datasource_provider_service import DatasourceProviderService
+from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
@@ -57,6 +57,10 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(self, *, documents: PipelineDocumentStore, datasource_providers: DatasourceProviderService) -> None:
+        self._documents = documents
+        self._datasource_providers = datasource_providers
+
     @overload
     def generate(
         self,
@@ -121,7 +125,7 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
@@ -137,8 +141,8 @@ class PipelineGenerator(BaseAppGenerator):
         )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
-            from services.dataset_service import DocumentService
             from services.feature_service import FeatureService
+            from services.knowledge.dataset_service import DocumentService
 
             features = FeatureService.get_features(pipeline.tenant_id)
             DocumentService.check_document_creation_limits(len(datasource_info_list), features)
@@ -404,7 +408,7 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
 
@@ -501,7 +505,7 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
 
@@ -632,6 +636,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
+                        documents=self._documents,
                     )
 
                     runner.run()
@@ -776,8 +781,7 @@ class PipelineGenerator(BaseAppGenerator):
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(
+            credentials = self._datasource_providers.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),

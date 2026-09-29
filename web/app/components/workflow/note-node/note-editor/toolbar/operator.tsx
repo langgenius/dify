@@ -1,6 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuCheckboxItemIndicator,
   DropdownMenuItem,
   DropdownMenuPopup,
   DropdownMenuPortal,
@@ -8,9 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Switch } from '@langgenius/dify-ui/switch'
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import { handleWorkflowMenuKeyDown } from '@/app/components/workflow/shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
 export type OperatorProps = {
@@ -29,9 +32,32 @@ const Operator = ({
 }: OperatorProps) => {
   const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
+  const deletingRef = useRef(false)
+  const flowStore = useStoreApi()
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) deletingRef.current = false
+    setOpen(nextOpen)
+  }
+
+  function handleCopy() {
+    setOpen(false)
+    onCopy()
+  }
+
+  function handleDuplicate() {
+    setOpen(false)
+    onDuplicate()
+  }
+
+  function handleDelete() {
+    deletingRef.current = true
+    setOpen(false)
+    onDelete()
+  }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
         aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         className={cn(
@@ -42,7 +68,7 @@ const Operator = ({
           event.preventDefault()
           event.stopPropagation()
           event.preventBaseUIHandler()
-          setOpen((prev) => !prev)
+          handleOpenChange(!open)
         }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -50,25 +76,28 @@ const Operator = ({
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
-          <DropdownMenuPopup>
+          <DropdownMenuPopup
+            finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
+            onKeyDown={(event) =>
+              handleWorkflowMenuKeyDown(event, [
+                ['workflow.copy', handleCopy],
+                ['workflow.duplicate', handleDuplicate],
+                ['workflow.delete', handleDelete],
+              ])
+            }
+          >
             <div className="min-w-48 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
               <div className="p-1">
                 <DropdownMenuItem
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onCopy()
-                  }}
+                  onClick={handleCopy}
                 >
                   {t(($) => $['common.copy'], { ns: 'workflow' })}
                   <ShortcutKbd shortcut="workflow.copy" />
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onDuplicate()
-                  }}
+                  onClick={handleDuplicate}
                 >
                   {t(($) => $['common.duplicate'], { ns: 'workflow' })}
                   <ShortcutKbd shortcut="workflow.duplicate" />
@@ -76,23 +105,22 @@ const Operator = ({
               </div>
               <DropdownMenuSeparator className="my-0" />
               <div className="p-1">
-                <div
-                  className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-                  onClick={(e) => e.stopPropagation()}
+                <DropdownMenuCheckboxItem
+                  checked={showAuthor}
+                  onCheckedChange={onShowAuthorChange}
+                  closeOnClick={false}
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
                 >
-                  <div>{t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
-                  <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
-                </div>
+                  {t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}
+                  <DropdownMenuCheckboxItemIndicator />
+                </DropdownMenuCheckboxItem>
               </div>
               <DropdownMenuSeparator className="my-0" />
               <div className="p-1">
                 <DropdownMenuItem
                   variant="destructive"
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onDelete()
-                  }}
+                  onClick={handleDelete}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
                   <ShortcutKbd shortcut="workflow.delete" />

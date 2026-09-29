@@ -1,6 +1,7 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, SVGProps } from 'react'
-import type { App } from '@/types/app'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -34,7 +35,7 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   )
 }
 
-const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
+const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
   const { t } = useTranslation(['appLog'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -44,7 +45,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const getWebAppType = (appType: AppModeEnum) => {
+  const getWebAppType = (appType: AppDetailWithSite['mode']) => {
     if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
       return AppModeEnum.CHAT
     return appType
@@ -62,13 +63,15 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
             i18nKey={($) => $['table.empty.element.content']}
             ns="appLog"
             components={{
-              shareLink: (
+              shareLink: appDetail.site?.access_token ? (
                 <Link
                   href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`}
                   className="text-util-colors-blue-blue-600"
                   target="_blank"
                   rel="noopener noreferrer"
                 />
+              ) : (
+                <span />
               ),
               testLink: (
                 <Link

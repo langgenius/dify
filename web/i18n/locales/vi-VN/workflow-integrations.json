@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "5 lần thực thi tiếp theo",
   "nodes.triggerSchedule.onMinute": "Trong một phút",
   "nodes.triggerSchedule.selectFrequency": "Chọn tần suất",
-  "nodes.triggerSchedule.selectTime": "Chọn thời gian",
   "nodes.triggerSchedule.title": "Lịch trình",
   "nodes.triggerSchedule.useCronExpression": "Sử dụng biểu thức cron",
   "nodes.triggerSchedule.useVisualPicker": "Sử dụng trình chọn trực quan",

@@ -16,7 +16,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -84,15 +84,11 @@ function CreateAgentFormSession({
           </Button>
         </div>
       </Form>
-      <AppIconPicker
+      <IconPickerDialog
         open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
+        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
         onOpenChange={setIconPickerOpen}
-        onSelect={setAgentIcon}
+        onConfirm={setAgentIcon}
       />
     </>
   )

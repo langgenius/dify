@@ -1,5 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
+import { zAppUserInputFormPayload } from '@dify/contracts/api/console/apps/zod.gen'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 /**
  * Test suite for model configuration transformation utilities
@@ -276,6 +277,17 @@ describe('Model Config Utilities', () => {
         hide: false,
         default: '',
       })
+    })
+
+    it.each([
+      [{ file: { label: 'Attachment', variable: 'attachment' } }, { number_limits: 1 }],
+      [{ 'file-list': { label: 'Attachments', variable: 'attachments' } }, {}],
+    ])('should allow publishing a loaded file input with omitted restrictions', (input, config) => {
+      const variables = userInputsFormToPromptVariables([input])
+      const form = promptVariablesToUserInputsForm(variables)
+
+      expect(variables[0]?.config).toEqual(config)
+      expect(zAppUserInputFormPayload.array().safeParse(form).success).toBe(true)
     })
 
     /**

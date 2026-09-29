@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -62,7 +63,7 @@ vi.mock('next/dynamic', async () => {
         onStopResponding: () => void
         sendButtonLabel?: string
         sendButtonLoading?: boolean
-        showPromptLog?: boolean
+        onOpenLog?: ChatProps['onOpenLog']
         footerNotice?: string
         chatNode?: ReactNode
         chatList?: Array<{
@@ -89,7 +90,7 @@ vi.mock('next/dynamic', async () => {
             data-send-button-label={props.sendButtonLabel ?? ''}
             data-send-button-loading={String(!!props.sendButtonLoading)}
             data-answer-action-position={props.answerActionPosition ?? 'auto'}
-            data-show-prompt-log={String(!!props.showPromptLog)}
+            data-can-open-log={String(!!props.onOpenLog)}
             data-footer-notice={props.footerNotice ?? ''}
             data-no-chat-input={String(!!props.noChatInput)}
             data-show-regenerate={String(!!props.showRegenerate)}
@@ -1320,7 +1321,7 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
-      'data-show-prompt-log',
+      'data-can-open-log',
       'false',
     )
   })

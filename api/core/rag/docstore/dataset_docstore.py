@@ -235,8 +235,12 @@ class DatasetDocumentStore:
 
     def get_document_segment(self, doc_id: str, session: Session) -> DocumentSegment | None:
         stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
+            DocumentSegment.tenant_id == self._dataset.tenant_id,
+            DocumentSegment.dataset_id == self._dataset.id,
+            DocumentSegment.index_node_id == doc_id,
         )
+        if self._document_id is not None:
+            stmt = stmt.where(DocumentSegment.document_id == self._document_id)
         document_segment = session.scalar(stmt)
 
         return document_segment

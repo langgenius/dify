@@ -4,6 +4,7 @@ import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup.ts'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages.ts'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process.ts'
+import { startWebBuildDownload } from '../support/web-build.ts'
 import { startWebServer, stopWebServer } from '../support/web-server.ts'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env.ts'
 import { e2eDir, isMainModule, runCommand } from './common.ts'
@@ -73,8 +74,8 @@ const waitForManagedProcess = async ({
   }
 }
 
-const main = async () => {
-  const { forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(process.argv.slice(2))
+export const runCucumber = async (argv: string[]) => {
+  const { downloadWebBuild, forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(argv)
   const startAgentBackendForRun = shouldStartManagedAgentBackend()
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
@@ -83,12 +84,14 @@ const main = async () => {
   let difyAgentProcess: ManagedProcess | undefined
   let middlewareStarted = false
   let shellctlProcess: ManagedProcess | undefined
+  let webBuild: Awaited<ReturnType<typeof startWebBuildDownload>> | undefined
 
   let cleanupPromise: Promise<void> | undefined
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
         const cleanupErrors = await runCleanupTasks([
+          { label: 'Stop Web build download', run: () => stopManagedProcess(webBuild?.process) },
           { label: 'Stop web server', run: stopWebServer },
           { label: 'Stop celery worker', run: () => stopManagedProcess(celeryProcess) },
           { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
@@ -120,14 +123,17 @@ const main = async () => {
 
   try {
     if (full) await resetState()
+    if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
+    await mkdir(logDir, { recursive: true })
+
+    // The runner owns both preparation branches and tears them down on failure.
+    // Download the shared build while middleware and backend services start.
+    if (downloadWebBuild) webBuild = await startWebBuildDownload(logDir)
 
     if (full) {
       middlewareStarted = true
       await startMiddleware()
     }
-
-    if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
-    await mkdir(logDir, { recursive: true })
 
     if (startAgentBackendForRun) {
       shellctlProcess = await startLoggedProcess({
@@ -182,6 +188,16 @@ const main = async () => {
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
     })
 
+    if (webBuild) {
+      const waitStarted = Date.now()
+      console.log('Backend services are ready; waiting for the shared Web build.')
+      const error = await webBuild.completed
+      if (error) throw error
+      console.log(
+        `Shared Web build ready after ${Math.round((Date.now() - waitStarted) / 1000)}s of additional waiting.`,
+      )
+    }
+
     await startWebServer({
       baseURL,
       command: process.execPath,
@@ -229,7 +245,7 @@ const main = async () => {
 }
 
 if (isMainModule(import.meta.url)) {
-  void main().catch((error) => {
+  void runCucumber(process.argv.slice(2)).catch((error) => {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)
   })
