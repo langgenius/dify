@@ -37,4 +37,4 @@ class RBACResourceService:
         dataset_id = session.scalar(
             select(Dataset.id).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == tenant_id)
         )
-        return None if dataset_id is None else str(dataset_id)
+        return dataset_id

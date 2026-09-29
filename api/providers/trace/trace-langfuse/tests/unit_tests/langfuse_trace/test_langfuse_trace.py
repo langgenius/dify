@@ -38,6 +38,9 @@ def _dt() -> datetime:
     return datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
 
 
+from tests.unit_tests.core.ops.trace_fixtures import message_trace_info, tool_trace_info, workflow_trace_info
+
+
 @pytest.fixture
 def langfuse_config():
     return LangfuseConfig(public_key="pk-123", secret_key="sk-123", host="https://cloud.langfuse.com")
@@ -118,37 +121,37 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(trace_instance, method, m)
 
     # WorkflowTraceInfo
-    info = MagicMock(spec=WorkflowTraceInfo)
+    info = workflow_trace_info()
     trace_instance.trace(info)
     mocks["workflow_trace"].assert_called_once_with(info)
 
     # MessageTraceInfo
-    info = MagicMock(spec=MessageTraceInfo)
+    info = message_trace_info()
     trace_instance.trace(info)
     mocks["message_trace"].assert_called_once_with(info)
 
     # ModerationTraceInfo
-    info = MagicMock(spec=ModerationTraceInfo)
+    info = ModerationTraceInfo(metadata={}, flagged=False, action="allow", preset_response="", query="hello")
     trace_instance.trace(info)
     mocks["moderation_trace"].assert_called_once_with(info)
 
     # SuggestedQuestionTraceInfo
-    info = MagicMock(spec=SuggestedQuestionTraceInfo)
+    info = SuggestedQuestionTraceInfo(metadata={}, total_tokens=0, suggested_question=[], level="info")
     trace_instance.trace(info)
     mocks["suggested_question_trace"].assert_called_once_with(info)
 
     # DatasetRetrievalTraceInfo
-    info = MagicMock(spec=DatasetRetrievalTraceInfo)
+    info = DatasetRetrievalTraceInfo(metadata={})
     trace_instance.trace(info)
     mocks["dataset_retrieval_trace"].assert_called_once_with(info)
 
     # ToolTraceInfo
-    info = MagicMock(spec=ToolTraceInfo)
+    info = tool_trace_info()
     trace_instance.trace(info)
     mocks["tool_trace"].assert_called_once_with(info)
 
     # GenerateNameTraceInfo
-    info = MagicMock(spec=GenerateNameTraceInfo)
+    info = GenerateNameTraceInfo(tenant_id="tenant-1", metadata={})
     trace_instance.trace(info)
     mocks["generate_name_trace"].assert_called_once_with(info)
 

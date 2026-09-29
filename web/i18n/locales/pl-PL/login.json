@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Hasło jest wymagane",
   "error.passwordInvalid": "Hasło musi zawierać litery i cyfry, a jego długość musi być większa niż 8",
   "error.registrationNotAllowed": "Nie znaleziono konta. Skontaktuj się z administratorem systemu, aby się zarejestrować.",
+  "error.ssoFailed": "Logowanie SSO nie powiodło się. Spróbuj ponownie lub skontaktuj się z administratorem.",
   "explore": "Odkryj Dify",
   "forget": "Zapomniałeś hasła?",
   "forgotPassword": "Zapomniałeś hasła?",
