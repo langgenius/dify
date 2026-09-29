@@ -15,16 +15,6 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  optimizeDeps: {
-    include: [
-      'vite-plus/test/browser',
-      '@daypicker/react/locale/en-US',
-      '@daypicker/react/locale/ar-TN',
-      '@daypicker/react/locale/fa-IR',
-      '@base-ui/utils/useStableCallback',
-      '@base-ui/utils/useTimeout',
-    ],
-  },
   test: {
     browser: {
       expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },
