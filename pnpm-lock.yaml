@@ -6,6 +6,9 @@ importers:
   .:
     configDependencies: {}
     packageManagerDependencies:
+      '@pnpm/exe':
+        specifier: 12.6.0
+        version: 12.6.0
       pnpm:
         specifier: 12.6.0
         version: 12.6.0
@@ -89,6 +92,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@pnpm/exe@12.6.0':
+    resolution: {integrity: sha512-CkNetlJZugjKp9vPvWqCm5ahORU6FfO46BlOqqSCKLJ+W6QcRgM0qmmPTvlgrXVvkAiH+9hE+mMp/wSaqcU5Aw==}
+    engines: {node: '>=18.*'}
+    hasBin: true
+
   pnpm@12.6.0:
     resolution: {integrity: sha512-PvaPlRyxEawgS0paFvCy3fDaVqluBBPoHYVdnwtV75JnFHCQKOHNAMQFwsX7e56OxNxGd3yAXQNzwvL/AP0g7A==}
     engines: {node: '>=18.*'}
@@ -137,6 +145,23 @@ snapshots:
 
   '@pnpm/exe.win32-x64@12.6.0':
     optional: true
+
+  '@pnpm/exe@12.6.0':
+    optionalDependencies:
+      '@pnpm/exe.android-arm64': 12.6.0
+      '@pnpm/exe.android-x64': 12.6.0
+      '@pnpm/exe.darwin-arm64': 12.6.0
+      '@pnpm/exe.darwin-x64': 12.6.0
+      '@pnpm/exe.freebsd-x64': 12.6.0
+      '@pnpm/exe.linux-arm64': 12.6.0
+      '@pnpm/exe.linux-arm64-musl': 12.6.0
+      '@pnpm/exe.linux-ppc64': 12.6.0
+      '@pnpm/exe.linux-riscv64': 12.6.0
+      '@pnpm/exe.linux-s390x': 12.6.0
+      '@pnpm/exe.linux-x64': 12.6.0
+      '@pnpm/exe.linux-x64-musl': 12.6.0
+      '@pnpm/exe.win32-arm64': 12.6.0
+      '@pnpm/exe.win32-x64': 12.6.0
 
   pnpm@12.6.0:
     optionalDependencies:
@@ -805,7 +830,7 @@ overrides:
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
   solid-js: 1.9.15
-  string-width: ~8.2.2
+  string-width: ~8.3.0
   tar@<=7.5.15: ^7.5.16
   vite@*: npm:@voidzero-dev/vite-plus-core@1.0.0
   vitest@*: 5.0.1
@@ -9118,8 +9143,8 @@ packages:
   string-ts@2.3.1:
     resolution: {integrity: sha512-xSJq+BS52SaFFAVxuStmx6n5aYZU571uYUnUrPXkPFCfdHyZMMlbP2v2Wx5sNBnAVzq/2+0+mcBLBa3Xa5ubYw==}
 
-  string-width@8.2.2:
-    resolution: {integrity: sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg==}
+  string-width@8.3.0:
+    resolution: {integrity: sha512-ZbmZM0JCihQN91dWnxoipT2KOEyHqEyfRXUyjuRhW8b/xnqPDoq4gWEVApTVa9db2wN8mmoikgFBbjh71+cGeQ==}
     engines: {node: '>=20'}
 
   string.prototype.codepointat@0.2.1:
@@ -13692,7 +13717,7 @@ snapshots:
 
   cli-table3@0.6.5:
     dependencies:
-      string-width: 8.2.2
+      string-width: 8.3.0
     optionalDependencies:
       '@colors/colors': 1.5.0
 
@@ -13700,7 +13725,7 @@ snapshots:
 
   cliui@9.0.1:
     dependencies:
-      string-width: 8.2.2
+      string-width: 8.3.0
       strip-ansi: 7.2.0
       wrap-ansi: 9.0.2
 
@@ -14402,7 +14427,7 @@ snapshots:
       micromark-util-character: 2.1.1
       micromark-util-normalize-identifier: 2.0.1
       micromark-util-symbol: 2.0.1
-      string-width: 8.2.2
+      string-width: 8.3.0
     transitivePeerDependencies:
       - supports-color
 
@@ -16176,7 +16201,7 @@ snapshots:
       is-unicode-supported: 2.1.0
       log-symbols: 7.0.1
       stdin-discarder: 0.3.2
-      string-width: 8.2.2
+      string-width: 8.3.0
 
   oxc-parser@0.127.0:
     dependencies:
@@ -17268,7 +17293,7 @@ snapshots:
 
   string-ts@2.3.1: {}
 
-  string-width@8.2.2:
+  string-width@8.3.0:
     dependencies:
       get-east-asian-width: 1.6.0
       strip-ansi: 7.2.0
@@ -17980,7 +18005,7 @@ snapshots:
   wrap-ansi@9.0.2:
     dependencies:
       ansi-styles: 6.2.3
-      string-width: 8.2.2
+      string-width: 8.3.0
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
@@ -18025,7 +18050,7 @@ snapshots:
       cliui: 9.0.1
       escalade: 3.2.0
       get-caller-file: 2.0.5
-      string-width: 8.2.2
+      string-width: 8.3.0
       y18n: 5.0.8
       yargs-parser: 22.0.0
 
