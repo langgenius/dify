@@ -140,7 +140,6 @@ function AgentLogsTableBody({
       )}
       {isSuccess &&
         logs.map((log) => {
-          const logTitle = log.title || log.conversation_id
           const isSelected = selectedLogId === log.id
 
           return (
@@ -167,7 +166,6 @@ function AgentLogsTableBody({
               <TableCell>
                 <button
                   type="button"
-                  aria-label={logTitle}
                   className="block w-full truncate rounded-sm text-left system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={(event) => {
                     event.stopPropagation()
@@ -175,6 +173,7 @@ function AgentLogsTableBody({
                   }}
                 >
                   {log.title || notAvailable}
+                  {!log.title && <span className="sr-only"> {log.conversation_id}</span>}
                 </button>
               </TableCell>
               <td className="px-3">
