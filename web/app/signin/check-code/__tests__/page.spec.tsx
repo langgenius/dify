@@ -3,6 +3,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { seedSystemFeatures } from '@/test/console/query-data'
@@ -520,6 +521,71 @@ describe('CheckCode', () => {
       expect.any(String),
       undefined,
     )
+  })
+
+  it('reports a verification request that fails before the server responds', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    const queryClient = createQueryClient()
+    vi.mocked(emailLoginWithCode).mockRejectedValue(new TypeError('Failed to fetch'))
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('login.error.unknown')
+    })
+    expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
+
+  it('leaves server verification errors to the request error toast', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    const queryClient = createQueryClient()
+    vi.mocked(emailLoginWithCode).mockRejectedValue(
+      new Response(JSON.stringify({ code: 'email_code_error', message: 'Invalid code' }), {
+        status: 400,
+      }),
+    )
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
+    })
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('reports a resend request that fails before the server responds', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    const queryClient = createQueryClient()
+    vi.mocked(sendEMailLoginCode).mockRejectedValue(new TypeError('Failed to fetch'))
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'resend-code' }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('login.error.unknown')
+    })
+    expect(screen.getByRole('button', { name: 'resend-code' })).toBeEnabled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
   describe('Post-login profile bootstrap', () => {

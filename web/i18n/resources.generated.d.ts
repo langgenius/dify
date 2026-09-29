@@ -3217,6 +3217,7 @@ export default interface Resources {
     'error.passwordEmpty': 'Password is required'
     'error.passwordInvalid': 'Password must contain letters and numbers, and the length must be greater than 8'
     'error.registrationNotAllowed': 'Account not found. Please contact the system admin to register.'
+    'error.unknown': 'Something went wrong. Please try again.'
     explore: 'Explore Dify'
     forget: 'Forgot your password?'
     forgotPassword: 'Forgot your password?'

@@ -53,6 +53,12 @@ export default function CheckCode() {
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 
+  // HTTP error responses are already reported by the request layer; only
+  // failures without a response (e.g. network errors) would otherwise be silent.
+  const notifyUnreportedError = (error: unknown) => {
+    if (!(error instanceof Response)) toast.error(t(($) => $['error.unknown'], { ns: 'login' }))
+  }
+
   const verify = async (code: string) => {
     if (loading || isResending || showResendTurnstile) return
 
@@ -90,6 +96,7 @@ export default function CheckCode() {
       }
     } catch (error) {
       console.error(error)
+      notifyUnreportedError(error)
     } finally {
       setLoading(false)
       if (shouldResetTurnstile) {
@@ -120,6 +127,7 @@ export default function CheckCode() {
       }
     } catch (error) {
       console.error(error)
+      notifyUnreportedError(error)
     } finally {
       setIsResending(false)
       setShowResendTurnstile(false)
