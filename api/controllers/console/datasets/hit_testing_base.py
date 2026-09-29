@@ -159,4 +159,4 @@ class DatasetsHitTestingBase:
             raise ValueError(str(e))
         except Exception as e:
             logger.exception("Hit testing failed.")
-            raise InternalServerError(str(e))
+            raise InternalServerError()

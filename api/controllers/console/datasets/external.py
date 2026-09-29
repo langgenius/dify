@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -439,4 +442,5 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
             return dump_response(ExternalHitTestingResponse, response)
         except Exception as e:
-            raise InternalServerError(str(e))
+            logger.exception("Error in external hit testing")
+            raise InternalServerError()

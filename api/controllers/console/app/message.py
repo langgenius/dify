@@ -395,7 +395,7 @@ class MessageFeedbackExportApi(Resource):
             return {"error": f"Parameter validation error: {str(e)}"}, 400
         except Exception as e:
             logger.exception("Error exporting feedback data")
-            raise InternalServerError(str(e))
+            raise InternalServerError()
 
 
 @console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
