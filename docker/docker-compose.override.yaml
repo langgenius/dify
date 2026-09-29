@@ -1,0 +1,12 @@
+# Runs the custom web image built by .github/workflows/build-web-image.yml
+# instead of the stock langgenius/dify-web image.
+#
+# Set these in docker/.env on the server (see the end of docker/.env.example):
+#   CUSTOM_WEB_IMAGE      Docker Hub repository, e.g. yourusername/dify-web-custom
+#   CUSTOM_WEB_IMAGE_TAG  image tag to run, e.g. 1.0.1 (defaults to latest)
+#
+# Deploy a new version: change CUSTOM_WEB_IMAGE_TAG, then run
+#   docker compose pull web && docker compose up -d web
+services:
+  web:
+    image: ${CUSTOM_WEB_IMAGE:?Set CUSTOM_WEB_IMAGE in docker/.env}:${CUSTOM_WEB_IMAGE_TAG:-latest}
