@@ -1160,3 +1160,110 @@ class TestSegmentServiceMutations:
         assert segment.enabled is initial_enabled
         enable_task.assert_not_called()
         disable_task.assert_not_called()
+
+
+class TestSegmentServiceQaPartialUpdate:
+    """Partial QA updates should not wipe an omitted answer (issue 41315)."""
+
+    def _persist_qa_segment(
+        self, sqlite_session: Session, *, indexing_technique: str = IndexTechniqueType.ECONOMY
+    ) -> tuple[Dataset, Document, DocumentSegment]:
+        dataset = _dataset()
+        dataset.indexing_technique = indexing_technique
+        document = _document(
+            doc_form=IndexStructureType.QA_INDEX,
+            word_count=len("old question") + len("old answer"),
+        )
+        segment = _segment(content="old question")
+        segment.answer = "old answer"
+        segment.keywords = ["old"]
+        segment.word_count = len("old question") + len("old answer")
+        sqlite_session.add_all([dataset, document, segment])
+        sqlite_session.commit()
+        return dataset, document, segment
+
+    def test_keywords_only_update_keeps_existing_answer(self, sqlite_session: Session) -> None:
+        dataset, document, segment = self._persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.VectorService.update_segment_vector") as vector_update,
+            patch("services.dataset_service.VectorService.update_multimodel_vector"),
+        ):
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(keywords=["new keyword"]),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert updated.answer == "old answer"
+        assert updated.content == "old question"
+        assert sqlite_session.get(DocumentSegment, segment.id).answer == "old answer"
+        vector_update.assert_called_once()
+
+    def test_content_change_without_answer_keeps_existing_answer(self, sqlite_session: Session) -> None:
+        dataset, document, segment = self._persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.VectorService.update_segment_vector") as vector_update,
+            patch("services.dataset_service.VectorService.update_multimodel_vector"),
+        ):
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert updated.answer == "old answer"
+        assert updated.content == "new question"
+        assert sqlite_session.get(DocumentSegment, segment.id).answer == "old answer"
+        vector_update.assert_called_once()
+
+    def test_high_quality_content_change_omitted_answer_used_in_embedding(self, sqlite_session: Session) -> None:
+        dataset, document, segment = self._persist_qa_segment(
+            sqlite_session, indexing_technique=IndexTechniqueType.HIGH_QUALITY
+        )
+        embedding_model = MagicMock()
+        embedding_model.get_text_embedding_num_tokens.return_value = [12]
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.ModelManager") as manager_cls,
+            patch("services.dataset_service.VectorService.update_segment_vector"),
+            patch("services.dataset_service.VectorService.update_multimodel_vector"),
+        ):
+            manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert updated.answer == "old answer"
+        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])
+
+    def test_explicit_answer_still_updates(self, sqlite_session: Session) -> None:
+        dataset, document, segment = self._persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.VectorService.update_segment_vector"),
+            patch("services.dataset_service.VectorService.update_multimodel_vector"),
+        ):
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(content="old question", answer="new answer"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert updated.answer == "new answer"
+        assert sqlite_session.get(DocumentSegment, segment.id).answer == "new answer"
