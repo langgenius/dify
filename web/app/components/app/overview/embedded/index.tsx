@@ -266,6 +266,7 @@ const EmbeddedContent = ({
               type="button"
               key={v}
               aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' }) || v}
+              aria-pressed={option === v}
               className={cn(style.option, optionIconClassName[v], option === v && style.active)}
               onClick={() => {
                 setOption(v)

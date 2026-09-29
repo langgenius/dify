@@ -94,6 +94,31 @@ describe('Embedded', () => {
     })
   })
 
+  it('exposes which embed method is selected when changing methods', async () => {
+    const user = userEvent.setup()
+    render(<Embedded {...baseProps} />)
+
+    const iframe = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.iframe',
+    })
+    const scripts = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.scripts',
+    })
+    const chromePlugin = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.chromePlugin',
+    })
+
+    expect(iframe).toHaveAttribute('aria-pressed', 'true')
+    expect(scripts).toHaveAttribute('aria-pressed', 'false')
+    expect(chromePlugin).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(scripts)
+
+    expect(iframe).toHaveAttribute('aria-pressed', 'false')
+    expect(scripts).toHaveAttribute('aria-pressed', 'true')
+    expect(chromePlugin).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('opens chrome plugin store link when chrome option selected', async () => {
     await act(async () => {
       render(<Embedded {...baseProps} />)
