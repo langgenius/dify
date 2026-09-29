@@ -254,7 +254,8 @@ def error_to_string(error: Exception | str | None) -> str:
             string_stacktrace = "".join(traceback.format_exception(error))
             error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
         else:
-            error_message = error
+            # callers pass non-str objects here despite the annotation; keep the stringify
+            error_message = str(error)
     return error_message
 
 

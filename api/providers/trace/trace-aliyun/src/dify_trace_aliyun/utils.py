@@ -337,7 +337,8 @@ def extract_tool_name_from_call_label(label: str) -> str:
 
 def create_status_from_agent_log_entry(entry: AgentLogEntry) -> Status:
     if entry.error:
-        return Status(StatusCode.ERROR, entry.error)
+        # entries are parsed from runtime JSON: keep the stringify despite the annotation
+        return Status(StatusCode.ERROR, str(entry.error))
     if entry.status == "success":
         return Status(StatusCode.OK)
     return Status(StatusCode.UNSET)
