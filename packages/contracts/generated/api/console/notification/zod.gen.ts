@@ -3,6 +3,20 @@
 import * as z from 'zod'
 
 /**
+ * DismissNotificationPayload
+ */
+export const zDismissNotificationPayload = z.object({
+  notification_id: z.string(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * NotificationItemResponse
  */
 export const zNotificationItemResponse = z.object({
@@ -32,7 +46,9 @@ export const zGetNotificationQuery = z.object({
  */
 export const zGetNotificationResponse = zNotificationResponse
 
+export const zPostNotificationDismissBody = zDismissNotificationPayload
+
 /**
  * Success
  */
-export const zPostNotificationDismissResponse = z.record(z.string(), z.unknown())
+export const zPostNotificationDismissResponse = zSimpleResultResponse

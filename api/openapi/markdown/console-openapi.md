@@ -7181,12 +7181,18 @@ Return the active in-product notification for the current user in the requested 
 ### [POST] /notification/dismiss
 Mark a notification as dismissed for the current user.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DismissNotificationPayload](#dismissnotificationpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 401 | Unauthorized |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 401 | Unauthorized |  |
 
 ### [GET] /notion/pages/{page_id}/{page_type}/preview
 #### Parameters
