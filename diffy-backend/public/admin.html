@@ -138,7 +138,9 @@
 
   <script>
     let token = "";
-    const API = window.location.origin;
+    // Include this page's folder so it also works behind a path prefix
+    // (e.g. /diffy-backend/admin.html -> API base /diffy-backend).
+    const API = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
     const PAGE_SIZE = 100;
 
     let allAgents = [];
