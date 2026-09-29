@@ -107,8 +107,8 @@ export default function RosterPage() {
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto">
-      <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
-        <div className="flex h-6 min-w-0 items-center justify-between gap-4">
+      <div className="shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
+        <div className="flex h-6 min-w-0 items-center justify-between gap-2 sm:gap-4">
           <h1
             id={pageTitleId}
             className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
@@ -120,10 +120,13 @@ export default function RosterPage() {
             href={docLink('/use-dify/build/new-agent/overview')}
             target="_blank"
             rel="noreferrer"
-            className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:size-auto sm:gap-0.5"
           >
-            {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
-            <span aria-hidden className="i-ri-external-link-line size-3" />
+            <span className="sr-only sm:not-sr-only">
+              {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
+            </span>
+            <span aria-hidden className="i-ri-book-open-line size-4 sm:hidden" />
+            <span aria-hidden className="i-ri-external-link-line hidden size-3 sm:inline-block" />
           </a>
         </div>
         <div className="mt-3.5">
