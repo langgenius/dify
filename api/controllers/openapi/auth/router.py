@@ -18,7 +18,7 @@ from core.db.session_factory import session_factory
 from core.logging.context import get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
-from services.resource_access_token_service import ResourceAccessTokenService
+from services.auth.resource_access_token_contracts import is_resource_access_token
 
 
 class AuthRouter:
@@ -47,7 +47,7 @@ class AuthRouter:
         assert_bearer_feature_enabled()
 
         token = extract_bearer(request)
-        is_resource_token = bool(token and ResourceAccessTokenService.is_resource_access_token(token))
+        is_resource_token = bool(token and is_resource_access_token(token))
         if not token:
             raise Unauthorized("bearer required")
 

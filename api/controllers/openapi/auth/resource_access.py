@@ -1,8 +1,4 @@
-"""Resource-token authentication and live resource authorization for OpenAPI.
-
-Machine credentials never inherit their creator's account or workspace role.
-Re-read bindings on every request so revocation takes effect without cache lag.
-"""
+"""Adapt machine credential authentication and authorization to OpenAPI admission."""
 
 import uuid
 from typing import override
@@ -12,76 +8,59 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank, Requirement
 from controllers.openapi.auth.subjects import Subject
-from core.db.session_factory import session_factory
-from libs.datetime_utils import naive_utc_now
+from extensions.ext_application_services import application_services
 from libs.oauth_bearer import AuthContext, TokenType, sha256_hex
 from libs.rate_limit import enforce_bearer_rate_limit
 from models.account import Tenant, TenantStatus
 from models.enums import AppStatus
 from models.model import App
-from models.resource_access_token import (
-    ResourceAccessToken,
-    ResourceAccessTokenRelation,
-    ResourceAccessTokenResourceType,
-)
+from services.auth.resource_access_token_contracts import ResourceAccessTokenInvalidError
 
 
 def authenticate_resource_token(token: str) -> AuthContext:
-    token_hash = sha256_hex(token)
-    enforce_bearer_rate_limit(token_hash)
-    with session_factory.create_session() as session:
-        row = session.scalar(select(ResourceAccessToken).where(ResourceAccessToken.token == token))
-        if row is None:
-            raise Unauthorized("invalid_bearer")
-        token_id = uuid.UUID(str(row.id))
+    enforce_bearer_rate_limit(sha256_hex(token))
+    try:
+        access = application_services().resource_access_tokens.authenticate(token)
+    except ResourceAccessTokenInvalidError as error:
+        raise Unauthorized("invalid_bearer") from error
     return AuthContext(
         subject_email=None,
         subject_issuer=None,
         account_id=None,
         client_id=None,
-        token_id=token_id,
+        token_id=uuid.UUID(access.token_id),
         token_type=TokenType.RESOURCE_ACCESS,
         expires_at=None,
     )
 
 
 class CheckResourceAccess(Requirement):
-    """Resolve live token bindings before any endpoint requirement loads an app."""
+    """Load ORM context only after the service has authorized live bindings."""
 
     rank = Rank.FIRST
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        row = session.get(ResourceAccessToken, str(subject.token_id))
-        if row is None:
-            raise Unauthorized("invalid_bearer")
-        tenant = session.get(Tenant, row.tenant_id)
+        app_id = ctx.view_args.get("app_id")
+        with resource_access_token_errors():
+            grant = application_services().resource_access_tokens.authorize_openapi(
+                token_id=str(subject.token_id),
+                workspace_id=ctx.view_args.get("workspace_id") or request.args.get("workspace_id"),
+                app_id=app_id,
+            )
+        # The current OpenAPI pipeline still needs ORM context. Reconstruct it
+        # within admission's session using the authorized owner chain.
+        tenant = session.get(Tenant, grant.tenant_id)
         if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise Forbidden("workspace unavailable")
-        workspace_id = ctx.view_args.get("workspace_id") or request.args.get("workspace_id")
-        if workspace_id and workspace_id != str(tenant.id):
-            raise Forbidden("resource_not_authorized")
         ctx._workspace = tenant
-        ctx.resource_app_ids = frozenset(
-            session.scalars(
-                select(App.id)
-                .join(ResourceAccessTokenRelation, ResourceAccessTokenRelation.app_id == App.id)
-                .where(
-                    ResourceAccessTokenRelation.token_id == row.id,
-                    ResourceAccessTokenRelation.resource_type == ResourceAccessTokenResourceType.APP,
-                    App.tenant_id == tenant.id,
-                )
-            )
-        )
-        app_id = ctx.view_args.get("app_id")
+        ctx.resource_app_ids = grant.app_ids
         if app_id:
-            if app_id not in ctx.resource_app_ids:
-                raise Forbidden("resource_not_authorized")
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant.id))
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == grant.tenant_id))
             if app is None or app.status != AppStatus.NORMAL or not app.enable_api:
                 raise Forbidden("resource_not_authorized")
             ctx._app = app
-        row.last_used_at = naive_utc_now()

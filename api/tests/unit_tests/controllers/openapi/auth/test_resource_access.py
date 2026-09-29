@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -15,6 +14,8 @@ from controllers.openapi.auth.resource_access import authenticate_resource_token
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
+from core.db.session_factory import get_session_maker
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant
 from models.enums import CreatorUserRole
@@ -52,8 +53,10 @@ def resource_fixture(sqlite_session: Session, config_overrides, app_services):
     flask_app.login_manager = MagicMock()
     with (
         patch(
-            "controllers.openapi.auth.resource_access.session_factory.create_session",
-            side_effect=lambda: nullcontext(sqlite_session),
+            "controllers.openapi.auth.resource_access.application_services",
+            return_value=SimpleNamespace(
+                resource_access_tokens=build_resource_access_token_service(database_client=get_session_maker())
+            ),
         ),
         patch("controllers.openapi.auth.resource_access.enforce_bearer_rate_limit"),
         patch(

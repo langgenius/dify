@@ -12,8 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
@@ -52,7 +54,6 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
-from services.resource_access_token_service import ResourceAccessTokenService
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_site(tenant_id, app_id)
         _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
-        _delete_app_resource_access_token_relations(app_id)
+        _delete_app_resource_access_token_relations(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
@@ -166,9 +167,11 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_resource_access_token_relations(app_id: str):
+def _delete_app_resource_access_token_relations(tenant_id: str, app_id: str):
     with session_factory.get_session_maker()() as session:
-        ResourceAccessTokenService.delete_relations_for_app(app_id=app_id, session=session)
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app_id
+        )
         session.commit()
 
 

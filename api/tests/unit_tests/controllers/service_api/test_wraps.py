@@ -24,7 +24,9 @@ from controllers.service_api.wraps import (
     validate_app_token,
     validate_dataset_token,
 )
+from core.db.session_factory import get_session_maker
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -353,8 +355,13 @@ class TestValidateAppToken:
         mock_user_logged_in,
         app: Flask,
         sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         _configure_current_app_mock(mock_current_app)
+        token_service = build_resource_access_token_service(database_client=get_session_maker())
+        monkeypatch.setattr(
+            wraps_module, "application_services", lambda: SimpleNamespace(resource_access_tokens=token_service)
+        )
         tenant, account, _ = _persist_workspace(sqlite_session)
         app_model = _app_model(tenant_id=tenant.id)
         access_token = ResourceAccessToken(
@@ -391,6 +398,7 @@ class TestValidateAppToken:
             result = protected_view()
 
         assert result["app_id"] == app_model.id
+        sqlite_session.expire_all()
         assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -878,8 +886,13 @@ class TestValidateDatasetToken:
         mock_user_logged_in,
         app: Flask,
         sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         _configure_current_app_mock(mock_current_app)
+        token_service = build_resource_access_token_service(database_client=get_session_maker())
+        monkeypatch.setattr(
+            wraps_module, "application_services", lambda: SimpleNamespace(resource_access_tokens=token_service)
+        )
         tenant, account, _ = _persist_workspace(sqlite_session)
         dataset = Dataset(
             id=str(uuid.uuid4()),
@@ -919,6 +932,7 @@ class TestValidateDatasetToken:
 
         assert result["tenant_id"] == tenant.id
         assert result["dataset_id"] == dataset.id
+        sqlite_session.expire_all()
         assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
