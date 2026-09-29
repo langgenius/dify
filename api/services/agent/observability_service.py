@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import mimetypes
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import sqlalchemy as sa
 from sqlalchemy import and_, func, or_, select
@@ -14,11 +18,18 @@ from sqlalchemy.orm import aliased
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
+from core.workflow.file_reference import build_file_reference
+from extensions.ext_storage import storage
+from fields.conversation_fields import AgentThought
+from fields.conversation_fields import MessageFile as MessageFileResponse
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageFeedback
+from models.model import App, Conversation, Message, MessageAgentThought, MessageFeedback, MessageFile, UploadFile
+from models.tools import ToolFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 
 
@@ -143,6 +154,9 @@ class AgentObservabilityService:
         message: Message,
         conversation: Conversation | None = None,
         feedbacks: Sequence[MessageFeedback] = (),
+        *,
+        agent_thoughts: Sequence[MessageAgentThought] = (),
+        message_files: Sequence[MessageFileResponse] = (),
     ) -> dict[str, Any]:
         invoke_from = message.invoke_from.value if message.invoke_from else None
         return {
@@ -151,7 +165,7 @@ class AgentObservabilityService:
             "conversation_id": message.conversation_id,
             "conversation_name": conversation.name if conversation else None,
             "query": message.query,
-            "answer": message.answer,
+            "answer": cls._refresh_answer_file_urls(message.answer, message_files),
             "status": cls._message_status(message),
             "error": message.error,
             "source": invoke_from,
@@ -160,6 +174,10 @@ class AgentObservabilityService:
             "from_account_id": message.from_account_id,
             "feedback_enabled": True,
             "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
+            "agent_thoughts": [
+                AgentThought.model_validate(thought).model_dump(mode="json") for thought in agent_thoughts
+            ],
+            "message_files": [file.model_dump(mode="json") for file in message_files],
             "message_tokens": int(message.message_tokens or 0),
             "answer_tokens": int(message.answer_tokens or 0),
             "total_tokens": cls._total_tokens(message),
@@ -169,6 +187,38 @@ class AgentObservabilityService:
             "created_at": to_timestamp(message.created_at),
             "updated_at": to_timestamp(message.updated_at),
         }
+
+    @staticmethod
+    def _refresh_answer_file_urls(answer: str, message_files: Sequence[MessageFileResponse]) -> str:
+        signed_urls: dict[str, str] = {}
+        for file in message_files:
+            if not file.upload_file_id or not file.url:
+                continue
+            parsed = urlsplit(file.url)
+            _, marker, resource = parsed.path.partition("/files/")
+            if marker and {"timestamp", "nonce", "sign"} <= parse_qs(parsed.query).keys():
+                signed_urls[marker + resource] = file.url
+        if not answer or not signed_urls:
+            return answer
+
+        def replace_url(match: re.Match[str]) -> str:
+            token = match.group("url")
+            url = token.rstrip(".,;!?")
+            try:
+                _, marker, resource = urlsplit(url).path.partition("/files/")
+            except ValueError:
+                return match.group(0)
+            replacement = signed_urls.get(marker + resource)
+            if replacement is None:
+                return match.group(0)
+            return match.group("prefix") + replacement + token[len(url) :]
+
+        return re.sub(
+            r"""(?P<prefix>^|[\s(<\[`'"，。；！？、：“”‘’【】《》])"""
+            r"""(?P<url>(?:https?://|/)[^\s<>()\[\]`'"，。；！？、：“”‘’【】《》]+)""",
+            replace_url,
+            answer,
+        )
 
     def list_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> dict[str, Any]:
         source_filters = self.resolve_source_filters(params.sources)
@@ -214,12 +264,13 @@ class AgentObservabilityService:
                     params=params,
                     source_filter=source_filter,
                 )
-                feedbacks_by_message = self._list_message_feedbacks(app=app, messages=messages)
                 rows.extend(
-                    self.serialize_log_message(
-                        message,
-                        feedbacks=feedbacks_by_message.get(message.id, ()),
-                    )
+                    {
+                        "id": message.id,
+                        "created_at": to_timestamp(message.created_at),
+                        "updated_at": to_timestamp(message.updated_at),
+                        "_message": message,
+                    }
                     for message in messages
                 )
             if source_filter.kind in {"all", "workflow"}:
@@ -243,8 +294,22 @@ class AgentObservabilityService:
         total = len(sorted_rows)
         start = (params.page - 1) * params.limit
         end = start + params.limit
+        page_rows = sorted_rows[start:end]
+        page_messages = [message for row in page_rows if isinstance(message := row.get("_message"), Message)]
+        feedbacks_by_message = self._list_message_feedbacks(app=app, messages=page_messages)
+        thoughts_by_message = self._list_message_thoughts(app=app, messages=page_messages)
+        files_by_message = self._list_message_files(app=app, messages=page_messages)
+        for index, row in enumerate(page_rows):
+            message = row.get("_message")
+            if isinstance(message, Message):
+                page_rows[index] = self.serialize_log_message(
+                    message,
+                    feedbacks=feedbacks_by_message.get(message.id, ()),
+                    agent_thoughts=thoughts_by_message.get(message.id, ()),
+                    message_files=files_by_message.get(message.id, ()),
+                )
         return {
-            "data": sorted_rows[start:end],
+            "data": page_rows,
             "page": params.page,
             "limit": params.limit,
             "total": total,
@@ -361,12 +426,159 @@ class AgentObservabilityService:
             for row in rows
         ]
 
+    @staticmethod
+    def _owned_messages_statement(app: App):
+        return (
+            select(Message)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .join(App, App.id == Message.app_id)
+            .where(App.tenant_id == app.tenant_id, Message.app_id == app.id, Conversation.app_id == app.id)
+        )
+
     def _list_webapp_messages(
         self, *, app: App, conversation_id: str, params: AgentLogQueryParams, source_filter: AgentSourceFilter
     ) -> list[Message]:
-        stmt = select(Message).where(Message.app_id == app.id, Message.conversation_id == conversation_id)
+        stmt = self._owned_messages_statement(app).where(Message.conversation_id == conversation_id)
         stmt = self._apply_message_filters(stmt, params=params, source_filter=source_filter)
         return list(self._session.scalars(stmt.order_by(Message.created_at.desc(), Message.id.desc())).all())
+
+    @classmethod
+    def _owned_message_ids(cls, app: App, messages: Sequence[Message]):
+        # Keep child reads bound to the exact authorized conversation/message pairs.
+        return (
+            cls._owned_messages_statement(app)
+            .with_only_columns(Message.id)
+            .where(
+                sa.tuple_(Message.conversation_id, Message.id).in_(
+                    [(message.conversation_id, message.id) for message in messages]
+                )
+            )
+        )
+
+    def _list_message_thoughts(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[MessageAgentThought]]:
+        if not messages:
+            return {}
+        stmt = (
+            select(MessageAgentThought)
+            .where(MessageAgentThought.message_id.in_(self._owned_message_ids(app, messages)))
+            .order_by(
+                MessageAgentThought.position.asc(), MessageAgentThought.created_at.asc(), MessageAgentThought.id.asc()
+            )
+        )
+        thoughts: dict[str, list[MessageAgentThought]] = {}
+        for thought in self._session.scalars(stmt).all():
+            thoughts.setdefault(thought.message_id, []).append(thought)
+        return thoughts
+
+    def _list_message_files(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[MessageFileResponse]]:
+        if not messages:
+            return {}
+        stmt = (
+            select(MessageFile)
+            .where(MessageFile.message_id.in_(self._owned_message_ids(app, messages)))
+            .order_by(MessageFile.created_at.asc(), MessageFile.id.asc())
+        )
+        message_files = self._session.scalars(stmt).all()
+        upload_ids = {
+            file.upload_file_id
+            for file in message_files
+            if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL)
+            and file.upload_file_id
+        }
+        tool_ids = {
+            file.id: file.upload_file_id or (file.url.rsplit("/", 1)[-1].split(".")[0] if file.url else None)
+            for file in message_files
+            if file.transfer_method == FileTransferMethod.TOOL_FILE
+        }
+        access = DatabaseFileAccessController()
+        uploads = (
+            {
+                file.id: file
+                for file in self._session.scalars(
+                    access.apply_upload_file_filters(
+                        select(UploadFile).where(UploadFile.tenant_id == app.tenant_id, UploadFile.id.in_(upload_ids))
+                    )
+                ).all()
+            }
+            if upload_ids
+            else {}
+        )
+        tools = (
+            {
+                file.id: file
+                for file in self._session.scalars(
+                    access.apply_tool_file_filters(
+                        select(ToolFile).where(
+                            ToolFile.tenant_id == app.tenant_id, ToolFile.id.in_(set(tool_ids.values()))
+                        )
+                    )
+                ).all()
+            }
+            if tool_ids
+            else {}
+        )
+
+        files: dict[str, list[MessageFileResponse]] = {}
+        for message_file in message_files:
+            record = (
+                tools.get(tool_ids[message_file.id])
+                if message_file.transfer_method == FileTransferMethod.TOOL_FILE
+                else uploads.get(message_file.upload_file_id)
+            )
+            if record is None and not (
+                message_file.transfer_method == FileTransferMethod.REMOTE_URL
+                and not message_file.upload_file_id
+                and message_file.url
+            ):
+                # Missing or foreign-tenant records must never produce signed URLs.
+                continue
+            files.setdefault(message_file.message_id, []).append(self._serialize_message_file(message_file, record))
+        return files
+
+    @staticmethod
+    def _serialize_message_file(message_file: MessageFile, record: UploadFile | ToolFile | None) -> MessageFileResponse:
+        """Serialize stored attachments without remote I/O or per-file database reads."""
+        mime_type: str | None
+        transfer_method = message_file.transfer_method
+        if isinstance(record, ToolFile):
+            filename, mime_type, size = record.name, record.mimetype, record.size
+            extension = (
+                PurePosixPath(filename).suffix.lower()
+                or mimetypes.guess_extension(mime_type)
+                or PurePosixPath(record.file_key).suffix.lower()
+                or ".bin"
+            )
+            remote_url = record.original_url
+        elif isinstance(record, UploadFile):
+            filename, mime_type, size = record.name, record.mime_type, record.size
+            extension = "." + record.extension
+            # Persisted uploads are local files even when originally fetched from a URL.
+            transfer_method = FileTransferMethod.LOCAL_FILE
+            remote_url = record.source_url
+        else:
+            remote_url = message_file.url
+            filename = unquote(PurePosixPath(urlsplit(remote_url or "").path).name)
+            mime_type = mimetypes.guess_type(filename)[0]
+            extension, size = PurePosixPath(filename).suffix.lower(), -1
+        file = File(
+            file_id=message_file.id,
+            file_type=message_file.type,
+            transfer_method=transfer_method,
+            filename=filename,
+            extension=extension,
+            mime_type=mime_type,
+            size=size,
+            remote_url=remote_url,
+            reference=build_file_reference(record_id=record.id) if record else None,
+        )
+        return MessageFileResponse.model_validate(
+            {
+                **file.to_dict(),
+                "transfer_method": message_file.transfer_method,
+                "belongs_to": message_file.belongs_to,
+                "upload_file_id": record.id if record else None,
+            }
+        )
 
     def _list_message_feedbacks(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[MessageFeedback]]:
         message_ids = [message.id for message in messages]
@@ -459,12 +671,18 @@ class AgentObservabilityService:
         )
         stmt = self._apply_workflow_node_filters(stmt, params=params, workflow_app=workflow_app)
         stmt = self._apply_workflow_source_filter(stmt, source_filter)
+        stmt = WorkflowNodeExecutionModel.preload_offload_data_and_files(stmt)
         executions = list(
             self._session.scalars(
                 stmt.order_by(WorkflowNodeExecutionModel.created_at.desc(), WorkflowNodeExecutionModel.id.desc())
             ).all()
         )
-        return [self.serialize_workflow_node_message(execution) for execution in executions]
+        return [
+            self.serialize_workflow_node_message(
+                execution, process_data=execution.load_full_process_data(self._session, storage)
+            )
+            for execution in executions
+        ]
 
     def _list_workflow_sources(self, *, app: App, agent_id: str) -> list[dict[str, Any]]:
         workflow_app = aliased(App)
@@ -669,9 +887,18 @@ class AgentObservabilityService:
         }
 
     @classmethod
-    def serialize_workflow_node_message(cls, node_execution: WorkflowNodeExecutionModel) -> dict[str, Any]:
+    def serialize_workflow_node_message(
+        cls, node_execution: WorkflowNodeExecutionModel, *, process_data: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]:
         inputs = cls._json_mapping(node_execution.inputs)
         outputs = cls._json_mapping(node_execution.outputs)
+        if process_data is None:
+            process_data = cls._json_mapping(node_execution.process_data)
+        agent_thoughts = [
+            AgentThought.model_validate({**thought, "message_id": node_execution.id})
+            for thought in process_data.get("agent_thoughts", [])
+        ]
+        agent_thoughts.sort(key=lambda thought: thought.position)
         metadata = cls._json_mapping(node_execution.execution_metadata)
         agent_log = cls._mapping_value(metadata, "agent_log")
         agent_backend = cls._mapping_value(agent_log, "agent_backend")
@@ -700,6 +927,7 @@ class AgentObservabilityService:
             ),
             "feedback_enabled": False,
             "feedbacks": [],
+            "agent_thoughts": [thought.model_dump(mode="json") for thought in agent_thoughts],
             "message_tokens": prompt_tokens,
             "answer_tokens": completion_tokens,
             "total_tokens": total_tokens,

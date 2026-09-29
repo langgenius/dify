@@ -344,7 +344,7 @@ export function AgentPreviewChatConversation({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
-      renderAgentContent={AgentRosterResponseContent}
+      renderAgentContent={(props) => <AgentRosterResponseContent {...props} showThoughts />}
       noSpacing
     />
   )

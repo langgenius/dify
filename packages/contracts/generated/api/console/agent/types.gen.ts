@@ -860,6 +860,7 @@ export type AgentLogConversationItemResponse = {
 }
 
 export type AgentLogMessageItemResponse = {
+  agent_thoughts?: Array<AgentThought>
   answer: string
   answer_tokens: number
   conversation_id: string
@@ -872,6 +873,7 @@ export type AgentLogMessageItemResponse = {
   from_end_user_id?: string | null
   id: string
   latency: number
+  message_files?: Array<MessageFile>
   message_id: string
   message_tokens: number
   query: string

@@ -1,8 +1,36 @@
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 
+import pytest
+
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+from core.app.entities.agent_strategy import AgentStrategyInfo
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
+    QueueNodeExceptionEvent,
+    QueueNodeFailedEvent,
+    QueueNodeRetryEvent,
+    QueueNodeStartedEvent,
+    QueueNodeSucceededEvent,
+)
+from core.app.entities.task_entities import (
+    ChatbotAppStreamResponse,
+    NodeFinishStreamResponse,
+    NodeRetryStreamResponse,
+    WorkflowAppStreamResponse,
+)
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from libs.datetime_utils import naive_utc_now
+from models import Account
+from models.model import AppMode
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:
@@ -256,3 +284,198 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         assert len(result) == 2
         assert result[0]["id"] == "complex_file"
         assert result[1]["id"] == "complex_obj"
+
+
+_NodeResultEvent = QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent | QueueNodeRetryEvent
+_NODE_RESULT_EVENT_TYPES = [QueueNodeSucceededEvent, QueueNodeFailedEvent, QueueNodeExceptionEvent, QueueNodeRetryEvent]
+
+
+class TestWorkflowResponseConverterAgentThoughts:
+    @staticmethod
+    def create_converter(invoke_from: InvokeFrom, app_mode: AppMode = AppMode.WORKFLOW) -> WorkflowResponseConverter:
+        entity_type = WorkflowAppGenerateEntity if app_mode == AppMode.WORKFLOW else AdvancedChatAppGenerateEntity
+        entity = entity_type.model_validate(
+            {
+                "task_id": "task-1",
+                "app_config": WorkflowUIBasedAppConfig(
+                    tenant_id="tenant-1", app_id="app-1", app_mode=app_mode, workflow_id="workflow-1"
+                ),
+                "inputs": {},
+                "files": [],
+                "user_id": "user-1",
+                "stream": True,
+                "invoke_from": invoke_from,
+                "workflow_execution_id": "run-1",
+                "workflow_run_id": "run-1",
+                "query": "question",
+            }
+        )
+        user = Account(name="Test User", email="test@example.com")
+        user.id = "user-1"
+        converter = WorkflowResponseConverter(
+            application_generate_entity=entity,
+            user=user,
+            system_variables=[],
+        )
+        converter.workflow_start_to_stream_response(
+            task_id="task-1", workflow_run_id="run-1", workflow_id="workflow-1", reason=WorkflowStartReason.INITIAL
+        )
+        return converter
+
+    @staticmethod
+    def create_start_event(node_type: str = BuiltinNodeTypes.AGENT) -> QueueNodeStartedEvent:
+        return QueueNodeStartedEvent(
+            node_execution_id="execution-1",
+            node_id="node-1",
+            node_type=node_type,
+            node_title="Agent",
+            start_at=naive_utc_now(),
+            provider_type="",
+            provider_id="",
+        )
+
+    @staticmethod
+    def serialize_response(
+        response: NodeFinishStreamResponse | NodeRetryStreamResponse, app_mode: AppMode, *, simple: bool = False
+    ) -> dict[str, object]:
+        if app_mode == AppMode.WORKFLOW:
+            chunk = WorkflowAppStreamResponse(stream_response=response, workflow_run_id="run-1")
+            converter = WorkflowAppGenerateResponseConverter
+        else:
+            chunk = ChatbotAppStreamResponse(
+                stream_response=response, conversation_id="conversation-1", message_id="message-1", created_at=0
+            )
+            converter = AdvancedChatAppGenerateResponseConverter
+        stream = (item for item in [chunk])
+        convert = converter.convert_stream_simple_response if simple else converter.convert_stream_full_response
+        payload = next(convert(stream))
+        assert isinstance(payload, dict)
+        return payload
+
+    @pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @pytest.mark.parametrize("invoke_from", list(InvokeFrom))
+    @pytest.mark.parametrize("event_type", _NODE_RESULT_EVENT_TYPES)
+    def test_agent_thoughts_are_debugger_only_at_shared_stream_boundary(
+        self, app_mode: AppMode, invoke_from: InvokeFrom, event_type: type[_NodeResultEvent]
+    ) -> None:
+        converter = self.create_converter(invoke_from, app_mode)
+        start = self.create_start_event()
+        converter.workflow_node_start_to_stream_response(event=start, task_id="task-1")
+        public_process_data = {
+            "agent_id": "agent-1",
+            "workflow_agent_binding_id": "binding-1",
+            "nested": {"agent_thoughts": "unrelated nested value"},
+        }
+        process_data = {
+            **public_process_data,
+            "agent_thoughts": [{"thought": "private reasoning", "tool": "search", "tool_input": "private query"}],
+        }
+        result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"query": "question"},
+            process_data=process_data,
+            outputs={"answer": "answer"},
+            metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 17},
+        )
+        event = event_type.model_validate(
+            {
+                **start.model_dump(exclude={"event"}),
+                "inputs": result.inputs,
+                "process_data": result.process_data,
+                "outputs": result.outputs,
+                "execution_metadata": result.metadata,
+                "error": None if event_type is QueueNodeSucceededEvent else "attempt failed",
+                "retry_index": 1,
+            }
+        )
+        original_data = deepcopy(process_data)
+        original_result = result.model_dump()
+        original_event = event.model_dump()
+        original_event_process_data = event.process_data
+
+        if isinstance(event, QueueNodeRetryEvent):
+            response = converter.workflow_node_retry_to_stream_response(event=event, task_id="task-1")
+        else:
+            response = converter.workflow_node_finish_to_stream_response(event=event, task_id="task-1")
+        assert response is not None
+        expected = process_data if invoke_from == InvokeFrom.DEBUGGER else public_process_data
+        # Exercise full serialization even for simple consumers so their simple projection cannot mask a leak.
+        data = self.serialize_response(response, app_mode)["data"]
+        assert isinstance(data, dict)
+        assert data["process_data"] == expected
+        assert data["process_data_truncated"] is False
+        assert data["inputs"] == result.inputs
+        assert data["outputs"] == result.outputs
+        assert data["execution_metadata"] == result.metadata
+        assert data["error"] == event.error
+        assert data["node_id"] == start.node_id
+        assert data["id"] == start.node_execution_id
+        if invoke_from not in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
+            simple_data = self.serialize_response(response, app_mode, simple=True)["data"]
+            assert isinstance(simple_data, dict)
+            # Retry is serialized in full by the existing simple converters, unlike node_finished.
+            assert simple_data["process_data"] == (expected if isinstance(event, QueueNodeRetryEvent) else None)
+        assert process_data == original_data
+        assert result.model_dump() == original_result
+        assert event.model_dump() == original_event
+        assert event.process_data is original_event_process_data
+
+    @pytest.mark.parametrize("event_type", _NODE_RESULT_EVENT_TYPES)
+    @pytest.mark.parametrize(
+        ("node_type", "process_data", "expected"),
+        [
+            (BuiltinNodeTypes.AGENT, {}, {}),
+            (BuiltinNodeTypes.AGENT, {"agent_thoughts": []}, {}),
+            (BuiltinNodeTypes.AGENT, {"agent_thoughts": ["x"] * 2000, "agent_id": "agent-1"}, {"agent_id": "agent-1"}),
+            (BuiltinNodeTypes.CODE, {"agent_thoughts": "user-defined value"}, {"agent_thoughts": "user-defined value"}),
+        ],
+    )
+    def test_private_key_filter_is_shallow_and_precedes_truncation(
+        self,
+        event_type: type[_NodeResultEvent],
+        node_type: str,
+        process_data: dict[str, object],
+        expected: dict[str, object],
+    ) -> None:
+        converter = self.create_converter(InvokeFrom.WEB_APP)
+        start = self.create_start_event(node_type)
+        converter.workflow_node_start_to_stream_response(event=start, task_id="task-1")
+        event = event_type.model_validate(
+            {**start.model_dump(exclude={"event"}), "process_data": process_data, "error": "failed", "retry_index": 1}
+        )
+        if isinstance(event, QueueNodeRetryEvent):
+            response = converter.workflow_node_retry_to_stream_response(event=event, task_id="task-1")
+        else:
+            response = converter.workflow_node_finish_to_stream_response(event=event, task_id="task-1")
+        assert response is not None
+        assert response.data.process_data == expected
+        assert response.data.process_data_truncated is False
+
+    @pytest.mark.parametrize("invoke_from", list(InvokeFrom))
+    def test_legacy_agent_strategy_and_log_data_are_unchanged(self, invoke_from: InvokeFrom) -> None:
+        converter = self.create_converter(invoke_from)
+        start = self.create_start_event()
+        start.agent_strategy = AgentStrategyInfo(name="legacy-strategy", icon="icon")
+        start_response = converter.workflow_node_start_to_stream_response(event=start, task_id="task-1")
+        assert start_response is not None
+        assert start_response.data.agent_strategy == start.agent_strategy
+
+        process_data = {"strategy": {"agent_thoughts": ["legacy thought"]}, "trace": "legacy trace"}
+        event = QueueNodeSucceededEvent.model_validate(
+            {**start.model_dump(exclude={"event"}), "process_data": process_data}
+        )
+        response = converter.workflow_node_finish_to_stream_response(event=event, task_id="task-1")
+        assert response is not None
+        assert response.data.process_data == process_data
+        log = QueueAgentLogEvent(
+            id="log-1",
+            label="Legacy tool",
+            node_execution_id=start.node_execution_id,
+            node_id=start.node_id,
+            status="success",
+            data={"agent_thoughts": ["legacy log data"]},
+            metadata={"provider": "legacy-provider"},
+        )
+        log_response = converter.handle_agent_log("task-1", log)
+        assert log_response.data.data == log.data
+        assert log_response.data.metadata == log.metadata
