@@ -12,6 +12,8 @@ from uuid import uuid4
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -170,6 +172,32 @@ class TestMCPAppApi:
 
         assert isinstance(response, Response)
         mock_handle.assert_called_once()
+
+    def test_tools_call_allows_generation_to_commit_and_continue_using_session(self) -> None:
+        """Generation may commit the controller's session and keep using it.
+
+        Advanced Chat commits after creating the first conversation, then refreshes
+        that conversation. A transaction context owned by the controller would make
+        the refresh fail because the inner commit closes the managed transaction.
+        """
+        fake_payload(_tools_call_payload())
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+        api = module.MCPAppApi()
+        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+        api._retrieve_end_user = MagicMock(return_value=_end_user())
+
+        def commit_and_continue(session: Session, *_args: object, **_kwargs: object) -> DummyResult:
+            session.commit()
+            assert session.scalar(select(1)) == 1
+            return DummyResult()
+
+        post_fn = unwrap(api.post)
+        with patch.object(module, "handle_mcp_request", side_effect=commit_and_continue, autospec=True):
+            response = post_fn("server-1")
+
+        assert isinstance(response, Response)
 
     def test_notification_initialized(self):
         fake_payload(
