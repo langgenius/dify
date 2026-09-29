@@ -41,6 +41,8 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
     WorkflowDraftVariableWithoutValueResponse,
+    draft_variable_list_response_source,
+    draft_variable_response_source,
 )
 from graphon.variables.types import SegmentType
 from libs.helper import dump_response
@@ -291,8 +293,10 @@ class NodeVariableCollectionApi(Resource):
                 session=session,
             )
             node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
-
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+            return dump_response(
+                WorkflowDraftVariableListResponse,
+                draft_variable_list_response_source(node_vars, session=session),
+            )
 
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
@@ -323,8 +327,9 @@ class VariableApi(Resource):
     @_api_prerequisite
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def get(self, current_user: Account, app_model: App, variable_id: UUID):
+        session = db.session()
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
         variable_id_str = str(variable_id)
         variable = ensure_variable_access(
@@ -333,7 +338,7 @@ class VariableApi(Resource):
             variable_id=variable_id_str,
             current_user_id=current_user.id,
         )
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
@@ -374,8 +379,9 @@ class VariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
+        session = db.session()
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
 
         variable_id_str = str(variable_id)
@@ -389,7 +395,9 @@ class VariableApi(Resource):
         new_name = req_data.name
         raw_value = req_data.value
         if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
+            return dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session)
+            )
 
         new_value = None
         if raw_value is not None:
@@ -417,7 +425,7 @@ class VariableApi(Resource):
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
@@ -476,7 +484,9 @@ class VariableResetApi(Resource):
         db.session.commit()
         if resetted is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
+        return dump_response(
+            WorkflowDraftVariableResponse, draft_variable_response_source(resetted, session=db.session())
+        )
 
 
 def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
@@ -522,7 +532,10 @@ class ConversationVariableCollectionApi(Resource):
         db.session.commit()
         return dump_response(
             WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id),
+            draft_variable_list_response_source(
+                _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id),
+                session=db.session(),
+            ),
         )
 
     @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
@@ -578,7 +591,10 @@ class SystemVariableCollectionApi(Resource):
     def get(self, current_user: Account, app_model: App):
         return dump_response(
             WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+            draft_variable_list_response_source(
+                _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+                session=db.session(),
+            ),
         )
 
 

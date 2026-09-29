@@ -167,7 +167,7 @@ class TestDraftVariableSaver:
             draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
         sys_var = draft_vars[0]
-        assert sys_var.get_value().value[0] == rebuilt_file
+        assert sys_var.get_value(session=sqlite_session).value[0] == rebuilt_file
         rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture

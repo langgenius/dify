@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any, override
 
 from pydantic import model_validator
+from sqlalchemy.orm import Session
 
-from fields.base import ResponseModel
+from fields.base import ResponseModel, SessionResponseSource
 from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
@@ -25,7 +26,27 @@ def _convert_values_to_json_serializable_object(value: Segment) -> JSONValue:
             return value.value
 
 
-def _serialize_var_value(variable: WorkflowDraftVariable) -> JSONValue:
+class WorkflowDraftVariableResponseSource(SessionResponseSource[WorkflowDraftVariable]):
+    """Expose the session-backed value decoding during response validation."""
+
+    def get_value(self) -> Segment:
+        return self._source.get_value(session=self._session)
+
+
+def draft_variable_response_source(
+    variable: WorkflowDraftVariable, *, session: Session
+) -> WorkflowDraftVariableResponseSource:
+    return WorkflowDraftVariableResponseSource(variable, session=session)
+
+
+def draft_variable_list_response_source(variable_list: Any, *, session: Session) -> dict[str, Any]:
+    """Wrap each variable in a list payload so value decoding resolves via the session."""
+    return {
+        "items": [draft_variable_response_source(variable, session=session) for variable in variable_list.variables],
+    }
+
+
+def _serialize_var_value(variable: WorkflowDraftVariableResponseSource) -> JSONValue:
     value = variable.get_value()
     # Create a copy to avoid mutating the model's cached deserialized value.
     value = value.model_copy(deep=True)
@@ -47,7 +68,7 @@ class WorkflowDraftVariableFullContentResponse(ResponseModel):
 
 
 def _serialize_full_content(
-    variable: WorkflowDraftVariable,
+    variable: WorkflowDraftVariable | WorkflowDraftVariableResponseSource,
 ) -> WorkflowDraftVariableFullContentResponse | None:
     """Serialize metadata for a variable whose complete value was offloaded."""
     if not variable.is_truncated():
@@ -64,7 +85,7 @@ def _serialize_full_content(
     )
 
 
-def _serialize_without_value(variable: WorkflowDraftVariable) -> dict[str, Any]:
+def _serialize_without_value(variable: WorkflowDraftVariable | WorkflowDraftVariableResponseSource) -> dict[str, Any]:
     return {
         "id": variable.id,
         "type": str(variable.get_variable_type()),
@@ -105,12 +126,18 @@ class WorkflowDraftVariableResponse(WorkflowDraftVariableWithoutValueResponse):
     @classmethod
     @override
     def _from_workflow_draft_variable(cls, value: Any) -> Any:
-        if isinstance(value, WorkflowDraftVariable):
+        if isinstance(value, WorkflowDraftVariableResponseSource):
             return {
                 **_serialize_without_value(value),
                 "value": _serialize_var_value(value),
                 "full_content": _serialize_full_content(value),
             }
+        if isinstance(value, WorkflowDraftVariable):
+            # Decoding the value needs a database session; a bare model would fall through to
+            # from_attributes and expose the raw serialized JSON string instead of the decoded value.
+            raise TypeError(
+                "WorkflowDraftVariableResponse requires draft_variable_response_source(variable, session=...)"
+            )
         return value
 
 

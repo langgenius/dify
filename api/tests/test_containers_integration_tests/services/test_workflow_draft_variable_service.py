@@ -213,7 +213,7 @@ class TestWorkflowDraftVariableService:
         assert retrieved_variable.id == variable.id
         assert retrieved_variable.name == "test_var"
         assert retrieved_variable.app_id == app.id
-        assert retrieved_variable.get_value().value == test_value.value
+        assert retrieved_variable.get_value(session=db_session_with_containers).value == test_value.value
 
     def test_get_variable_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -274,11 +274,11 @@ class TestWorkflowDraftVariableService:
         assert "var3" in var_names
         for var in retrieved_variables:
             if var.name == "var1":
-                assert var.get_value().value == var1_value.value
+                assert var.get_value(session=db_session_with_containers).value == var1_value.value
             elif var.name == "var2":
-                assert var.get_value().value == var2_value.value
+                assert var.get_value(session=db_session_with_containers).value == var2_value.value
             elif var.name == "var3":
-                assert var.get_value().value == var3_value.value
+                assert var.get_value(session=db_session_with_containers).value == var3_value.value
 
     def test_list_variables_without_values_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -431,12 +431,12 @@ class TestWorkflowDraftVariableService:
         service = WorkflowDraftVariableService(db_session_with_containers)
         updated_variable = service.update_variable(variable, name="new_name", value=new_value)
         assert updated_variable.name == "new_name"
-        assert updated_variable.get_value().value == new_value.value
+        assert updated_variable.get_value(session=db_session_with_containers).value == new_value.value
         assert updated_variable.last_edited_at is not None
 
         db_session_with_containers.refresh(variable)
         assert variable.name == "new_name"
-        assert variable.get_value().value == new_value.value
+        assert variable.get_value(session=db_session_with_containers).value == new_value.value
         assert variable.last_edited_at is not None
 
     def test_update_variable_not_editable(
@@ -509,10 +509,10 @@ class TestWorkflowDraftVariableService:
         service = WorkflowDraftVariableService(db_session_with_containers)
         reset_variable = service.reset_variable(workflow, variable)
         assert reset_variable is not None
-        assert reset_variable.get_value().value == "default_value"
+        assert reset_variable.get_value(session=db_session_with_containers).value == "default_value"
         assert reset_variable.last_edited_at is None
         db_session_with_containers.refresh(variable)
-        assert variable.get_value().value == "default_value"
+        assert variable.get_value(session=db_session_with_containers).value == "default_value"
         assert variable.last_edited_at is None
 
     def test_delete_variable_success(self, db_session_with_containers: Session, mock_external_service_dependencies):

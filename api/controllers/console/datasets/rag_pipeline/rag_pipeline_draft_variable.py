@@ -40,6 +40,8 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListResponse,
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
+    draft_variable_list_response_source,
+    draft_variable_response_source,
 )
 from graphon.variables.types import SegmentType
 from libs.helper import dump_response
@@ -172,8 +174,10 @@ class RagPipelineNodeVariableCollectionApi(Resource):
                 session=session,
             )
             node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id, user_id=current_user.id)
-
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+            return dump_response(
+                WorkflowDraftVariableListResponse,
+                draft_variable_list_response_source(node_vars, session=session),
+            )
 
     @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
@@ -197,8 +201,9 @@ class RagPipelineVariableApi(Resource):
     )
     @_api_prerequisite
     def get(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
+        session = db.session()
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
         variable_id_str = str(variable_id)
         variable = ensure_variable_access(
@@ -207,7 +212,7 @@ class RagPipelineVariableApi(Resource):
             variable_id=variable_id_str,
             current_user_id=current_user.id,
         )
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.response(
         200,
@@ -261,7 +266,9 @@ class RagPipelineVariableApi(Resource):
         new_name = args.get(self._PATCH_NAME_FIELD, None)
         raw_value = args.get(self._PATCH_VALUE_FIELD, None)
         if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
+            return dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=db.session())
+            )
 
         new_value = None
         if raw_value is not None:
@@ -289,7 +296,9 @@ class RagPipelineVariableApi(Resource):
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(
+            WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=db.session())
+        )
 
     @console_ns.response(204, "Variable deleted successfully")
     @_api_prerequisite
@@ -341,7 +350,9 @@ class RagPipelineVariableResetApi(Resource):
         db.session.commit()
         if resetted is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
+        return dump_response(
+            WorkflowDraftVariableResponse, draft_variable_response_source(resetted, session=db.session())
+        )
 
 
 def _get_variable_list(pipeline: Pipeline, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
@@ -369,7 +380,10 @@ class RagPipelineSystemVariableCollectionApi(Resource):
     def get(self, current_user: Account, pipeline: Pipeline):
         return dump_response(
             WorkflowDraftVariableListResponse,
-            _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+            draft_variable_list_response_source(
+                _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+                session=db.session(),
+            ),
         )
 
 

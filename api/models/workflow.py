@@ -20,7 +20,7 @@ from sqlalchemy import (
     orm,
     select,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
@@ -89,10 +89,10 @@ SerializedWorkflowValue = dict[str, Any]
 SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
 
 
-def _resolve_workflow_app_tenant_id(app_id: str) -> str:
+def _resolve_workflow_app_tenant_id(session: Session, app_id: str) -> str:
     from .model import App
 
-    tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    tenant_id = session.scalar(select(App.tenant_id).where(App.id == app_id))
     if not tenant_id:
         raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
     return tenant_id
@@ -1712,11 +1712,11 @@ class WorkflowDraftVariable(Base):
     def _set_selector(self, value: list[str]):
         self.selector = json.dumps(value)
 
-    def _loads_value(self) -> Segment:
+    def _loads_value(self, *, session: Session) -> Segment:
         value = json.loads(self.value)
-        return self.build_segment_from_serialized_value(self.value_type, value)
+        return self.build_segment_from_serialized_value(self.value_type, value, session=session)
 
-    def _rebuild_file_types(self, value: Any):
+    def _rebuild_file_types(self, value: Any, *, session: Session):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to
@@ -1731,7 +1731,7 @@ class WorkflowDraftVariable(Base):
             case dict():
                 if not maybe_file_object(value):
                     return cast(Any, value)
-                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                tenant_id = _resolve_workflow_app_tenant_id(session, self.app_id)
                 return build_file_from_stored_mapping(
                     file_mapping=cast(dict[str, Any], value),
                     tenant_id=tenant_id,
@@ -1741,7 +1741,7 @@ class WorkflowDraftVariable(Base):
                 first: Any = value_list[0]
                 if not maybe_file_object(first):
                     return cast(Any, value)
-                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                tenant_id = _resolve_workflow_app_tenant_id(session, self.app_id)
                 file_list: list[File] = []
                 for item in value_list:
                     file_list.append(
@@ -1754,7 +1754,9 @@ class WorkflowDraftVariable(Base):
             case _:
                 return cast(Any, value)
 
-    def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
+    def build_segment_from_serialized_value(
+        self, segment_type: SegmentType, value: Any, *, session: Session
+    ) -> Segment:
         # Persisted draft variable rows may contain historical file payloads.
         # Rebuild them through the file factory so tenant ownership, signed URLs,
         # and storage-backed metadata come from canonical records instead of the
@@ -1765,14 +1767,14 @@ class WorkflowDraftVariable(Base):
                     case File():
                         return build_segment_with_type(segment_type, value)
                     case dict():
-                        file = self._rebuild_file_types(value)
+                        file = self._rebuild_file_types(value, session=session)
                         return build_segment_with_type(segment_type, file)
                     case _:
                         raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
-                file_list = self._rebuild_file_types(value)
+                file_list = self._rebuild_file_types(value, session=session)
                 return build_segment_with_type(segment_type=segment_type, value=file_list)
             case _:
                 return build_segment_with_type(segment_type=segment_type, value=value)
@@ -1827,7 +1829,7 @@ class WorkflowDraftVariable(Base):
             case _:
                 return build_segment_with_type(segment_type=segment_type, value=value)
 
-    def get_value(self) -> Segment:
+    def get_value(self, *, session: Session) -> Segment:
         """Decode the serialized value into its corresponding `Segment` object.
 
         This method caches the result, so repeated calls will return the same
@@ -1845,7 +1847,7 @@ class WorkflowDraftVariable(Base):
 
         if self.__value is not None:
             return self.__value
-        value = self._loads_value()
+        value = self._loads_value(session=session)
         self.__value = value
         return value
 
