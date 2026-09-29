@@ -104,8 +104,7 @@ def _iter_tenant_ids(tenant_id: str | None, *, batch_size: int) -> Iterator[str]
             rows = session.execute(stmt).scalars().all()
         if not rows:
             return
-        for row in rows:
-            yield row
+        yield from rows
         last_id = rows[-1]
 
 
