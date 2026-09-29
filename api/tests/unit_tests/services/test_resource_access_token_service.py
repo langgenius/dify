@@ -1,229 +1,114 @@
-from __future__ import annotations
+"""Service policy tests use the Store contract without ORM/session fixtures."""
 
-from uuid import uuid4
+from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset
-from models.model import App, AppMode, IconType
-from models.resource_access_token import (
-    ResourceAccessToken,
-    ResourceAccessTokenRelation,
-    ResourceAccessTokenResourceType,
-)
-from services.resource_access_token_service import (
+from constants.resource_access_token import ResourceAccessTokenResourceType as ResourceType
+from machinery.context import RequestContext
+from services.auth.resource_access_token_contracts import (
+    BoundResource,
+    ResourceAccessTokenAccess,
+    ResourceAccessTokenForbiddenError,
+    ResourceAccessTokenInputError,
     ResourceAccessTokenResource,
-    ResourceAccessTokenService,
 )
+from services.resource_access_token_service import ResourceAccessTokenService, ResourceAccessTokenStore
+
+CONTEXT = RequestContext("request", None, "owner", "workspace")
+APP = ResourceAccessTokenResource(ResourceType.APP, "app")
 
 
-def _workspace(session: Session) -> tuple[Tenant, Account]:
-    tenant = Tenant(name="Workspace")
-    tenant.id = str(uuid4())
-    owner = Account(name="Owner", email=f"owner-{tenant.id}@example.com")
-    owner.id = str(uuid4())
-    session.add_all(
-        [
-            tenant,
-            owner,
-            TenantAccountJoin(tenant_id=tenant.id, account_id=owner.id, role=TenantAccountRole.OWNER),
-        ]
+@pytest.fixture
+def store() -> Mock:
+    return Mock(spec=ResourceAccessTokenStore)
+
+
+@pytest.fixture
+def service(store: Mock) -> ResourceAccessTokenService:
+    return ResourceAccessTokenService(tokens=store)
+
+
+def test_create_normalizes_and_deduplicates_with_explicit_owner(
+    service: ResourceAccessTokenService, store: Mock
+) -> None:
+    result = service.create(CONTEXT, name="  CLI  ", resources=(APP, APP))
+    store.create.assert_called_once_with("workspace", "owner", "CLI", (APP,))
+    assert result is store.create.return_value
+
+
+@pytest.mark.parametrize(("name", "resources"), [("  ", (APP,)), ("CLI", ())])
+def test_invalid_input_never_writes(
+    service: ResourceAccessTokenService, store: Mock, name: str, resources: tuple[ResourceAccessTokenResource, ...]
+) -> None:
+    with pytest.raises(ResourceAccessTokenInputError):
+        service.create(CONTEXT, name=name, resources=resources)
+    store.create.assert_not_called()
+    with pytest.raises(ResourceAccessTokenInputError):
+        service.update(CONTEXT, token_id="token", name=name, resources=resources)
+    store.update.assert_not_called()
+
+
+def test_rename_preserves_bindings(service: ResourceAccessTokenService, store: Mock) -> None:
+    service.update(CONTEXT, token_id="token", name="  Renamed  ", resources=None)
+    store.update.assert_called_once_with("workspace", "token", "Renamed", None)
+
+
+@pytest.mark.parametrize("app_id", [None, "app"])
+def test_openapi_grant_uses_live_store_and_records_usage(
+    service: ResourceAccessTokenService, store: Mock, app_id: str | None
+) -> None:
+    store.access_by_id.return_value = ResourceAccessTokenAccess(
+        "token", "workspace", True, (BoundResource(ResourceType.APP, "app", True, True),)
     )
-    session.commit()
-    return tenant, owner
-
-
-def _app(session: Session, tenant_id: str) -> App:
-    app = App(
-        id=str(uuid4()),
-        tenant_id=tenant_id,
-        name="Customer FAQ Bot",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="🤖",
-        icon_background="#ffffff",
-        enable_site=False,
-        enable_api=True,
-    )
-    session.add(app)
-    session.commit()
-    return app
-
-
-def _dataset(session: Session, tenant_id: str, created_by: str) -> Dataset:
-    dataset = Dataset(
-        id=str(uuid4()),
-        tenant_id=tenant_id,
-        name="Customer Support",
-        created_by=created_by,
-        enable_api=True,
-    )
-    session.add(dataset)
-    session.commit()
-    return dataset
+    grant = service.authorize_openapi(token_id="token", workspace_id="workspace", app_id=app_id)
+    assert grant.tenant_id == "workspace"
+    assert grant.app_ids == frozenset({"app"})
+    store.record_usage.assert_called_once_with("workspace", "token")
+    store.access_by_id.return_value = ResourceAccessTokenAccess("token", "workspace", True, ())
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.authorize_openapi(token_id="token", workspace_id="workspace", app_id="app")
 
 
 @pytest.mark.parametrize(
-    "sqlite_session",
-    [(Tenant, Account, TenantAccountJoin, App, Dataset, ResourceAccessToken, ResourceAccessTokenRelation)],
-    indirect=True,
+    ("workspace", "active", "resource"),
+    [
+        ("foreign", True, BoundResource(ResourceType.APP, "app", True, True)),
+        ("workspace", False, BoundResource(ResourceType.APP, "app", True, True)),
+        ("workspace", True, BoundResource(ResourceType.APP, "app", True, False)),
+        ("workspace", True, BoundResource(ResourceType.APP, "app", False, True)),
+        ("workspace", True, BoundResource(ResourceType.KNOWLEDGE, "app", True, True)),
+    ],
 )
-def test_create_token_with_mixed_resources_returns_expanded_rows(sqlite_session: Session) -> None:
-    tenant, owner = _workspace(sqlite_session)
-    app = _app(sqlite_session, tenant.id)
-    dataset = _dataset(sqlite_session, tenant.id, owner.id)
+def test_openapi_denials_do_not_record_usage(
+    service: ResourceAccessTokenService, store: Mock, workspace: str, active: bool, resource: BoundResource
+) -> None:
+    store.access_by_id.return_value = ResourceAccessTokenAccess("token", "workspace", active, (resource,))
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.authorize_openapi(token_id="token", workspace_id=workspace, app_id="app")
+    store.record_usage.assert_not_called()
 
-    result = ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="Production integration",
-        resources=[
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=app.id),
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.KNOWLEDGE, id=dataset.id),
-        ],
-        session=sqlite_session,
+
+def test_service_api_requires_explicit_app_when_ambiguous(service: ResourceAccessTokenService, store: Mock) -> None:
+    store.access_by_secret.return_value = ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        True,
+        (
+            BoundResource(ResourceType.APP, "app", True, True),
+            BoundResource(ResourceType.APP, "other", True, True),
+        ),
     )
-
-    assert result.token.startswith("sk-")
-    assert len(result.rows) == 2
-    assert {row.resource_type for row in result.rows} == {
-        ResourceAccessTokenResourceType.APP,
-        ResourceAccessTokenResourceType.KNOWLEDGE,
-    }
-    assert {row.resource_id for row in result.rows} == {app.id, dataset.id}
-    assert {row.name for row in result.rows} == {"Production integration"}
+    with pytest.raises(ResourceAccessTokenInputError):
+        service.resolve_app_for_service_api(token="secret", requested_app_id=None)
+    store.record_usage.assert_not_called()
+    assert service.resolve_app_for_service_api(token="secret", requested_app_id="app").app_ids == frozenset({"app"})
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(Tenant, Account, TenantAccountJoin, App, Dataset, ResourceAccessToken, ResourceAccessTokenRelation)],
-    indirect=True,
-)
-def test_list_paginates_and_counts_tokens_not_relations(sqlite_session: Session) -> None:
-    tenant, owner = _workspace(sqlite_session)
-    first_app = _app(sqlite_session, tenant.id)
-    second_app = _app(sqlite_session, tenant.id)
-    dataset = _dataset(sqlite_session, tenant.id, owner.id)
-    ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="First integration",
-        resources=[ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=first_app.id)],
-        session=sqlite_session,
+def test_dataset_scope_never_uses_an_app_binding(service: ResourceAccessTokenService, store: Mock) -> None:
+    store.access_by_secret.return_value = ResourceAccessTokenAccess(
+        "token", "workspace", True, (BoundResource(ResourceType.APP, "dataset", True, True),)
     )
-    newest = ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="Newest integration",
-        resources=[
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=second_app.id),
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.KNOWLEDGE, id=dataset.id),
-        ],
-        session=sqlite_session,
-    )
-
-    rows = ResourceAccessTokenService.list_rows(tenant_id=tenant.id, page=1, limit=1, session=sqlite_session)
-
-    assert ResourceAccessTokenService.count_rows(tenant_id=tenant.id, session=sqlite_session) == 2
-    assert {row.token_id for row in rows} == {newest.token_id}
-    assert len(rows) == 2
-
-
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(Tenant, Account, TenantAccountJoin, App, ResourceAccessToken, ResourceAccessTokenRelation)],
-    indirect=True,
-)
-def test_update_changes_all_expanded_rows(sqlite_session: Session) -> None:
-    tenant, owner = _workspace(sqlite_session)
-    first_app = _app(sqlite_session, tenant.id)
-    second_app = _app(sqlite_session, tenant.id)
-    created = ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="Production integration",
-        resources=[
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=first_app.id),
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=second_app.id),
-        ],
-        session=sqlite_session,
-    )
-
-    rows = ResourceAccessTokenService.update(
-        tenant_id=tenant.id,
-        token_id=created.token_id,
-        name="Internal integration",
-        session=sqlite_session,
-    )
-
-    assert {row.name for row in rows} == {"Internal integration"}
-
-
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(Tenant, Account, TenantAccountJoin, App, Dataset, ResourceAccessToken, ResourceAccessTokenRelation)],
-    indirect=True,
-)
-def test_update_replaces_resources(sqlite_session: Session) -> None:
-    tenant, owner = _workspace(sqlite_session)
-    first_app = _app(sqlite_session, tenant.id)
-    second_app = _app(sqlite_session, tenant.id)
-    dataset = _dataset(sqlite_session, tenant.id, owner.id)
-    created = ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="Production integration",
-        resources=[
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=first_app.id),
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.KNOWLEDGE, id=dataset.id),
-        ],
-        session=sqlite_session,
-    )
-
-    rows = ResourceAccessTokenService.update(
-        tenant_id=tenant.id,
-        token_id=created.token_id,
-        name="Internal integration",
-        resources=[ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=second_app.id)],
-        session=sqlite_session,
-    )
-
-    assert {row.name for row in rows} == {"Internal integration"}
-    assert [(row.resource_type, row.resource_id) for row in rows] == [
-        (ResourceAccessTokenResourceType.APP, second_app.id)
-    ]
-    assert sqlite_session.scalars(select(ResourceAccessTokenRelation)).one().app_id == second_app.id
-
-
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(Tenant, Account, TenantAccountJoin, App, Dataset, ResourceAccessToken, ResourceAccessTokenRelation)],
-    indirect=True,
-)
-def test_delete_relation_removes_token_and_all_relations(sqlite_session: Session) -> None:
-    tenant, owner = _workspace(sqlite_session)
-    app = _app(sqlite_session, tenant.id)
-    dataset = _dataset(sqlite_session, tenant.id, owner.id)
-    created = ResourceAccessTokenService.create(
-        tenant_id=tenant.id,
-        created_by=owner.id,
-        name="Production integration",
-        resources=[
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.APP, id=app.id),
-            ResourceAccessTokenResource(type=ResourceAccessTokenResourceType.KNOWLEDGE, id=dataset.id),
-        ],
-        session=sqlite_session,
-    )
-
-    ResourceAccessTokenService.delete_relation(
-        tenant_id=tenant.id,
-        token_id=created.token_id,
-        relation_id=created.rows[0].relation_id,
-        session=sqlite_session,
-    )
-
-    assert sqlite_session.scalar(select(ResourceAccessToken)) is None
-    assert sqlite_session.scalar(select(ResourceAccessTokenRelation)) is None
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.resolve_tenant_for_dataset_service_api(token="secret", dataset_id="dataset")
+    store.record_usage.assert_not_called()

@@ -5,11 +5,11 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import Field, field_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from constants.resource_access_token import ResourceAccessTokenResourceType
+from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -18,16 +18,17 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.logging.context import get_request_id, get_trace_id
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from models.account import TenantAccountRole
-from models.resource_access_token import ResourceAccessTokenResourceType
-from services.resource_access_token_service import (
+from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
-    ResourceAccessTokenService,
 )
 
 
@@ -103,7 +104,7 @@ def _require_owner(current_user: Account) -> None:
         raise Forbidden()
 
 
-def _dump_rows(rows: list[ResourceAccessTokenRow]) -> list[dict[str, object]]:
+def _dump_rows(rows: tuple[ResourceAccessTokenRow, ...]) -> list[dict[str, object]]:
     return [
         dump_response(
             ResourceAccessTokenRowResponse,
@@ -123,22 +124,21 @@ class ResourceAccessTokenListApi(Resource):
     @model_validate(ResourceAccessTokenListQuery)
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
     def get(
         self,
-        session: Session,
         current_tenant_id: str,
         current_user: Account,
         query: ResourceAccessTokenListQuery,
     ) -> dict[str, object]:
         _require_owner(current_user)
-        rows = ResourceAccessTokenService.list_rows(
-            tenant_id=current_tenant_id,
-            page=query.page,
-            limit=query.limit,
-            session=session,
-        )
-        total = ResourceAccessTokenService.count_rows(tenant_id=current_tenant_id, session=session)
+        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
+        with resource_access_token_errors():
+            rows = application_services().resource_access_tokens.list_rows(
+                context,
+                page=query.page,
+                limit=query.limit,
+            )
+            total = application_services().resource_access_tokens.count_rows(context)
         return dump_response(
             ResourceAccessTokenListResponse,
             {
@@ -160,24 +160,22 @@ class ResourceAccessTokenListApi(Resource):
     @model_validate(ResourceAccessTokenCreatePayload)
     @with_current_user
     @with_current_tenant_id
-    @with_session
     def post(
         self,
-        session: Session,
         current_tenant_id: str,
         current_user: Account,
         payload: ResourceAccessTokenCreatePayload,
     ) -> tuple[dict[str, object], int]:
         _require_owner(current_user)
-        result = ResourceAccessTokenService.create(
-            tenant_id=current_tenant_id,
-            created_by=current_user.id,
-            name=payload.name,
-            resources=[
-                ResourceAccessTokenResource(type=resource.type, id=resource.id) for resource in payload.resources
-            ],
-            session=session,
-        )
+        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
+        with resource_access_token_errors():
+            result = application_services().resource_access_tokens.create(
+                context,
+                name=payload.name,
+                resources=tuple(
+                    ResourceAccessTokenResource(type=resource.type, id=resource.id) for resource in payload.resources
+                ),
+            )
         return dump_response(
             ResourceAccessTokenCreateResponse,
             {"token": result.token, "data": _dump_rows(result.rows)},
@@ -198,25 +196,24 @@ class ResourceAccessTokenApi(Resource):
     @model_validate(ResourceAccessTokenUpdatePayload)
     @with_current_user
     @with_current_tenant_id
-    @with_session
     def patch(
         self,
-        session: Session,
         current_tenant_id: str,
         current_user: Account,
         payload: ResourceAccessTokenUpdatePayload,
         token_id: UUID,
     ) -> dict[str, object]:
         _require_owner(current_user)
-        rows = ResourceAccessTokenService.update(
-            tenant_id=current_tenant_id,
-            token_id=str(token_id),
-            name=payload.name,
-            resources=[
-                ResourceAccessTokenResource(type=resource.type, id=resource.id) for resource in payload.resources
-            ],
-            session=session,
-        )
+        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
+        with resource_access_token_errors():
+            rows = application_services().resource_access_tokens.update(
+                context,
+                token_id=str(token_id),
+                name=payload.name,
+                resources=tuple(
+                    ResourceAccessTokenResource(type=resource.type, id=resource.id) for resource in payload.resources
+                ),
+            )
         return dump_response(
             ResourceAccessTokenListResponse,
             {
@@ -237,20 +234,19 @@ class ResourceAccessTokenRelationApi(Resource):
     @console_ns.response(204, "Resource access token relation deleted")
     @with_current_user
     @with_current_tenant_id
-    @with_session
     def delete(
         self,
-        session: Session,
         current_tenant_id: str,
         current_user: Account,
         token_id: UUID,
         relation_id: UUID,
     ) -> tuple[str, int]:
         _require_owner(current_user)
-        ResourceAccessTokenService.delete_relation(
-            tenant_id=current_tenant_id,
-            token_id=str(token_id),
-            relation_id=str(relation_id),
-            session=session,
-        )
+        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
+        with resource_access_token_errors():
+            application_services().resource_access_tokens.delete_relation(
+                context,
+                token_id=str(token_id),
+                relation_id=str(relation_id),
+            )
         return "", 204

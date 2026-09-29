@@ -14,12 +14,14 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -63,7 +65,6 @@ from services.entities.app_entities import (
 from services.model_provider.service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
-from services.resource_access_token_service import ResourceAccessTokenService
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -875,7 +876,9 @@ class AppService:
             tenant_id=app.tenant_id,
             app_id=app.id,
         )
-        ResourceAccessTokenService.delete_relations_for_app(app_id=app.id, session=session)
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
+        )
         session.delete(app)
         session.commit()
 

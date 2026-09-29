@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
     USER_FORM_PARAM,
@@ -32,8 +33,8 @@ from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
 from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
-from services.resource_access_token_service import ResourceAccessTokenService
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +112,17 @@ def validate_app_token[**P, R](
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             auth_token = peek_service_api_bearer_token()
-            if auth_token and ResourceAccessTokenService.is_resource_access_token(auth_token):
-                app_model = ResourceAccessTokenService.resolve_app_for_service_api(
-                    token=auth_token,
-                    requested_app_id=request.headers.get("X-Dify-App-ID"),
-                    session=db.session(),
+            if auth_token and is_resource_access_token(auth_token):
+                with resource_access_token_errors():
+                    grant = application_services().resource_access_tokens.resolve_app_for_service_api(
+                        token=auth_token,
+                        requested_app_id=request.headers.get("X-Dify-App-ID"),
+                    )
+                app_model = db.session.scalar(
+                    select(App).where(
+                        App.id == next(iter(grant.app_ids)),
+                        App.tenant_id == grant.tenant_id,
+                    )
                 )
             else:
                 api_token = validate_and_get_api_token("app")
@@ -342,12 +349,12 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 logger.exception("Failed to parse dataset_id from positional args")
 
         auth_token = peek_service_api_bearer_token()
-        if auth_token and ResourceAccessTokenService.is_resource_access_token(auth_token):
-            tenant_id = ResourceAccessTokenService.resolve_tenant_for_dataset_service_api(
-                token=auth_token,
-                dataset_id=str(dataset_id) if dataset_id else None,
-                session=db.session(),
-            )
+        if auth_token and is_resource_access_token(auth_token):
+            with resource_access_token_errors():
+                tenant_id = application_services().resource_access_tokens.resolve_tenant_for_dataset_service_api(
+                    token=auth_token,
+                    dataset_id=str(dataset_id) if dataset_id else None,
+                )
         else:
             api_token = validate_and_get_api_token("dataset")
             tenant_id = api_token.tenant_id

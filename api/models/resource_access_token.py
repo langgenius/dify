@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from libs.datetime_utils import naive_utc_now
 
 from .base import Base
 from .types import EnumText, StringUUID
-
-
-class ResourceAccessTokenResourceType(StrEnum):
-    APP = "app"
-    KNOWLEDGE = "knowledge"
 
 
 class ResourceAccessToken(Base):
