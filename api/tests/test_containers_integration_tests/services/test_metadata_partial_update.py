@@ -119,6 +119,7 @@ class TestMetadataPartialUpdate:
 
         updated_doc = db_session_with_containers.get(Document, document.id)
         assert updated_doc is not None
+        assert updated_doc.doc_metadata
         assert updated_doc.doc_metadata["existing_key"] == "existing_value"
         assert updated_doc.doc_metadata["new_key"] == "new_value"
 
@@ -235,7 +236,7 @@ class TestMetadataPartialUpdate:
         updated_doc = db_session_with_containers.get(Document, document.id)
         assert updated_doc is not None
         assert updated_doc.doc_metadata == {"new_key": "new_value"}
-        assert "existing_key" not in updated_doc.doc_metadata
+        assert "existing_key" not in (updated_doc.doc_metadata or {})
 
     def test_partial_update_skips_existing_binding(
         self,
