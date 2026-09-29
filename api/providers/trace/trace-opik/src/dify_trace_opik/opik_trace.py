@@ -307,7 +307,7 @@ class OpikDataTrace(BaseTraceInstance):
             "input": trace_info.inputs,
             "output": message_data.answer,
             "thread_id": message_data.conversation_id,
-            "tags": ["message", str(trace_info.conversation_mode)],
+            "tags": ["message", trace_info.conversation_mode],
             "project_name": self.project,
         }
         trace = self.add_trace(trace_data)
@@ -321,7 +321,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(metadata),
             "input": {"input": trace_info.inputs},
             "output": {"output": message_data.answer},
-            "tags": ["llm", str(trace_info.conversation_mode)],
+            "tags": ["llm", trace_info.conversation_mode],
             "usage": {
                 "completion_tokens": trace_info.answer_tokens,
                 "prompt_tokens": trace_info.message_tokens,

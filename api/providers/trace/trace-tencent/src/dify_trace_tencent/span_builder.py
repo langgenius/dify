@@ -100,7 +100,7 @@ class TencentSpanBuilder:
             end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
-                GEN_AI_USER_ID: str(user_id),
+                GEN_AI_USER_ID: user_id,
                 GEN_AI_SPAN_KIND: GenAISpanKind.WORKFLOW.value,
                 GEN_AI_FRAMEWORK: "dify",
                 GEN_AI_IS_ENTRY: "true",
@@ -123,7 +123,7 @@ class TencentSpanBuilder:
     ) -> SpanData:
         """Build workflow span"""
         attributes = {
-            GEN_AI_USER_ID: str(user_id),
+            GEN_AI_USER_ID: user_id,
             GEN_AI_SPAN_KIND: GenAISpanKind.WORKFLOW.value,
             GEN_AI_FRAMEWORK: "dify",
             INPUT_VALUE: json.dumps(trace_info.workflow_run_inputs, ensure_ascii=False),
@@ -196,7 +196,7 @@ class TencentSpanBuilder:
 
         attributes = {
             GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
-            GEN_AI_USER_ID: str(user_id),
+            GEN_AI_USER_ID: user_id,
             GEN_AI_SPAN_KIND: GenAISpanKind.WORKFLOW.value,
             GEN_AI_FRAMEWORK: "dify",
             GEN_AI_IS_ENTRY: "true",
@@ -240,7 +240,7 @@ class TencentSpanBuilder:
                 TOOL_DESCRIPTION: "",
                 TOOL_PARAMETERS: json.dumps(trace_info.tool_parameters, ensure_ascii=False),
                 INPUT_VALUE: json.dumps(trace_info.tool_inputs, ensure_ascii=False),
-                OUTPUT_VALUE: str(trace_info.tool_outputs),
+                OUTPUT_VALUE: trace_info.tool_outputs,
             },
             status=status,
         )

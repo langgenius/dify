@@ -879,7 +879,7 @@ class WorkflowRunBundleArchiveMaintenance:
         live_records: dict[str, list[dict[str, Any]]],
     ) -> None:
         """Require every live row to match its archive row, except for null live-only fields."""
-        manifest_run_ids = {str(run_id) for run_id in manifest["run_ids"]}
+        manifest_run_ids = set(manifest["run_ids"])
         if len(manifest_run_ids) != len(manifest["run_ids"]):
             raise ValueError("archive manifest contains duplicate workflow run IDs")
 
@@ -1241,7 +1241,7 @@ class WorkflowRunBundleArchiveMaintenance:
                 return True
             if not isinstance(cause, ClientError):
                 return False
-            error_code = str(cause.response.get("Error", {}).get("Code", ""))
+            error_code = cause.response.get("Error", {}).get("Code", "")
             status_code = str(cause.response.get("ResponseMetadata", {}).get("HTTPStatusCode", ""))
             return error_code in retryable_error_codes or status_code in retryable_error_codes
 

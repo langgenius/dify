@@ -403,9 +403,9 @@ class ResourcePermissionSnapshot(_RBACModel):
     overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
 
     def permission_keys_by_resource_ids(self, resource_ids: list[str]) -> dict[str, list[str]]:
-        result = {str(resource_id): list(self.default_permission_keys) for resource_id in resource_ids}
+        result = {resource_id: list(self.default_permission_keys) for resource_id in resource_ids}
         for override in self.overrides:
-            resource_id = str(override.resource_id)
+            resource_id = override.resource_id
             if resource_id in result:
                 result[resource_id] = list(override.permission_keys)
         return result
@@ -782,7 +782,7 @@ def _legacy_resource_permission_keys_batch(
 ) -> dict[str, list[str]]:
     snapshot = _legacy_my_permissions(tenant_id, account_id, session=session)
     permission_keys = snapshot.resource_snapshot(resource_type).default_permission_keys
-    return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
+    return {resource_id: list(permission_keys) for resource_id in resource_ids}
 
 
 # ---------- Mutation request models ----------

@@ -32,7 +32,7 @@ class StreamsBroadcastChannel:
         retention_seconds: int = 600,
     ):
         self._client = redis_client
-        self._retention_seconds = max(int(retention_seconds or 0), 0)
+        self._retention_seconds = max((retention_seconds or 0), 0)
 
     def topic(self, topic: str) -> StreamsTopic:
         return StreamsTopic(

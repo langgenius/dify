@@ -132,7 +132,7 @@ class TestMessagesCleanServiceIntegration:
 
         tenant = Tenant(
             name=fake.company(),
-            plan=str(plan),
+            plan=plan,
             status="normal",
         )
         db_session_with_containers.add(tenant)

@@ -262,7 +262,7 @@ class TableStoreVector(BaseVector):
 
     def _search_by_metadata(self, key: str, value: str) -> list[str]:
         query = tablestore.SearchQuery(
-            tablestore.TermQuery(self._tags_field, str(key) + "=" + str(value)),
+            tablestore.TermQuery(self._tags_field, key + "=" + value),
             limit=1000,
             get_total_count=False,
         )
