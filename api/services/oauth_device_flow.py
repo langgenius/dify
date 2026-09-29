@@ -301,7 +301,6 @@ class DeviceFlowRedis:
             args=[owner_id],
         )
 
-<<<<<<< HEAD
     def _transition(
         self,
         *,
@@ -322,67 +321,6 @@ class DeviceFlowRedis:
                     ttl_floor,
                 ],
             )
-=======
-    # Revoke any existing active token for this (subject, client, device) combination.
-    # PostgreSQL's ON CONFLICT doesn't support partial unique indexes (those with WHERE clauses),
-    # so we use a manual revoke-then-insert pattern instead.
-    if prior:
-        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=func.now()))
-
-    # Insert the new token.
-    new_token = OAuthAccessToken(
-        subject_email=subject_email,
-        subject_issuer=subject_issuer,
-        account_id=account_id,
-        client_id=client_id,
-        device_label=device_label,
-        prefix=prefix,
-        token_hash=new_hash,
-        expires_at=expires_at,
-    )
-    session.add(new_token)
-    session.flush()
-
-    token_id = new_token.id
-    session.commit()
-
-    return UpsertOutcome(
-        token_id=uuid.UUID(token_id),
-        rotated=prior is not None,
-        old_hash=old_hash,
-    )
-
-
-# ============================================================================
-# TTL policy — days new OAuth tokens live
-# ============================================================================
-
-
-DEFAULT_OAUTH_TTL_DAYS = 14
-MIN_TTL_DAYS = 1
-MAX_TTL_DAYS = 365
-
-_TTL_ENV_VAR = "OAUTH_TTL_DAYS"
-
-
-def oauth_ttl_days(tenant_id: str | None = None) -> int:
-    """``OAUTH_TTL_DAYS`` env, else default. EE tenant-level lookup
-    is deferred; when it lands it wins over the env (Redis-cached 60s).
-    """
-    _ = tenant_id
-
-    raw = os.environ.get(_TTL_ENV_VAR)
-    if raw is None:
-        return DEFAULT_OAUTH_TTL_DAYS
-    try:
-        value = int(raw)
-    except ValueError:
-        logger.warning(
-            "%s=%r is not an int; falling back to %d",
-            _TTL_ENV_VAR,
-            raw,
-            DEFAULT_OAUTH_TTL_DAYS,
->>>>>>> chore/services-str-conversions
         )
         if result in (0, -2):
             raise StateNotFoundError(device_code)

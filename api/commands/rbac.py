@@ -104,9 +104,8 @@ def _iter_tenant_ids(tenant_id: str | None, *, batch_size: int) -> Iterator[str]
             rows = session.execute(stmt).scalars().all()
         if not rows:
             return
-        for row in rows:
-            yield str(row)
-        last_id = str(rows[-1])
+        yield from rows
+        last_id = rows[-1]
 
 
 def _emit_agent_migration_event(payload: dict[str, object]) -> None:
@@ -439,7 +438,7 @@ def _owner_account_id(tenant_id: str, *, session: Session) -> str:
     )
     if not account_id:
         raise ValueError(f"Workspace owner not found for tenant={tenant_id}")
-    return str(account_id)
+    return account_id
 
 
 def _workspace_member_account_id_batches(tenant_id: str, batch_size: int) -> Iterator[list[str]]:

@@ -258,7 +258,7 @@ class WeaveDataTrace(BaseTraceInstance):
         attributes["message_id"] = message_id
         attributes["start_time"] = trace_info.start_time
         attributes["end_time"] = trace_info.end_time
-        attributes["tags"] = ["message", str(trace_info.conversation_mode)]
+        attributes["tags"] = ["message", trace_info.conversation_mode]
 
         trace_id = trace_info.trace_id or message_id
         attributes["trace_id"] = trace_id

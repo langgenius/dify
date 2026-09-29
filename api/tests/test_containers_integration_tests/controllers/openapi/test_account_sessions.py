@@ -47,7 +47,7 @@ def _mint_account_token(
     )
     db_session.add(record)
     db_session.commit()
-    return _MintResult(token_id=UUID(str(record.id)))
+    return _MintResult(token_id=UUID(record.id))
 
 
 class TestSessionList:

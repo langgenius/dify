@@ -190,7 +190,7 @@ def _lookup_llm_credential_info(
                         )
 
                     if cred_name:
-                        credential_name = str(cred_name)
+                        credential_name = cred_name
                 except Exception as e:
                     # Credential might have been deleted between lookups (async timing)
                     # Return ID but empty name rather than failing
@@ -920,7 +920,7 @@ class TraceTask:
         with Session(db.engine) as session:
             tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
             if tid:
-                tenant_id = str(tid)
+                tenant_id = tid
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
@@ -1083,7 +1083,7 @@ class TraceTask:
         with Session(db.engine) as session:
             tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
             if tid:
-                tenant_id = str(tid)
+                tenant_id = tid
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
@@ -1398,7 +1398,7 @@ class TraceTask:
                     )
                 )
                 if msg_id:
-                    message_id = str(msg_id)
+                    message_id = msg_id
                     metadata["message_id"] = message_id
             if conversation_id:
                 metadata["conversation_id"] = conversation_id

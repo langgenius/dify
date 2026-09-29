@@ -1241,7 +1241,7 @@ class WorkflowRunBundleArchiveMaintenance:
                 return True
             if not isinstance(cause, ClientError):
                 return False
-            error_code = str(cause.response.get("Error", {}).get("Code", ""))
+            error_code = cause.response.get("Error", {}).get("Code", "")
             status_code = str(cause.response.get("ResponseMetadata", {}).get("HTTPStatusCode", ""))
             return error_code in retryable_error_codes or status_code in retryable_error_codes
 
