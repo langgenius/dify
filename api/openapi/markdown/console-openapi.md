@@ -11973,6 +11973,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
+### [POST] /workspaces/current/settings
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceSettingsPayload](#workspacesettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
+
 ### [GET] /workspaces/current/skills
 #### Parameters
 
@@ -17775,6 +17788,7 @@ Model class for credential form schema.
 | ---- | ---- | ----------- | -------- |
 | credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
 | id | string |  | Yes |
+| max_active_requests | integer |  | Yes |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
@@ -23992,6 +24006,7 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| max_active_requests | integer |  | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
 | plan | [CloudPlan](#cloudplan) |  | No |
@@ -26133,6 +26148,12 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_active_requests | integer |  | Yes |
 
 #### WorkspaceSkillsQuery
 
