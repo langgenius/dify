@@ -10,6 +10,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
 import DataSources from '../data-sources'
+import { createPlugin } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -168,6 +169,41 @@ describe('DataSources', () => {
           category: PluginCategoryEnum.datasource,
         })
       })
+    })
+
+    it('shows an installed source once and keeps other marketplace plugins available', async () => {
+      enableMarketplaceForRender = true
+      const provider = createToolProvider()
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock({
+          data: {
+            pages: [
+              {
+                plugins: [
+                  createPlugin({
+                    plugin_id: provider.plugin_id,
+                    label: { en_US: 'Installed Marketplace Source' },
+                  }),
+                  createPlugin({
+                    plugin_id: 'langgenius/other',
+                    label: { en_US: 'Other Marketplace Source' },
+                  }),
+                ],
+                page: 1,
+                page_size: 40,
+                total: 2,
+              },
+            ],
+            pageParams: [1],
+          },
+        }),
+      )
+
+      render(<DataSources searchText="file" onSelect={vi.fn()} dataSources={[provider]} />)
+
+      expect(screen.getByText('File Source')).toBeInTheDocument()
+      expect(screen.queryByText('Installed Marketplace Source')).not.toBeInTheDocument()
+      expect(screen.getByText('Other Marketplace Source')).toBeInTheDocument()
     })
   })
 })

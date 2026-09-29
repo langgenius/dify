@@ -260,6 +260,25 @@ describe('AgentStrategySelector', () => {
     expect(screen.queryByText('beta')).not.toBeInTheDocument()
   })
 
+  it('excludes installed strategy plugins from marketplace results', async () => {
+    const user = userEvent.setup()
+    mocks.useMarketplacePlugins.mockReturnValue({
+      queryPluginsWithDebounced: mocks.queryPluginsWithDebounced,
+      plugins: [{ plugin_id: 'plugin-alpha' }, { plugin_id: 'market-agent' }],
+    })
+
+    render(<AgentStrategySelector onChange={vi.fn()} />)
+    await user.click(
+      screen
+        .getByText(/(?:^|\.)nodes\.agent\.strategy\.selectTip(?=$|:)/)
+        .closest('[aria-haspopup]')!,
+    )
+
+    expect(screen.getByText('alpha')).toBeInTheDocument()
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent(':market-agent')
+    expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('plugin-alpha')
+  })
+
   it('maps the selected tool and closes the popover', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
