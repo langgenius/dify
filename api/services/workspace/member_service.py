@@ -23,6 +23,7 @@ from services.errors.workspace import (
     OwnerTransferSendIPLimitedError,
     OwnerTransferVerificationLimitError,
     RoleAlreadyAssignedError,
+    WorkspaceAlreadyHasOwnerError,
     WorkspaceNotFoundError,
 )
 from services.workspace.contracts import (
@@ -190,6 +191,14 @@ class WorkspaceMemberService:
         role: TenantAccountRole,
         operator_account_id: str | None,
     ) -> WorkspaceMembership:
+        """Add or update a member and synchronize their workspace access.
+
+        Raises:
+            WorkspaceNotFoundError: The workspace is missing or is not active.
+            AccountNotFoundError: The account is missing or its email does not match.
+            WorkspaceAlreadyHasOwnerError: An owner is requested but the workspace
+                already has one.
+        """
         workspace = self._workspaces.get(workspace_id)
         if workspace is None or workspace.status != "normal":
             raise WorkspaceNotFoundError()
@@ -197,7 +206,7 @@ class WorkspaceMemberService:
         if account is None or account.email != email:
             raise AccountNotFoundError()
         if role == TenantAccountRole.OWNER and self._workspaces.owner_id(workspace_id) is not None:
-            raise ValueError("Tenant already has an owner.")
+            raise WorkspaceAlreadyHasOwnerError("Tenant already has an owner.")
         membership = self._workspaces.upsert_member(workspace_id=workspace_id, account_id=account_id, role=role)
         self._access.membership_changed(membership, operator_account_id)
         return WorkspaceMembership(workspace_id, account_id, role.value)
@@ -206,6 +215,15 @@ class WorkspaceMemberService:
         self._access.assign_role(workspace_id, operator_id, member_id, role_id)
 
     def remove(self, workspace_id: str, account_id: str, operator_id: str) -> None:
+        """Remove a member and transfer their resources to the workspace owner.
+
+        Raises:
+            AccountNotFoundError: The member account does not exist.
+            CannotOperateSelfError: The operator tries to remove themselves.
+            NoPermissionError: The operator cannot remove the member.
+            MemberNotInTenantError: The account is not a member of the workspace.
+            ValueError: The workspace has no owner to receive the member's resources.
+        """
         if self._accounts.get(account_id) is None:
             raise AccountNotFoundError()
         self.check_permission(workspace_id, operator_id, account_id, "remove")

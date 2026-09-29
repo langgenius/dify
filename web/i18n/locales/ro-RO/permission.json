@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} set de permisiuni",
   "accessRule.summary_other": "{{count}} seturi de permisiuni",
   "accessRule.updated": "Regula de acces a fost actualizată cu succes",
+  "accessRule.workspaceAdmin": "Administratorul spațiului de lucru",
   "accessRule.workspaceOwner": "Proprietarul spațiului de lucru",
   "common.duplicateAction": "Duplică",
   "group.agent": "Agenți",

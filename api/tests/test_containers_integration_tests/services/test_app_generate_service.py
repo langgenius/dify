@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Literal
 from unittest.mock import ANY, MagicMock, patch
@@ -59,13 +60,20 @@ class TestAppGenerateService:
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_published_workflow = MagicMock(spec=Workflow)
-            mock_published_workflow.id = str(uuid.uuid4())
-            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
-            mock_draft_workflow = MagicMock(spec=Workflow)
-            mock_draft_workflow.id = str(uuid.uuid4())
-            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
+            graph = json.dumps(
+                {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                        {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+                    ],
+                    "edges": [{"source": "start", "target": "end"}],
+                }
+            )
+            published_workflow = Workflow(id=str(uuid.uuid4()), version="1", graph=graph)
+            mock_workflow_service_instance.get_published_workflow.return_value = published_workflow
+            draft_workflow = Workflow(id=str(uuid.uuid4()), version="draft", graph=graph)
+            mock_workflow_service_instance.get_draft_workflow.return_value = draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value

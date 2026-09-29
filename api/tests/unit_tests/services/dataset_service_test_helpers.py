@@ -2,7 +2,7 @@
 
 These factories and lightweight builders are reused across the dataset,
 document, and segment service test modules that exercise
-``api/services/dataset_service.py``.
+``api/services/knowledge/dataset_service.py``.
 """
 
 import json
@@ -31,28 +31,6 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.model import UploadFile
-from services.dataset_service import (
-    DatasetCollectionBindingService,
-    DatasetPermissionService,
-    DatasetService,
-    DocumentService,
-    SegmentService,
-)
-from services.entities.knowledge_entities.knowledge_entities import (
-    ChildChunkUpdateArgs,
-    DataSource,
-    FileInfo,
-    InfoList,
-    KnowledgeConfig,
-    NotionIcon,
-    NotionInfo,
-    NotionPage,
-    ProcessRule,
-    RerankingModel,
-    RetrievalModel,
-    SegmentUpdateArgs,
-    WebsiteInfo,
-)
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo as PipelineIconInfo,
 )
@@ -71,6 +49,27 @@ from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexing
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.knowledge.dataset_service import (
+    DatasetCollectionBindingService,
+    DatasetPermissionService,
+    DatasetService,
+    DocumentService,
+    SegmentService,
+)
+from services.knowledge.entities.knowledge_entities import (
+    DataSource,
+    FileInfo,
+    InfoList,
+    KnowledgeConfig,
+    NotionIcon,
+    NotionInfo,
+    NotionPage,
+    ProcessRule,
+    RerankingModel,
+    RetrievalModel,
+    WebsiteInfo,
+)
+from services.knowledge.entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
 
 __all__ = [
     "Account",

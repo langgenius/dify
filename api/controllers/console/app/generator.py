@@ -401,6 +401,7 @@ class InstructionGenerateApi(Resource):
                     instruction=req_data.instruction,
                     model_config=req_data.model_config_data,
                     ideal_output=req_data.ideal_output,
+                    session=session,
                 )
             if req_data.node_id != "" and req_data.current != "":  # For workflow node
                 return LLMGenerator.instruction_modify_workflow(

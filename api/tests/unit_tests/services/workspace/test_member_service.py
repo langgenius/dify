@@ -29,6 +29,7 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceAlreadyHasOwnerError,
     WorkspaceInvitationQuotaError,
     WorkspaceNotFoundError,
 )
@@ -64,6 +65,33 @@ def members(sqlite_session: Session) -> tuple[str, str, str]:
     )
     sqlite_session.commit()
     return tenant.id, owner.id, member.id
+
+
+@pytest.mark.parametrize("existing_member", [True, False])
+def test_join_rejects_a_second_owner_without_changing_membership(
+    account_domain: AccountDomain, members: tuple[str, str, str], existing_member: bool
+) -> None:
+    workspace_id, owner_id, member_id = members
+    if existing_member:
+        account = account_domain.accounts.get_account_by_id(member_id)
+        assert account is not None
+    else:
+        account = account_domain.accounts.create_account("new-owner@example.com", "New owner", "en-US")
+
+    with pytest.raises(WorkspaceAlreadyHasOwnerError, match="Tenant already has an owner"):
+        account_domain.members.join_member(
+            workspace_id=workspace_id,
+            account_id=account.id,
+            email=account.email,
+            role=TenantAccountRole.OWNER,
+            operator_account_id=owner_id,
+        )
+
+    assert account_domain.members.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
+    assert account_domain.members.get_role(workspace_id, account.id) == (
+        TenantAccountRole.NORMAL if existing_member else None
+    )
+    account_domain.access.membership_changed.assert_not_called()
 
 
 @pytest.mark.parametrize(

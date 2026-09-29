@@ -185,7 +185,12 @@ class TestParagraphIndexProcessor:
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
         ):
-            documents = processor.transform([source_document], process_rule=process_rule, session=session)
+            documents = processor.transform(
+                [source_document],
+                process_rule=process_rule,
+                tenant_id="tenant-1",
+                session=session,
+            )
 
         assert len(documents) == 1
         assert documents[0].page_content == "first"
@@ -220,6 +225,7 @@ class TestParagraphIndexProcessor:
             processor.transform(
                 [Document(page_content="text", metadata={})],
                 process_rule={"mode": "automatic"},
+                tenant_id="tenant-1",
                 session=session,
             )
 
@@ -286,7 +292,7 @@ class TestParagraphIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
         ):
@@ -304,7 +310,7 @@ class TestParagraphIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):

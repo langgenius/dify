@@ -28,7 +28,6 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
     get_credit_usage_app_type,
 )
-from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -83,7 +82,6 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models import UploadFile
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -96,8 +94,11 @@ from models.dataset import (
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
-from services.external_knowledge_service import ExternalDatasetService
+from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
+from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.retrieval.attachments import authorize_retrieved_segment
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -310,25 +311,36 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            with Session(bind=session.get_bind()) as format_session:
-                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
-            dataset_ids = [i.segment.dataset_id for i in records]
-            document_ids = [i.segment.document_id for i in records]
+            # Materialize authorized, signed response values before closing the owned session.
+            with Session(bind=session.get_bind()) as retrieval_session:
+                records = RetrievalService.format_retrieval_documents(retrieval_session, dify_documents)
+                dataset_ids = [i.segment.dataset_id for i in records]
+                document_ids = [i.segment.document_id for i in records]
+                datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+                documents = retrieval_session.scalars(
+                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
+                ).all()
 
-            with session_factory.create_session() as session:
-                datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = session.scalars(select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))).all()
+                dataset_map = {i.id: i for i in datasets}
+                document_map = {i.id: i for i in documents}
 
-            dataset_map = {i.id: i for i in datasets}
-            document_map = {i.id: i for i in documents}
-
-            if records:
                 for record in records:
                     segment = record.segment
+                    if (
+                        authorize_retrieved_segment(
+                            segment,
+                            tenant_id=request.tenant_id,
+                            dataset_ids=available_datasets_ids,
+                            session=retrieval_session,
+                        )
+                        is None
+                    ):
+                        continue
                     dataset = dataset_map.get(segment.dataset_id)
                     document = document_map.get(segment.document_id)
 
                     if dataset and document:
+                        content = sign_segment_content(segment, session=retrieval_session)
                         source = Source(
                             metadata=SourceMetadata(
                                 source="knowledge",
@@ -358,15 +370,14 @@ class DatasetRetrieval:
                             ),
                             title=document.name,
                             files=list(record.files) if record.files else None,
-                            content=segment.get_sign_content(),
+                            content=content,
                         )
                         if segment.answer:
-                            source.content = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
+                            source.content = f"question:{content} \nanswer:{segment.answer}"
 
                         if record.summary:
                             source.summary = record.summary
 
-                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -533,13 +544,22 @@ class DatasetRetrieval:
             with Session(bind=session.get_bind()) as format_session:
                 records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             if records:
+                authorized_records = []
                 for record in records:
                     segment = record.segment
+                    attachments = authorize_retrieved_segment(
+                        segment, tenant_id=tenant_id, dataset_ids=available_datasets_ids, session=session
+                    )
+                    if attachments is None:
+                        continue
+                    authorized_records.append(record)
                     # Build content: if summary exists, add it before the segment content
                     if segment.answer:
-                        segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
+                        segment_content = (
+                            f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                        )
                     else:
-                        segment_content = segment.get_sign_content()
+                        segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
                     if record.summary:
@@ -554,18 +574,8 @@ class DatasetRetrieval:
                         )
                     )
                     if vision_enabled:
-                        attachments_with_bindings = session.execute(
-                            select(SegmentAttachmentBinding, UploadFile)
-                            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-                            .where(
-                                SegmentAttachmentBinding.segment_id == segment.id,
-                            )
-                        ).all()
-                        if attachments_with_bindings:
-                            grant_upload_file_access(
-                                str(upload_file.id) for _, upload_file in attachments_with_bindings
-                            )
-                            for _, upload_file in attachments_with_bindings:
+                        if attachments:
+                            for upload_file in attachments:
                                 attachment_info = File(
                                     file_id=upload_file.id,
                                     filename=upload_file.name,
@@ -583,8 +593,8 @@ class DatasetRetrieval:
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:
-                    dataset_ids = [record.segment.dataset_id for record in records]
-                    document_ids = [record.segment.document_id for record in records]
+                    dataset_ids = [record.segment.dataset_id for record in authorized_records]
+                    document_ids = [record.segment.document_id for record in authorized_records]
                     dataset_document_stmt = select(DatasetDocument).where(
                         DatasetDocument.id.in_(document_ids),
                         DatasetDocument.enabled == True,
@@ -597,7 +607,7 @@ class DatasetRetrieval:
                     datasets = session.execute(dataset_stmt).scalars().all()  # type: ignore
                     dataset_map = {i.id: i for i in datasets}
                     document_map = {i.id: i for i in documents}
-                    for record in records:
+                    for record in authorized_records:
                         segment = record.segment
                         dataset_item = dataset_map.get(segment.dataset_id)
                         document_item = document_map.get(segment.document_id)
@@ -1333,7 +1343,7 @@ class DatasetRetrieval:
             if (
                 dataset
                 and dataset.provider != "external"
-                and dataset.get_total_available_documents(session=session) == 0
+                and get_dataset_available_document_count(dataset, session=session) == 0
             ):
                 continue
 

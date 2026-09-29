@@ -43,7 +43,7 @@ def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
     db_session.add(join)
     db_session.commit()
 
-    account.set_tenant_id(tenant.id)
+    account.set_tenant_id_with_session(tenant.id, session=db_session)
     account.timezone = "UTC"
     db_session.commit()
 

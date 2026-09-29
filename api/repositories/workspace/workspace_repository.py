@@ -384,6 +384,11 @@ class WorkspaceRepository(
                 )
             ).scalar_one_or_none()
 
+    def get_legacy_role(self, *, workspace_id: str, account_id: str) -> str | None:
+        """Return one member's role without loading the whole workspace roster."""
+        role = self.member_role(workspace_id, account_id)
+        return role.value if role is not None else None
+
     @override
     def list_for_workspace(
         self, workspace_id: str, *, role: TenantAccountRole | None = None

@@ -18,6 +18,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
@@ -885,13 +886,11 @@ export function AddSourcePage({
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    globalThis.addEventListener('beforeunload', handleBeforeUnload)
-    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
+    return registerPageLeaveGuard({
+      message: t(($) => $['newKnowledge.discardSourceDraftDescription']),
+      shouldBlock: () => true,
+    })
+  }, [hasUnsavedChanges, t])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return

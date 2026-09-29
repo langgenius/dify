@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} 个权限集",
   "accessRule.summary_other": "{{count}} 个权限集",
   "accessRule.updated": "访问规则已更新",
+  "accessRule.workspaceAdmin": "工作区管理者",
   "accessRule.workspaceOwner": "工作区所有者",
   "common.duplicateAction": "创建副本",
   "group.agent": "Agent",

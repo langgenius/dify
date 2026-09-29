@@ -12,6 +12,11 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_doc_form,
+    get_segment_dataset,
+    get_segment_document,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +61,13 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
                 },
             )
 
-            dataset = segment.get_dataset(session=session)
+            dataset = get_segment_dataset(segment, session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.get_document(session=session)
+            dataset_document = get_segment_document(segment, session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -76,7 +81,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
 
-            index_type = dataset.get_doc_form(session=session)
+            index_type = get_dataset_doc_form(dataset, session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             index_processor.load(dataset, [document], session=session)
 

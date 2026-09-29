@@ -117,7 +117,7 @@ jobs:
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
             -n auto \
-            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --file-shard-plan unit-test-plan.json \
             --shard-index "${{ matrix.shardIndex }}" \
@@ -181,7 +181,7 @@ jobs:
         run: |
           uv run --project api pytest \
             --timeout "${PYTEST_TIMEOUT:-20}" \
-            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --junitxml=test-results/controllers.xml \
             api/tests/unit_tests/controllers
@@ -246,7 +246,7 @@ jobs:
             --start-middleware \
             --middleware-stop-timeout 2 \
             -n auto \
-            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \

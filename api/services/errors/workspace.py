@@ -49,6 +49,10 @@ class WorkspaceOwnerNotFoundError(WorkspaceApplicationError):
     pass
 
 
+class WorkspaceAlreadyHasOwnerError(WorkspaceApplicationError):
+    """An owner cannot join a workspace that already has one."""
+
+
 class InvalidWorkspaceMemberRoleError(WorkspaceApplicationError):
     pass
 

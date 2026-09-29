@@ -14,6 +14,12 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import (
+    get_segment_child_chunks,
+    get_segment_dataset,
+    get_segment_document,
+)
+from repositories.knowledge.segment_read_adapter import get_segment_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +58,13 @@ def enable_segment_to_index_task(segment_id: str):
                 },
             )
 
-            dataset = segment.get_dataset(session=session)
+            dataset = get_segment_dataset(segment, session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.get_document(session=session)
+            dataset_document = get_segment_document(segment, session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -74,7 +80,7 @@ def enable_segment_to_index_task(segment_id: str):
 
             index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
             if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                child_chunks = segment.get_child_chunks(session=session)
+                child_chunks = get_segment_child_chunks(segment, session=session)
                 if child_chunks:
                     child_documents = []
                     for child_chunk in child_chunks:
@@ -91,7 +97,7 @@ def enable_segment_to_index_task(segment_id: str):
                     document.children = child_documents
             multimodel_documents = []
             if dataset.is_multimodal:
-                for attachment in segment.get_attachments(session=session):
+                for attachment in get_segment_attachments(segment, session=session):
                     multimodel_documents.append(
                         AttachmentDocument(
                             page_content=attachment["name"],
@@ -110,10 +116,10 @@ def enable_segment_to_index_task(segment_id: str):
             session.commit()
 
             # Enable summary index for this segment
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             try:
-                SummaryIndexService.enable_summaries_for_segments(
+                SummaryIndexAdapter.enable_summaries_for_segments(
                     dataset=dataset,
                     segment_ids=[segment.id],
                 )

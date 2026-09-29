@@ -53,7 +53,7 @@ def create_console_account_and_tenant(db_session: Session) -> tuple[Account, Ten
     )
     db_session.commit()
 
-    account.set_tenant_id(tenant.id)
+    account.set_tenant_id_with_session(tenant.id, session=db_session)
     account.timezone = "UTC"
     db_session.commit()
 

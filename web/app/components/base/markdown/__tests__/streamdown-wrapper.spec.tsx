@@ -11,7 +11,6 @@ vi.mock('@/app/components/base/markdown-blocks', () => ({
     <a href={href}>{children}</a>
   ),
   MarkdownButton: ({ children }: PropsWithChildren) => <button>{children}</button>,
-  MarkdownForm: ({ children }: PropsWithChildren) => <form>{children}</form>,
   Paragraph: ({ children }: PropsWithChildren) => <p data-testid="paragraph">{children}</p>,
   PluginImg: ({ alt }: { alt?: string }) => <span data-testid="plugin-img">{alt}</span>,
   PluginParagraph: ({ children }: PropsWithChildren) => (

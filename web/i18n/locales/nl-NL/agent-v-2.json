@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Kan de skills van de workspace niet bijwerken.",
   "agentDetail.configure.skills.workspaceSelector.search": "Skills zoeken...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Overschakelen naar de voorbeeldmodus?",
+  "agentDetail.configure.templatePreview.agentUI": "Agentinterface",
   "agentDetail.configure.title": "Configureren",
   "agentDetail.configure.tools.add": "Tool toevoegen",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Voor ontwikkelaars",

@@ -1,6 +1,5 @@
 """Transport-boundary tests for account invitation activation."""
 
-from inspect import unwrap
 from unittest.mock import Mock, patch
 
 import pytest
@@ -156,7 +155,7 @@ class TestActivateApi:
                 ),
             ),
         ):
-            response = unwrap(ActivateApi.post)(ActivateApi())
+            response = ActivateApi().post()
 
         assert response == {"result": "success"}
         activation_service.activate.assert_called_once_with(
@@ -187,7 +186,7 @@ class TestActivateApi:
             patch("controllers.console.auth.activate.extract_access_token", return_value=None),
             patch("controllers.console.auth.activate.current_account_with_tenant") as resolve_account,
         ):
-            response = unwrap(ActivateApi.post)(ActivateApi())
+            response = ActivateApi().post()
 
         assert response == {"result": "success"}
         activation_service.activate.assert_called_once_with(
@@ -223,4 +222,20 @@ class TestActivateApi:
             patch("controllers.console.auth.activate.extract_access_token", return_value=None),
             pytest.raises(http_error),
         ):
-            unwrap(ActivateApi.post)(ActivateApi())
+            ActivateApi().post()
+
+    def test_rejects_request_without_token(self, app: Flask, activation_service: Mock) -> None:
+        """`token` is required, so a tokenless payload must not resolve the session or reach the service."""
+        with (
+            app.test_request_context("/activate", method="POST", json={"workspace_id": "workspace-123"}),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
+            ),
+            patch("controllers.console.auth.activate.extract_access_token") as extract_token,
+            pytest.raises(UnprocessableEntity),
+        ):
+            ActivateApi().post()
+
+        extract_token.assert_not_called()
+        activation_service.activate.assert_not_called()
