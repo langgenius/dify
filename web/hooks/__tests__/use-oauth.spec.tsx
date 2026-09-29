@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useOAuthCallback } from '../use-oauth'
 
@@ -110,13 +111,16 @@ describe('useOAuthCallback', () => {
     expect(result.current.errorDescription).toBe('Please re-authorize')
   })
 
-  it('initial state mirrors the current window.opener so the first paint can decide which UI to render', () => {
-    setOpener({ origin: 'https://console.example.test', postMessage: vi.fn() } as unknown as Window)
-    const { result } = renderHook(() => useOAuthCallback())
-    expect(result.current.hasOpener).toBe(true)
-
-    setOpener(null)
-    const { result: result2 } = renderHook(() => useOAuthCallback())
-    expect(result2.current.hasOpener).toBe(false)
+  it('renders without browser globals on the server and waits for hydration', () => {
+    const ServerCallback = () => {
+      const state = useOAuthCallback()
+      return <div>{state.finished ? 'finished' : 'waiting'}</div>
+    }
+    vi.stubGlobal('window', undefined)
+    try {
+      expect(renderToString(<ServerCallback />)).toContain('waiting')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

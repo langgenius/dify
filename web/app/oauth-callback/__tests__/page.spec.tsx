@@ -61,6 +61,7 @@ describe('OAuthCallback page', () => {
     })
 
     render(<OAuthCallback />)
+    expect(screen.getByRole('main')).toBeInTheDocument()
     expect(screen.getByText('Authorization complete')).toBeInTheDocument()
     expect(
       screen.getByText('You can now close this tab and return to the previous page.'),

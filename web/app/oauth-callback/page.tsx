@@ -15,7 +15,7 @@ const OAuthCallback = () => {
   if (hasOpener || !finished) return <div />
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background-default-subtle p-6">
+    <main className="flex min-h-screen items-center justify-center bg-background-default-subtle p-6">
       <div className="w-full max-w-md rounded-2xl border border-components-panel-border bg-components-panel-bg p-8 text-center shadow-sm">
         <h1 className="text-xl font-semibold text-text-primary">
           {error
@@ -28,7 +28,7 @@ const OAuthCallback = () => {
             : t(($) => $['callback.successHint'], { ns: 'oauth' })}
         </p>
       </div>
-    </div>
+    </main>
   )
 }
 

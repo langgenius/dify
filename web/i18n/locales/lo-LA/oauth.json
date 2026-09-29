@@ -1,8 +1,8 @@
 {
-  "callback.error": "Authorization failed",
-  "callback.errorHint": "Please return to the previous page and try again.",
-  "callback.success": "Authorization complete",
-  "callback.successHint": "You can now close this tab and return to the previous page.",
+  "callback.error": "ການອະນຸມັດລົ້ມເຫຼວ",
+  "callback.errorHint": "ກະລຸນາກັບໄປໜ້າກ່ອນ ແລະລອງອີກຄັ້ງ.",
+  "callback.success": "ການອະນຸມັດສຳເລັດແລ້ວ",
+  "callback.successHint": "ຕອນນີ້ທ່ານສາມາດປິດແທັບນີ້ ແລະກັບໄປໜ້າກ່ອນໄດ້.",
   "connect": "ເຊື່ອມຕໍ່ກັບ",
   "continue": "ດຳເນີນການຕໍ່",
   "error.authAppInfoFetchFailed": "ບໍ່ສາມາດດຶງຂໍ້ມູນແອັບຯເພື່ອການອະນຸມັດໄດ້",

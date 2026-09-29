@@ -1,8 +1,8 @@
 {
-  "callback.error": "Authorization failed",
-  "callback.errorHint": "Please return to the previous page and try again.",
-  "callback.success": "Authorization complete",
-  "callback.successHint": "You can now close this tab and return to the previous page.",
+  "callback.error": "La autorización falló",
+  "callback.errorHint": "Vuelve a la página anterior e inténtalo de nuevo.",
+  "callback.success": "Autorización completada",
+  "callback.successHint": "Ya puedes cerrar esta pestaña y volver a la página anterior.",
   "connect": "Conectar a",
   "continue": "Continuar",
   "error.authAppInfoFetchFailed": "No se pudo obtener la información de la aplicación para la autorización",

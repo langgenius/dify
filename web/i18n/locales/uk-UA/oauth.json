@@ -1,8 +1,8 @@
 {
-  "callback.error": "Authorization failed",
-  "callback.errorHint": "Please return to the previous page and try again.",
-  "callback.success": "Authorization complete",
-  "callback.successHint": "You can now close this tab and return to the previous page.",
+  "callback.error": "Авторизація не вдалася",
+  "callback.errorHint": "Поверніться на попередню сторінку та спробуйте ще раз.",
+  "callback.success": "Авторизацію завершено",
+  "callback.successHint": "Тепер ви можете закрити цю вкладку та повернутися на попередню сторінку.",
   "connect": "Підключитися до",
   "continue": "Продовжувати",
   "error.authAppInfoFetchFailed": "Не вдалося отримати інформацію про додаток для авторизації",

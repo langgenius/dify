@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { validateRedirectUrl } from '@/utils/urlValidation'
 
 export type OAuthCallbackState = {
@@ -14,62 +14,45 @@ export type OAuthCallbackState = {
 }
 
 export const useOAuthCallback = (): OAuthCallbackState => {
-  const urlParams = useMemo(() => new URLSearchParams(window.location.search), [])
-  const subscriptionId = urlParams.get('subscription_id')
-  const error = urlParams.get('error')
-  const errorDescription = urlParams.get('error_description')
+  // The first render must be identical on the server and client. Browser
+  // state and callback URL parameters are read only after hydration.
+  const [state, setState] = useState<OAuthCallbackState>({
+    hasOpener: false,
+    finished: false,
+    error: null,
+    errorDescription: null,
+  })
 
-  // The state must be available on the first render so the page can decide
-  // which UI to render (empty <div /> for the popup path, or a fallback
-  // message for the no-opener path) — see #39752. The URL params and the
-  // (immutable per page load) presence of window.opener are stable, so the
-  // empty dep list is intentional.
-  const state: OAuthCallbackState = useMemo(
-    () => ({
-      hasOpener: !!window.opener,
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const subscriptionId = urlParams.get('subscription_id')
+    const error = urlParams.get('error')
+    const errorDescription = urlParams.get('error_description')
+    const opener = window.opener
+
+    setState({
+      hasOpener: !!opener,
       finished: true,
       error,
       errorDescription,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL query params cannot change without navigating to a new callback page.
-    [],
-  )
+    })
+    if (!opener) return
 
-  useEffect(() => {
-    if (!window.opener) return
-
-    // Use window.opener.origin instead of '*' for security
-    const targetOrigin = window.opener?.origin || '*'
+    // Use window.opener.origin instead of '*' for security.
+    const targetOrigin = opener.origin || '*'
 
     if (subscriptionId) {
-      window.opener.postMessage(
-        {
-          type: 'oauth_callback',
-          success: true,
-          subscriptionId,
-        },
-        targetOrigin,
-      )
+      opener.postMessage({ type: 'oauth_callback', success: true, subscriptionId }, targetOrigin)
     } else if (error) {
-      window.opener.postMessage(
-        {
-          type: 'oauth_callback',
-          success: false,
-          error,
-          errorDescription,
-        },
+      opener.postMessage(
+        { type: 'oauth_callback', success: false, error, errorDescription },
         targetOrigin,
       )
     } else {
-      window.opener.postMessage(
-        {
-          type: 'oauth_callback',
-        },
-        targetOrigin,
-      )
+      opener.postMessage({ type: 'oauth_callback' }, targetOrigin)
     }
     window.close()
-  }, [error, errorDescription, subscriptionId])
+  }, [])
 
   return state
 }
