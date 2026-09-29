@@ -212,6 +212,20 @@ const FeaturesTrigger = () => {
               }),
             ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
           }
+          void queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
+                {
+                  type: 'query',
+                  input: {
+                    params: {
+                      evaluate_target_id: appID,
+                      evaluate_target_type: 'apps',
+                    },
+                  },
+                },
+              ),
+          }).catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
           if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
