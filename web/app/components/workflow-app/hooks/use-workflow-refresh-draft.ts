@@ -19,6 +19,7 @@ export const useWorkflowRefreshDraft = () => {
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
   const refreshSequenceRef = useRef(0)
+  const restoreLoadedAfterRefreshRef = useRef(false)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
   const { eventEmitter } = useEventEmitterContextContext()
@@ -43,7 +44,9 @@ export const useWorkflowRefreshDraft = () => {
 
       debouncedSyncWorkflowDraft?.cancel?.()
 
-      const wasLoaded = isWorkflowDataLoaded
+      // A newer refresh inherits the loaded state from before overlapping reads paused saving.
+      const wasLoaded = isWorkflowDataLoaded || restoreLoadedAfterRefreshRef.current
+      restoreLoadedAfterRefreshRef.current = wasLoaded && !options?.shouldApply
       const replacementIdAtRequestStart = workflowStore.getState().lastAppliedReplacementId
       const replacementEpochAtRequestStart = workflowStore.getState().draftReplacementEpoch
       const workflowReplacementSequence = collaborationManager.getWorkflowReplacementSequence(appId)
@@ -59,6 +62,7 @@ export const useWorkflowRefreshDraft = () => {
           : fetchAppWorkflowDraft(appId)
       )
         .then((response) => {
+          if (refreshSequence !== refreshSequenceRef.current) return false
           if (options?.shouldApply && !options.shouldApply()) return false
           if (
             replacementPendingAtRequestStart ||
@@ -146,6 +150,7 @@ export const useWorkflowRefreshDraft = () => {
           return true
         })
         .catch(() => {
+          if (refreshSequence !== refreshSequenceRef.current) return false
           if (replacementFailed) {
             window.location.reload()
             return false
@@ -154,7 +159,10 @@ export const useWorkflowRefreshDraft = () => {
           return false
         })
         .finally(() => {
-          if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
+          if (refreshSequence === refreshSequenceRef.current) {
+            restoreLoadedAfterRefreshRef.current = false
+            setIsSyncingWorkflowDraft(false)
+          }
         })
     },
     [eventEmitter, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],

@@ -1,3 +1,4 @@
+import type { WorkflowDraftReplacedEvent } from '@/app/components/workflow/workflow-data-update-event'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -27,6 +28,8 @@ let appStoreState: {
 let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
+  isSyncingWorkflowDraft: boolean
+  syncWorkflowDraftHash: string
   lastAppliedReplacementId: string | null
   draftReplacementEpoch: number
   debouncedSyncWorkflowDraft?: { cancel: () => void }
@@ -97,12 +100,24 @@ const draftResponse = {
 describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEventEmitterEmit.mockReset()
+    mockSetIsWorkflowDataLoaded.mockImplementation((loaded: boolean) => {
+      workflowStoreState.isWorkflowDataLoaded = loaded
+    })
+    mockSetIsSyncingWorkflowDraft.mockImplementation((syncing: boolean) => {
+      workflowStoreState.isSyncingWorkflowDraft = syncing
+    })
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
     mockGetWorkflowReplacementSequence.mockReturnValue(null)
     mockIsWorkflowReplacementPending.mockReturnValue(false)
     mockIsWorkflowReplacementCurrent.mockReturnValue(false)
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
+      isSyncingWorkflowDraft: false,
+      syncWorkflowDraftHash: 'initial-hash',
       lastAppliedReplacementId: null,
       draftReplacementEpoch: 0,
       debouncedSyncWorkflowDraft: undefined,
@@ -335,6 +350,198 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       await secondRefresh
     })
     expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+  })
+
+  it.each(['older first', 'newer first'])(
+    'keeps the newest overlapping refresh after replacement responses arrive %s',
+    async (responseOrder) => {
+      const olderDraft = {
+        ...draftResponse,
+        hash: 'hash-A',
+        last_replacement_id: 'import-A',
+        graph: { nodes: [], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+      }
+      const newerDraft = {
+        ...olderDraft,
+        hash: 'hash-B',
+        last_replacement_id: 'import-B',
+      }
+      let resolveOlder: ((draft: typeof olderDraft) => void) | undefined
+      let resolveNewer: ((draft: typeof newerDraft) => void) | undefined
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(
+          new Promise<typeof olderDraft>((resolve) => {
+            resolveOlder = resolve
+          }),
+        )
+        .mockReturnValueOnce(
+          new Promise<typeof newerDraft>((resolve) => {
+            resolveNewer = resolve
+          }),
+        )
+      mockEventEmitterEmit.mockImplementation((event: WorkflowDraftReplacedEvent) => {
+        const { draft } = event.payload
+        workflowStoreState.setSyncWorkflowDraftHash(draft.hash)
+        workflowStoreState.lastAppliedReplacementId = draft.last_replacement_id
+        workflowStoreState.draftReplacementEpoch += 1
+      })
+      const { result } = renderHook(() => useWorkflowRefreshDraft())
+      let olderRefresh: Promise<boolean> | undefined
+      let newerRefresh: Promise<boolean> | undefined
+
+      act(() => {
+        olderRefresh = result.current.handleRefreshWorkflowDraft()
+        newerRefresh = result.current.handleRefreshWorkflowDraft()
+      })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+
+      if (responseOrder === 'older first') {
+        await act(async () => {
+          resolveOlder?.(olderDraft)
+          await olderRefresh
+        })
+        await act(async () => {
+          resolveNewer?.(newerDraft)
+          await newerRefresh
+        })
+      } else {
+        await act(async () => {
+          resolveNewer?.(newerDraft)
+          await newerRefresh
+        })
+        await act(async () => {
+          resolveOlder?.(olderDraft)
+          await olderRefresh
+        })
+      }
+
+      await expect(olderRefresh).resolves.toBe(false)
+      await expect(newerRefresh).resolves.toBe(true)
+      expect(mockEventEmitterEmit).toHaveBeenCalledOnce()
+      expect(mockEventEmitterEmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ draft: newerDraft }),
+        }),
+      )
+      expect(workflowStoreState.syncWorkflowDraftHash).toBe('hash-B')
+      expect(workflowStoreState.lastAppliedReplacementId).toBe('import-B')
+      expect(workflowStoreState.draftReplacementEpoch).toBeGreaterThan(0)
+      expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+    },
+  )
+
+  it('keeps editing paused when an older refresh fails while the newest request is pending', async () => {
+    let rejectOlder: ((error: Error) => void) | undefined
+    let resolveNewer: ((draft: typeof draftResponse) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectOlder = reject
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<typeof draftResponse>((resolve) => {
+          resolveNewer = resolve
+        }),
+      )
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const olderRefresh = result.current.handleRefreshWorkflowDraft()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    const newerRefresh = result.current.handleRefreshWorkflowDraft()
+
+    await act(async () => {
+      rejectOlder?.(new Error('Older refresh failed'))
+      await expect(olderRefresh).resolves.toBe(false)
+    })
+
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    expect(workflowStoreState.isSyncingWorkflowDraft).toBe(true)
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('initial-hash')
+
+    await act(async () => {
+      resolveNewer?.({ ...draftResponse, hash: 'hash-B' })
+      await expect(newerRefresh).resolves.toBe(true)
+    })
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+    expect(workflowStoreState.isSyncingWorkflowDraft).toBe(false)
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('hash-B')
+  })
+
+  it('restores readiness after the newest ordinary refresh fails without applying a late older response', async () => {
+    let resolveOlder: ((draft: typeof draftResponse) => void) | undefined
+    let rejectNewer: ((error: Error) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise<typeof draftResponse>((resolve) => {
+          resolveOlder = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectNewer = reject
+        }),
+      )
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const olderRefresh = result.current.handleRefreshWorkflowDraft()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    const newerRefresh = result.current.handleRefreshWorkflowDraft()
+
+    await act(async () => {
+      rejectNewer?.(new Error('Newest refresh failed'))
+      await expect(newerRefresh).resolves.toBe(false)
+    })
+
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+    expect(workflowStoreState.isSyncingWorkflowDraft).toBe(false)
+    await act(async () => {
+      resolveOlder?.({ ...draftResponse, hash: 'hash-A' })
+      await expect(olderRefresh).resolves.toBe(false)
+    })
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('initial-hash')
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+  })
+
+  it('leaves readiness to the external owner when a guarded refresh supersedes an ordinary refresh and is cancelled', async () => {
+    let rejectOlder: ((error: Error) => void) | undefined
+    let resolveNewer: ((draft: typeof draftResponse) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectOlder = reject
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<typeof draftResponse>((resolve) => {
+          resolveNewer = resolve
+        }),
+      )
+    let shouldApply = true
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const olderRefresh = result.current.handleRefreshWorkflowDraft()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    const newerRefresh = result.current.handleRefreshWorkflowDraft(false, {
+      shouldApply: () => shouldApply,
+    })
+    shouldApply = false
+
+    await act(async () => {
+      resolveNewer?.({ ...draftResponse, hash: 'hash-B' })
+      await expect(newerRefresh).resolves.toBe(false)
+    })
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    expect(workflowStoreState.isSyncingWorkflowDraft).toBe(false)
+
+    await act(async () => {
+      rejectOlder?.(new Error('Superseded ordinary refresh failed'))
+      await expect(olderRefresh).resolves.toBe(false)
+    })
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('initial-hash')
+    expect(mockSetIsWorkflowDataLoaded).not.toHaveBeenCalledWith(true)
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
   })
 
   it('should still update hash even when notUpdateCanvas=true', async () => {
