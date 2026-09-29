@@ -195,31 +195,36 @@ export function GotoAnything() {
     remoteSearchEnabled &&
     agentsAvailable &&
     (!debouncedAction || debouncedAction.key === '@agents')
-  const appSearchQuery = useQuery({
-    ...appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app'),
-    enabled: appSearchEnabled,
-    placeholderData: keepPreviousData,
-  })
-  const knowledgeSearchQuery = useQuery({
-    ...knowledgeSearchQueryOptions(debouncedSearchTerm),
-    enabled: knowledgeSearchEnabled,
-    placeholderData: keepPreviousData,
-  })
-  const pluginSearchQuery = useQuery({
-    ...pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale),
-    enabled: pluginSearchEnabled,
-    placeholderData: keepPreviousData,
-  })
-  const skillSearchQuery = useQuery({
-    ...skillSearchQueryOptions(debouncedSearchTerm),
-    enabled: skillSearchEnabled,
-    placeholderData: keepPreviousData,
-  })
-  const agentSearchQuery = useQuery({
-    ...agentSearchQueryOptions(debouncedSearchTerm),
-    enabled: agentSearchEnabled,
-    placeholderData: keepPreviousData,
-  })
+  const appSearchQuery = useQuery(
+    appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app', {
+      enabled: appSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const knowledgeSearchQuery = useQuery(
+    knowledgeSearchQueryOptions(debouncedSearchTerm, {
+      enabled: knowledgeSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const pluginSearchQuery = useQuery(
+    pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale, {
+      enabled: pluginSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const skillSearchQuery = useQuery(
+    skillSearchQueryOptions(debouncedSearchTerm, {
+      enabled: skillSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const agentSearchQuery = useQuery(
+    agentSearchQueryOptions(debouncedSearchTerm, {
+      enabled: agentSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
   const isSameLocalAction =
     currentAction?.source === 'local' &&
     debouncedAction?.source === 'local' &&

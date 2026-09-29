@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { SlashCommand } from '../actions/commands/types'
-import type { ActionItem, SearchResult } from '../actions/types'
+import type { ActionItem, SearchQueryOptions, SearchResult } from '../actions/types'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -110,23 +110,38 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('../actions/app', () => ({
-  appSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['app', searchTerm] }),
+  appSearchQueryOptions: (searchTerm: string, _scoped: boolean, options: SearchQueryOptions) => ({
+    queryKey: ['app', searchTerm],
+    ...options,
+  }),
 }))
 
 vi.mock('../actions/knowledge', () => ({
-  knowledgeSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['knowledge', searchTerm] }),
+  knowledgeSearchQueryOptions: (searchTerm: string, options: SearchQueryOptions) => ({
+    queryKey: ['knowledge', searchTerm],
+    ...options,
+  }),
 }))
 
 vi.mock('../actions/plugin', () => ({
-  pluginSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['plugin', searchTerm] }),
+  pluginSearchQueryOptions: (searchTerm: string, _locale: string, options: SearchQueryOptions) => ({
+    queryKey: ['plugin', searchTerm],
+    ...options,
+  }),
 }))
 
 vi.mock('../actions/skill', () => ({
-  skillSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['skill', searchTerm] }),
+  skillSearchQueryOptions: (searchTerm: string, options: SearchQueryOptions) => ({
+    queryKey: ['skill', searchTerm],
+    ...options,
+  }),
 }))
 
 vi.mock('../actions/agent', () => ({
-  agentSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['agent', searchTerm] }),
+  agentSearchQueryOptions: (searchTerm: string, options: SearchQueryOptions) => ({
+    queryKey: ['agent', searchTerm],
+    ...options,
+  }),
 }))
 
 const visibilityState = vi.hoisted(() => ({
