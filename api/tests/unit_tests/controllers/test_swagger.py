@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Callable, Iterator
-from pathlib import Path
 
 import pytest
 from flask import Blueprint, Flask
@@ -39,23 +38,6 @@ def openapi_json() -> OpenAPIJSONLoader:
         return documents[key]
 
     return load
-
-
-@pytest.fixture(scope="module")
-def _exported_spec_directory(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp("swagger-specs")
-
-
-@pytest.fixture
-def exported_console_json(_exported_spec_directory: Path, _swagger_config: None) -> str:
-    """Exercise the exporter once; tests parse independent copies of its output."""
-    from dev.generate_swagger_specs import generate_specs
-
-    console_openapi_path = _exported_spec_directory / "console-openapi.json"
-    if not console_openapi_path.exists():
-        written_paths = generate_specs(_exported_spec_directory)
-        assert console_openapi_path in written_paths
-    return console_openapi_path.read_text(encoding="utf-8")
 
 
 USER_PROPERTY_SCHEMA = {

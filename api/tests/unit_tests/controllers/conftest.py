@@ -1,6 +1,9 @@
 """Explicit App service composition for controller tests that use app queries."""
 
+import os
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 
 import pytest
 from flask import Flask
@@ -20,6 +23,42 @@ from services.app.import_service import AppImportService
 from services.app.query_service import AppQueryService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessQueryService
+from tests.unit_tests.config_override import config_overrides_context
+
+
+@pytest.fixture(scope="session")
+def _console_spec_loader(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], str]:
+    """Export once on demand; consumers parse independent copies of the JSON."""
+
+    @cache
+    def load() -> str:
+        from configs import dify_config
+        from dev.generate_swagger_specs import generate_specs
+
+        output_dir = tmp_path_factory.mktemp("controller-specs")
+        # The exporter sets generation-only defaults. Restore them even if the
+        # first consumer has different per-test config or generation fails.
+        original_config = dify_config.model_dump(
+            include={"SECRET_KEY", "STORAGE_TYPE", "STORAGE_LOCAL_PATH", "SWAGGER_UI_ENABLED"}
+        )
+        with config_overrides_context(**original_config), pytest.MonkeyPatch.context() as monkeypatch:
+            for name, default in (
+                ("SECRET_KEY", "spec-export"),
+                ("STORAGE_TYPE", "local"),
+                ("STORAGE_LOCAL_PATH", "/tmp/dify-storage"),
+            ):
+                monkeypatch.setenv(name, os.environ.get(name, default))
+            written_paths = generate_specs(output_dir)
+        console_path = output_dir / "console-openapi.json"
+        assert console_path in written_paths
+        return console_path.read_text(encoding="utf-8")
+
+    return load
+
+
+@pytest.fixture
+def exported_console_json(_console_spec_loader: Callable[[], str]) -> str:
+    return _console_spec_loader()
 
 
 @dataclass

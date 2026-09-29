@@ -15,13 +15,9 @@ def _object_at(root: dict[str, object], *keys: str) -> dict[str, object]:
     return cast(dict[str, object], current)
 
 
-@pytest.fixture(scope="module")
-def console_schema(tmp_path_factory: pytest.TempPathFactory) -> dict[str, object]:
-    from dev.generate_swagger_specs import generate_specs
-
-    output_dir = tmp_path_factory.mktemp("rbac-openapi")
-    generate_specs(output_dir)
-    schema: object = json.loads((output_dir / "console-openapi.json").read_text())
+@pytest.fixture
+def console_schema(exported_console_json: str) -> dict[str, object]:
+    schema: object = json.loads(exported_console_json)
     assert isinstance(schema, dict)
     return cast(dict[str, object], schema)
 
