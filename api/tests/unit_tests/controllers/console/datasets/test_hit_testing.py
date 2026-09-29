@@ -9,8 +9,10 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.datasets.hit_testing import HitTestingApi
+from core.rbac import RBACPermission
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -80,6 +82,14 @@ def hit_testing_record() -> dict[str, object]:
         "files": [],
         "summary": None,
     }
+
+
+def test_hit_testing_requires_retrieval_recall_permission():
+    checks = rbac_checks(HitTestingApi.post)
+
+    assert len(checks) == 1
+    assert checks[0].scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert checks[0].locator.default_param == "dataset_id"
 
 
 @pytest.fixture(autouse=True)

@@ -411,7 +411,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_RETRIEVAL_RECALL, DatasetId()))
     @with_session
     @model_validate(ExternalHitTestingPayload)
     def post(self, req_data: ExternalHitTestingPayload, session: Session, current_user: Account, dataset_id: UUID):

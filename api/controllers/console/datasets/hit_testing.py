@@ -47,7 +47,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_tenant_id
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_RETRIEVAL_RECALL, DatasetId()))
     @with_session
     def post(
         self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID

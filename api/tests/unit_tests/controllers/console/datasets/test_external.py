@@ -22,6 +22,7 @@ from controllers.console.datasets.external import (
     ExternalKnowledgeApiPayload,
     ExternalKnowledgeHitTestingApi,
 )
+from core.rbac import RBACPermission
 from fields.dataset_fields import DatasetDetailResponse
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
@@ -29,6 +30,7 @@ from services.dataset_service import DatasetService
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -183,6 +185,14 @@ def _dataset() -> Dataset:
 
 def _dataset_detail_response() -> DatasetDetailResponse:
     return DatasetDetailResponse.model_validate(_expected_dataset_detail_payload())
+
+
+def test_external_hit_testing_requires_retrieval_recall_permission():
+    checks = rbac_checks(ExternalKnowledgeHitTestingApi.post)
+
+    assert len(checks) == 1
+    assert checks[0].scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert checks[0].locator.default_param == "dataset_id"
 
 
 class _UsesSQLiteSession:
