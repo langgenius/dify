@@ -162,7 +162,7 @@ function CalendarPanel({
       }
       footer={
         choosingMonth ? (
-          <>
+          <React.Fragment>
             <Button
               size="small"
               variant="secondary"
@@ -183,7 +183,7 @@ function CalendarPanel({
             >
               {labels.apply}
             </Button>
-          </>
+          </React.Fragment>
         ) : (
           footer
         )

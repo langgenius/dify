@@ -1,4 +1,3 @@
-import type * as React from 'react'
 import {
   DatePicker,
   DatePickerContent,
@@ -17,7 +16,8 @@ import {
   TimePickerLabel,
   TimePickerTrigger,
 } from '@langgenius/dify-ui/time-picker'
-import { createPortal } from 'react-dom'
+import * as React from 'react'
+import * as ReactDOM from 'react-dom'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 
@@ -51,7 +51,7 @@ it.each(pickers)(
     const help = vi.fn()
     const screen = await render(
       wrap(
-        <>
+        <React.Fragment>
           <Label>
             <span>Departure</span>
             <button type="button" onClick={help}>
@@ -60,7 +60,7 @@ it.each(pickers)(
           </Label>
           <Trigger />
           <Content />
-        </>,
+        </React.Fragment>,
       ),
     )
     const trigger = screen.getByRole('button', { name: 'Departure Help' })
@@ -113,7 +113,7 @@ it('does not forward clicks from portalled label content to the trigger', async 
     <DatePicker>
       <DatePickerLabel>
         Departure
-        {createPortal(<input aria-label="Help search" />, document.body)}
+        {ReactDOM.createPortal(<input aria-label="Help search" />, document.body)}
       </DatePickerLabel>
       <DatePickerTrigger />
       <DatePickerContent />
@@ -127,14 +127,14 @@ it('does not forward clicks from portalled label content to the trigger', async 
 
 it('allows a consumer to cancel label focus forwarding', async () => {
   const screen = await render(
-    <>
+    <React.Fragment>
       <button type="button">Previous control</button>
       <DatePicker>
         <DatePickerLabel onClick={(event) => event.preventDefault()}>Departure</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
       </DatePicker>
-    </>,
+    </React.Fragment>,
   )
   const previous = screen.getByRole('button', { name: 'Previous control' })
   await previous.click()
@@ -148,10 +148,10 @@ it.each(pickers)(
   async ({ wrap, Trigger, Content }) => {
     const screen = await render(
       wrap(
-        <>
+        <React.Fragment>
           <Trigger aria-label="Departure" />
           <Content aria-label="Choose departure" />
-        </>,
+        </React.Fragment>,
       ),
     )
     const trigger = screen.getByRole('button', { name: 'Departure' })
@@ -164,7 +164,7 @@ it.each(pickers)(
 
 it('combines external label, value and descriptions without losing validation feedback', async () => {
   const screen = await render(
-    <>
+    <React.Fragment>
       <span id="departure-label">Departure</span>
       <p id="departure-help">Choose a working day.</p>
       <DatePicker
@@ -176,7 +176,7 @@ it('combines external label, value and descriptions without losing validation fe
         <DatePickerTrigger aria-labelledby="departure-label" aria-describedby="departure-help" />
         <DatePickerContent aria-labelledby="departure-label" />
       </DatePicker>
-    </>,
+    </React.Fragment>,
   )
   const trigger = screen.getByRole('button', { name: 'Departure Jan 15, 2025' })
   await expect
