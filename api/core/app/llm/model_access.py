@@ -62,7 +62,19 @@ class DifyCredentialsProvider:
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
         if (provider_name, model_name) in self.credentials_cache:
-            return deepcopy(self.credentials_cache[(provider_name, model_name)])
+            from core.model_invocation_routing import ModelInvocationReprepare, validate_invocation_admission
+
+            cached = self.credentials_cache[(provider_name, model_name)]
+            try:
+                validate_invocation_admission(
+                    cached, tenant_id=self.tenant_id, provider=provider_name, model_type=ModelType.LLM, model=model_name
+                )
+            except ModelInvocationReprepare:
+                self.credentials_cache.pop((provider_name, model_name), None)
+                self.provider_model_cache.pop((provider_name, model_name), None)
+                self.provider_manager.clear_configurations_cache(self.tenant_id)
+            else:
+                return deepcopy(cached)
 
         provider_configurations = self.provider_manager.get_configurations(self.tenant_id)
 

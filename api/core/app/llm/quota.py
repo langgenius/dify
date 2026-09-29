@@ -7,7 +7,7 @@ helpers remain LLM-specific because token-based settlement requires LLM usage.
 import warnings
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -61,6 +61,7 @@ class ModelQuotaReservation:
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     requires_settlement: bool = False
+    settlement_backend: str = "legacy_message_credits"
     _state: ModelQuotaReservationState = field(default=ModelQuotaReservationState.RESERVED, init=False, repr=False)
 
     @property
@@ -69,7 +70,7 @@ class ModelQuotaReservation:
 
     @property
     def commit_before_delivery(self) -> bool:
-        return self.credit_pool_reservation is not None
+        return self.credit_pool_reservation is not None or self.settlement_backend == "tokener"
 
     def commit(self, usage: LLMUsage | None = None) -> None:
         if self._state == ModelQuotaReservationState.COMMITTED:
@@ -113,6 +114,60 @@ LLMQuotaReservationState = ModelQuotaReservationState
 LLMQuotaReservation = ModelQuotaReservation
 
 
+class MessageQuotaReservation(Protocol):
+    """The receipt operations owned by a Classic message, not an LLM turn."""
+
+    @property
+    def reservation_id(self) -> str | None: ...
+
+    def renew(self) -> None: ...
+
+    def commit(self) -> None: ...
+
+    def release(self) -> None: ...
+
+
+def reserve_message_quota_for_model(
+    *,
+    tenant_id: str,
+    provider: str,
+    model: str,
+    quota_type: ProviderQuotaType,
+    quota_unit: QuotaUnit,
+    message_id: str,
+    app_type: CreditUsageAppTypeInput,
+    created_by: CreditUsageCreatedByInput,
+) -> MessageQuotaReservation | None:
+    """Reserve the legacy capped charge once using the durable message ID.
+
+    Classic messages retain their capped per-message charge rather than the
+    strict per-invocation reservation used by workflow model nodes. A nonpositive
+    configured charge remains unmetered, without creating a financial receipt.
+    """
+    if quota_type not in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+        raise ValueError("Message reservations require a shared credit pool.")
+    if quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}:
+        raise ValueError("Message reservations require credits or times quota.")
+    amount = dify_config.get_model_credits(model) if quota_unit == QuotaUnit.CREDITS else 1
+    if amount <= 0:
+        return None
+    return CreditPoolService.reserve_credits_capped(
+        tenant_id=tenant_id,
+        credits_required=amount,
+        pool_type=quota_type.value,
+        request_id=message_id,
+        session_factory=db.session,
+        meta={
+            "source": "message.created",
+            "provider": provider,
+            "model": model,
+            "model_type": ModelType.LLM.value,
+            "app_type": app_type,
+            "created_by": created_by,
+        },
+    )
+
+
 def _get_provider_configuration(*, tenant_id: str, provider: str):
     """Resolve the tenant-bound provider configuration for quota decisions."""
     provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
@@ -142,9 +197,12 @@ def reserve_model_quota_for_model(
     request_id: str | None = None,
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
+    provider_configuration: Any = None,
+    invocation_credentials: dict[str, Any] | None = None,
 ) -> ModelQuotaReservation:
     """Reserve system-hosted model quota before invoking the provider."""
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    if provider_configuration is None:
+        provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
     effective_app_type = normalize_credit_usage_app_type(app_type)
     effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(
@@ -157,6 +215,16 @@ def reserve_model_quota_for_model(
         created_by=effective_created_by,
     )
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
+        return reservation
+
+    from core.model_invocation_routing import RoutedModelCredentials, routed_credentials
+
+    if invocation_credentials is None:
+        invocation_credentials = routed_credentials(provider_configuration, model_type, model)
+    if isinstance(invocation_credentials, RoutedModelCredentials):
+        if invocation_credentials.plan.tenant_id != tenant_id:
+            raise ValueError("Model route tenant mismatch")
+        reservation.settlement_backend = "tokener"
         return reservation
 
     provider_model = provider_configuration.get_provider_model(model_type=model_type, model=model)

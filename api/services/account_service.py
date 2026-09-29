@@ -82,6 +82,7 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
+from services.tenant_model_billing_service import initialize_tenant_model_billing
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
@@ -1016,6 +1017,7 @@ class TenantService:
         tenant = Tenant(name=name)
 
         session.add(tenant)
+        initialize_tenant_model_billing(tenant.id, session=session)
         session.commit()
 
         for category in TenantPluginAutoUpgradeCategory:
@@ -1033,10 +1035,6 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         session.commit()
-
-        from services.credit_pool_service import CreditPoolService
-
-        CreditPoolService.create_default_pool(tenant.id, session=session)
 
         return tenant
 

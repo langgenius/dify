@@ -27,6 +27,7 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import (
     CurrentWorkspaceSummaryApi,
+    CurrentWorkspaceSummaryResponse,
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
     TenantInfoResponse,
@@ -384,6 +385,9 @@ class TestCurrentWorkspaceSummaryApi:
             "role": "owner",
             "plan": "sandbox",
             "credits": 180,
+            "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "none",
+            "tokener_bootstrap_status": None,
         }
         get_summary.assert_called_once_with(tenant, user.id, session=session)
 
@@ -402,6 +406,27 @@ class TestCurrentWorkspaceSummaryApi:
 
 
 class TestTenantInfoResponse:
+    def test_migration_processing_serializes_explicit_unknown_credits(self):
+        summary = CurrentWorkspaceSummaryResponse.model_validate(
+            {
+                "id": "t1",
+                "name": "Workspace",
+                "role": "owner",
+                "plan": "professional",
+                "credits": None,
+                "model_billing_migration_status": "processing",
+            }
+        ).model_dump(mode="json")
+        details = TenantInfoResponse.model_validate(
+            {"id": "t1", "plan": "professional", "model_billing_migration_status": "processing"}
+        ).model_dump(mode="json")
+
+        assert summary["credits"] is None
+        assert summary["model_billing_migration_status"] == "processing"
+        assert details["trial_credits"] is None
+        assert details["trial_credits_used"] is None
+        assert details["model_billing_migration_status"] == "processing"
+
     def test_tenant_info_response_normalizes_enum_and_datetime(self):
         created_at = naive_utc_now()
         payload = TenantInfoResponse.model_validate(

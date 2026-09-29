@@ -34,6 +34,7 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
+from core.model_billing_profile import ModelBillingProfileService
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import DeploymentEdition
@@ -649,13 +650,16 @@ class ProviderManager:
         if cached_configurations is not None:
             return cached_configurations
 
+        model_billing = ModelBillingProfileService.resolve(tenant_id)
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
         # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
-        )
+        if model_billing.uses_legacy_message_credits:
+            provider_name_to_provider_records_dict = self._init_trial_provider_records(
+                tenant_id, provider_name_to_provider_records_dict
+            )
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -707,6 +711,15 @@ class ProviderManager:
 
         provider_configurations = ProviderConfigurations(tenant_id=tenant_id)
 
+        from core.model_invocation_routing import (
+            SettlementOwner,
+            has_compatibility_route,
+            migration_routing_state,
+            settlement_owner,
+        )
+
+        compatibility_route = has_compatibility_route(migration_routing_state(tenant_id))
+
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
             # handle include, exclude
@@ -746,12 +759,18 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            system_configuration = (
+                self._to_system_configuration(tenant_id, provider_entity, provider_records)
+                if model_billing.uses_legacy_message_credits or compatibility_route
+                else SystemConfiguration(enabled=False)
+            )
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
-            if preferred_provider_type_record:
+            if model_billing.uses_tokener and not compatibility_route:
+                preferred_provider_type = ProviderType.CUSTOM
+            elif preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
             elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
                 preferred_provider_type = ProviderType.SYSTEM
@@ -764,11 +783,19 @@ class ProviderManager:
 
             using_provider_type = preferred_provider_type
             has_valid_quota = any(quota_conf.is_valid for quota_conf in system_configuration.quota_configurations)
+            managed_shared_pool = (
+                compatibility_route
+                and settlement_owner(system_configuration, ProviderType.SYSTEM) == SettlementOwner.SHARED_CREDIT_POOL
+            )
 
             if preferred_provider_type == ProviderType.SYSTEM:
                 if not system_configuration.enabled or not system_configuration.quota_configurations:
                     using_provider_type = ProviderType.CUSTOM
-                elif not has_valid_quota and (custom_configuration.provider or custom_configuration.models):
+                elif (
+                    not has_valid_quota
+                    and not managed_shared_pool
+                    and (custom_configuration.provider or custom_configuration.models)
+                ):
                     # Only configured alternatives can serve as fallbacks; otherwise downstream checks must surface
                     # system quota exhaustion instead of reporting missing custom credentials.
                     using_provider_type = ProviderType.CUSTOM
@@ -864,6 +891,10 @@ class ProviderManager:
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
         if not default_model:
+            model_billing = ModelBillingProfileService.resolve(tenant_id)
+            if model_billing.uses_tokener:
+                return None
+
             # Get provider configurations
             provider_configurations = self.get_configurations(tenant_id)
 
@@ -1568,6 +1599,14 @@ class ProviderManager:
         :param provider_records: provider records
         :return:
         """
+        from core.model_invocation_routing import (
+            compatibility_quota_type,
+            has_compatibility_route,
+            migration_routing_state,
+        )
+
+        routing_state = migration_routing_state(tenant_id)
+        compatibility_route = has_compatibility_route(routing_state)
         # Get hosting configuration
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
@@ -1598,7 +1637,7 @@ class ProviderManager:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not compatibility_route:
             from services.credit_pool_service import CreditPoolService
 
             with session_factory.create_session() as session:
@@ -1674,6 +1713,9 @@ class ProviderManager:
             return SystemConfiguration(enabled=False)
 
         current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+
+        if compatibility_route and routing_state is not None:
+            current_quota_type = compatibility_quota_type(provider_entity.provider, quota_configurations, routing_state)
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:

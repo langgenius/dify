@@ -101,6 +101,8 @@ from .model import (
     TrialApp,
     UploadFile,
 )
+from .model_billing import TenantModelBillingProfile
+from .model_billing_migration import TenantModelBillingMigration
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .onboarding import AccountStepByStepTourState
 from .provider import (
@@ -118,6 +120,7 @@ from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, Skil
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
+from .tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
@@ -267,8 +270,12 @@ __all__ = [
     "TenantAccountRole",
     "TenantCreditPool",
     "TenantDefaultModel",
+    "TenantModelBillingMigration",
+    "TenantModelBillingProfile",
     "TenantPreferredModelProvider",
     "TenantStatus",
+    "TenantTokenerIntegration",
+    "TenantTokenerIntegrationStatus",
     "TidbAuthBinding",
     "ToolConversationVariables",
     "ToolFile",
