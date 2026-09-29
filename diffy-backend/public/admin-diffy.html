@@ -108,7 +108,9 @@
 
   <script>
     let token = "";
-    const API = window.location.origin;
+    // Include this page's folder so it also works behind a path prefix
+    // (e.g. /diffy-backend/admin-diffy.html -> API base /diffy-backend).
+    const API = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
 
     function authHeaders() {
       return { Authorization: "Bearer " + token };
