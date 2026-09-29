@@ -325,7 +325,11 @@ describe('AgentLogDetailPanel', () => {
     await user.click(toggle)
 
     expect(
-      await screen.findByRole('heading', { name: 'Plan the response', level: 1 }, { timeout: 5000 }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Plan the response', level: 1 },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument()
     expect(screen.getByText('Inspect the workspace')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /List workspace/ })).toBeInTheDocument()

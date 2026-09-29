@@ -1,13 +1,17 @@
 import asyncio
 import json
+from collections.abc import AsyncIterable, AsyncIterator
 from datetime import UTC, datetime
+from typing import cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import PydanticAIStreamRunEvent, RunSucceededEvent, RunSucceededEventData
 from pydantic_ai import Agent
 from pydantic_ai.messages import (
+    AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ModelMessage,
     PartDeltaEvent,
     PartEndEvent,
     PartStartEvent,
@@ -20,19 +24,26 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
     ToolReturnPart,
 )
-from pydantic_ai.models.function import DeltaThinkingPart, DeltaToolCall, FunctionModel
+from pydantic_ai.models.function import (
+    AgentInfo,
+    DeltaThinkingCalls,
+    DeltaThinkingPart,
+    DeltaToolCall,
+    DeltaToolCalls,
+    FunctionModel,
+)
 
 from core.workflow.nodes.agent_v2.process_recorder import WorkflowAgentProcessRecorder
 
 
-def _event(data, *, event_id: str | None = None, run_id: str = "run-1"):
+def _event(data: AgentStreamEvent, *, event_id: str | None = None, run_id: str = "run-1") -> PydanticAIStreamRunEvent:
     event = PydanticAIStreamRunEvent(
         id=event_id, run_id=run_id, created_at=datetime(2026, 9, 28, tzinfo=UTC), data=data
     )
     return PydanticAIStreamRunEvent.model_validate_json(event.model_dump_json())
 
 
-def test_replayed_deltas_and_complete_tool_events_do_not_duplicate_steps():
+def test_replayed_deltas_and_complete_tool_events_do_not_duplicate_steps() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     recorder.record(_event(PartStartEvent(index=0, part=ThinkingPart("Think "))))
@@ -52,7 +63,7 @@ def test_replayed_deltas_and_complete_tool_events_do_not_duplicate_steps():
     assert steps[1]["observation"] == ""
 
 
-def test_parallel_tool_calls_are_correlated_by_call_id_not_name_or_completion_order():
+def test_parallel_tool_calls_are_correlated_by_call_id_not_name_or_completion_order() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     for index in range(2):
@@ -69,26 +80,28 @@ def test_parallel_tool_calls_are_correlated_by_call_id_not_name_or_completion_or
     assert [step["observation"] for step in steps] == ["Please retry", "false"]
 
 
-def test_retry_runs_preserve_previous_attempts_without_reusing_part_indexes():
-    process_data = {"agent_id": "agent-1"}
+def test_retry_runs_preserve_previous_attempts_without_reusing_part_indexes() -> None:
+    process_data: dict[str, object] = {"agent_id": "agent-1"}
     for run_id in ("run-1", "run-2"):
         recorder = WorkflowAgentProcessRecorder(process_data, run_id)
         recorder.record(_event(PartStartEvent(index=0, part=ThinkingPart(run_id)), run_id=run_id))
         recorder.record(
             _event(FunctionToolCallEvent(ToolCallPart("lookup", {}, tool_call_id="same-id")), run_id=run_id)
         )
-    steps = process_data["agent_thoughts"]
+    steps = cast("list[dict[str, object]]", process_data["agent_thoughts"])
     assert [step["chain_id"] for step in steps] == ["run-1", "run-1", "run-2", "run-2"]
     assert [step["position"] for step in steps] == [1, 2, 3, 4]
     assert len({step["id"] for step in steps}) == 4
     assert process_data["agent_id"] == "agent-1"
 
 
-def test_actual_pydantic_ai_stream_is_preserved_without_duplicate_final_output():
+def test_actual_pydantic_ai_stream_is_preserved_without_duplicate_final_output() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
 
-    async def model(messages, _info):
+    async def model(
+        messages: list[ModelMessage], _info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls | DeltaThinkingCalls]:
         if any(isinstance(part, ToolReturnPart) for message in messages for part in message.parts):
             yield {0: DeltaThinkingPart(content="Check tool result")}
             yield "Found result"
@@ -100,11 +113,11 @@ def test_actual_pydantic_ai_stream_is_preserved_without_duplicate_final_output()
     def lookup(query: str) -> str:
         return f"matched: {query}"
 
-    async def collect(_ctx, events):
+    async def collect(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
         async for event in events:
             recorder.record(_event(event))
 
-    async def run():
+    async def run() -> str:
         agent = Agent(FunctionModel(stream_function=model), tools=[lookup])
         result = await agent.run("Find hello", event_stream_handler=collect)
         recorder.record(
@@ -124,7 +137,7 @@ def test_actual_pydantic_ai_stream_is_preserved_without_duplicate_final_output()
     assert not any(step["answer"] == "Found result" for step in steps)
 
 
-def test_tool_id_arriving_in_delta_updates_the_existing_call():
+def test_tool_id_arriving_in_delta_updates_the_existing_call() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     recorder.record(_event(PartStartEvent(index=0, part=ToolCallPart("lookup", "", tool_call_id="temporary"))))
@@ -135,7 +148,7 @@ def test_tool_id_arriving_in_delta_updates_the_existing_call():
     assert process_data["agent_thoughts"][0]["observation"] == "found"
 
 
-def test_late_index_zero_does_not_split_an_existing_text_part():
+def test_late_index_zero_does_not_split_an_existing_text_part() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     recorder.record(_event(PartStartEvent(index=1, part=TextPart("Working "))))
@@ -145,7 +158,7 @@ def test_late_index_zero_does_not_split_an_existing_text_part():
     assert [step["answer"] for step in process_data["agent_thoughts"] if step["answer"]] == ["Working now"]
 
 
-def test_final_answer_with_multiple_text_parts_is_not_partially_trimmed():
+def test_final_answer_with_multiple_text_parts_is_not_partially_trimmed() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     recorder.record(_event(PartStartEvent(index=0, part=TextPart("AB"))))
@@ -162,7 +175,7 @@ def test_final_answer_with_multiple_text_parts_is_not_partially_trimmed():
     assert process_data["agent_thoughts"][0]["position"] == 1
 
 
-def test_text_without_process_leaves_no_false_thinking_step():
+def test_text_without_process_leaves_no_false_thinking_step() -> None:
     process_data = {}
     recorder = WorkflowAgentProcessRecorder(process_data, "run-1")
     recorder.record(_event(PartStartEvent(index=0, part=TextPart("Just the answer"))))
