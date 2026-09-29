@@ -824,9 +824,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(
         screen.queryByRole('article', { name: 'workflow.difyBuilder.changes' }),
       ).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-      ).not.toBeInTheDocument()
+      expect(getComposer()).toBeDisabled()
 
       await act(async () => {
         actionStream.push(stateEvent(applied))
@@ -1004,9 +1002,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
     await user.click(getSubmitButton())
     await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
-    expect(
-      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-    ).not.toBeInTheDocument()
+    expect(getComposer()).toBeDisabled()
 
     await act(async () => {
       actionStream.push(commandStartedEvent(planReady))

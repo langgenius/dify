@@ -261,6 +261,38 @@ describe('DifyBuilderPanel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hides the composer while resource selection needs a response', () => {
+    const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'resource_select',
+      payload: {
+        title: 'Choose resources',
+        recommended: [
+          { id: 'dataset-1', label: 'Knowledge', kind: 'dataset', readiness: 'ready', meta: '' },
+        ],
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        active_interaction: {
+          action_id: 'confirm_resources',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+      },
+      undefined,
+      [card],
+    )
+
+    expect(screen.getByRole('checkbox', { name: 'Knowledge' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('clears the composer immediately when Enter submits a pending message', async () => {
     const user = userEvent.setup()
     let finishSending!: (sent: boolean) => void
@@ -451,6 +483,10 @@ describe('DifyBuilderPanel', () => {
     expect(
       screen.queryByRole('region', { name: 'Is this workflow plan ready to apply?' }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
 
     await act(async () => {
       finishAction(true)
@@ -641,6 +677,9 @@ describe('DifyBuilderPanel', () => {
     ).toBeInTheDocument()
     expect(within(log).getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
     expect(within(log).getByRole('textbox', { name: 'Topic' })).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).toBeDisabled()
 
     await act(async () => {
       finishAction(false)
@@ -650,6 +689,9 @@ describe('DifyBuilderPanel', () => {
     const restoredField = await screen.findByRole('textbox', { name: 'Topic' })
     expect(restoredField).toHaveValue('AI agents')
     expect(restoredField).not.toHaveAttribute('readonly')
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
     expect(
       within(log).queryByRole('heading', { name: 'Provide test data' }),
     ).not.toBeInTheDocument()
