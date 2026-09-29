@@ -106,7 +106,7 @@ export default function RosterPage() {
   useDocumentTitle(pageTitle)
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
+    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1
@@ -131,7 +131,7 @@ export default function RosterPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 max-md:min-h-64">
         <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             role="region"
@@ -140,7 +140,7 @@ export default function RosterPage() {
             style={{ overflowX: 'hidden' }}
           >
             <ScrollAreaContent
-              className="min-h-full w-full max-w-full px-8 pt-2 pb-8"
+              className="min-h-full w-full max-w-full px-2 pt-2 pb-8 sm:px-8"
               style={{ minWidth: 0 }}
             >
               <AgentRosterList
