@@ -7,7 +7,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
 import httpx
@@ -494,7 +494,7 @@ def test_build_application_services_wires_web_authentication_boundary(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.web_authentication, WebAuthenticationService)
@@ -520,7 +520,7 @@ def test_build_application_services_reuses_installed_app_dependencies(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.installed_apps.access, InstalledAppAccessService)
