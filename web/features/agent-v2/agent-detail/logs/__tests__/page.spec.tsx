@@ -443,6 +443,8 @@ describe('AgentLogsPage', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
 
+      expect(screen.getByRole('dialog', { name: 'Previous conversation' })).toBeInTheDocument()
+
       await waitFor(() => {
         expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
           input: {
