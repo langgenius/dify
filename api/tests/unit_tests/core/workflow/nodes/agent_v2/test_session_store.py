@@ -8,9 +8,10 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
-from sqlalchemy import Engine, event, func, select
+from sqlalchemy import Engine, create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+import core.db.session_factory as session_factory_module
 from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
@@ -431,6 +432,63 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
     assert scope is None
     assert len(_execution_selects(executed_statements)) == 3
     assert sleep.call_count == 2
+
+
+@pytest.fixture
+def snapshot_session_factory(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[sessionmaker[Session]]:
+    """Give the store SQLite sessions whose reads keep one snapshot per transaction.
+
+    pysqlite defers BEGIN until the first write, so plain SQLite reads always see the
+    latest commit. Emitting BEGIN on every transaction in WAL mode pins the snapshot at
+    the first SELECT until commit or rollback, like InnoDB consistent reads under MySQL's
+    default REPEATABLE READ isolation.
+    """
+
+    engine = create_engine(sqlite_engine.url)
+
+    @event.listens_for(engine, "connect")
+    def use_wal_without_driver_transactions(dbapi_connection, _connection_record) -> None:
+        dbapi_connection.isolation_level = None
+        dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+    @event.listens_for(engine, "begin")
+    def begin_snapshot(connection) -> None:
+        connection.exec_driver_sql("BEGIN")
+
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    try:
+        yield factory
+    finally:
+        engine.dispose()
+
+
+def test_load_existing_scope_sees_caller_row_committed_after_first_snapshot_read(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_factory: sessionmaker[Session],
+) -> None:
+    sleep = MagicMock()
+
+    def commit_caller_row(_seconds: float) -> None:
+        if sleep.call_count == 1:
+            with snapshot_session_factory() as writer:
+                writer.add(_execution_row())
+                writer.commit()
+
+    sleep.side_effect = commit_caller_row
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
+
+    scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        node_execution_id="execution-1",
+    )
+
+    assert scope is None
+    assert sleep.call_count == 1
 
 
 def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:
