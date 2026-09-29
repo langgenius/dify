@@ -580,8 +580,15 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     image_map = {"ext": "EXT-IMG", image_part: "INT-IMG"}
     assert extractor._parse_cell_paragraph(paragraph, image_map) == "EXT-IMGINT-IMGplain"
 
-    cell = SimpleNamespace(paragraphs=[paragraph, paragraph])
-    assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
+    # _parse_cell matches on real python-docx Paragraph/Table types from
+    # iter_inner_content; exercise that path with a real cell and a stub parser.
+    real_doc = Document()
+    real_cell = real_doc.add_table(rows=1, cols=1).cell(0, 0)
+    real_cell.text = "ignored"
+    monkeypatch.setattr(
+        extractor, "_parse_cell_paragraph", lambda p, m: "EXT-IMGINT-IMGplain"
+    )
+    assert extractor._parse_cell(real_cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
 def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
