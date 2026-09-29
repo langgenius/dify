@@ -21,7 +21,7 @@ import {
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
-  'onPublish' | 'onRestore' | 'publishedAt'
+  'onPublish' | 'onPublishEvaluation' | 'onRestore' | 'publishedAt'
 > & {
   appId?: string
   appMode?: AppMode
@@ -55,6 +55,7 @@ export function usePublishController({
   appName,
   onClose,
   onPublish,
+  onPublishEvaluation,
   onRestore,
   publishedAt,
   supportsMultiEnvironment,
@@ -82,10 +83,11 @@ export function usePublishController({
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
   async function publishApp(
+    publishHandler: AppPublisherProps['onPublish'],
     params?: AppPublisherPublishParams,
     options?: AppPublisherPublishOptions,
   ) {
-    await onPublish?.(params, options)
+    await publishHandler?.(params, options)
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
@@ -121,7 +123,7 @@ export function usePublishController({
     publishingRef.current = true
     setIsPublishing(true)
     try {
-      await publishApp(params)
+      await publishApp(onPublish, params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
@@ -131,8 +133,23 @@ export function usePublishController({
     }
   }
 
+  async function handlePublishEvaluation(params?: AppPublisherPublishParams) {
+    if (publishingRef.current || !onPublishEvaluation) return
+    publishingRef.current = true
+    setIsPublishing(true)
+    try {
+      await publishApp(onPublishEvaluation, params)
+    } catch (error) {
+      console.warn('[app-publisher] evaluation publish failed', error)
+      setPublished(false)
+    } finally {
+      publishingRef.current = false
+      setIsPublishing(false)
+    }
+  }
+
   async function publishWorkflowTool(params?: AppPublisherPublishParams) {
-    await publishApp(params, { showSuccessToast: false })
+    await publishApp(onPublish, params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -169,6 +186,7 @@ export function usePublishController({
   return {
     currentPublishedAt,
     handlePublish,
+    handlePublishEvaluation,
     handleRestore,
     hasPublishedVersion,
     isChatApp,
