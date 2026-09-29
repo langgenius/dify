@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Workspace Skill 更新失败。",
   "agentDetail.configure.skills.workspaceSelector.search": "搜索 Skill...",
   "agentDetail.configure.switchToPreviewConfirm.title": "切换到预览模式？",
+  "agentDetail.configure.templatePreview.agentUI": "智能体界面",
   "agentDetail.configure.title": "配置",
   "agentDetail.configure.tools.add": "添加工具",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "开发者适用",

@@ -16,7 +16,14 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   optimizeDeps: {
-    include: ['vite-plus/test/browser'],
+    include: [
+      'vite-plus/test/browser',
+      '@daypicker/react/locale/en-US',
+      '@daypicker/react/locale/ar-TN',
+      '@daypicker/react/locale/fa-IR',
+      '@base-ui/utils/useStableCallback',
+      '@base-ui/utils/useTimeout',
+    ],
   },
   test: {
     browser: {

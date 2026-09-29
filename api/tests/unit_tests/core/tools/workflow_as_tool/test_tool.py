@@ -52,15 +52,11 @@ def sqlite_tool_db(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
 ) -> Iterator[SqliteToolDb]:
-    """Bind service-owned sessions and Account tenant reloads to SQLite."""
+    """Bind service-owned sessions to SQLite."""
     models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
     TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(workflow_tool_module.session_factory, "create_session", session_maker)
-
-    from models import account as account_module
-
-    monkeypatch.setattr(account_module, "db", SimpleNamespace(engine=sqlite_engine))
     with session_maker() as caller_session:
         yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)
 

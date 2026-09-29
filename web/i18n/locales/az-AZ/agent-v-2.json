@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "İş sahəsinin bacarıqlarını yeniləmək mümkün olmadı.",
   "agentDetail.configure.skills.workspaceSelector.search": "Bacarıqları axtar...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Önbaxış rejiminə keçilsin?",
+  "agentDetail.configure.templatePreview.agentUI": "Agent interfeysi",
   "agentDetail.configure.title": "Konfiqurasiya",
   "agentDetail.configure.tools.add": "Alət əlavə et",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Tərtibatçılar üçün",

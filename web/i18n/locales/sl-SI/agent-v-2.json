@@ -234,6 +234,7 @@
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Veščin delovnega prostora ni bilo mogoče posodobiti.",
   "agentDetail.configure.skills.workspaceSelector.search": "Iskanje veščin...",
   "agentDetail.configure.switchToPreviewConfirm.title": "Preklopiti v način predogleda?",
+  "agentDetail.configure.templatePreview.agentUI": "Vmesnik agenta",
   "agentDetail.configure.title": "Konfiguriraj",
   "agentDetail.configure.tools.add": "Dodaj orodje",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Za razvijalce",

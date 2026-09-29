@@ -838,24 +838,6 @@
       "count": 10
     }
   },
-  "web/app/components/base/date-and-time-picker/hooks.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/date-and-time-picker/time-picker/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/date-and-time-picker/utils/dayjs.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "web/app/components/base/error-boundary/index.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -1098,7 +1080,7 @@
   },
   "web/app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "web/app/components/base/markdown-blocks/link.tsx": {
@@ -3164,11 +3146,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/index.tsx": {
-    "eslint-react/static-components": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/iteration/node.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -4542,7 +4519,7 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 3
+      "count": 2
     }
   },
   "web/service/use-workflow.ts": {

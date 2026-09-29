@@ -461,7 +461,6 @@ class TestTencentDataTrace:
         trace_info.workflow_run_id = "run-1"
         database = SimpleNamespace(engine=sqlite3_session.get_bind())
         monkeypatch.setattr("dify_trace_tencent.tencent_trace.db", database)
-        monkeypatch.setattr("models.account.db", database)
 
         with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
             mock_repo.return_value.get_by_workflow_execution.return_value = []
